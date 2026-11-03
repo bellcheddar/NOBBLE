@@ -106,6 +106,7 @@ def benchmark():
     return render_template(
         "benchmark.html", page_title="Benchmark", active="benchmark",
         cards=cards, meta=data.campaign_meta(),
+        comparison=data.precomputed("comparison.json"),
     )
 
 

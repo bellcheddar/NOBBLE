@@ -16,6 +16,70 @@
   </p>
 </section>
 
+{% if comparison and comparison.get('comparisons') %}
+<section class="panel">
+  <h2>Construct comparison: does the whole domain recover the pose?</h2>
+  <p class="panel__hint">
+    Six of the seven pairs submitted their substrate as a 15-mer cut out of a
+    folded domain, and all six missed the crystal pose by 12 to 29 angstrom.
+    The one whose epitope is linear, IKZF1, recovered at 5.4. This re-runs the
+    panel with each domain-mediated substrate submitted as its whole domain and
+    changes nothing else.
+  </p>
+  <p class="panel__hint">
+    <strong>IKZF1 is the control.</strong> It keeps its 15-mer in both
+    campaigns, so if its recovery moves, something other than the construct
+    changed and nothing below can be attributed to the construct.
+  </p>
+
+  {# The control has three states, not two: held, moved, and not yet run.
+     Rendering it as a boolean announced "control MOVED" for a control that
+     had simply not been measured, which asserts a failure that had not
+     happened. #}
+  {% set ctrl = comparison.get('control') or {} %}
+  {% set ctrl_state = 'held' if comparison.get('control_held')
+       else ('not yet run' if ctrl.get('delta_rmsd') is none else 'MOVED') %}
+  <div class="stat {% if ctrl_state == 'held' %}stat--good{% elif ctrl_state == 'MOVED' %}stat--bad{% else %}stat--warn{% endif %}"
+       style="margin:0.8rem 0;border-left-width:4px">
+    <span class="stat__label">Verdict</span>
+    <span class="stat__value" style="font-size:0.85rem;font-family:var(--body)">{{ comparison.conclusion }}</span>
+    <span class="stat__sub">control: {{ ctrl_state }}</span>
+  </div>
+
+  <div class="table-wrap" tabindex="0" role="group" aria-label="Scrollable table" style="max-height:none">
+    <table class="ntable">
+      <thead><tr>
+        <th>Pair</th><th>Substrate</th>
+        <th class="num">15-mer RMSD</th><th class="num">Domain RMSD</th>
+        <th class="num">Change</th><th>Verdict</th>
+      </tr></thead>
+      <tbody>
+        {% for c in comparison.comparisons %}
+        <tr{% if c.is_control %} class="row--pinned"{% endif %}>
+          <td>{{ c.gene }} / {{ c.e3 }}{% if c.is_control %} <span class="flag">control</span>{% endif %}</td>
+          <td>{{ c.substrate_mode or '—' }}</td>
+          <td class="num">{{ c.baseline_median_rmsd if c.baseline_median_rmsd is not none else '—' }}</td>
+          <td class="num">{{ c.corrected_median_rmsd if c.corrected_median_rmsd is not none else '—' }}</td>
+          <td class="num">{{ c.delta_rmsd if c.delta_rmsd is not none else '—' }}</td>
+          <td>
+            {% if c.verdict == 'improved' %}<span class="flag flag--glue">improved</span>
+            {% elif c.verdict == 'worse' %}<span class="flag flag--bad">worse</span>
+            {% elif c.verdict == 'control held' %}<span class="flag flag--glue">control held</span>
+            {% elif 'TRUSTWORTHY' in c.verdict %}<span class="flag flag--bad">{{ c.verdict }}</span>
+            {% else %}<span class="flag flag--pending">{{ c.verdict }}</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="panel__hint" style="margin-top:0.5rem">
+    All RMSD values are peptide backbone, superposed on the receptor, against
+    the same deposited structures in both campaigns.
+  </p>
+</section>
+{% endif %}
+
 <div class="cards">
   {% for card in cards %}
   {% set s = card.scores or {} %}

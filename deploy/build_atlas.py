@@ -155,6 +155,27 @@ def main() -> int:
     (OUT / "about.json").write_text(json.dumps(about, indent=2, default=str))
     summary["files"]["about.json"] = len(about["sources"])
 
+    # If a corrected-construct campaign exists, publish the comparison that
+    # answers F6. Computed here, on the build machine, because the droplet
+    # computes nothing: the app renders a static verdict.
+    corrected = sorted(
+        (item for item in (ROOT / "campaigns").iterdir()
+         if item.is_dir() and item.name.startswith("corrected_")),
+        key=lambda item: item.name,
+    )
+    if corrected:
+        from nobble.validate.compare import compare
+
+        try:
+            report = compare(campaign, corrected[-1])
+            (OUT / "comparison.json").write_text(
+                json.dumps(redact(report), indent=2, default=str)
+            )
+            summary["files"]["comparison.json"] = len(report.get("comparisons", []))
+            summary["comparison_conclusion"] = report.get("conclusion")
+        except Exception as problem:               # noqa: BLE001
+            summary["comparison_error"] = f"{type(problem).__name__}: {problem}"
+
     structures = list((OUT / "structures").glob("*.cif"))
     summary["structures"] = len(structures)
     summary["bytes"] = sum(p.stat().st_size for p in OUT.rglob("*") if p.is_file())
