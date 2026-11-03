@@ -48,10 +48,14 @@ Rewritten after every phase and at least every 30 minutes during long compute.
 - 5 conditioned jobs dropped for benchmark member 3, which has no measurable
   pocket (6BNB assembly 1 carries no PROTAC). Dropping beats emitting a
   duplicate of the unconstrained arm under a conditioned label
-- First measured throughput: 0.343 s/token, sizing the campaign at 271 pairs
-  against the spec's 200-250 estimate. The figure is from the smallest job and
-  is optimistic: pairformer cost is superlinear in length, and the DCAF15 member
-  is 1,223 tokens. `data/throughput.json` is rewritten as the queue progresses
+- Throughput, now measured rather than extrapolated: the first figure of
+  0.343 s/token came from the smallest job and was flagged at the time as
+  optimistic. Over 80 timed jobs the median is **0.4738 s/token** (mean 0.4257,
+  range 0.2074 to 0.7335), so the early figure was out by 38% in the direction
+  predicted: pairformer cost is superlinear in length and the DCAF15 member is
+  1,223 tokens. The campaign sizes itself from the measured number, giving 156
+  affordable pairs in the 48-hour budget against the spec's 200-250 estimate.
+  `data/throughput.json` is rewritten as the queue progresses
 - Jobs per pair is **15**, computed rather than quoted: the spec gives both 10
   and 20 in different sections (D-NOB-019)
 
@@ -113,13 +117,18 @@ QC: `npx node qc/qc.mjs` with the app running.
 
 ## Gates open
 
-- **G3 Deploy**: open in advance, and not satisfied by DNS alone.
-  `nobble.mdeller.com` resolves to the droplet (45.55.102.228) and answers HTTP
-  200 on port 80, but with nginx's default welcome page: there is no NOBBLE
-  vhost, and the only certificate presented covers `alphabetti.mdeller.com`, so
-  HTTPS fails verification. Needs an nginx vhost and a certbot certificate, both
-  root actions on the droplet. See D-NOB-011.
-- All other gates closed.
+- **No gate is currently open.** All six are closed.
+- **G3 Deploy**: closed, satisfied and verified, not merely approved.
+  `nobble.mdeller.com` serves the app over HTTPS behind its own nginx vhost,
+  the certificate is issued to `nobble.mdeller.com` (not the ALPHABETTI
+  certificate that was being presented before), it verifies cleanly and runs
+  to 2027-02-01, and port 80 returns a 301 to HTTPS. `deploy/deploy.sh`
+  re-checks all eight routes on every deploy and refuses to report success
+  unless each returns 200.
+- **G4 Publish**: closed, granted and used. `github.com/bellcheddar/NOBBLE`
+  is public. PROTAC-DB SMILES were removed from the history before the first
+  push, and `deploy/build_atlas.py` re-verifies the redaction on every build
+  rather than trusting that the first pass held.
 
 ## Known degradations
 

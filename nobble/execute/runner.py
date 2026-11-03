@@ -192,10 +192,36 @@ def settings_from_config(tier: int = 1, job_timeout_seconds: int = 5400) -> dict
     }
 
 
+def tier_files(campaign: Path, tier: int = 1) -> dict:
+    """Queue, state and results paths for a sampling tier.
+
+    Tier 2 gets its own three files rather than appending to tier 1's. Two
+    reasons, and the second is the load-bearing one. Keeping tier 1's results
+    immutable means a tier-2 run can never corrupt the measurement that
+    selected it. And `iptm_min` is a minimum over seeds, which is not robust
+    to sample count: adding diffusion samples can only push a minimum down,
+    never up. Pooling 25-sample ternary records into the same minimum as
+    1-sample binary records would bias `delta_iptm` downwards for exactly the
+    pairs that were refined, and it would look like the glue weakening the
+    interface rather than the arithmetic of an order statistic.
+    """
+    suffix = "" if tier == 1 else f"_tier{tier}"
+    return {
+        "queue": campaign / f"queue{suffix}.jsonl",
+        "state": campaign / f"state{suffix}.jsonl",
+        "results": campaign / f"results{suffix}.jsonl",
+    }
+
+
 def run_campaign(campaign: Path, limit: int | None = None, tier: int = 1) -> dict:
-    queue_path = campaign / "queue.jsonl"
-    state_path = campaign / "state.jsonl"
-    results_path = campaign / "results.jsonl"
+    files = tier_files(campaign, tier)
+    queue_path = files["queue"]
+    state_path = files["state"]
+    results_path = files["results"]
+    if not queue_path.exists():
+        return {"campaign": str(campaign), "tier": tier, "attempted": 0,
+                "succeeded": 0, "failed": 0, "total_seconds": 0.0,
+                "status": f"no queue at {queue_path.name}"}
     settings = settings_from_config(tier)
 
     jobs = [json.loads(line) for line in queue_path.read_text().splitlines() if line.strip()]
@@ -220,7 +246,8 @@ def run_campaign(campaign: Path, limit: int | None = None, tier: int = 1) -> dic
             state.write(json.dumps(record) + "\n")
         if outcome.status == "done":
             with results_path.open("a") as results:
-                results.write(json.dumps({**job, **record}) + "\n")
+                results.write(json.dumps(
+                    {**job, **record, "tier_setting": tier}) + "\n")
         outcomes.append(outcome)
         print(f"    {outcome.status} in {outcome.seconds:.1f}s "
               f"({record['seconds_per_token']} s/token)", flush=True)
@@ -228,6 +255,7 @@ def run_campaign(campaign: Path, limit: int | None = None, tier: int = 1) -> dic
     succeeded = [item for item in outcomes if item.status == "done"]
     return {
         "campaign": str(campaign),
+        "tier": tier,
         "attempted": len(outcomes),
         "succeeded": len(succeeded),
         "failed": len(outcomes) - len(succeeded),

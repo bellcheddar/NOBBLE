@@ -781,3 +781,56 @@ the way to raise it, and a forked copy that drifts is worse than no copy.
 
 **Reversal.** `colourByConfidence` in `nobble/app/templates/pose.html`; remove
 it and pass `plddt: true` to return to the bridge's behaviour exactly.
+
+## D-NOB-032: a sampling tier is a hard partition on scoring, not a label on a row
+
+Tier 2 was built but never wired: `build_tier2_queue` wrote
+`queue_tier2.jsonl` and `run_campaign` only ever opened `queue.jsonl`, so
+nothing could run it. Wiring it up exposed the reason that was worth
+pausing over.
+
+`delta_iptm` is `iptm_min_ternary - iptm_min_binary`, and both terms are a
+**minimum over seeds**. A minimum is not robust to sample count: drawing more
+diffusion samples can push a minimum down and can never push it up. Tier 1
+draws one diffusion sample per job, tier 2 draws twenty-five. Scoring grouped
+jobs by `pair_id` alone, so had tier-2 results been appended to
+`results.jsonl`, the refined ternary records would have joined the tier-1
+ternary minimum while the binary arm stayed at one sample. `delta_iptm` would
+have fallen for precisely the pairs that were selected for being the most
+promising, and it would have read as the glue weakening the interface. The
+failure is silent: nothing raises, nothing goes out of range, and the number
+stays entirely plausible.
+
+**Decided.** Three changes, because a convention would not have been enough.
+
+1. `tier_files()` gives tier 2 its own queue, state and results files. Tier 1
+   stays immutable, so a refinement run cannot corrupt the measurement that
+   selected it.
+2. `metrics.aggregate()` takes `sampling_tier`, defaulting to 1, and filters
+   on it. This is a hard partition, not a label. Records written before the
+   field existed default to tier 1, which is what they are.
+3. The runner stamps `tier_setting` on every result. The existing `tier`
+   field could not be reused: it already carries the **curation** tier (Tier A,
+   Tier B, benchmark), which is an unrelated axis, and overloading it would
+   have been the same class of mistake one level down.
+
+**Tier 2 stays ternary-only**, which is what the module already did, but the
+justification it carried was wrong. It argued that refining the binary arm
+would "spend the budget on the control rather than the measurement". For a
+difference of two minima the control *is* half the measurement, so that
+reasoning would license the exact bias above. The correct reason is narrower:
+spec 1.2 gives tier 2 one purpose, pose refinement on the top decile. It is
+not a second and better estimate of Delta-ipTM, and the partition is what
+stops it being read as one.
+
+**Alternatives rejected.** Refining both arms keeps Delta-ipTM symmetric and
+comparable, but doubles tier-2 cost to re-measure a quantity tier 1 already
+measures adequately, and the spec does not ask for it. Recomputing a separate
+tier-2 Delta-ipTM from tier-2 binaries would be defensible science but is
+scope the spec does not contain.
+
+**Reversal.** `tier_files()` in `nobble/execute/runner.py` and the
+`sampling_tier` filter in `nobble/score/metrics.py`. Drop the filter and point
+both tiers at one results file to return to the pooled behaviour.
+`tests/test_tiers.py` fails first if that happens: the contamination case is
+constructed deliberately, because it is not visible by inspection.

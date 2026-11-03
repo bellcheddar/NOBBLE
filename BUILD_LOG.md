@@ -14,3 +14,19 @@
 2026-11-03T19:25:33Z  Phase 1: gap-aware frame resolver (D-NOB-020). Fixed four unmeasurable benchmark pockets. CRBN tri-tryptophan pocket recovered independently from 5HXB, 6H0F and 5FQD, all agreeing on W380/W386/W400.
 2026-11-03T19:25:33Z  Phase 1: benchmark manifest 7 pairs, 105 jobs, 0 errors, 10 warnings (all smiles_fallback for dBET57). jobs_per_pair computed as 15 (D-NOB-019).
 2026-11-03T19:25:33Z  Phase 2: campaign assembled, 100 YAMLs emitted (5 conditioned jobs dropped for member 3, which has no measurable pocket). Smoke test passed: 124-token job in 42.5s on MPS, 0.343 s/token. Full 100-job queue launched in tmux; resume verified (skipped the completed job).
+- 2026-11-04T00:05Z Tier 2 wired and partitioned. It was unrunnable:
+  `build_tier2_queue` wrote `queue_tier2.jsonl` and `run_campaign` only opened
+  `queue.jsonl`. Wiring it exposed a silent bias: `delta_iptm` is a difference
+  of two minima over seeds, a minimum is not robust to sample count, and tier 2
+  draws 25 diffusion samples against tier 1's 1. Pooling them would have pushed
+  the ternary minimum down on sample count alone, for exactly the pairs
+  selected as most promising. Tier 2 now has its own queue, state and results
+  files; `metrics.aggregate` filters on `tier_setting` as a hard partition;
+  `tests/test_tiers.py` (4 tests) constructs the contamination case and fails
+  without the filter. 40 tests pass. delta_iptm unchanged on all 6 scored
+  pairs, confirming the filter is a no-op on existing data. D-NOB-032.
+- 2026-11-04T00:05Z PROGRESS.md gates section corrected: it still claimed no
+  NOBBLE vhost and an ALPHABETTI certificate. Verified live: certificate is
+  issued to nobble.mdeller.com, verifies cleanly, runs to 2027-02-01, port 80
+  returns 301. No gate is currently open. Throughput paragraph updated from the
+  optimistic 0.343 s/token to the measured median of 0.4738 over 80 jobs.

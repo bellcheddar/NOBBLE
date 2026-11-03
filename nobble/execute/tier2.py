@@ -145,10 +145,16 @@ def build_tier2_queue(campaign: Path, selection: Selection) -> dict:
             "potentials": settings["tier2_potentials"],
         },
         "note": (
-            "Ternary jobs only: tier 2 refines the pose of the complex whose "
-            "interface is in question, and re-running the binary arm at higher "
-            "sampling would spend the budget on the control rather than the "
-            "measurement."
+            "Ternary jobs only, because spec 1.2 gives tier 2 one purpose: "
+            "pose refinement on the top decile. It is not a second, better "
+            "measurement of Delta-ipTM, and it must not be read as one. "
+            "Delta-ipTM is a difference of two minima over seeds, so it is "
+            "only interpretable when both arms were sampled the same way: "
+            "refining the ternary arm to 25 diffusion samples while the "
+            "binary arm stays at 1 would push the ternary minimum down on "
+            "sample count alone. Scoring enforces this rather than trusting "
+            "it, by partitioning on tier_setting, and tier 2 writes to its "
+            "own results file so tier 1 stays immutable."
         ),
     }
 
@@ -160,3 +166,35 @@ def run(campaign: Path, fraction: float = 0.1) -> dict:
         report["queue"] = build_tier2_queue(campaign, selection)
     (campaign / "tier2.json").write_text(json.dumps(report, indent=2, default=str))
     return report
+
+
+def main() -> int:
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(
+        description="Select the top decile and build the tier-2 refinement queue."
+    )
+    parser.add_argument("campaign", nargs="?", default=None)
+    parser.add_argument("--fraction", type=float, default=0.1,
+                        help="decile fraction (default 0.1)")
+    args = parser.parse_args()
+
+    campaign = args.campaign
+    if campaign is None:
+        from nobble.execute.campaign import latest
+        campaign = latest("benchmark")
+    if campaign is None:
+        print("no campaign found: assemble one first", file=sys.stderr)
+        return 2
+
+    report = run(Path(campaign), fraction=args.fraction)
+    print(json.dumps(report, indent=2, default=str))
+    # A selection that refused is not a failure of this step: it is the
+    # correct answer when nothing has enough values to rank on yet.
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+    sys.exit(main())

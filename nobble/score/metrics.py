@@ -195,14 +195,31 @@ def _collapsed_seeds(values: list[tuple[int, float | None]]) -> list[int]:
     return sorted(seed for seed, value in present if median - value > COLLAPSE_MARGIN)
 
 
-def aggregate(results_path: Path) -> list[PairMetrics]:
-    """Aggregate every completed job into per-pair metrics."""
+def aggregate(results_path: Path, sampling_tier: int = 1) -> list[PairMetrics]:
+    """Aggregate every completed job into per-pair metrics.
+
+    `sampling_tier` partitions by sampling regime and defaults to tier 1, the
+    regime the headline Delta-ipTM is defined over. This is a hard filter, not
+    a label: `iptm_min` is a minimum over seeds and a minimum is not robust to
+    sample count. Tier 2 draws 25 diffusion samples where tier 1 draws 1, so
+    mixing the two into one minimum would drag the ternary arm down while the
+    binary arm stayed put, and `delta_iptm` would report an order-statistic
+    artefact as a weakened interface. Tier 2 exists to refine poses (spec 1.2),
+    not to re-measure Delta-ipTM.
+
+    Note the field name: `tier` on a job record is the *curation* tier (Tier A,
+    Tier B, benchmark), which is a different axis entirely. The sampling tier
+    is `tier_setting`, and a record written before that field existed is tier 1.
+    """
     if not results_path.exists():
         return []
 
     jobs = [
         json.loads(line) for line in results_path.read_text().splitlines() if line.strip()
     ]
+    jobs = [job for job in jobs if int(job.get("tier_setting", 1)) == sampling_tier]
+    if not jobs:
+        return []
     grouped: dict[str, list[dict]] = defaultdict(list)
     for job in jobs:
         grouped[job["pair_id"]].append(job)
