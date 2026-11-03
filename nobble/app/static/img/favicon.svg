@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="NOBBLE">
+  <title>NOBBLE</title>
+  <!-- A different idea from the blog mark, not a crop of it. The blog mark
+       draws the whole scene: two protein domains with a glue between them.
+       This draws only the thing NOBBLE measures: the interface itself, as a
+       disc split by a bright slot. One idea, two shapes, a silhouette that
+       survives 16px. -->
+  <style>
+    .fg { fill: #1e73be; }
+    @media (prefers-color-scheme: dark) { .fg { fill: #4a9fd4; } }
+  </style>
+  <!-- left face -->
+  <path class="fg" d="M14.1 2.6A13.4 13.4 0 0 0 14.1 29.4L14.1 19.2
+                      A3.9 3.9 0 0 1 14.1 12.8 Z"/>
+  <!-- right face -->
+  <path class="fg" d="M17.9 2.6A13.4 13.4 0 0 1 17.9 29.4L17.9 19.2
+                      A3.9 3.9 0 0 0 17.9 12.8 Z"/>
+</svg>

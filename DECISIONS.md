@@ -657,3 +657,39 @@ ranked view rather than compared like for like with genuine linear degrons.
 
 **Reversal.** `DOMAIN_COVERAGE_SELF_SUFFICIENT` in
 `nobble/curate/peptides.py`; set it to 0 to submit everything as a 15-mer.
+
+---
+
+## D-NOB-028: icon concepts, chosen without asking because the build is unattended
+
+**Date:** 2026-11-03
+
+Both icon skills ask the author to propose concepts and wait for a pick. In
+unattended mode that becomes decide, log and continue, so the choices are
+recorded here instead.
+
+**Blog mark** (`nobble_icon.svg`, the repo's social image): single hero object.
+Two protein domains, the larger one the E3 ligase, with the glue as a white
+hexagon clamped in the cleft between them and a bond stub reaching into each
+face. It depicts the one thing NOBBLE measures: whether a small molecule
+creates an interface between two proteins that would not otherwise form. A
+first attempt drew the domains as plain ellipses and failed its own squint
+test, reading as two beans with a dot; the lobed outlines and the white
+focal hexagon were the fix.
+
+**Favicon** (`nobble_favicon.svg`): a deliberately different idea rather than a
+crop of the blog mark, per the skill. Where the blog mark draws the whole
+scene, this draws only the interface: a disc split by a bright slot. Two
+shapes, no text, and the silhouette survives 16 pixels, which was checked on
+the downsample rather than assumed.
+
+**Rendering note.** The house render script needs cairosvg and Pillow, and the
+default Anaconda interpreter has a broken Pillow (`libopenjp2.7.dylib` missing).
+BINMAN's pixi environment has a working pair, so the icons render through that
+interpreter. Worth knowing before the next icon.
+
+**Outstanding, and it needs Marc.** A GitHub repository has no avatar of its
+own: it inherits the owner's. The blog mark is the **social preview image**,
+which can only be set through the repository's settings page and not through
+the API, so `nobble_icon_300.png` is in the repository ready to upload at
+Settings, General, Social preview.
