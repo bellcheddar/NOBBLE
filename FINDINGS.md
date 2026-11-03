@@ -213,6 +213,39 @@ costs tokens but asks the right question. Recorded as D-NOB-027 and implemented
 for the next campaign; the pairs in flight keep their 15-mers and are reported
 with this caveat attached.
 
+### F6a. The graded version of this claim does not hold, and that matters
+
+As more pairs completed it became possible to ask whether *how much* of a
+domain the window covers predicts *how badly* it recovers. It does not:
+
+| Pair | Pose RMSD | Fraction of its domain | Position within it |
+|---|---|---|---|
+| GSPT1 | 29.2 A | 0.15 | 0.44, mid-domain |
+| BRD4 BD1 | 20.4 A | 0.18 | 0.44, mid-domain |
+| BRD4 BD2 | 19.2 A | 0.17 | 0.34 |
+| CSNK1A1 | 12.2 A | **0.07** | 0.09, at the domain edge |
+| IKZF1 | 5.4 A | linear | n/a |
+
+CSNK1A1 covers the **smallest** fraction of its parent domain of any pair, 7
+per cent of a 269-residue kinase domain, and recovers best of all the
+domain-embedded substrates. A simple "smaller fragment is worse" story is
+therefore wrong.
+
+Something else is suggestive: the two worst pairs both sit dead centre in their
+domain (position 0.44) and the best domain-embedded one sits at its edge
+(0.09), where a window has fewer severed contacts to miss. That is a plausible
+mechanism and it is **not** being claimed here. Four points cannot distinguish
+it from chance, and substituting a new correlation for the one that just failed
+would be fitting a story to the data twice over.
+
+What survives is the binary distinction, which is the one F6 actually rests on:
+the single pair whose epitope is linear recovers at 5.4 A, and every pair whose
+epitope is embedded in a fold sits between 12 and 29 A, the best of them more
+than twice the worst linear case. That gap is large and consistent. Whether
+closing it needs the whole domain is exactly what the corrected campaign tests,
+and this failed sub-hypothesis is a reason the test matters more, not less: the
+mechanism is less well understood than F6's first write-up implied.
+
 This is also a warning about the discovery arms, which are entirely 15-mers.
 Any curated-degron hit whose window falls inside a folded domain is subject to
 exactly the same objection, so the domain test above now runs over the whole
