@@ -153,10 +153,70 @@ this pair a success.
 **The caveat, stated as loudly as the result.** These are tier-1 triage
 settings: three recycles, one diffusion sample, potentials off, chosen by spec
 1.2 to be deliberately cheap. Tier 2 runs the top decile at ten recycles and
-twenty-five diffusion samples. Whether that recovers the crystal pose is the
-single most useful question this campaign can answer, and it is not answered
-yet. Nothing here says Boltz-2 cannot place a degron; it says that at triage
-settings, on two pairs, it did not, and that no confidence metric revealed it.
+twenty-five diffusion samples.
+
+**Revised by F6.** When IKZF1 completed it recovered at 5.0 to 5.4 angstrom
+across all ten seeds, an order of magnitude better than any other pair, and the
+reason turns out to be the construct rather than the model. Read F6 before
+drawing any conclusion from the table above: the failing pairs were asked an
+unanswerable question.
+
+## F6. The 15-mer is the wrong construct for six of the seven benchmark pairs
+
+IKZF1 / CRBN completed and behaves completely unlike the others:
+
+| Pair | Bridge rate | Delta-ipTM | Convergence | Pose RMSD (median) |
+|---|---|---|---|---|
+| GSPT1 / CRBN | 3/10 | -0.756 | 0.00 | 29.2 A |
+| BRD4 BD2 / VHL | 4/10 | -0.101 | 0.00 | 19.2 A |
+| BRD4 BD1 / CRBN | 4/5 | +0.002 | 0.00 | 20.4 A |
+| **IKZF1 ZF2 / CRBN** | **10/10** | **+0.316** | **0.73** | **5.4 A** |
+
+IKZF1 recovers at 4.99 to 5.40 angstrom across every one of its ten seeds, with
+consistent frames (436 anchor atoms at 1.80 to 1.88 angstrom). Every seed puts
+the degron in essentially the same place, and that place is the crystal's.
+
+**Why IKZF1 and not the others.** Each benchmark peptide was checked against
+the InterPro domain annotation of its own parent protein, asking a single
+question: is this 15-mer window inside a folded domain?
+
+| Pair | Window | Inside a folded domain? |
+|---|---|---|
+| GSPT1 | 430-444 | yes, 15 per cent of a 99-residue domain |
+| BRD4 BD2 | 379-393 | yes, 13 per cent of the 112-residue bromodomain |
+| BRD4 BD1 | 98-112 | yes, 14 per cent of the bromodomain |
+| CSNK1A1 | 33-47 | yes, 6 per cent of the 269-residue kinase domain |
+| RBM39 | 261-275 | yes, 19 per cent of the RRM |
+| CDK12 | 809-823 | yes, 5 per cent of the 294-residue kinase domain |
+| **IKZF1** | **144-158** | **no: a linear or loop epitope** |
+
+The single pair that works is the single pair whose epitope is linear. The six
+that fail are each a small slice cut out of a folded domain, and a 15-mer
+excised from a domain has no tertiary context, cannot fold, and therefore cannot
+reproduce an interface that the intact domain makes. The model docks it
+somewhere plausible and confident, roughly 20 angstrom from where the real
+contact is.
+
+**So the earlier reading of F4 was too hard on the model.** It is not that
+Boltz-2 cannot place a degron: given an actual linear degron it placed one, from
+ten independent seeds, within about 5 angstrom. It is that six of the seven
+benchmark pairs were asked a question with no correct answer available to them.
+
+**What follows for the design.** Spec 3.4 builds the peptide library by tiling
+15-mers, which is right for degrons, because most E3 substrate recognition is of
+short linear motifs, and that is what the discovery arms of this campaign are
+made of. It is wrong for the benchmark members whose recognition is
+domain-mediated: BRD4's bromodomain binds its PROTAC as a folded domain, and
+GSPT1's degron is explicitly described by spec 3.1 as a beta-hairpin *in domain
+II*. Those members need the substrate-binding domain submitted whole, which
+costs tokens but asks the right question. Recorded as D-NOB-027 and implemented
+for the next campaign; the pairs in flight keep their 15-mers and are reported
+with this caveat attached.
+
+This is also a warning about the discovery arms, which are entirely 15-mers.
+Any curated-degron hit whose window falls inside a folded domain is subject to
+exactly the same objection, so the domain test above now runs over the whole
+peptide library and every peptide carries an `inside_folded_domain` flag.
 
 ## F5. The time split cannot be computed on this panel, which is itself worth saying
 

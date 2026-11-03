@@ -83,6 +83,9 @@ class Peptide:
     e3_hint: str | None = None
     parent_peptide_id: str | None = None
     required_modification: dict | None = None
+    # Whether this window is a linear epitope or a slice of a folded domain.
+    # See domain_context and D-NOB-027.
+    domain_context: dict | None = None
     notes: list[str] = field(default_factory=list)
 
     @property
@@ -359,6 +362,7 @@ def build(limit_substrates: int | None = None, include_scrambles: bool = True) -
     positives.extend(sievers_matched_set()["peptides"])
     positives.extend(c_degron_peptides())
     positives = annotate_required_modifications(positives)
+    positives = annotate_domain_context(positives)
 
     negatives: list[Peptide] = []
     if include_scrambles:
@@ -580,3 +584,184 @@ def benchmark_peptides() -> list[Peptide]:
             )
         )
     return peptides
+
+
+# --------------------------------------------------------------------------- #
+# Folded-domain context (D-NOB-027)
+# --------------------------------------------------------------------------- #
+
+# A window covering at least this fraction of its parent domain is treated as
+# representing the domain rather than as a slice cut out of one. Below it, the
+# window cannot fold on its own and cannot reproduce an interface the intact
+# domain makes.
+DOMAIN_COVERAGE_SELF_SUFFICIENT = 0.80
+
+
+def domain_context(accession: str | None, start: int | None, end: int | None) -> dict:
+    """Is this window a linear epitope, or a slice cut out of a folded domain?
+
+    Added after the benchmark panel made the distinction unmissable. IKZF1 is
+    the only panel member whose 15-mer is not inside an annotated folded domain,
+    and it is the only one whose pose the pipeline recovers: 5.0 to 5.4 angstrom
+    across ten seeds, against 19 to 29 angstrom for windows cut from
+    bromodomains, kinase domains and RRMs.
+
+    The reason is structural rather than statistical. A 15-mer taken from the
+    middle of a 112-residue bromodomain has no tertiary context, cannot fold,
+    and therefore cannot present the surface the intact domain presents. It
+    docks somewhere plausible and confident, and wrong.
+
+    Every peptide carries this flag so a hit whose window sits inside a folded
+    domain can be filtered out of a ranked view, or read with the caveat
+    attached, rather than being compared like for like with a genuine linear
+    degron.
+    """
+    from nobble.curate import interpro
+
+    unknown = {
+        "inside_folded_domain": None,
+        "domains": [],
+        "max_coverage": None,
+        "status": "not_assessed",
+    }
+    if not accession or start is None or end is None:
+        return unknown
+    try:
+        records = interpro.domains(accession)
+    except Exception:                               # noqa: BLE001
+        return unknown | {"status": "interpro_unavailable"}
+
+    enclosing = [
+        record for record in records
+        if record["type"] == "domain"
+        and record["database"] in ("interpro", "pfam")
+        and record["start"] <= start and end <= record["end"]
+    ]
+    if not enclosing:
+        return {
+            "inside_folded_domain": False,
+            "domains": [],
+            "max_coverage": None,
+            "status": "linear_or_loop_epitope",
+        }
+
+    window = end - start + 1
+    coverage = max(window / record["length"] for record in enclosing)
+    return {
+        "inside_folded_domain": coverage < DOMAIN_COVERAGE_SELF_SUFFICIENT,
+        "domains": [
+            {
+                "accession": record["accession"],
+                "name": record["name"],
+                "start": record["start"],
+                "end": record["end"],
+                "length": record["length"],
+                "coverage": round(window / record["length"], 3),
+            }
+            for record in enclosing[:3]
+        ],
+        "max_coverage": round(coverage, 3),
+        "status": (
+            "slice_of_folded_domain" if coverage < DOMAIN_COVERAGE_SELF_SUFFICIENT
+            else "covers_its_domain"
+        ),
+    }
+
+
+def annotate_domain_context(peptides: list[Peptide]) -> list[Peptide]:
+    """Attach the folded-domain verdict to every peptide, cached per protein."""
+    cache: dict[tuple, dict] = {}
+    for peptide in peptides:
+        key = (peptide.accession, peptide.start_res, peptide.end_res)
+        if key not in cache:
+            cache[key] = domain_context(*key)
+        context = cache[key]
+        peptide.domain_context = context
+        if context.get("inside_folded_domain"):
+            best = context["domains"][0] if context["domains"] else {}
+            peptide.notes.append(
+                "window lies inside the folded domain "
+                f"{best.get('accession', '?')} and covers only "
+                f"{context['max_coverage']:.0%} of it: it cannot fold alone, so a "
+                "failure to reproduce a domain-mediated interface is expected "
+                "(D-NOB-027)"
+            )
+    return peptides
+
+
+def benchmark_substrate_constructs() -> list[dict]:
+    """The substrate construct each benchmark member should actually use.
+
+    A member whose epitope is a slice of a folded domain gets the whole domain;
+    one whose epitope is linear keeps its 15-mer. The token cost is computed
+    against the tier-1 cap so the trade is explicit rather than discovered at
+    run time. See D-NOB-027 and FINDINGS.md F6.
+    """
+    from nobble import paths
+    from nobble.curate import constructs as C
+    from nobble.curate import ligands as L
+    from nobble.curate import manifest as M
+
+    cap = int(paths.thresholds()["manifest"]["token_cap_tier1"])
+    ligand_map = L.benchmark_ligands()
+    peptide_by_member = {
+        (item.gene, item.e3_hint): item
+        for item in annotate_domain_context(benchmark_peptides())
+    }
+
+    plan = []
+    for member in BENCHMARK_CHAINS:
+        peptide = peptide_by_member.get((member["gene"], member["e3"]))
+        if peptide is None:
+            continue
+        context = peptide.domain_context or {}
+        construct_name = M.E3_TO_CONSTRUCT.get(member["e3"])
+        receptor_residues = (
+            C.CONSTRUCTS[construct_name].residue_count() if construct_name else 0
+        )
+        ligand = ligand_map.get(member["index"])
+        ligand_atoms = (ligand.heavy_atoms or 0) if ligand else 0
+
+        if context.get("inside_folded_domain") and context.get("domains"):
+            domain = context["domains"][0]
+            substrate_length = domain["length"]
+            substrate = {
+                "mode": "folded_domain",
+                "accession": peptide.accession,
+                "interpro": domain["accession"],
+                "start": domain["start"],
+                "end": domain["end"],
+                "length": substrate_length,
+                "reason": (
+                    f"the 15-mer covers only {context['max_coverage']:.0%} of "
+                    f"{domain['accession']} and cannot fold alone"
+                ),
+            }
+        else:
+            substrate_length = peptide.length
+            substrate = {
+                "mode": "peptide_15mer",
+                "accession": peptide.accession,
+                "start": peptide.start_res,
+                "end": peptide.end_res,
+                "length": substrate_length,
+                "reason": "the epitope is linear, so a 15-mer is the right construct",
+            }
+
+        tokens = receptor_residues + substrate_length + ligand_atoms
+        declared = construct_name in {"VHL_VCB", "DCAF15_DDB1_DDA1"}
+        plan.append({
+            "member": member["index"],
+            "gene": member["gene"],
+            "e3": member["e3"],
+            "receptor_construct": construct_name,
+            "receptor_residues": receptor_residues,
+            "substrate": substrate,
+            "ligand_heavy_atoms": ligand_atoms,
+            "tokens": tokens,
+            "cap": cap,
+            "within_cap": tokens <= cap,
+            "declared_exception": declared,
+            "acceptable": tokens <= cap or declared,
+        })
+    return plan

@@ -595,3 +595,65 @@ the single source of the design system and the two cannot drift.
 
 **Reversal.** Not a preference. Reusing a name that the inherited sheet already
 defines is a collision whichever way round it is written.
+
+---
+
+## D-NOB-027: a substrate whose epitope is a slice of a folded domain is submitted as the whole domain
+
+**Date:** 2026-11-03
+
+**Finding.** The benchmark panel separated cleanly, and not on the axis
+expected. IKZF1 / CRBN recovers its crystal pose at 4.99 to 5.40 angstrom across
+all ten seeds, bridges in 10 of 10, converges at 0.73 and gives Delta-ipTM
++0.32. GSPT1, both BRD4 arms and the rest sit at 19 to 29 angstrom median, bridge
+in 3 to 4 seeds of 10, and converge at 0.00.
+
+Checking each submitted 15-mer against the InterPro annotation of its own parent
+protein explains it completely:
+
+| Pair | Window | Inside a folded domain |
+|---|---|---|
+| GSPT1 | 430-444 | yes, 15 per cent of a 99-residue domain |
+| BRD4 BD2 | 379-393 | yes, 17 per cent of the bromodomain |
+| BRD4 BD1 | 98-112 | yes, 18 per cent of the bromodomain |
+| CSNK1A1 | 33-47 | yes, 7 per cent of the kinase domain |
+| RBM39 | 261-275 | yes, 21 per cent of the RRM |
+| CDK12 | 809-823 | yes, 5 per cent of the kinase domain |
+| **IKZF1** | **144-158** | **no: linear or loop epitope** |
+
+The one pair that works is the one pair whose epitope is linear. A 15-mer cut
+out of a bromodomain has no tertiary context, cannot fold, and cannot present
+the surface the intact domain presents. The model docks it confidently and
+roughly 20 angstrom from the real contact.
+
+**Decision.** A substrate whose epitope covers less than 80 per cent of an
+enclosing folded domain is submitted as that whole domain. One whose epitope is
+linear keeps its 15-mer, because that is the correct construct for a degron and
+degrons are what the discovery arms are made of. `domain_context()` applies the
+test, every peptide in the library carries an `inside_folded_domain` flag, and
+`benchmark_substrate_constructs()` produces the corrected plan with its token
+cost.
+
+**What it costs.** Five of the seven then fit inside the 400-token tier-1 cap
+(GSPT1 239, BRD4/CRBN 269, IKZF1 144, CSNK1A1 397); BRD4/VHL and RBM39/DCAF15
+are already declared exceptions. One does not:
+
+**CDK12 / DDB1 / CR-8 is 636 tokens and becomes a third declared exception.**
+Truncating the kinase domain to the measured CR-8 contact span would bring it to
+roughly 488, still over the cap, and would recreate precisely the defect this
+decision exists to remove: a fragment that cannot fold. The exception rests on
+the same structural grounds as spec 1.1's other two, with one extension. Spec
+1.1 declared exceptions for **receptors** that cannot be truncated (VHL needs
+ElonginB and ElonginC; DCAF15 needs DDB1 and DDA1). This is the same argument
+applied to a **substrate**: CR-8 is recognised through CDK12's folded kinase
+domain, and a kinase domain cut in half is not a kinase domain.
+
+**Scope, and a warning about the discovery arms.** The campaign in flight keeps
+its 15-mers; its results are reported with this caveat attached rather than
+re-run. The discovery arms are entirely 15-mers, so any curated-degron hit whose
+window falls inside a folded domain is open to exactly the same objection. The
+flag now travels with every peptide so those hits can be filtered out of a
+ranked view rather than compared like for like with genuine linear degrons.
+
+**Reversal.** `DOMAIN_COVERAGE_SELF_SUFFICIENT` in
+`nobble/curate/peptides.py`; set it to 0 to submit everything as a 15-mer.
