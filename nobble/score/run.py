@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 from nobble import paths
-from nobble.score import geometry, lysine, metrics, plip, poses
+from nobble.score import geometry, lysine, metrics, plip, poses, weights
 
 COMPONENTS = (
     "bridge_percentile",
@@ -195,11 +195,33 @@ def score_campaign(campaign: Path, with_plip: bool = True, limit: int | None = N
         for entry in scored:
             handle.write(json.dumps(entry, default=str) + "\n")
 
+    # Spec 4.8: fit the weights, then apply them. Two passes are needed because
+    # the fit reads the scored components, so the composite cannot be written
+    # until every component exists. When the fit refuses, nobble_score stays
+    # null and carries the refusal as its status, which is the honest output.
+    fit = weights.fit(campaign)
+    (campaign / "weights.json").write_text(json.dumps(fit.to_dict(), indent=2))
+    if fit.fitted:
+        for entry in scored:
+            entry["nobble_score"] = weights.apply(entry, fit.weights)
+            entry["nobble_score_status"] = (
+                f"fitted on {fit.labelled_pairs} labelled pairs, AUC {fit.objective}"
+            )
+            entry["nobble_score_weights"] = fit.weights
+            entry["nobble_score_caveats"] = fit.caveats
+        with output.open("w") as handle:
+            for entry in scored:
+                handle.write(json.dumps(entry, default=str) + "\n")
+    else:
+        for entry in scored:
+            entry["nobble_score_status"] = fit.status
+
     return {
         "campaign": str(campaign),
         "pairs_scored": len(scored),
         "scores": str(output),
         "components": list(COMPONENTS),
+        "weight_fit": fit.to_dict(),
     }
 
 

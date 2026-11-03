@@ -113,6 +113,7 @@ def about():
         bridge_reference=binman_store.bridge_reference_count(),
         construct_budget=constructs.budget_report(),
         reach_auc=lysine.BINMAN_REACH_AUC,
+        weight_fit=data.weight_fit(),
         throughput=data.throughput(),
         components=data.COMPONENTS,
     )

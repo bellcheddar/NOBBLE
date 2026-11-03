@@ -9,7 +9,7 @@ Rewritten after every phase and at least every 30 minutes during long compute.
 | 0 Probe | **complete** | Apple M2 Ultra, 16 performance + 8 efficiency cores, 128 GB unified memory, 60 GPU cores, 507 GB free, MPS on torch 2.10.0. `config/hardware.toml` and `config/tuning.toml` written |
 | 1 Curation and manifest | **complete** | All gates pass. Tier A 17, Tier B 15 (frozen), 25,567-peptide library reduced to 220, 11 MSAs cached, manifest emitted with 0 errors |
 | 2 Execution | **running** | Benchmark queue of 100 jobs in tmux session `nobble-bench`. Smoke test 42.5 s for 124 tokens on MPS; warm rate 31.9 s. Resume verified in practice |
-| 3 Scoring and validation | **mostly built** | Metrics, geometry, poses, docking, lysine and PLIP all working and scoring live results. Remaining: composite weight fit and the three validation layers of spec 5, both of which need the full panel |
+| 3 Scoring and validation | **complete** | Every component, the three validation layers and the composite weight fitter are built and running. The fitter and two of the three layers correctly report `not_computed` with their reasons until the Sievers arm supplies matched negatives |
 | 4 Application | **built, QC clean** | Six tabs on the Depot system, reading the campaign live. Playwright: 12 captures at two viewports, 0 non-200, 0 console errors, 0 serious axe violations. Remaining: Mol* wiring in the Pose tab and the BINMAN-LM query head |
 
 ## Phase 1 gates: all passing
@@ -34,7 +34,10 @@ Rewritten after every phase and at least every 30 minutes during long compute.
 | Lysine geometry | 4.2 | working, reported as measurement with `not_validated` status (D-NOB-024) |
 | PLIP fingerprint | 4.6 | working, with the CONECT assertion on every structure (D-NOB-025) |
 | ProtCID furniture veto | 4.7 | `not_computed: protcid_unavailable` (D-NOB-010) |
-| Composite | 4.8 | `null` until weights are fitted on the panel and Sievers set (D-NOB-006) |
+| Composite | 4.8 | fitter built and tested against synthetic splits (6 tests). Refuses below 8 labelled pairs; currently `not_fitted` because the panel is all positives |
+| Pose recovery | 5.1 | **computed**. Every record carries its own frame quality (anchor atoms and anchor RMSD) |
+| Time split | 5.2 | `not_computed`: all seven panel depositions predate the training cutoff, so there is no blind set (F5) |
+| Matched-control ROC | 5.3 | `not_computed`: no matched negatives until the Sievers arm runs |
 
 `nobble/score/run.py` is incremental and re-runnable against a live queue.
 

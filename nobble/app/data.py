@@ -89,6 +89,16 @@ def campaign_meta() -> dict:
     return _cached("campaign", path, lambda p: json.loads(p.read_text()))
 
 
+def weight_fit() -> dict:
+    """The fitted composite weights, or the refusal and its reason."""
+    if _CAMPAIGN is None:
+        return {}
+    path = _CAMPAIGN / "weights.json"
+    if not path.exists():
+        return {}
+    return _cached("weights", path, lambda p: json.loads(p.read_text()))
+
+
 def throughput() -> dict:
     if not paths.THROUGHPUT.exists():
         return {}

@@ -169,6 +169,49 @@
 </section>
 
 <section class="panel">
+  <h2>The composite, and why it may be empty</h2>
+  {% if weight_fit and weight_fit.fitted %}
+    <p class="panel__hint">
+      Fitted on {{ weight_fit.labelled_pairs }} labelled pairs
+      ({{ weight_fit.positives }} positive, {{ weight_fit.negatives }} negative),
+      reaching AUC {{ weight_fit.objective }} on that split. Each weight is shown
+      next to the component's own standalone discrimination, so a weight can
+      always be read against what the component achieves alone.
+    </p>
+    <div class="table-wrap" tabindex="0" role="group" aria-label="Scrollable table" style="max-height:none">
+      <table class="ntable">
+        <thead><tr><th>Component</th><th class="num">Fitted weight</th><th class="num">AUC alone</th></tr></thead>
+        <tbody>
+          {% for name, w in weight_fit.weights.items() %}
+          <tr>
+            <td class="mono">{{ name }}</td>
+            <td class="num">{{ w }}</td>
+            <td class="num">{{ weight_fit.per_component_auc.get(name, '—') }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% for caveat in weight_fit.caveats %}
+      <p class="panel__hint" style="color:var(--warn)">{{ caveat }}</p>
+    {% endfor %}
+  {% else %}
+    <p class="panel__hint">
+      <strong>Not fitted.</strong> {{ weight_fit.status if weight_fit else 'No campaign.' }}
+    </p>
+    <p class="panel__hint">
+      Spec 4.8 fits the composite weights on the benchmark panel and the Sievers
+      matched set and never hand-sets them, so until that fit has data every
+      pair's <code class="mono">nobble_score</code> is null and the components
+      are reported individually. A ranked column looks authoritative whatever
+      its provenance, which is the reason for refusing rather than defaulting.
+      The sliders on the Campaign tab explore a weighting; they do not publish
+      one.
+    </p>
+  {% endif %}
+</section>
+
+<section class="panel">
   <h2>Validation</h2>
   <p class="panel__hint">
     Three layers, all gating. A campaign that fails any of them publishes its
