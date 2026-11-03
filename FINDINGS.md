@@ -281,6 +281,24 @@ that quantity. The component is kept as a candidate for the weight fit, but its
 fitted weight will be published next to these AUCs so nobody reads a non-zero
 weight as validation.
 
+## F4a. The contact map shows where the degron went instead
+
+The peptide-to-receptor contact map for GSPT1 / CRBN puts F4 on one picture.
+Of the 31 contacts the predicted degron makes with CRBN, almost all are with
+receptor residues 26 to 36 (construct numbering), and of the three
+tryptophans that form the IMiD pocket only **TRP63 is touched at all**: TRP69
+and TRP83 make no contact within 4.5 angstrom and do not appear on the axis.
+
+So the degron has not missed CRBN, and it has not landed at random. It is
+packed against the face **next to** the pocket, which is why it looks like a
+confident interface to every metric that only asks whether an interface
+exists. The glue, meanwhile, sits correctly in the pocket and reproduces all
+five canonical contacts, which is how the two can both be true at once.
+
+This map is computed geometrically rather than taken from PLIP, which is a
+protein-ligand tool and has nothing to say about where a degron meets a
+receptor.
+
 ## F7. The measured throughput is worse than the smoke test implied, as warned
 
 The first throughput figure came from a single 124-token job and read 0.343

@@ -130,6 +130,16 @@ def score_campaign(campaign: Path, with_plip: bool = True, limit: int | None = N
                     f"lysine: {type(problem).__name__}: {problem}"
                 )
 
+        # The peptide-to-receptor contact map (spec Phase 4). Computed here
+        # because the droplet does no geometry at request time.
+        if representative:
+            try:
+                entry["contact_map"] = geometry.contact_map(representative)
+            except Exception as problem:            # noqa: BLE001
+                entry.setdefault("errors", []).append(
+                    f"contact_map: {type(problem).__name__}: {problem}"
+                )
+
         # PLIP fingerprint, on the same representative.
         if with_plip and representative:
             try:
@@ -178,6 +188,7 @@ def score_campaign(campaign: Path, with_plip: bool = True, limit: int | None = N
             "convergence_score", "plip_fingerprint_match",
             "plip_glue_to_peptide_contacts", "plip", "lysine_reach",
             "seeds_docked", "seeds_total", "delta_iptm", "delta_iptm_median",
+            "contact_map",
             "iptm_min_binary", "iptm_min_ternary", "conditioning_disagreement",
             "seed_collapse_affects_delta", "peptide_label", "peptide_gene",
             "ligand_key", "modality", "tier", "e3_gene", "construct",

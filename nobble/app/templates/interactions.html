@@ -4,11 +4,18 @@
 <section class="panel">
   <h2>Interactions</h2>
   <p class="panel__hint">
-    The PLIP contact set for the predicted ternary, as an interactive heatmap of
-    receptor residue against interaction type. Hover any cell for the
-    interaction type, distance and geometry. Alongside it, the canonical degron
-    fingerprint for this E3 class, with matched contacts highlighted and missing
-    ones greyed.
+    The degron against the receptor: every peptide residue that comes within
+    4.5 angstrom of a receptor residue in the predicted ternary, coloured by
+    closest approach. Hover a cell for the distance, click one to pin the pair
+    and open it in the viewer. Only receptor residues that touch something are
+    shown, because an axis of 1,184 residues of which fourteen are in contact
+    is not a readable map.
+    </p>
+    <p class="panel__hint">
+    PLIP answers a different question and is reported beside it: it is a
+    protein-ligand tool, so it gives the glue's contacts with each protein and
+    has nothing to say about where the degron meets the receptor, which is the
+    interface &Delta;-ipTM is about.
   </p>
 
   {% if not selected %}
@@ -41,7 +48,10 @@
     </label>
 
     <div class="split split--2" style="margin-top:0.8rem">
-      <div><div class="chart" id="contacts"></div></div>
+      <div>
+        <div class="chart" id="contacts"></div>
+        <p class="panel__hint" id="contact-pick" hidden style="margin-top:0.4rem"></p>
+      </div>
       <div>
         <h3 style="font-family:var(--display);font-size:0.9rem;margin-top:0">Canonical fingerprint: {{ selected.plip.canonical_e3 }}</h3>
         <ul class="fp-list">
@@ -94,44 +104,65 @@
     });
   }
 
+  const MAP = {{ (selected.contact_map if selected and selected.contact_map else {}) | tojson }};
   const PLIP = {{ (selected.plip if selected and selected.plip else {}) | tojson }};
-  if (!PLIP.interactions || !PLIP.interactions.length) { return; }
+  const PAIR = {{ (selected.pair_id if selected else '') | tojson }};
 
-  /* Residue against interaction type, cell value is the contact count and the
-   * hover carries the closest distance and the geometry string PLIP reports. */
-  const residues = [];
-  const types = [];
-  PLIP.interactions.forEach(function (row) {
-    const label = (row.prot_restype || '') + (row.prot_resnr || '') + ' ' + (row.prot_chain || '');
-    if (residues.indexOf(label) < 0) { residues.push(label); }
-    const kind = row.interaction_type || 'unknown';
-    if (types.indexOf(kind) < 0) { types.push(kind); }
-  });
+  if (!MAP || MAP.status !== 'ok' || !MAP.contacts || !MAP.contacts.length) {
+    const node = document.getElementById('contacts');
+    if (node) {
+      node.innerHTML = '<div class="empty"><h3>No contact map</h3><p>' +
+        'The predicted peptide comes within ' + (MAP.cutoff || 4.5) +
+        ' angstrom of no receptor residue in this pose, or the structure is ' +
+        'not available. A peptide that does not touch the receptor has no ' +
+        'interface to map.</p></div>';
+    }
+    return;
+  }
 
-  const counts = types.map(() => residues.map(() => 0));
-  const detail = types.map(() => residues.map(() => []));
-  PLIP.interactions.forEach(function (row) {
-    const label = (row.prot_restype || '') + (row.prot_resnr || '') + ' ' + (row.prot_chain || '');
-    const i = types.indexOf(row.interaction_type || 'unknown');
-    const j = residues.indexOf(label);
-    counts[i][j] += 1;
-    detail[i][j].push((row.distance_A || '?') + ' A' + (row.geometry ? ' · ' + row.geometry : ''));
+  /* Closest approach per cell, in angstrom, with absent pairs left null so
+   * they render as background rather than as a value at the top of the scale.
+   * The scale is reversed: short distance is a strong contact, and the darker
+   * end has to mean more contact, not more distance. */
+  const z = MAP.peptide_residues.map(function () {
+    return MAP.receptor_residues.map(function () { return null; });
   });
+  MAP.contacts.forEach(function (c) { z[c.peptide][c.receptor] = c.distance; });
 
   Plotly.newPlot('contacts', [{
-    z: counts, x: residues, y: types,
-    customdata: detail.map(r => r.map(c => c.join('<br>') || 'none')),
+    z: z,
+    x: MAP.receptor_residues,
+    y: MAP.peptide_residues,
     type: 'heatmap',
-    colorscale: [[0, 'rgba(0,0,0,0)'], [0.01, '#F6E3D3'], [1, '#A64708']],
-    showscale: true,
-    colorbar: { title: 'contacts', thickness: 10 },
-    hovertemplate: '<b>%{y}</b><br>residue %{x}<br>contacts %{z}<br>%{customdata}<extra></extra>'
+    colorscale: [[0, '#A64708'], [0.5, '#D9A066'], [1, '#F6E3D3']],
+    reversescale: false,
+    zmin: 2, zmax: MAP.cutoff,
+    hoverongaps: false,
+    colorbar: { title: 'closest<br>approach (A)', thickness: 10, len: 0.8 },
+    hovertemplate: 'degron <b>%{y}</b><br>receptor <b>%{x}</b><br>' +
+      'closest approach %{z:.2f} A<extra></extra>'
   }], NOBBLE.plotLayout({
-    title: { text: 'PLIP contacts: receptor and degron residues against interaction type', font: { size: 13 } },
-    xaxis: { title: 'residue', tickangle: -45, automargin: true },
-    yaxis: { title: '', automargin: true },
-    margin: { l: 110, r: 18, t: 34, b: 110 }
+    title: { text: 'Degron residue against receptor residue', font: { size: 13 } },
+    xaxis: { title: 'receptor residue', tickangle: -45, automargin: true },
+    yaxis: { title: 'degron residue', automargin: true },
+    margin: { l: 96, r: 18, t: 34, b: 104 }
   }), NOBBLE.plotConfig);
+
+  /* Spec Phase 4: clicking a cell takes that contact to the viewer. The pose
+   * lives on its own tab, so the click pins the pair and follows the link
+   * rather than trying to drive a viewer that is not on this page. */
+  document.getElementById('contacts').on('plotly_click', function (event) {
+    const point = event.points && event.points[0];
+    if (!point) { return; }
+    NOBBLE.pins.setMany({ PEPTIDE: String(point.y), E3: String(point.x) });
+    const banner = document.getElementById('contact-pick');
+    if (banner) {
+      banner.hidden = false;
+      banner.innerHTML = 'Pinned <span class="mono">' + point.y + '</span> against ' +
+        '<span class="mono">' + point.x + '</span> at ' + point.z.toFixed(2) + ' A. ' +
+        '<a href="/pose?pair=' + encodeURIComponent(PAIR) + '">Open this pose in the viewer</a>.';
+    }
+  });
 
   window.addEventListener('resize', function () { Plotly.Plots.resize('contacts'); });
 })();

@@ -200,3 +200,111 @@ def score_structure(job: dict) -> BridgeScore:
         "experimentally observed bridges in BINMAN's atlas"
     )
     return result
+
+
+# Heavy-atom cutoff for a residue-residue contact. 4.5 angstrom is the usual
+# convention for a packing contact: close enough to be an interaction, loose
+# enough to include a water-mediated approach that the prediction has no water
+# for.
+CONTACT_CUTOFF = 4.5
+
+
+def contact_map(job: dict) -> dict:
+    """Peptide residue against receptor residue, as spec Phase 4 asks for.
+
+    PLIP answers a different question. It is a protein-ligand tool, so it
+    reports glue-to-receptor and glue-to-peptide contacts and has nothing to
+    say about where the peptide touches the receptor, which is the interface
+    Delta-ipTM is about. That map is computed here from the predicted
+    structure instead, and the PLIP types are layered on separately where they
+    overlap.
+
+    Computed at scoring time, not in the application: the droplet serves a
+    precomputed slice and does no geometry at request time.
+    """
+    import gemmi
+
+    from nobble.curate import constructs as C
+
+    structure_path = job.get("structure")
+    result = {
+        "job_id": job.get("job_id"),
+        "cutoff": CONTACT_CUTOFF,
+        "receptor_residues": [],
+        "peptide_residues": [],
+        "contacts": [],
+        "status": "pending",
+    }
+    if not structure_path or not Path(structure_path).exists():
+        result["status"] = "no_structure"
+        return result
+
+    structure = gemmi.read_structure(str(structure_path))
+    structure.setup_entities()
+    structure.remove_hydrogens()
+
+    construct = C.CONSTRUCTS.get(job.get("construct"))
+    if construct is None:
+        result["status"] = "unknown_construct"
+        return result
+    receptor_ids = set("ABCDEFGH"[: len(construct.segments)])
+
+    receptor, peptide = [], []
+    for chain in structure[0]:
+        target = (receptor if chain.name in receptor_ids
+                  else peptide if chain.name == "P" else None)
+        if target is None:
+            continue
+        for residue in chain:
+            atoms = [atom.pos for atom in residue if atom.element.name != "H"]
+            if atoms:
+                target.append((f"{residue.name}{residue.seqid.num}", atoms))
+
+    if not receptor or not peptide:
+        result["status"] = "missing_chain"
+        return result
+
+    # Grid the receptor so this stays linear rather than quadratic over a
+    # 1,184-residue construct.
+    cell = CONTACT_CUTOFF
+    grid: dict[tuple, list] = {}
+    for index, (_label, atoms) in enumerate(receptor):
+        for position in atoms:
+            key = (int(position.x // cell), int(position.y // cell), int(position.z // cell))
+            grid.setdefault(key, []).append((index, position))
+
+    pairs: dict[tuple[int, int], float] = {}
+    for peptide_index, (_label, atoms) in enumerate(peptide):
+        for position in atoms:
+            base = (int(position.x // cell), int(position.y // cell), int(position.z // cell))
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    for dz in (-1, 0, 1):
+                        for receptor_index, other in grid.get(
+                            (base[0] + dx, base[1] + dy, base[2] + dz), ()
+                        ):
+                            distance = position.dist(other)
+                            if distance > CONTACT_CUTOFF:
+                                continue
+                            key = (peptide_index, receptor_index)
+                            if key not in pairs or distance < pairs[key]:
+                                pairs[key] = distance
+
+    # Only the receptor residues that touch anything: a 1,184-residue axis of
+    # which four are in contact is not a readable map.
+    touched = sorted({receptor_index for _p, receptor_index in pairs})
+    receptor_index_of = {old: new for new, old in enumerate(touched)}
+
+    result["receptor_residues"] = [receptor[index][0] for index in touched]
+    result["peptide_residues"] = [label for label, _atoms in peptide]
+    result["contacts"] = [
+        {
+            "peptide": peptide_index,
+            "receptor": receptor_index_of[receptor_index],
+            "distance": round(distance, 2),
+        }
+        for (peptide_index, receptor_index), distance in sorted(pairs.items())
+    ]
+    result["status"] = "ok"
+    result["contact_count"] = len(result["contacts"])
+    return result
