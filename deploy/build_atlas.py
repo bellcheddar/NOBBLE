@@ -155,6 +155,49 @@ def main() -> int:
     (OUT / "about.json").write_text(json.dumps(about, indent=2, default=str))
     summary["files"]["about.json"] = len(about["sources"])
 
+    # Bridge rate against pose recovery (FINDINGS.md F9). Computed here, with
+    # the correlation, so the application renders a static result and does no
+    # statistics at request time.
+    try:
+        from scipy import stats as _stats
+
+        validation = json.loads((campaign / "validation.json").read_text())
+        recovery = validation["layers"]["pose_recovery"]["summary"]["by_pair"]
+        scored = {
+            json.loads(line)["pair_id"]: json.loads(line)
+            for line in (campaign / "scores.jsonl").read_text().splitlines() if line.strip()
+        }
+        points = []
+        for pair_id, stats_row in sorted(recovery.items()):
+            row = scored.get(pair_id, {})
+            total = row.get("bridging_seeds_total") or 0
+            if not total:
+                continue
+            points.append({
+                "pair_id": pair_id,
+                "gene": row.get("peptide_gene") or pair_id,
+                "e3": row.get("e3_gene"),
+                "bridge_rate": round((row.get("bridging_seeds_with_bridge") or 0) / total, 3),
+                "bridging": f"{row.get('bridging_seeds_with_bridge') or 0}/{total}",
+                "median_rmsd": stats_row["median_rmsd"],
+                "best_rmsd": stats_row["best_rmsd"],
+                "convergence": row.get("convergence_score"),
+            })
+        payload = {"points": points, "n": len(points)}
+        if len(points) >= 3:
+            xs = [item["bridge_rate"] for item in points]
+            ys = [item["median_rmsd"] for item in points]
+            r_value, p_value = _stats.pearsonr(xs, ys)
+            rho, rho_p = _stats.spearmanr(xs, ys)
+            payload |= {
+                "pearson_r": round(float(r_value), 3), "pearson_p": round(float(p_value), 4),
+                "spearman_rho": round(float(rho), 3), "spearman_p": round(float(rho_p), 4),
+            }
+        (OUT / "recovery_vs_bridge.json").write_text(json.dumps(payload, indent=2))
+        summary["files"]["recovery_vs_bridge.json"] = len(points)
+    except Exception as problem:                   # noqa: BLE001
+        summary["recovery_vs_bridge_error"] = f"{type(problem).__name__}: {problem}"
+
     # If a corrected-construct campaign exists, publish the comparison that
     # answers F6. Computed here, on the build machine, because the droplet
     # computes nothing: the app renders a static verdict.

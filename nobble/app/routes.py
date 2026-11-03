@@ -107,6 +107,7 @@ def benchmark():
         "benchmark.html", page_title="Benchmark", active="benchmark",
         cards=cards, meta=data.campaign_meta(),
         comparison=data.precomputed("comparison.json"),
+        recovery_vs_bridge=data.precomputed("recovery_vs_bridge.json"),
     )
 
 

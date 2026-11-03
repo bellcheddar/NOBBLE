@@ -5,15 +5,16 @@
     "validation.json": 23454,
     "weights.json": 475,
     "scores.jsonl": 6,
-    "results.jsonl": 80,
+    "results.jsonl": 81,
     "benchmark.json": 7,
     "about.json": 16,
+    "recovery_vs_bridge.json": 6,
     "comparison.json": 6
   },
   "redactions": 0,
   "comparison_conclusion": "not concluded: the IKZF1 control has no number in both campaigns, so a difference in the other pairs cannot yet be attributed to the construct",
   "jobs_total": 100,
   "pairs_total": 7,
-  "structures": 80,
-  "bytes": 17575281
+  "structures": 81,
+  "bytes": 18422899
 }

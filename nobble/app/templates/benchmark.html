@@ -16,6 +16,53 @@
   </p>
 </section>
 
+{% if recovery_vs_bridge and recovery_vs_bridge.get('points') %}
+<section class="panel">
+  <h2>What predicts a recovered pose</h2>
+  <p class="panel__hint">
+    Pose recovery needs a deposited crystal structure, so it can only ever be
+    computed for pairs whose answer is already known. Bridge formation rate,
+    the fraction of ternary seeds in which the glue actually buries surface
+    against both the receptor and the degron, needs nothing but the
+    prediction. If the two track each other, the second stands in for the
+    first on the pairs that have no crystal, which is every pair a discovery
+    campaign cares about.
+  </p>
+  <div class="split split--2">
+    <div><div class="chart chart--short" id="recovery-plot"></div></div>
+    <div>
+      <div class="card__grid">
+        <div class="stat {% if recovery_vs_bridge.get('pearson_p') and recovery_vs_bridge.pearson_p < 0.05 %}stat--good{% else %}stat--warn{% endif %}">
+          <span class="stat__label">Pearson r</span>
+          <span class="stat__value">{{ recovery_vs_bridge.get('pearson_r', '—') }}</span>
+          <span class="stat__sub">p = {{ recovery_vs_bridge.get('pearson_p', '—') }}</span>
+        </div>
+        <div class="stat">
+          <span class="stat__label">Spearman &rho;</span>
+          <span class="stat__value">{{ recovery_vs_bridge.get('spearman_rho', '—') }}</span>
+          <span class="stat__sub">p = {{ recovery_vs_bridge.get('spearman_p', '—') }}</span>
+        </div>
+        <div class="stat stat--warn">
+          <span class="stat__label">Pairs</span>
+          <span class="stat__value">{{ recovery_vs_bridge.n }}</span>
+          <span class="stat__sub">far too few to validate on</span>
+        </div>
+      </div>
+      <p class="panel__hint" style="margin-top:0.7rem">
+        <strong>Read this as a hypothesis, not a metric.</strong> It is
+        {{ recovery_vs_bridge.n }} points, and the correlation was noticed
+        after looking at them rather than predicted before, which is the
+        weakest form this kind of claim comes in. It also replaced an earlier
+        hypothesis of ours that the substrate construct was to blame: RBM39
+        recovers at 6.0 A from a 15-mer cut out of a folded domain, which that
+        earlier idea said should fail. The Sievers arm multiplies the sample
+        by an order of magnitude and is the test that matters.
+      </p>
+    </div>
+  </div>
+</section>
+{% endif %}
+
 {% if comparison and comparison.get('comparisons') %}
 <section class="panel">
   <h2>Construct comparison: does the whole domain recover the pose?</h2>
@@ -184,4 +231,71 @@
   </article>
   {% endfor %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const DATA = {{ (recovery_vs_bridge or {}) | tojson }};
+  if (!DATA.points || !DATA.points.length) { return; }
+  const pts = DATA.points;
+
+  Plotly.newPlot('recovery-plot', [{
+    x: pts.map(p => p.bridge_rate),
+    y: pts.map(p => p.median_rmsd),
+    text: pts.map(p => p.gene + ' / ' + (p.e3 || '')),
+    customdata: pts.map(p => [p.bridging, p.best_rmsd]),
+    mode: 'markers+text', type: 'scatter',
+    /* Three pairs share bridge rate 1.0, so a fixed label position stacked
+       them on top of each other: RBM39 and IKZF1 were printed over one
+       another and over the threshold annotation. Labels are placed per point,
+       alternating side and vertical anchor among neighbours that share an x
+       column, which separates them without moving the data. */
+    textposition: (function () {
+      const byColumn = {};
+      return pts.map(function (point) {
+        const column = point.bridge_rate.toFixed(2);
+        byColumn[column] = (byColumn[column] || 0) + 1;
+        const order = byColumn[column] - 1;
+        if (order === 0) { return 'middle right'; }
+        if (order === 1) { return 'middle left'; }
+        return order % 2 ? 'bottom right' : 'top left';
+      });
+    })(),
+    textfont: { size: 10 },
+    marker: {
+      size: 14,
+      /* Banded on the success-rate breakpoints the curve already uses, with
+       * the near-miss band separated out: 5 A is recovered, under 10 is close
+       * enough to be worth refining, and beyond 15 is a different site. Amber
+       * and red were too alike at this size for the middle band to read. */
+      color: pts.map(p => p.median_rmsd <= 5 ? '#2C6D60'
+                        : (p.median_rmsd <= 10 ? '#5b9bd5'
+                        : (p.median_rmsd <= 15 ? '#A64708' : '#A33A2A'))),
+      line: { width: 1, color: '#0c183c' }
+    },
+    hovertemplate: '<b>%{text}</b><br>bridged in %{customdata[0]} seeds<br>' +
+      'median RMSD %{y:.2f} A<br>best %{customdata[1]:.2f} A<extra></extra>'
+  }], NOBBLE.plotLayout({
+    /* Headroom past 1.0 for the labels of the pairs that cluster there:
+       at 1.15 the rightmost one was clipped by the plot edge. */
+    xaxis: { title: 'bridge formation rate', range: [-0.08, 1.45],
+             tickvals: [0, 0.2, 0.4, 0.6, 0.8, 1.0] },
+    yaxis: { title: 'median pose RMSD (A)', rangemode: 'tozero' },
+    showlegend: false,
+    shapes: [{
+      type: 'line', x0: -0.08, x1: 1.45, y0: 5, y1: 5,
+      line: { dash: 'dot', width: 1, color: '#2C6D60' }
+    }],
+    annotations: [{
+      /* Parked on the empty left of the plot: at the right it sat under the
+         three pairs that cluster at a bridge rate of 1. */
+      x: -0.05, y: 5, xanchor: 'left', yanchor: 'bottom', showarrow: false,
+      text: 'recovered, 5 A', font: { size: 10, color: '#2C6D60' }
+    }]
+  }), NOBBLE.plotConfig);
+
+  window.addEventListener('resize', function () { Plotly.Plots.resize('recovery-plot'); });
+})();
+</script>
 {% endblock %}

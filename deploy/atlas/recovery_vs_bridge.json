@@ -1,0 +1,69 @@
+{
+  "points": [
+    {
+      "pair_id": "bench01_GSPT1_CRBN",
+      "gene": "GSPT1",
+      "e3": "CRBN",
+      "bridge_rate": 0.3,
+      "bridging": "3/10",
+      "median_rmsd": 29.221,
+      "best_rmsd": 24.543,
+      "convergence": 0.0
+    },
+    {
+      "pair_id": "bench02_BRD4_VHL",
+      "gene": "BRD4",
+      "e3": "VHL",
+      "bridge_rate": 0.4,
+      "bridging": "4/10",
+      "median_rmsd": 19.235,
+      "best_rmsd": 15.311,
+      "convergence": 0.0
+    },
+    {
+      "pair_id": "bench03_BRD4_CRBN",
+      "gene": "BRD4",
+      "e3": "CRBN",
+      "bridge_rate": 0.8,
+      "bridging": "4/5",
+      "median_rmsd": 20.399,
+      "best_rmsd": 17.99,
+      "convergence": 0.0
+    },
+    {
+      "pair_id": "bench04_IKZF1_CRBN",
+      "gene": "IKZF1",
+      "e3": "CRBN",
+      "bridge_rate": 1.0,
+      "bridging": "10/10",
+      "median_rmsd": 5.357,
+      "best_rmsd": 4.992,
+      "convergence": 0.7279
+    },
+    {
+      "pair_id": "bench05_CSNK1A1_CRBN",
+      "gene": "CSNK1A1",
+      "e3": "CRBN",
+      "bridge_rate": 1.0,
+      "bridging": "10/10",
+      "median_rmsd": 12.24,
+      "best_rmsd": 11.806,
+      "convergence": 0.3559
+    },
+    {
+      "pair_id": "bench06_RBM39_DCAF15",
+      "gene": "RBM39",
+      "e3": "DCAF15",
+      "bridge_rate": 1.0,
+      "bridging": "5/5",
+      "median_rmsd": 6.003,
+      "best_rmsd": 5.507,
+      "convergence": null
+    }
+  ],
+  "n": 6,
+  "pearson_r": -0.871,
+  "pearson_p": 0.0238,
+  "spearman_rho": -0.88,
+  "spearman_p": 0.0206
+}
