@@ -80,6 +80,24 @@ diffusion sample precisely to keep triage cheap. Whether tier 2's 25 samples
 recover a converged pose is a question this campaign will answer directly, and
 it is the right question to put to the Benchmark tab.
 
+## F3. One of the seven scoring signals has no demonstrated discriminating power
+
+Spec 4 lists seven signals "in descending order of trust". The second,
+the lysine reach window, is not a validated predictor: BINMAN attempted the fit
+and it failed, reaching AUC 0.4223, 0.4770 and 0.4595 on its three Cb-Cb
+boundaries over 369 assayed lysines, with the direction slightly inverted.
+
+The explanation is mechanistic and so unlikely to yield to refitting: the ligand
+site is where a substrate is recruited, not where ubiquitin is transferred, and
+the E2 that transfers it is not in the construct. NOBBLE therefore reports
+lysine geometry as a measurement with an explicit `not_validated` status and
+emits no `lysine_reach_fit` score. See D-NOB-024.
+
+This matters for the composite of spec 4.8, which multiplies a weight by exactly
+that quantity. The component is kept as a candidate for the weight fit, but its
+fitted weight will be published next to these AUCs so nobody reads a non-zero
+weight as validation.
+
 ## Pending
 
 Remaining benchmark pairs, the Sievers matched-control ROC, lysine reach, PLIP

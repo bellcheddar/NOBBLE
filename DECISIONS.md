@@ -467,3 +467,60 @@ weak interface.
 
 **Reversal.** `COLLAPSE_MARGIN` in `nobble/score/metrics.py`; set it above 1.0 to
 disable the diagnostic entirely.
+
+---
+
+## D-NOB-024: the lysine reach window is not a validated predictor, so NOBBLE reports its geometry and not a fit
+
+**Date:** 2026-11-03
+
+**Finding.** Spec 4.2 instructs NOBBLE to "apply BINMAN's reach-window fit
+(already calibrated against 976 observed diGly sites)" and reports the output as
+`lysine_reach_fit`. BINMAN's reach window is **not calibrated**. Its
+`config/thresholds.toml` carries `fitted = false`, deliberately and on measured
+evidence, and its FINDINGS.md records the same conclusion.
+
+The measurements, on 369 assayed lysines across 43 induced ternary complexes:
+
+| boundary | AUC |
+|---|---|
+| Cb-Cb distance | 0.4223 |
+| NZ to centroid distance | 0.4770 |
+| NZ relative SASA | 0.4595 |
+| NZ relative SASA, within protein | 0.5020 |
+
+All at or below chance, and the Cb-Cb direction is slightly **inverted**:
+ubiquitylated lysines sit farther from the ligand than unmodified ones (median
+18.73 against 14.89 angstrom).
+
+BINMAN's own explanation is mechanistic, which is why this is not a refitting
+problem: the ligand site is where a substrate is *recruited*, not where ubiquitin
+is *transferred*. The E2 that transfers it sits elsewhere on the cullin
+scaffold, tens of angstrom away, and is not in the trimmed receptor construct at
+all. Spec 4.2's intuition ("a peptide that forms an excellent interface and
+presents no lysine into the ubiquitination shell is not a degrader lead") is
+reasonable but has been measured from the recruitment site and does not hold
+there.
+
+**Decision.** NOBBLE computes and reports the geometry, which is real and
+descriptive: lysine count, per-lysine relative SASA in the context of the full
+complex, distance from each NZ to the nearest ligand atom, and how many are
+exposed. It does **not** emit a `lysine_reach_fit` score, because that name
+asserts a validated window that does not exist. Every record carries
+`status = not_validated` and the AUC table above travels with the code.
+
+**Consequence for the composite (spec 4.8).** `w2 * lysine_reach_fit` has no
+validated quantity to multiply. The component is kept as a candidate so the
+Phase 3 weight fit can speak for itself, but the fitted weight will be reported
+next to these AUCs, so a non-zero weight cannot be mistaken for validation. If
+the fit assigns it weight on the benchmark panel alone, that is overfitting to
+seven pairs and will be said so.
+
+**Alternatives.** Emit the unfitted starting values as if they were a window
+(asserts a check that was never validated, and BINMAN explicitly refuses to ship
+them); or drop lysine geometry entirely (loses a real measurement that a user
+may well want to see per pose).
+
+**Reversal.** If BINMAN's window is ever fitted and clears its own floor, set
+`fitted = true` there and add the score here; the measurements this module
+already produces are the inputs it would need.
