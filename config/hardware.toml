@@ -1,0 +1,23 @@
+probed_at = "2026-11-03T18:38:35Z"
+chip = "Apple M2 Ultra"
+
+[cpu]
+performance_cores = 16
+efficiency_cores = 8
+logical_cores = 24
+
+[memory]
+total_gb = 128.0
+total_bytes = 137438953472
+
+[gpu]
+cores = 60
+
+[disk]
+free_gb_project_volume = 507.0
+
+[accelerator]
+torch = "2.10.0"
+mps_available = true
+mps_built = true
+python = "/Users/dellboy/Documents/Vibe_Coding/BoltzMaker/.pixi/envs/default/bin/python"

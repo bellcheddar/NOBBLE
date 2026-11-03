@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+.pixi/
+wandb/
+**/wandb/
+data/msa/
+data/nobble.duckdb
+data/cache/
+campaigns/*/outputs/
+.DS_Store
+.env

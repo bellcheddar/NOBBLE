@@ -1,0 +1,27 @@
+# Every cutoff NOBBLE applies. Nothing in Python hard-codes a threshold.
+
+[tier_b]
+# Spec 3.3 selection function.
+pocket_druggability_min = 0.85
+mean_plddt_min = 80.0
+tumour_enrichment_above_median = true
+take_top = 15
+min_ligases_for_gate = 10
+
+[peptide]
+tile_length = 15
+tile_step = 3
+degron_flank = 20
+scrambles_per_positive = 1
+
+[manifest]
+token_cap_tier1 = 400
+affinity_heavy_atom_cap = 128
+
+[scoring]
+# Pose recovery success-rate curve breakpoints, in angstrom.
+rmsd_breakpoints = [1.0, 2.0, 3.0, 5.0]
+seeds = 5
+
+[gates]
+min_free_disk_gb = 50
