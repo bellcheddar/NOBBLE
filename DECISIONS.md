@@ -693,3 +693,49 @@ own: it inherits the owner's. The blog mark is the **social preview image**,
 which can only be set through the repository's settings page and not through
 the API, so `nobble_icon_300.png` is in the repository ready to upload at
 Settings, General, Social preview.
+
+---
+
+## D-NOB-029: a substrate submitted as a folded domain gets an MSA; a 15-mer does not
+
+**Date:** 2026-11-03
+
+**Decision.** In the corrected-construct campaign, substrates submitted as
+whole folded domains carry their own cached MSA. Substrates that remain 15-mers
+carry `msa: empty`, unchanged.
+
+**Reason.** Spec 1.3 says peptide and ligand chains get no MSA, and for a
+peptide that is right: a 15-mer degron has no meaningful homology signal and an
+alignment of one is not an alignment. A folded domain is not a peptide. It is a
+protein chain that has to fold for the prediction to mean anything, and
+co-folding a 294-residue kinase domain with no evolutionary signal would fold
+it badly.
+
+What makes this more than a technicality is what the campaign is for. D-NOB-027
+claims the 15-mers failed because a fragment cannot fold; the corrected
+campaign tests that by giving the same substrates their whole domain. Running
+the domain arm without an MSA would handicap precisely the arm meant to show
+the improvement, and a null result would then be uninterpretable: unfoldable
+fragment, or foldable domain starved of signal. So this follows spec 1.3's
+reasoning rather than its literal wording, and the distinction is recorded on
+every job as `substrate_msa_cached`.
+
+Six substrate-domain MSAs were generated, all successfully.
+
+---
+
+## D-NOB-030: the corrected campaign runs after the benchmark queue, not beside it
+
+**Date:** 2026-11-03
+
+**Decision.** `tools/run_corrected.sh` waits for the `nobble-bench` tmux
+session to exit before starting.
+
+**Reason.** There is one MPS device. Two queues against it would roughly halve
+each one's throughput and risk an out-of-memory on the large jobs, which are
+already the slowest: the DCAF15 members measure 790 to 823 seconds each at
+1,199 tokens and hold about 5 GB resident. Serialising costs nothing in total
+time and removes the failure mode.
+
+The MSA precompute is the exception and did run alongside, because it is
+network-bound and never touches the GPU.

@@ -178,3 +178,60 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+def substrate_domain_sequences() -> list[dict]:
+    """Substrate domains that need their own MSA (D-NOB-027).
+
+    Spec 1.3 gives peptide chains no MSA, and that is right for a peptide: a
+    15-mer degron has no meaningful homology signal. A substrate submitted as a
+    **folded domain** is not a peptide, though. It is a protein chain like any
+    other, it has to fold for the prediction to mean anything, and co-folding
+    it without an MSA would handicap exactly the arm of the experiment meant to
+    show that the whole domain does better than the fragment. Running that
+    comparison with one side starved of evolutionary signal would confound it.
+
+    So folded-domain substrates get an MSA and 15-mer substrates do not, which
+    follows spec 1.3's reasoning rather than its literal wording.
+    """
+    from nobble.curate import numbering
+    from nobble.curate import peptides as peptide_module
+
+    wanted: dict[str, dict] = {}
+    for plan in peptide_module.benchmark_substrate_constructs():
+        substrate = plan["substrate"]
+        if substrate["mode"] != "folded_domain":
+            continue
+        sequence = numbering.canonical_sequence(substrate["accession"])[
+            substrate["start"] - 1 : substrate["end"]
+        ]
+        if not sequence:
+            continue
+        key = sequence_key(sequence)
+        record = wanted.setdefault(key, {
+            "key": key,
+            "sequence": sequence,
+            "length": len(sequence),
+            "accession": substrate["accession"],
+            "label": f"{plan['gene']} {substrate.get('interpro', 'domain')}",
+            "members": [],
+        })
+        record["members"].append(plan["member"])
+    return list(wanted.values())
+
+
+def precompute_substrate_domains() -> dict:
+    """Generate the MSAs the corrected substrate constructs need."""
+    needed = substrate_domain_sequences()
+    index = load_index()
+    results = []
+    for record in needed:
+        outcome = fetch(record["sequence"], label=record["label"])
+        outcome.update({"accession": record["accession"], "length": record["length"],
+                        "members": record["members"]})
+        results.append(outcome)
+        index[record["key"]] = {k: v for k, v in outcome.items() if k != "sequence"}
+        save_index(index)
+        print(f"  {outcome['status']:12s} {record['label']} ({record['length']} aa)", flush=True)
+    failed = [item for item in results if str(item.get("status", "")).startswith("failed")]
+    return {"required": len(needed), "failed": failed, "results": results}

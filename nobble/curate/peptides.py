@@ -749,7 +749,21 @@ def benchmark_substrate_constructs() -> list[dict]:
             }
 
         tokens = receptor_residues + substrate_length + ligand_atoms
-        declared = construct_name in {"VHL_VCB", "DCAF15_DDB1_DDA1"}
+        # Spec 1.1 declares two exceptions, both receptors that cannot be
+        # truncated. D-NOB-027 adds a third on the same grounds applied to a
+        # substrate: CR-8 is recognised through CDK12's folded kinase domain,
+        # and a kinase domain cut in half is not a kinase domain.
+        declared = construct_name in {"VHL_VCB", "DCAF15_DDB1_DDA1"} or (
+            substrate["mode"] == "folded_domain"
+            and substrate["length"] >= 250
+            and tokens > cap
+        )
+        declared_reason = None
+        if declared and construct_name not in {"VHL_VCB", "DCAF15_DDB1_DDA1"}:
+            declared_reason = (
+                f"substrate is a {substrate['length']}-residue folded domain that "
+                "cannot be truncated without destroying it (D-NOB-027)"
+            )
         plan.append({
             "member": member["index"],
             "gene": member["gene"],
@@ -762,6 +776,7 @@ def benchmark_substrate_constructs() -> list[dict]:
             "cap": cap,
             "within_cap": tokens <= cap,
             "declared_exception": declared,
+            "declared_reason": declared_reason,
             "acceptable": tokens <= cap or declared,
         })
     return plan
