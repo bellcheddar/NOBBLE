@@ -56,6 +56,12 @@ class Job:
     peptide_sequence: str
     peptide_gene: str | None
     peptide_label: str | None
+    # The peptide's span in canonical numbering. Pose recovery needs it to map
+    # a predicted peptide (numbered 1..N in its own chain) onto the deposited
+    # chain, and without it the comparison cannot be made at all.
+    peptide_accession: str | None
+    peptide_start_res: int | None
+    peptide_end_res: int | None
     ligand_key: str | None
     ligand_encoding: str | None
     modality: str
@@ -137,6 +143,9 @@ def expand_pair(
                         peptide_sequence=peptide.sequence,
                         peptide_gene=peptide.gene,
                         peptide_label=peptide.label,
+                        peptide_accession=peptide.accession,
+                        peptide_start_res=peptide.start_res,
+                        peptide_end_res=peptide.end_res,
                         ligand_key=ligand.key if (ligand and complex_type == "ternary") else None,
                         ligand_encoding=(
                             ligand.encoding if (ligand and complex_type == "ternary") else None

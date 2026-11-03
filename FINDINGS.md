@@ -112,6 +112,64 @@ model reliably docks the glue into its pocket and does not reliably bring the
 degron to it. A scoring stack that read only the receptor-side fingerprint, or
 only ipTM, would call these poses correct.
 
+## F4. The predicted degron binds the right protein in the wrong place
+
+This is the most consequential result so far, and the one that most needed
+checking before it was believed.
+
+Peptide backbone RMSD to the deposited ternary, superposed on the receptor, at
+tier-1 settings:
+
+| Pair | Deposited | Poses | Best | Median | Worst | Within 5 A |
+|---|---|---|---|---|---|---|
+| GSPT1 / CRBN / CC-885 | 5HXB | 10 | 24.5 A | 29.2 A | 72.2 A | 0 per cent |
+| BRD4 BD2 / VHL / MZ1 | 5T35 | 10 | 15.3 A | 19.2 A | 26.8 A | 0 per cent |
+
+**Why this is a real result and not a broken alignment.** An RMSD of 25 angstrom
+is exactly what a mis-mapped comparison produces, so the frame was measured
+rather than assumed. For GSPT1 the receptor anchor matches **436 backbone atoms
+and superposes at 1.75 angstrom**: the predicted CRBN CULT domain sits almost on
+top of the crystal one, which is both a good receptor prediction and proof that
+the frame is sound. Sixty peptide backbone atoms map correctly through the
+138-residue numbering offset. After that superposition the predicted degron's
+centroid is **22.2 angstrom** from the crystal degron's. Every recovery record
+now carries its own anchor size and anchor RMSD for this reason, so no peptide
+RMSD is ever reported without the evidence that its frame was trustworthy.
+
+**What it means.** The model is not failing to find CRBN, and it is not failing
+to dock: 14 of 15 seeds put the peptide on the receptor, the glue reaches the
+tri-tryptophan pocket perfectly in every seed, and in three seeds the glue even
+bridges to the peptide at the 50th to 54th percentile of real interfaces. It is
+binding the correct protein, at a confident-looking interface, roughly 22
+angstrom from the actual degron site.
+
+That single observation ties together everything above it. The poor convergence
+of F2 is seeds choosing different wrong sites. The missing glue-to-degron
+contacts of F2b are the degron sitting too far away to be bridged. The high ipTM
+of F1 is the model's confidence in an interface that exists in the prediction
+and not in the crystal. A pipeline scoring only confidence would have called
+this pair a success.
+
+**The caveat, stated as loudly as the result.** These are tier-1 triage
+settings: three recycles, one diffusion sample, potentials off, chosen by spec
+1.2 to be deliberately cheap. Tier 2 runs the top decile at ten recycles and
+twenty-five diffusion samples. Whether that recovers the crystal pose is the
+single most useful question this campaign can answer, and it is not answered
+yet. Nothing here says Boltz-2 cannot place a degron; it says that at triage
+settings, on two pairs, it did not, and that no confidence metric revealed it.
+
+## F5. The time split cannot be computed on this panel, which is itself worth saying
+
+All seven benchmark depositions predate Boltz-2's training cutoff. They are
+canonical, long-published ternaries, which is precisely what makes them good
+positive controls and precisely why they cannot estimate prospective
+performance: a model trained on the PDB has seen them.
+
+So the time-split layer reports `not_computed` with that reason rather than
+quietly presenting the retrospective number as if it were blind. A blind number
+needs post-cutoff depositions from `mgtbind_ternary` that this campaign does not
+currently run, and adding them is the obvious next extension.
+
 ## F3. One of the seven scoring signals has no demonstrated discriminating power
 
 Spec 4 lists seven signals "in descending order of trust". The second,

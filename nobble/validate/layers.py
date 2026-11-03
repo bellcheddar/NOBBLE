@@ -1,0 +1,317 @@
+"""The three validation layers (spec 5). All gating.
+
+A campaign that fails any of these publishes its failure rather than its hits.
+One asymmetry matters and is implemented literally: **a poor ROC is not a gate
+failure. Reporting no ROC, or reporting one without the matched negatives,
+is.** The same logic governs the other two layers, so each returns a status
+rather than a bare number, and "not computed" is always distinguishable from
+"computed and bad".
+
+1. Pose recovery: peptide backbone RMSD to the deposited crystal ternary, as a
+   success-rate curve at 1, 2, 3 and 5 angstrom. The seven benchmark pairs are
+   reported individually, by name.
+2. Time split: entries deposited after the Boltz-2 training cutoff, run blind.
+   Canonical degrons are memorised, so this is the only number that estimates
+   prospective performance, and it is reported next to the retrospective one
+   with both clearly labelled.
+3. Matched-control ROC: Delta-ipTM on the Sievers degraded against non-degraded
+   split, with a confidence interval.
+"""
+from __future__ import annotations
+
+import json
+import math
+import random
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+
+from nobble import paths
+from nobble.curate import peptides as peptide_module
+from nobble.score import poses
+
+# Boltz-2's training cutoff. Depositions released after it cannot have been
+# memorised, which is the only thing that makes the blind split meaningful.
+# Carried as a date rather than a hardcoded accession list so the split
+# re-derives itself whenever the campaign changes.
+BOLTZ2_TRAINING_CUTOFF = "2021-09-30"
+
+# Which deposited chain each benchmark member's prediction is compared against.
+RECOVERY_TARGETS = {
+    "bench01_GSPT1_CRBN": {"pdb_id": "5HXB", "substrate_chain": "X", "substrate_acc": "P15170",
+                           "receptor_chain": "Z", "receptor_acc": "Q96SW2"},
+    "bench02_BRD4_VHL": {"pdb_id": "5T35", "substrate_chain": "A", "substrate_acc": "O60885",
+                         "receptor_chain": "D", "receptor_acc": "P40337"},
+    "bench03_BRD4_CRBN": {"pdb_id": "6BNB", "substrate_chain": "C", "substrate_acc": "O60885",
+                          "receptor_chain": "B", "receptor_acc": "Q96SW2"},
+    "bench04_IKZF1_CRBN": {"pdb_id": "6H0F", "substrate_chain": "C", "substrate_acc": "Q13422",
+                           "receptor_chain": "B", "receptor_acc": "Q96SW2"},
+    "bench05_CSNK1A1_CRBN": {"pdb_id": "5FQD", "substrate_chain": "C", "substrate_acc": "P48729",
+                             "receptor_chain": "B", "receptor_acc": "Q96SW2"},
+    "bench06_RBM39_DCAF15": {"pdb_id": "6Q0W", "substrate_chain": "D", "substrate_acc": "Q14498",
+                             "receptor_chain": "B", "receptor_acc": "Q66K64"},
+    "bench07_CDK12_DDB1": {"pdb_id": "6TD3", "substrate_chain": "B", "substrate_acc": "Q9NYV4",
+                           "receptor_chain": "A", "receptor_acc": "Q16531"},
+}
+
+
+@dataclass
+class LayerResult:
+    name: str
+    status: str                    # computed | not_computed: <reason>
+    summary: dict = field(default_factory=dict)
+    detail: list = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
+
+    @property
+    def computed(self) -> bool:
+        return self.status == "computed"
+
+    def to_dict(self) -> dict:
+        return asdict(self) | {"computed": self.computed}
+
+
+def _results(campaign: Path) -> list[dict]:
+    path = campaign / "results.jsonl"
+    if not path.exists():
+        return []
+    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+
+
+# --------------------------------------------------------------------------- #
+# 1. Pose recovery
+# --------------------------------------------------------------------------- #
+
+def pose_recovery(campaign: Path) -> LayerResult:
+    """RMSD of every predicted peptide to its deposited counterpart."""
+    layer = LayerResult(name="pose_recovery", status="not_computed: no results")
+    jobs = _results(campaign)
+    if not jobs:
+        return layer
+
+    per_pair: dict[str, list[float]] = {}
+    detail = []
+    for job in jobs:
+        target = RECOVERY_TARGETS.get(job.get("pair_id"))
+        if not target or job.get("complex_type") != "ternary":
+            continue
+        try:
+            outcome = poses.recovery_against_crystal(
+                job, target["pdb_id"], target["substrate_chain"],
+                target["substrate_acc"], target["receptor_chain"], target["receptor_acc"],
+            )
+        except Exception as problem:            # noqa: BLE001
+            detail.append({"job_id": job["job_id"], "error": f"{type(problem).__name__}: {problem}"})
+            continue
+        record = outcome.to_dict()
+        detail.append(record)
+        if outcome.rmsd is not None:
+            per_pair.setdefault(job["pair_id"], []).append(outcome.rmsd)
+
+    if not per_pair:
+        layer.status = "not_computed: no predicted pose could be aligned to a deposited chain"
+        layer.detail = detail[:20]
+        return layer
+
+    by_pair = {}
+    for pair_id, values in sorted(per_pair.items()):
+        ordered = sorted(values)
+        by_pair[pair_id] = {
+            "n": len(ordered),
+            "best_rmsd": round(ordered[0], 3),
+            "median_rmsd": round(ordered[len(ordered) // 2], 3),
+            "worst_rmsd": round(ordered[-1], 3),
+            "curve": poses.success_rate_curve(ordered),
+        }
+
+    everything = [value for values in per_pair.values() for value in values]
+    layer.status = "computed"
+    layer.summary = {
+        "pairs_with_recovery": len(by_pair),
+        "pairs_expected": len(RECOVERY_TARGETS),
+        "poses_compared": len(everything),
+        "overall_curve": poses.success_rate_curve(everything),
+        "by_pair": by_pair,
+        "frame": "superposed on the receptor, peptide backbone atoms only",
+    }
+    layer.detail = detail
+    if len(by_pair) < len(RECOVERY_TARGETS):
+        layer.notes.append(
+            f"{len(RECOVERY_TARGETS) - len(by_pair)} benchmark pair(s) have no "
+            "recovery number yet: their ternary jobs have not completed"
+        )
+    return layer
+
+
+# --------------------------------------------------------------------------- #
+# 2. Time split
+# --------------------------------------------------------------------------- #
+
+def time_split(campaign: Path) -> LayerResult:
+    """Split recovery by whether the deposition predates the training cutoff.
+
+    Canonical degrons are memorised by any model trained on the PDB, so the
+    retrospective number flatters the method. Only depositions released after
+    the cutoff estimate prospective performance, and both numbers are reported
+    side by side with their labels, never averaged together.
+    """
+    layer = LayerResult(name="time_split", status="not_computed: no recovery numbers")
+    recovery = pose_recovery(campaign)
+    if not recovery.computed:
+        layer.status = f"not_computed: pose recovery is {recovery.status}"
+        return layer
+
+    from nobble.curate import binman_store as store
+
+    release = {
+        row["pdb_id"]: row.get("release_date")
+        for row in store.atlas_rows(
+            "select pdb_id, release_date from entry where status = 'ok'"
+        )
+    }
+
+    before, after, unknown = [], [], []
+    for pair_id, stats in recovery.summary["by_pair"].items():
+        target = RECOVERY_TARGETS.get(pair_id)
+        if not target:
+            continue
+        date = release.get(target["pdb_id"])
+        entry = {"pair_id": pair_id, "pdb_id": target["pdb_id"],
+                 "release_date": date, "median_rmsd": stats["median_rmsd"]}
+        if not date:
+            unknown.append(entry)
+        elif date >= BOLTZ2_TRAINING_CUTOFF:
+            after.append(entry)
+        else:
+            before.append(entry)
+
+    layer.summary = {
+        "training_cutoff": BOLTZ2_TRAINING_CUTOFF,
+        "retrospective": {
+            "label": "deposited before the cutoff: may be memorised",
+            "n": len(before),
+            "median_rmsd": round(
+                sorted(item["median_rmsd"] for item in before)[len(before) // 2], 3
+            ) if before else None,
+            "members": before,
+        },
+        "prospective": {
+            "label": "deposited after the cutoff: blind",
+            "n": len(after),
+            "median_rmsd": round(
+                sorted(item["median_rmsd"] for item in after)[len(after) // 2], 3
+            ) if after else None,
+            "members": after,
+        },
+        "release_date_unknown": unknown,
+    }
+    if not after:
+        layer.status = (
+            "not_computed: no benchmark deposition was released after the "
+            f"{BOLTZ2_TRAINING_CUTOFF} training cutoff, so this campaign has no "
+            "blind set. The retrospective number stands alone and must not be "
+            "read as prospective performance"
+        )
+        layer.notes.append(
+            "The seven panel members are all canonical, long-published ternaries, "
+            "which is exactly why they are good positive controls and exactly why "
+            "they cannot estimate prospective performance. A blind number needs "
+            "post-cutoff depositions from mgtbind_ternary that the campaign does "
+            "not currently run."
+        )
+        return layer
+
+    layer.status = "computed"
+    return layer
+
+
+# --------------------------------------------------------------------------- #
+# 3. Matched-control ROC
+# --------------------------------------------------------------------------- #
+
+def _auc(positives: list[float], negatives: list[float]) -> float:
+    """Mann-Whitney U as the ROC area, which handles ties correctly."""
+    if not positives or not negatives:
+        return float("nan")
+    wins = 0.0
+    for p in positives:
+        for n in negatives:
+            if p > n:
+                wins += 1
+            elif p == n:
+                wins += 0.5
+    return wins / (len(positives) * len(negatives))
+
+
+def _bootstrap_interval(positives: list[float], negatives: list[float],
+                        rounds: int = 2000, seed: int = 20261103) -> tuple[float, float]:
+    generator = random.Random(seed)
+    values = []
+    for _ in range(rounds):
+        p = [generator.choice(positives) for _ in positives]
+        n = [generator.choice(negatives) for _ in negatives]
+        values.append(_auc(p, n))
+    values.sort()
+    return (round(values[int(0.025 * rounds)], 4), round(values[int(0.975 * rounds)], 4))
+
+
+def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerResult:
+    """Delta-ipTM on the Sievers degraded against non-degraded split."""
+    layer = LayerResult(name="matched_control_roc", status="not_computed: no scores")
+    scores_path = campaign / "scores.jsonl"
+    if not scores_path.exists():
+        return layer
+
+    rows = [json.loads(line) for line in scores_path.read_text().splitlines() if line.strip()]
+    positives = [row[statistic] for row in rows
+                 if row.get("peptide_label") == "degraded"
+                 and isinstance(row.get(statistic), (int, float))]
+    negatives = [row[statistic] for row in rows
+                 if row.get("peptide_label") == "not_degraded"
+                 and isinstance(row.get(statistic), (int, float))]
+
+    layer.summary = {
+        "statistic": statistic,
+        "positives": len(positives),
+        "matched_negatives": len(negatives),
+        "source": "Sievers zinc-finger screen: negatives assayed in the same screen",
+    }
+
+    # Spec 5 is explicit that reporting a curve without the matched negatives is
+    # itself the failure. Refusing to compute here is the correct behaviour, not
+    # a gap.
+    if len(positives) < 3 or len(negatives) < 3:
+        layer.status = (
+            f"not_computed: {len(positives)} positive(s) and {len(negatives)} "
+            "matched negative(s) scored. The Sievers arm runs after the benchmark "
+            "panel; a curve drawn from benchmark pairs alone would have no matched "
+            "negatives and spec 5 forbids reporting one"
+        )
+        return layer
+
+    auc = _auc(positives, negatives)
+    low, high = _bootstrap_interval(positives, negatives)
+    layer.status = "computed"
+    layer.summary |= {
+        "auc": round(auc, 4),
+        "ci95": [low, high],
+        "interpretation": (
+            "above chance" if low > 0.5
+            else "not distinguishable from chance at 95 per cent confidence"
+        ),
+    }
+    return layer
+
+
+def run(campaign: Path) -> dict:
+    """All three layers. Returns statuses, never bare numbers."""
+    layers = [pose_recovery(campaign), time_split(campaign), matched_control_roc(campaign)]
+    report = {
+        "campaign": campaign.name,
+        "layers": {layer.name: layer.to_dict() for layer in layers},
+        "computed": [layer.name for layer in layers if layer.computed],
+        "not_computed": {
+            layer.name: layer.status for layer in layers if not layer.computed
+        },
+    }
+    (campaign / "validation.json").write_text(json.dumps(report, indent=2, default=str))
+    return report

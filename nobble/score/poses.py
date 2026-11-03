@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import itertools
 from dataclasses import asdict, dataclass, field
+from functools import lru_cache
 from pathlib import Path
 
 from nobble.curate import constructs as C
@@ -54,6 +55,14 @@ class RecoveryResult:
     seed: int
     rmsd: float | None = None
     atoms_compared: int = 0
+    # How good the frame itself is. A peptide RMSD is only meaningful if the
+    # receptor it was superposed on actually superposed: without these two
+    # numbers beside it, a large RMSD cannot be told apart from a broken
+    # alignment. On the first pair they read 436 atoms at 1.75 A, which is what
+    # established that a 24.9 A peptide RMSD was a real result rather than a
+    # mapping bug.
+    receptor_anchor_atoms: int = 0
+    receptor_rmsd: float | None = None
     notes: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -184,6 +193,25 @@ def convergence(pair_jobs: list[dict], condition: str = "ternary") -> Convergenc
     return result
 
 
+@lru_cache(maxsize=1)
+def _benchmark_peptide_index() -> dict:
+    """Peptide identifier to its canonical span, for campaigns emitted before
+    the span was carried on the job record itself."""
+    from nobble.curate import peptides as peptide_module
+
+    return {
+        item.peptide_id: (item.accession, item.start_res, item.end_res)
+        for item in peptide_module.benchmark_peptides()
+    }
+
+
+def _peptide_start_from_library(peptide_id: str | None) -> int | None:
+    if not peptide_id:
+        return None
+    entry = _benchmark_peptide_index().get(peptide_id)
+    return entry[1] if entry else None
+
+
 def recovery_against_crystal(
     job: dict, pdb_id: str, substrate_chain: str, substrate_accession: str,
     receptor_chain: str, receptor_accession: str,
@@ -261,6 +289,15 @@ def recovery_against_crystal(
             f"receptor anchor too small: {len(moving)} matched backbone atoms"
         )
         return result
+    result.receptor_anchor_atoms = len(moving)
+    anchor_rmsd = _rmsd(moving, fixed, transform)
+    result.receptor_rmsd = round(anchor_rmsd, 3) if anchor_rmsd is not None else None
+    if result.receptor_rmsd is not None and result.receptor_rmsd > 5.0:
+        result.notes.append(
+            f"receptor superposed at only {result.receptor_rmsd} A: the frame is "
+            "poor, so the peptide RMSD below is not a reliable measure of pose "
+            "recovery"
+        )
 
     # Compare the peptide, in the same frame.
     deposited_peptide: dict[tuple[int, str], object] = {}
@@ -272,11 +309,14 @@ def recovery_against_crystal(
                 if atom.name in BACKBONE:
                     deposited_peptide[(residue.seqid.num, atom.name)] = atom.pos
 
-    peptide_start = job.get("peptide_start_res")
+    peptide_start = job.get("peptide_start_res") or _peptide_start_from_library(
+        job.get("peptide_id")
+    )
     if peptide_start is None:
         result.notes.append(
-            "peptide canonical start not recorded on the job: cannot align the "
-            "predicted window to the deposited chain"
+            "peptide canonical start not recorded on the job and not resolvable "
+            "from the peptide library: cannot align the predicted window to the "
+            "deposited chain"
         )
         return result
 
