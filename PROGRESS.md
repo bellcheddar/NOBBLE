@@ -9,7 +9,7 @@ Rewritten after every phase and at least every 30 minutes during long compute.
 | 0 Probe | **complete** | Apple M2 Ultra, 16 performance + 8 efficiency cores, 128 GB unified memory, 60 GPU cores, 507 GB free, MPS on torch 2.10.0. `config/hardware.toml` and `config/tuning.toml` written |
 | 1 Curation and manifest | **complete** | All gates pass. Tier A 17, Tier B 15 (frozen), 25,567-peptide library reduced to 220, 11 MSAs cached, manifest emitted with 0 errors |
 | 2 Execution | **running** | Benchmark queue of 100 jobs in tmux session `nobble-bench`. Smoke test 42.5 s for 124 tokens on MPS; warm rate 31.9 s. Resume verified in practice |
-| 3 Scoring and validation | not started | Builds against outputs as they land |
+| 3 Scoring and validation | **mostly built** | Metrics, geometry, poses, docking, lysine and PLIP all working and scoring live results. Remaining: composite weight fit and the three validation layers of spec 5, both of which need the full panel |
 | 4 Application | not started | |
 
 ## Phase 1 gates: all passing
@@ -23,6 +23,20 @@ Rewritten after every phase and at least every 30 minutes during long compute.
 | Tier B set present, at least 10 ligases | **pass** (15 ligases; DCAF8L1, CCNF, ASB8 at ranks 1-3 as spec 3.3 predicts) |
 
 `tests/test_phase1.py`: 9 passed.
+
+## Phase 3 components
+
+| Component | Spec | State |
+|---|---|---|
+| Delta-ipTM, ipTM-min, seed aggregation | 4.3, 4.5 | working. Reads the receptor-to-peptide pair, not global ipTM (D-NOB-022), with robust companions to the mandated minimum (D-NOB-023) |
+| Bridge percentile against the atlas | 4.1 | working. Reuses BINMAN's filter unchanged against 285,996 observed bridges |
+| Pose convergence and docking check | 4.4 | working. Receptor-frame superposition verified at 0.23 A on 436 anchor atoms |
+| Lysine geometry | 4.2 | working, reported as measurement with `not_validated` status (D-NOB-024) |
+| PLIP fingerprint | 4.6 | working, with the CONECT assertion on every structure (D-NOB-025) |
+| ProtCID furniture veto | 4.7 | `not_computed: protcid_unavailable` (D-NOB-010) |
+| Composite | 4.8 | `null` until weights are fitted on the panel and Sievers set (D-NOB-006) |
+
+`nobble/score/run.py` is incremental and re-runnable against a live queue.
 
 ## Phase 2 in flight
 
