@@ -127,7 +127,31 @@
       layoutShowLog: false, layoutShowLeftPanel: false,
       viewportShowExpand: false, viewportShowSelectionMode: false,
       viewportShowAnimation: false
-    }).then(function (viewer) { plugin = viewer; return viewer; });
+    }).then(function (viewer) {
+      plugin = viewer;
+      labelThirdPartyControls();
+      return viewer;
+    });
+  }
+
+  /* Mol* injects its own logo link into the viewport with no accessible name,
+   * which axe reports as a serious link-name violation on the live page. It is
+   * third-party markup inside a vendored bundle, so it is labelled here rather
+   * than by patching the bundle: editing a pinned dependency would be undone
+   * by the next version bump and would make the vendored copy differ from
+   * BINMAN's. A MutationObserver covers the case where Mol* remounts it. */
+  function labelThirdPartyControls() {
+    const label = function () {
+      host.querySelectorAll('a:not([aria-label])').forEach(function (node) {
+        if (!node.textContent.trim()) {
+          node.setAttribute('aria-label', 'Mol* structure viewer, project website');
+        }
+      });
+    };
+    label();
+    try {
+      new MutationObserver(label).observe(host, { childList: true, subtree: true });
+    } catch (e) { /* no observer: the one-shot pass above still applies */ }
   }
 
   function clear() {

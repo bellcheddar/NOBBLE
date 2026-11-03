@@ -6,7 +6,7 @@ const axeSource = readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
 const target = process.argv[2] || '/benchmark';
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-await page.goto('http://127.0.0.1:5055' + target, { waitUntil: 'networkidle' });
+await page.goto('https://nobble.mdeller.com' + target, { waitUntil: 'networkidle' });
 await page.evaluate(axeSource);
 const res = await page.evaluate(async () => await window.axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a','wcag2aa'] } }));
 res.violations.filter(v => ['serious','critical'].includes(v.impact)).forEach(v => {
