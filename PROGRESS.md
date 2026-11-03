@@ -7,9 +7,9 @@ Rewritten after every phase and at least every 30 minutes during long compute.
 | Phase | State | Detail |
 |---|---|---|
 | 0 Probe | **complete** | Apple M2 Ultra, 16 performance + 8 efficiency cores, 128 GB unified memory, 60 GPU cores, 507 GB free, MPS on torch 2.10.0. `config/hardware.toml` and `config/tuning.toml` written |
-| 1 Curation and manifest | **~60 per cent** | Gates all passing. Remaining: peptide library, ESM-2 diversity reduction, MSA precomputation, manifest emission |
-| 2 Execution | not started | Throughput benchmark on the seven panel pairs, then the tier-1 queue |
-| 3 Scoring and validation | not started | |
+| 1 Curation and manifest | **complete** | All gates pass. Tier A 17, Tier B 15 (frozen), 25,567-peptide library reduced to 220, 11 MSAs cached, manifest emitted with 0 errors |
+| 2 Execution | **running** | Benchmark queue of 100 jobs in tmux session `nobble-bench`. Smoke test 42.5 s for 124 tokens on MPS; warm rate 31.9 s. Resume verified in practice |
+| 3 Scoring and validation | not started | Builds against outputs as they land |
 | 4 Application | not started | |
 
 ## Phase 1 gates: all passing
@@ -19,10 +19,23 @@ Rewritten after every phase and at least every 30 minutes during long compute.
 | All seven benchmark pairs resolve to deposited structures | **pass** (7/7) |
 | Degron Scan independently recovers GSPT1 domain II hairpin and IKZF1 ZF2 | **pass** (2/2, scan tip residue exactly matches the deposited degron in both) |
 | Every job under 400 tokens, or a declared exception | **pass** (6 constructs, 2 declared exceptions) |
-| Zero manifest validation errors | pending: manifest not yet emitted |
-| Tier B set present, at least 10 ligases | pending |
+| Zero manifest validation errors | **pass** (7 pairs, 105 jobs, 0 errors, 10 warnings, all `smiles_fallback` for dBET57) |
+| Tier B set present, at least 10 ligases | **pass** (15 ligases; DCAF8L1, CCNF, ASB8 at ranks 1-3 as spec 3.3 predicts) |
 
 `tests/test_phase1.py`: 9 passed.
+
+## Phase 2 in flight
+
+- `campaigns/benchmark_20261103T192126Z`: 100 YAMLs, queue running in tmux `nobble-bench`
+- 5 conditioned jobs dropped for benchmark member 3, which has no measurable
+  pocket (6BNB assembly 1 carries no PROTAC). Dropping beats emitting a
+  duplicate of the unconstrained arm under a conditioned label
+- First measured throughput: 0.343 s/token, sizing the campaign at 271 pairs
+  against the spec's 200-250 estimate. The figure is from the smallest job and
+  is optimistic: pairformer cost is superlinear in length, and the DCAF15 member
+  is 1,223 tokens. `data/throughput.json` is rewritten as the queue progresses
+- Jobs per pair is **15**, computed rather than quoted: the spec gives both 10
+  and 20 in different sections (D-NOB-019)
 
 ## Phase 1 complete
 
