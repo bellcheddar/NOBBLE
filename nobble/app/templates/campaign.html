@@ -40,7 +40,8 @@
         </label>
         <label><input type="checkbox" id="f-bridged"> bridging seeds only</label>
         <label><input type="checkbox" id="f-pinned"> pinned only</label>
-        <span class="ledger-count mono" id="ledger-count"></span>
+        <label><input type="checkbox" id="f-complete"> complete scores only</label>
+      <span class="ledger-count mono" id="ledger-count"></span>
       </div>
 
       <div class="table-wrap" tabindex="0" role="group" aria-label="Scrollable table">
@@ -121,6 +122,13 @@
   .ledger-filters { display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.6rem; font-size: 0.74rem; }
   .ledger-filters select { background: var(--surface-2); border: 1px solid var(--line); color: var(--ink); padding: 0.2rem; border-radius: var(--radius); }
   .ledger-count { margin-left: auto; color: var(--muted); }
+  /* A composite built from fewer components than the weights asked for says
+     so in the cell, because the number alone looks like any other. */
+  .partial {
+    display: inline-block; margin-left: 0.3rem; font-size: 0.58rem;
+    padding: 0 0.22rem; border: 1px solid var(--warn); border-radius: 2px;
+    color: var(--warn); vertical-align: middle; cursor: help;
+  }
 </style>
 {% endblock %}
 
@@ -183,13 +191,23 @@
     const tier = document.getElementById('f-tier').value;
     const bridgedOnly = document.getElementById('f-bridged').checked;
     const pinnedOnly = document.getElementById('f-pinned').checked;
+    const completeOnly = document.getElementById('f-complete').checked;
     const pins = NOBBLE.pins.get();
 
-    let rows = PAIRS.map(p => Object.assign({}, p, { composite: NOBBLE.weights.composite(p, weights) }));
+    let rows = PAIRS.map(function (p) {
+      const c = NOBBLE.weights.composite(p, weights);
+      return Object.assign({}, p, {
+        composite: c.score,
+        composite_components: c.components,
+        composite_requested: c.requested,
+        composite_complete: c.complete
+      });
+    });
     rows = rows.filter(p => (!modality || p.modality === modality) &&
                             (!tier || p.tier === tier) &&
                             (!bridgedOnly || (p.bridging_seeds_with_bridge || 0) > 0) &&
-                            (!pinnedOnly || NOBBLE.pins.matches(p)));
+                            (!pinnedOnly || NOBBLE.pins.matches(p)) &&
+                            (!completeOnly || p.composite_complete));
 
     rows.sort((a, b) => {
       const x = a[sortKey], y = b[sortKey];
@@ -207,7 +225,19 @@
         '<td>' + (p.peptide_gene || '—') + '</td>' +
         '<td class="mono">' + (p.ligand_key || '—') + '</td>' +
         '<td>' + (p.modality || '—') + '</td>' +
-        '<td class="num" ' + tipAttrs('composite', p.composite, p) + '>' + fmt(p.composite) + '</td>' +
+        '<td class="num" ' + tipAttrs('composite', p.composite, p) +
+          ' data-tip="Weighted mean of the components that have values for this pair. ' +
+          'A pair scored on fewer components is not comparable with one scored on more, ' +
+          'so the count is shown rather than hidden by renormalising."' +
+          ' data-tip-value="' + fmt(p.composite) + ' from ' + p.composite_components +
+          ' of ' + p.composite_requested + ' components">' +
+          fmt(p.composite) +
+          (p.composite_complete ? '' :
+            '<span class="partial" title="Scored on ' + p.composite_components + ' of ' +
+            p.composite_requested + ' weighted components: this pair is still running, ' +
+            'so its score is not comparable with a complete one.">' +
+            p.composite_components + '/' + p.composite_requested + '</span>') +
+          '</td>' +
         '<td class="num" ' + tipAttrs('bridge_percentile', p.bridge_percentile, p) + '>' + fmt(p.bridge_percentile, 1) + '</td>' +
         '<td class="num" title="Fraction of ternary seeds in which the glue actually bridged receptor to peptide">' +
           (p.bridging_seeds_with_bridge || 0) + '/' + (p.bridging_seeds_total || 0) + '</td>' +
@@ -243,7 +273,7 @@
     });
   });
 
-  ['f-modality', 'f-tier', 'f-bridged', 'f-pinned'].forEach(id => {
+  ['f-modality', 'f-tier', 'f-bridged', 'f-pinned', 'f-complete'].forEach(id => {
     document.getElementById(id).addEventListener('change', render);
   });
 

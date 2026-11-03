@@ -189,21 +189,38 @@
 
   /* The composite is recomputed in the browser, which is why the sliders
    * re-rank without a server round trip. It is only ever a re-weighting of
-   * components the pipeline already measured: nothing new is computed here. */
+   * components the pipeline already measured: nothing new is computed here.
+   *
+   * It returns the coverage as well as the score, and the caller shows it,
+   * because the two are not separable. A pair part-way through its jobs has
+   * null convergence and null PLIP, and renormalising over the weights that
+   * did have values gives it a score built from two components sitting in the
+   * same ranked column as one built from four. RBM39 ranked second that way
+   * on a composite that never saw its pose convergence. A score is only
+   * comparable to another score over the same components. */
   function composite(pair, weights) {
     let total = 0;
     let used = 0;
+    let available = 0;
+    let requested = 0;
     Object.keys(weights).forEach(function (key) {
       const weight = Number(weights[key]);
       if (!weight) { return; }
+      requested += 1;
       let value = pair[key];
       if (value === null || value === undefined) { return; }
+      available += 1;
       if (key === 'bridge_percentile') { value = value / 100; }
       if (key === 'delta_iptm') { value = Math.max(0, Math.min(1, (value + 1) / 2)); }
       total += weight * value;
       used += weight;
     });
-    return used ? total / used : null;
+    return {
+      score: used ? total / used : null,
+      components: available,
+      requested: requested,
+      complete: requested > 0 && available === requested
+    };
   }
 
   /* ---------------------------------------------------------------- theme */
