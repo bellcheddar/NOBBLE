@@ -2,7 +2,7 @@
   "campaign": "benchmark_20261103T192126Z",
   "files": {
     "campaign.json": 7502,
-    "validation.json": 21165,
+    "validation.json": 23454,
     "weights.json": 475,
     "scores.jsonl": 6,
     "results.jsonl": 80,
@@ -15,5 +15,5 @@
   "jobs_total": 100,
   "pairs_total": 7,
   "structures": 80,
-  "bytes": 17572992
+  "bytes": 17575281
 }

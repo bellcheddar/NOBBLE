@@ -5,16 +5,16 @@
       "name": "pose_recovery",
       "status": "computed",
       "summary": {
-        "pairs_with_recovery": 5,
+        "pairs_with_recovery": 6,
         "pairs_expected": 7,
-        "poses_compared": 45,
+        "poses_compared": 50,
         "overall_curve": {
           "within_1.0A": 0.0,
           "within_2.0A": 0.0,
           "within_3.0A": 0.0,
-          "within_5.0A": 0.0222,
-          "n": 45,
-          "median_rmsd": 17.14
+          "within_5.0A": 0.02,
+          "n": 50,
+          "median_rmsd": 15.311
         },
         "by_pair": {
           "bench01_GSPT1_CRBN": {
@@ -85,6 +85,20 @@
               "within_5.0A": 0.0,
               "n": 10,
               "median_rmsd": 12.24
+            }
+          },
+          "bench06_RBM39_DCAF15": {
+            "n": 5,
+            "best_rmsd": 5.507,
+            "median_rmsd": 6.003,
+            "worst_rmsd": 6.36,
+            "curve": {
+              "within_1.0A": 0.0,
+              "within_2.0A": 0.0,
+              "within_3.0A": 0.0,
+              "within_5.0A": 0.0,
+              "n": 5,
+              "median_rmsd": 6.003
             }
           }
         },
@@ -585,10 +599,65 @@
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.804,
           "notes": []
+        },
+        {
+          "pair_id": "bench06_RBM39_DCAF15",
+          "pdb_id": "6Q0W",
+          "job_id": "bench06_RBM39_DCAF15__ternary__conditioned__seed1",
+          "seed": 1,
+          "rmsd": 6.36,
+          "atoms_compared": 60,
+          "receptor_anchor_atoms": 824,
+          "receptor_rmsd": 0.705,
+          "notes": []
+        },
+        {
+          "pair_id": "bench06_RBM39_DCAF15",
+          "pdb_id": "6Q0W",
+          "job_id": "bench06_RBM39_DCAF15__ternary__conditioned__seed2",
+          "seed": 2,
+          "rmsd": 5.507,
+          "atoms_compared": 60,
+          "receptor_anchor_atoms": 824,
+          "receptor_rmsd": 0.777,
+          "notes": []
+        },
+        {
+          "pair_id": "bench06_RBM39_DCAF15",
+          "pdb_id": "6Q0W",
+          "job_id": "bench06_RBM39_DCAF15__ternary__conditioned__seed3",
+          "seed": 3,
+          "rmsd": 6.251,
+          "atoms_compared": 60,
+          "receptor_anchor_atoms": 824,
+          "receptor_rmsd": 0.749,
+          "notes": []
+        },
+        {
+          "pair_id": "bench06_RBM39_DCAF15",
+          "pdb_id": "6Q0W",
+          "job_id": "bench06_RBM39_DCAF15__ternary__conditioned__seed4",
+          "seed": 4,
+          "rmsd": 5.759,
+          "atoms_compared": 60,
+          "receptor_anchor_atoms": 824,
+          "receptor_rmsd": 0.745,
+          "notes": []
+        },
+        {
+          "pair_id": "bench06_RBM39_DCAF15",
+          "pdb_id": "6Q0W",
+          "job_id": "bench06_RBM39_DCAF15__ternary__conditioned__seed5",
+          "seed": 5,
+          "rmsd": 6.003,
+          "atoms_compared": 60,
+          "receptor_anchor_atoms": 824,
+          "receptor_rmsd": 0.756,
+          "notes": []
         }
       ],
       "notes": [
-        "2 benchmark pair(s) have no recovery number yet: their ternary jobs have not completed"
+        "1 benchmark pair(s) have no recovery number yet: their ternary jobs have not completed"
       ],
       "computed": true
     },
@@ -599,7 +668,7 @@
         "training_cutoff": "2021-09-30",
         "retrospective": {
           "label": "deposited before the cutoff: may be memorised",
-          "n": 5,
+          "n": 6,
           "median_rmsd": 19.235,
           "members": [
             {
@@ -631,6 +700,12 @@
               "pdb_id": "5FQD",
               "release_date": "2016-02-24",
               "median_rmsd": 12.24
+            },
+            {
+              "pair_id": "bench06_RBM39_DCAF15",
+              "pdb_id": "6Q0W",
+              "release_date": "2019-11-13",
+              "median_rmsd": 6.003
             }
           ]
         },
@@ -650,10 +725,10 @@
     },
     "matched_control_roc": {
       "name": "matched_control_roc",
-      "status": "not_computed: 5 positive(s) and 0 matched negative(s) scored. The Sievers arm runs after the benchmark panel; a curve drawn from benchmark pairs alone would have no matched negatives and spec 5 forbids reporting one",
+      "status": "not_computed: 6 positive(s) and 0 matched negative(s) scored. The Sievers arm runs after the benchmark panel; a curve drawn from benchmark pairs alone would have no matched negatives and spec 5 forbids reporting one",
       "summary": {
         "statistic": "delta_iptm",
-        "positives": 5,
+        "positives": 6,
         "matched_negatives": 0,
         "source": "Sievers zinc-finger screen: negatives assayed in the same screen"
       },
@@ -667,6 +742,6 @@
   ],
   "not_computed": {
     "time_split": "not_computed: no benchmark deposition was released after the 2021-09-30 training cutoff, so this campaign has no blind set. The retrospective number stands alone and must not be read as prospective performance",
-    "matched_control_roc": "not_computed: 5 positive(s) and 0 matched negative(s) scored. The Sievers arm runs after the benchmark panel; a curve drawn from benchmark pairs alone would have no matched negatives and spec 5 forbids reporting one"
+    "matched_control_roc": "not_computed: 6 positive(s) and 0 matched negative(s) scored. The Sievers arm runs after the benchmark panel; a curve drawn from benchmark pairs alone would have no matched negatives and spec 5 forbids reporting one"
   }
 }

@@ -155,13 +155,15 @@ settings: three recycles, one diffusion sample, potentials off, chosen by spec
 1.2 to be deliberately cheap. Tier 2 runs the top decile at ten recycles and
 twenty-five diffusion samples.
 
-**Revised by F6.** When IKZF1 completed it recovered at 5.0 to 5.4 angstrom
-across all ten seeds, an order of magnitude better than any other pair, and the
-reason turns out to be the construct rather than the model. Read F6 before
-drawing any conclusion from the table above: the failing pairs were asked an
-unanswerable question.
+**Revised twice: read F6, then F9.** IKZF1 recovered at 5.4 angstrom and F6
+attributed that to its epitope being linear rather than cut from a folded
+domain. RBM39 then completed at 6.0 angstrom from a 15-mer cut out of an RRM,
+which contradicts that mechanism directly. F9 has what replaced it.
 
-## F6. The 15-mer is the wrong construct for six of the seven benchmark pairs
+## F6. The 15-mer hypothesis, which later data contradicted
+
+**Superseded by F9. Kept because the reasoning was sound on the evidence then
+available, and because what refuted it is the point.**
 
 IKZF1 / CRBN completed and behaves completely unlike the others:
 
@@ -199,8 +201,11 @@ contact is.
 
 **So the earlier reading of F4 was too hard on the model.** It is not that
 Boltz-2 cannot place a degron: given an actual linear degron it placed one, from
-ten independent seeds, within about 5 angstrom. It is that six of the seven
-benchmark pairs were asked a question with no correct answer available to them.
+ten independent seeds, within about 5 angstrom.
+
+**And this part did not survive.** The claim that the other six failed
+*because* their window was cut from a fold was tested by the next pair to
+complete and lost. See F9.
 
 **What follows for the design.** Spec 3.4 builds the peptide library by tiling
 15-mers, which is right for degrons, because most E3 substrate recognition is of
@@ -298,6 +303,55 @@ five canonical contacts, which is how the two can both be true at once.
 This map is computed geometrically rather than taken from PLIP, which is a
 protein-ligand tool and has nothing to say about where a degron meets a
 receptor.
+
+## F9. Bridge formation rate predicts pose recovery, and the construct does not
+
+With six pairs recovered, the hypothesis in F6 can be checked against the one
+thing that matters: does being cut from a folded domain actually predict
+failure?
+
+| Pair | Bridge rate | Median RMSD | Cut from a fold | Coverage of it |
+|---|---|---|---|---|
+| GSPT1 / CRBN | 0.30 | 29.2 A | yes | 0.15 |
+| BRD4 BD2 / VHL | 0.40 | 19.2 A | yes | 0.17 |
+| BRD4 BD1 / CRBN | 0.80 | 20.4 A | yes | 0.18 |
+| CSNK1A1 / CRBN | 1.00 | 12.2 A | yes | 0.07 |
+| **RBM39 / DCAF15** | **1.00** | **6.0 A** | **yes** | **0.21** |
+| IKZF1 / CRBN | 1.00 | 5.4 A | no, linear | n/a |
+
+**F6 is wrong.** RBM39's substrate is a 15-mer cut from an RRM, covering 21 per
+cent of it, which is the *most* domain-embedded window in the panel by
+coverage. It recovers at 6.0 angstrom, within 0.6 angstrom of the linear
+epitope F6 held up as the one case that works. Windows cut from folds span 6.0
+to 29.2 angstrom: the category does not separate anything.
+
+**What does separate them is the bridge formation rate**, the fraction of
+ternary seeds in which the glue actually buries surface against both the
+receptor and the peptide:
+
+- Pearson r = **-0.871**, p = 0.024
+- Spearman rho = **-0.880**, p = 0.021
+- n = 6
+
+Every pair that bridged in all its seeds recovered within 12.3 angstrom; no
+pair that bridged in fewer than half its seeds recovered better than 19.
+
+**Why this is worth more than the hypothesis it replaces.** Pose recovery
+requires a deposited crystal structure, so it can only ever be computed for
+pairs whose answer is already known. Bridge formation rate requires nothing
+but the prediction. If it tracks recovery, it is a usable stand-in for ground
+truth on exactly the pairs that have none, which is every pair a discovery
+campaign cares about. That is the thing a triage pipeline needs and the thing
+spec 4.1 argued for when it made the empirical bridge envelope the primary
+signal, though it argued for the percentile rather than the rate.
+
+**What this is not.** Six points, and a correlation noticed after looking at
+them rather than predicted before. It is a hypothesis with a p-value attached,
+not a validated metric, and the honest next steps are the Sievers arm, which
+multiplies the sample by an order of magnitude, and the corrected-construct
+campaign, which is now a test of intervention rather than of F6's mechanism:
+if giving GSPT1 its whole domain raises its bridge rate, the rate stays the
+better predictor and the construct becomes a lever on it.
 
 ## F7. The measured throughput is worse than the smoke test implied, as warned
 
