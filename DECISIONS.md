@@ -378,3 +378,92 @@ still yields the benchmark panel and then the ROC before it reaches discovery.
 
 **Reversal.** `nobble/curate/peptides.py`, `sievers_matched_set`, and the budget
 in `nobble/curate/diversity.py`.
+
+---
+
+## D-NOB-022: Delta-ipTM is measured on the receptor-to-peptide chain pair, not the global ipTM
+
+**Date:** 2026-11-03
+
+**Decision.** `delta_iptm` reads Boltz's `pair_chains_iptm` cell for the
+receptor-to-peptide pair. The global `iptm` is recorded beside it as
+`delta_iptm_global`, never used as the headline.
+
+**Reason.** Spec 4.3 defines Delta-ipTM as a difference of "interface
+confidence" without saying which interface. For a ternary complex the global
+ipTM averages the receptor-peptide interface together with the receptor-ligand
+and peptide-ligand ones, and the ligand interface is the easy one: the first
+benchmark ternary returned `ligand_iptm` of 0.98 while its receptor-peptide pair
+ranged from 0.08 to 0.91 across seeds. A glue that sits beautifully in its
+pocket while the degron fails to dock would therefore raise the global figure,
+and the headline number would rise on an interface that is not the one being
+asked about.
+
+The matrix is also not symmetric (0.885 one way, 0.954 the other on the same
+seed), so the minimum of the two directions is taken, which keeps the statistic
+conservative in the same spirit as spec 4.3's seed minimum.
+
+**Reversal.** `nobble/score/metrics.py`, `_pair_iptm` and `peptide_chain_index`.
+
+---
+
+## D-NOB-023: the mandated seed minimum is reported, and so is a robust companion, because one collapsed seed can invert it
+
+**Date:** 2026-11-03
+
+**Finding, on the first pair of the benchmark panel.** GSPT1/CRBN/CC-885, which
+spec 3.1 calls "the highest-value single test in the panel", returned
+receptor-peptide ipTM across its five conditioned ternary seeds of **0.885,
+0.877, 0.806, 0.082, 0.911**. Four seeds agree closely; one diffusion run
+collapsed outright.
+
+Spec 4.3 mandates the minimum across seeds. So that single failed run becomes
+the headline, and Delta-ipTM for the canonical positive control reads **-0.756**:
+a large negative glue dependence for the pair the whole pipeline exists to
+confirm. On the median it reads **+0.021**.
+
+**Decision.** `delta_iptm` keeps the mandated definition. Alongside it NOBBLE
+reports `delta_iptm_median`, `iptm_median_binary`, `iptm_median_ternary`,
+`collapsed_seeds_*` and a `seed_collapse_affects_delta` flag that is true when a
+collapsed seed actually set the minimum. The Delta tab shows both, and the
+About page states which is the spec's definition.
+
+**Why not just switch to the median.** The minimum is defensible and the spec
+chose it deliberately: for "does this interface reliably form", a pair that
+fails one run in five has told you something real, and a mean or median hides
+it. The problem is not that the minimum is wrong, it is that the minimum answers
+"worst-case seed behaviour" while the ROC in spec 4.3 is asking "does glue
+presence change the interface". Those come apart exactly when a diffusion run
+fails, so both numbers are needed and neither should be quietly substituted for
+the other.
+
+This also raises the value of spec 4.4's convergence measure, which was already
+argued for on these grounds: a collapsed seed shows up directly as a pose
+outlier, and convergence discriminates a genuinely unstable interface from a
+single bad diffusion trajectory in a way no confidence aggregate can.
+
+**Consequence for the campaign.** The seed-collapse rate is now itself a
+reportable number. If collapses are common, the five-seed budget of spec 1.2 is
+too small for a minimum-based statistic and that is a finding about the method,
+not a bug to paper over.
+
+**Followed up, and the interpretation changed.** The collapsed seed was examined
+structurally rather than left as a number. Its peptide sits **81.4 angstrom from
+the receptor centroid**, in free solvent, with zero heavy-atom contacts inside 5
+angstrom, against roughly 19 angstrom and 40 to 82 contact atoms for every
+docked seed. So the 0.082 was not an artefact and not a low-confidence
+interface: ipTM reported, correctly, that no interface existed because that
+trajectory never docked the peptide.
+
+This makes spec 4.3's choice of the minimum more defensible than it first looked,
+and the diagnostics more necessary rather than less. The minimum is genuinely
+reporting "one run in five produced nothing", which is real and worth knowing.
+But it is answering a different question from the ROC in the same section, which
+asks whether glue presence changes the interface, and a number that is dominated
+by docking failures cannot also serve as a glue-dependence statistic. Both are
+reported, and `docking_check` in `nobble/score/poses.py` now distinguishes an
+undocked run from a docked one, so a failed trajectory is never averaged in as a
+weak interface.
+
+**Reversal.** `COLLAPSE_MARGIN` in `nobble/score/metrics.py`; set it above 1.0 to
+disable the diagnostic entirely.

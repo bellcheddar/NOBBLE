@@ -1,0 +1,435 @@
+"""Pose convergence and pose recovery (spec 4.4 and 5.1).
+
+Two different questions, both answered by superposition:
+
+- **Convergence** (spec 4.4): pairwise peptide backbone RMSD across the five
+  seeds, after superposing on the receptor. Convergence tracks reality better
+  than confidence for peptides, because a peptide landing in the same groove
+  from five different noise seeds is saying something ipTM is not. It is also
+  the measure that separates a genuinely unstable interface from one collapsed
+  diffusion trajectory, which is precisely the ambiguity D-NOB-023 ran into.
+- **Recovery** (spec 5.1): peptide backbone RMSD to the deposited crystal
+  ternary, reported as a success-rate curve at 1, 2, 3 and 5 angstrom.
+
+Superposition is always on the **receptor**, never on the peptide. Superposing
+on the peptide would measure its internal conformation and discard where it sat,
+which is the only thing being asked. The receptor frame is also what makes the
+crystal comparison meaningful: the question is whether the degron landed in the
+right place on the E3, not whether it has the right shape in isolation.
+"""
+from __future__ import annotations
+
+import itertools
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+
+from nobble.curate import constructs as C
+from nobble.curate import numbering, structures
+
+BACKBONE = ("N", "CA", "C", "O")
+PEPTIDE_CHAIN = "P"
+
+
+@dataclass
+class ConvergenceResult:
+    pair_id: str
+    condition: str
+    seeds: list[int]
+    pairwise_rmsd: list[float] = field(default_factory=list)
+    mean_rmsd: float | None = None
+    max_rmsd: float | None = None
+    spread: float | None = None
+    convergence_score: float | None = None
+    notes: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass
+class RecoveryResult:
+    pair_id: str
+    pdb_id: str
+    job_id: str
+    seed: int
+    rmsd: float | None = None
+    atoms_compared: int = 0
+    notes: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+def _receptor_chain_ids(construct_name: str) -> set[str]:
+    return set("ABCDEFGH"[: len(C.CONSTRUCTS[construct_name].segments)])
+
+
+def _load(path: str):
+    import gemmi
+
+    structure = gemmi.read_structure(str(path))
+    structure.setup_entities()
+    structure.remove_hydrogens()
+    structure.remove_alternative_conformations()
+    return structure
+
+
+def _backbone_by_residue(structure, chain_ids: set[str]) -> dict[tuple[str, int, str], object]:
+    """Backbone atoms keyed by (chain, seqid, atom name)."""
+    atoms: dict[tuple[str, int, str], object] = {}
+    for chain in structure[0]:
+        if chain.name not in chain_ids:
+            continue
+        for residue in chain:
+            for atom in residue:
+                if atom.name in BACKBONE:
+                    atoms[(chain.name, residue.seqid.num, atom.name)] = atom.pos
+    return atoms
+
+
+def _superpose(moving_anchor: list, fixed_anchor: list):
+    """Kabsch superposition from two matched point lists.
+
+    Returns gemmi's Transform, which maps a point in the moving frame onto the
+    fixed frame. `superpose_positions` itself returns a SupResult wrapper, and
+    its `.transform.apply` yields a Vec3 rather than a Position, which is why
+    `_rmsd` computes the distance component-wise rather than calling `.dist`.
+    """
+    import gemmi
+
+    if len(moving_anchor) < 3:
+        return None
+    return gemmi.superpose_positions(fixed_anchor, moving_anchor).transform
+
+
+def _rmsd(moving: list, fixed: list, transform) -> float | None:
+    import math
+
+    if not moving or len(moving) != len(fixed):
+        return None
+    total = 0.0
+    for source, target in zip(moving, fixed):
+        moved = transform.apply(source) if transform is not None else source
+        total += (
+            (moved.x - target.x) ** 2
+            + (moved.y - target.y) ** 2
+            + (moved.z - target.z) ** 2
+        )
+    return math.sqrt(total / len(moving))
+
+
+def peptide_rmsd_between(job_a: dict, job_b: dict) -> float | None:
+    """Peptide backbone RMSD between two predictions, in the receptor frame."""
+    if not job_a.get("structure") or not job_b.get("structure"):
+        return None
+    chain_ids = _receptor_chain_ids(job_a["construct"])
+    first, second = _load(job_a["structure"]), _load(job_b["structure"])
+
+    receptor_a = _backbone_by_residue(first, chain_ids)
+    receptor_b = _backbone_by_residue(second, chain_ids)
+    shared = sorted(set(receptor_a) & set(receptor_b))
+    transform = _superpose(
+        [receptor_b[key] for key in shared], [receptor_a[key] for key in shared]
+    )
+    if transform is None:
+        return None
+
+    peptide_a = _backbone_by_residue(first, {PEPTIDE_CHAIN})
+    peptide_b = _backbone_by_residue(second, {PEPTIDE_CHAIN})
+    keys = sorted(set(peptide_a) & set(peptide_b))
+    if not keys:
+        return None
+    return _rmsd(
+        [peptide_b[key] for key in keys], [peptide_a[key] for key in keys], transform
+    )
+
+
+def convergence(pair_jobs: list[dict], condition: str = "ternary") -> ConvergenceResult:
+    """Pairwise peptide RMSD across seeds within one condition (spec 4.4)."""
+    selected = [
+        job for job in pair_jobs
+        if job.get("complex_type") == ("ternary" if condition.startswith("ternary") else condition)
+    ]
+    if condition == "ternary_conditioned":
+        selected = [job for job in selected if job.get("conditioning") == "conditioned"]
+    elif condition == "ternary_unconstrained":
+        selected = [job for job in selected if job.get("conditioning") == "unconstrained"]
+
+    result = ConvergenceResult(
+        pair_id=pair_jobs[0]["pair_id"] if pair_jobs else "",
+        condition=condition,
+        seeds=sorted(job["seed"] for job in selected),
+    )
+    if len(selected) < 2:
+        result.notes.append(f"{len(selected)} structure(s): convergence needs at least two")
+        return result
+
+    values = []
+    for first, second in itertools.combinations(selected, 2):
+        value = peptide_rmsd_between(first, second)
+        if value is not None:
+            values.append(round(value, 3))
+    if not values:
+        result.notes.append("no comparable pose pairs")
+        return result
+
+    result.pairwise_rmsd = values
+    result.mean_rmsd = round(sum(values) / len(values), 3)
+    result.max_rmsd = round(max(values), 3)
+    result.spread = round(max(values) - min(values), 3)
+    # A bounded score so the composite can use it: 1.0 at zero RMSD, falling to
+    # 0 by 10 angstrom, which is roughly the point at which two poses are in
+    # different places rather than the same place imprecisely.
+    result.convergence_score = round(max(0.0, 1.0 - (result.mean_rmsd / 10.0)), 4)
+    return result
+
+
+def recovery_against_crystal(
+    job: dict, pdb_id: str, substrate_chain: str, substrate_accession: str,
+    receptor_chain: str, receptor_accession: str,
+) -> RecoveryResult:
+    """Peptide backbone RMSD to the deposited ternary (spec 5.1).
+
+    Both numbering frames are crossed explicitly. The predicted peptide is
+    numbered 1..N within its own chain; its canonical residues come from where
+    the window was cut; and the deposited chain may sit in a different frame
+    again, which for GSPT1 is 138 residues away (D-NOB-012). Getting this wrong
+    produces a confident RMSD against the wrong residues.
+    """
+    result = RecoveryResult(
+        pair_id=job["pair_id"], pdb_id=pdb_id, job_id=job["job_id"], seed=job["seed"]
+    )
+    if not job.get("structure"):
+        result.notes.append("no predicted structure")
+        return result
+
+    predicted = _load(job["structure"])
+    deposited = structures.read_assembly(pdb_id)
+
+    # Receptor frame: map the construct's residues onto the deposition.
+    construct = C.CONSTRUCTS[job["construct"]]
+    segment_index = next(
+        (index for index, segment in enumerate(construct.segments)
+         if segment.accession == receptor_accession), None
+    )
+    if segment_index is None:
+        result.notes.append(f"{receptor_accession} is not a segment of {construct.name}")
+        return result
+    segment_start, _segment_end = construct.segments[segment_index].range()
+    predicted_receptor_chain = "ABCDEFGH"[segment_index]
+
+    try:
+        receptor_frame = numbering.resolve_frame(
+            pdb_id, receptor_chain, receptor_accession
+        )
+        substrate_frame = numbering.resolve_frame(
+            pdb_id, substrate_chain, substrate_accession
+        )
+    except numbering.FrameUnresolved as error:
+        result.notes.append(f"frame unresolved: {error}")
+        return result
+
+    # Anchor on the receptor: predicted construct position -> canonical ->
+    # deposited numbering.
+    deposited_atoms: dict[tuple[int, str], object] = {}
+    for chain in deposited[0]:
+        if chain.name != receptor_chain:
+            continue
+        for residue in chain:
+            for atom in residue:
+                if atom.name in BACKBONE:
+                    deposited_atoms[(residue.seqid.num, atom.name)] = atom.pos
+
+    moving, fixed = [], []
+    for chain in predicted[0]:
+        if chain.name != predicted_receptor_chain:
+            continue
+        for residue in chain:
+            canonical = segment_start + residue.seqid.num - 1
+            deposited_number = receptor_frame.to_deposited(canonical)
+            for atom in residue:
+                if atom.name not in BACKBONE:
+                    continue
+                target = deposited_atoms.get((deposited_number, atom.name))
+                if target is not None:
+                    moving.append(atom.pos)
+                    fixed.append(target)
+
+    transform = _superpose(moving, fixed)
+    if transform is None:
+        result.notes.append(
+            f"receptor anchor too small: {len(moving)} matched backbone atoms"
+        )
+        return result
+
+    # Compare the peptide, in the same frame.
+    deposited_peptide: dict[tuple[int, str], object] = {}
+    for chain in deposited[0]:
+        if chain.name != substrate_chain:
+            continue
+        for residue in chain:
+            for atom in residue:
+                if atom.name in BACKBONE:
+                    deposited_peptide[(residue.seqid.num, atom.name)] = atom.pos
+
+    peptide_start = job.get("peptide_start_res")
+    if peptide_start is None:
+        result.notes.append(
+            "peptide canonical start not recorded on the job: cannot align the "
+            "predicted window to the deposited chain"
+        )
+        return result
+
+    peptide_moving, peptide_fixed = [], []
+    for chain in predicted[0]:
+        if chain.name != PEPTIDE_CHAIN:
+            continue
+        for residue in chain:
+            canonical = peptide_start + residue.seqid.num - 1
+            deposited_number = substrate_frame.to_deposited(canonical)
+            for atom in residue:
+                if atom.name not in BACKBONE:
+                    continue
+                target = deposited_peptide.get((deposited_number, atom.name))
+                if target is not None:
+                    peptide_moving.append(atom.pos)
+                    peptide_fixed.append(target)
+
+    if not peptide_moving:
+        result.notes.append(
+            "no overlapping peptide backbone atoms between the prediction and "
+            "the deposition after frame mapping"
+        )
+        return result
+
+    result.rmsd = round(_rmsd(peptide_moving, peptide_fixed, transform) or 0.0, 3)
+    result.atoms_compared = len(peptide_moving)
+    return result
+
+
+def success_rate_curve(values: list[float], breakpoints=(1.0, 2.0, 3.0, 5.0)) -> dict:
+    """Fraction of poses within each RMSD breakpoint (spec 5.1)."""
+    present = [value for value in values if value is not None]
+    if not present:
+        return {f"within_{point}A": None for point in breakpoints} | {"n": 0}
+    curve = {
+        f"within_{point}A": round(
+            sum(1 for value in present if value <= point) / len(present), 4
+        )
+        for point in breakpoints
+    }
+    curve["n"] = len(present)
+    curve["median_rmsd"] = round(sorted(present)[len(present) // 2], 3)
+    return curve
+
+
+# Minimum heavy-atom distance below which the peptide counts as docked onto the
+# receptor at all. This is a presence check, not an interface quality measure:
+# spec 4.1 scores interface quality against the atlas, and this only separates
+# "the peptide is on the protein" from "the peptide is in solvent".
+DOCKED_CONTACT_CUTOFF = 5.0
+
+
+@dataclass
+class DockingCheck:
+    """Is the peptide on the receptor at all, in this prediction?
+
+    Added after the first benchmark pair made it necessary. Its five conditioned
+    ternary seeds gave receptor-peptide ipTM of 0.885, 0.877, 0.806, 0.082 and
+    0.911, and the 0.082 seed turned out to have left the peptide **81 angstrom
+    from the receptor centroid**, floating free in solvent, against 19 angstrom
+    for a docked seed. So that ipTM was not a numerical artefact: it was correct,
+    and the trajectory had simply failed to dock the peptide.
+
+    That distinction matters for every number downstream. An undocked pose should
+    not contribute to a mean interface score, a pose RMSD against it is
+    meaningless, and counting it as a low-confidence interface rather than a
+    failed run misreads what happened. It is also a different failure from a
+    peptide that docks but which the glue does not bridge, which is what seeds 2
+    and 3 of the same pair did.
+    """
+
+    job_id: str
+    docked: bool
+    contact_atoms: int
+    min_distance: float | None
+    centroid_distance: float | None
+    peptide_atoms: int
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+def docking_check(job: dict) -> DockingCheck:
+    """Whether the predicted peptide touches the receptor at all."""
+    import math
+
+    structure = _load(job["structure"])
+    chain_ids = _receptor_chain_ids(job["construct"])
+
+    receptor_positions = []
+    peptide_positions = []
+    for chain in structure[0]:
+        target = (
+            receptor_positions if chain.name in chain_ids
+            else peptide_positions if chain.name == PEPTIDE_CHAIN
+            else None
+        )
+        if target is None:
+            continue
+        for residue in chain:
+            for atom in residue:
+                if atom.element.name != "H":
+                    target.append(atom.pos)
+
+    if not receptor_positions or not peptide_positions:
+        return DockingCheck(job["job_id"], False, 0, None, None, len(peptide_positions))
+
+    def centroid(positions):
+        return (
+            sum(item.x for item in positions) / len(positions),
+            sum(item.y for item in positions) / len(positions),
+            sum(item.z for item in positions) / len(positions),
+        )
+
+    receptor_centre, peptide_centre = centroid(receptor_positions), centroid(peptide_positions)
+    centroid_distance = math.sqrt(
+        sum((receptor_centre[index] - peptide_centre[index]) ** 2 for index in range(3))
+    )
+
+    # Grid the receptor so this stays linear rather than quadratic.
+    cell = DOCKED_CONTACT_CUTOFF
+    grid: dict[tuple[int, int, int], list] = {}
+    for position in receptor_positions:
+        key = (int(position.x // cell), int(position.y // cell), int(position.z // cell))
+        grid.setdefault(key, []).append(position)
+
+    contact_atoms = 0
+    minimum = None
+    for position in peptide_positions:
+        base = (int(position.x // cell), int(position.y // cell), int(position.z // cell))
+        touched = False
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                for dz in (-1, 0, 1):
+                    for other in grid.get((base[0] + dx, base[1] + dy, base[2] + dz), ()):
+                        distance = math.sqrt(
+                            (position.x - other.x) ** 2
+                            + (position.y - other.y) ** 2
+                            + (position.z - other.z) ** 2
+                        )
+                        if minimum is None or distance < minimum:
+                            minimum = distance
+                        if distance <= DOCKED_CONTACT_CUTOFF:
+                            touched = True
+        if touched:
+            contact_atoms += 1
+
+    return DockingCheck(
+        job_id=job["job_id"],
+        docked=contact_atoms > 0,
+        contact_atoms=contact_atoms,
+        min_distance=round(minimum, 2) if minimum is not None else None,
+        centroid_distance=round(centroid_distance, 1),
+        peptide_atoms=len(peptide_positions),
+    )

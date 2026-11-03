@@ -1,0 +1,202 @@
+"""Geometry against the empirical bridge envelope (spec 4.1, the primary signal).
+
+This is the strongest discriminator in the stack because it compares a
+prediction to real interfaces rather than to a model's own confidence. BINMAN's
+bridging filter is reused unchanged: it was built with gemmi and FreeSASA for
+crystal structures and applies verbatim to a predicted ternary, because the
+question it answers is the same one. A molecular glue bridging an E3 and a
+substrate is, geometrically, exactly what BINMAN's atlas catalogues: a ligand
+burying surface against two different polymer chains at once.
+
+The output is not a pass or fail against a threshold. It is a percentile against
+the distribution of 285,996 experimentally observed bridges in the atlas,
+reported as `bridge_percentile`.
+"""
+from __future__ import annotations
+
+import bisect
+import sys
+from dataclasses import asdict, dataclass, field
+from functools import lru_cache
+from pathlib import Path
+
+from nobble import paths
+from nobble.curate import binman_store as store
+from nobble.curate import constructs as C
+
+# BINMAN's pipeline package is imported rather than copied (D-NOB-007).
+if str(paths.BINMAN) not in sys.path:
+    sys.path.insert(0, str(paths.BINMAN))
+
+PEPTIDE_CHAIN = "P"
+LIGAND_CHAIN = "L"
+
+
+@dataclass
+class BridgeScore:
+    """Geometry of one predicted ternary, and where it sits against the atlas."""
+
+    job_id: str
+    structure: str
+    found: bool
+    dsasa_receptor: float | None = None
+    dsasa_peptide: float | None = None
+    dsasa_total: float | None = None
+    contacts_receptor: int | None = None
+    contacts_peptide: int | None = None
+    bridging_balance: float | None = None
+    buried_fraction: float | None = None
+    heavy_atoms: int | None = None
+    bridge_percentile: float | None = None
+    percentile_basis: str | None = None
+    reject_reason: str | None = None
+    notes: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@lru_cache(maxsize=1)
+def reference_distribution() -> dict[str, tuple[float, ...]]:
+    """Sorted dSASA-total and buried-fraction values from the atlas.
+
+    Only `status = 'ok'` rows, and only genuine two-chain bridges, so the
+    percentile compares like with like. Held sorted so a percentile is a
+    bisection rather than a scan.
+    """
+    rows = store.atlas_rows(
+        "select dsasa_total, buried_fraction, bridging_balance from bridge "
+        "where status = 'ok' and dsasa_total is not null"
+    )
+    return {
+        "dsasa_total": tuple(sorted(row["dsasa_total"] for row in rows)),
+        "buried_fraction": tuple(
+            sorted(row["buried_fraction"] for row in rows if row["buried_fraction"] is not None)
+        ),
+        "bridging_balance": tuple(
+            sorted(row["bridging_balance"] for row in rows if row["bridging_balance"] is not None)
+        ),
+    }
+
+
+def percentile_of(value: float, key: str = "dsasa_total") -> float:
+    """Percentile of a value against the atlas distribution, 0 to 100."""
+    reference = reference_distribution()[key]
+    if not reference:
+        return float("nan")
+    position = bisect.bisect_left(reference, value)
+    return round(100.0 * position / len(reference), 2)
+
+
+def _atom_groups(structure_path: Path, construct_name: str):
+    """Build BINMAN AtomGroups for the receptor, the peptide and the ligand.
+
+    Receptor segments are merged into one group: spec 4.1 asks for dSASA against
+    "both chains", meaning the two sides of the bridge, and for a multi-segment
+    receptor such as the VCB trimer the relevant side is the receptor as a whole
+    rather than each of its chains separately.
+    """
+    import gemmi
+
+    from pipeline.geometry import AtomGroup  # noqa: PLC0415
+
+    structure = gemmi.read_structure(str(structure_path))
+    structure.setup_entities()
+    structure.remove_hydrogens()
+
+    receptor_chain_ids = set("ABCDEFGH"[: len(C.CONSTRUCTS[construct_name].segments)])
+    receptor = AtomGroup(label="receptor")
+    peptide = AtomGroup(label="peptide")
+    ligand = AtomGroup(label="ligand")
+
+    for chain in structure[0]:
+        if chain.name in receptor_chain_ids:
+            target = receptor
+        elif chain.name == PEPTIDE_CHAIN:
+            target = peptide
+        elif chain.name == LIGAND_CHAIN:
+            target = ligand
+        else:
+            continue
+        for residue in chain:
+            key = f"{residue.name} {residue.seqid.num}"
+            for atom in residue:
+                if atom.element.name == "H":
+                    continue
+                target.add(
+                    atom.pos.x, atom.pos.y, atom.pos.z,
+                    atom.element.name, key, atom.name,
+                )
+    return receptor, peptide, ligand
+
+
+def score_structure(job: dict) -> BridgeScore:
+    """Run BINMAN's bridging filter on one predicted ternary."""
+    structure_path = job.get("structure")
+    result = BridgeScore(
+        job_id=job["job_id"], structure=str(structure_path), found=False
+    )
+    if not structure_path or not Path(structure_path).exists():
+        result.reject_reason = "structure_missing"
+        return result
+    if job.get("complex_type") != "ternary":
+        result.reject_reason = "binary_complex_has_no_bridge"
+        result.notes.append(
+            "a binary complex has no ligand, so there is no bridge to measure: "
+            "geometry for the binary arm is the peptide-receptor interface, "
+            "reported separately"
+        )
+        return result
+
+    from pipeline.geometry import SasaCalculator, find_bridges  # noqa: PLC0415
+
+    receptor, peptide, ligand = _atom_groups(Path(structure_path), job["construct"])
+    if len(ligand) == 0:
+        result.reject_reason = "no_ligand_chain_in_output"
+        return result
+    if len(peptide) == 0:
+        result.reject_reason = "no_peptide_chain_in_output"
+        return result
+
+    bridges, halves, reject = find_bridges(
+        ligand,
+        job.get("ligand_key") or "LIG",
+        [
+            ("receptor", "receptor", receptor, False),
+            (PEPTIDE_CHAIN, "peptide", peptide, False),
+        ],
+        sasa=SasaCalculator(),
+        # The ligand is a known glue or degrader by construction, so the atlas's
+        # size floor for unknown heteroatoms is waived: spec 2.1 lists these
+        # compounds as curated glue chemistry, not as incidental heteroatoms.
+        is_glue_candidate=True,
+    )
+
+    if not bridges:
+        result.reject_reason = reject or "no_bridge_found"
+        if halves:
+            best = max(halves, key=lambda item: item.dsasa)
+            result.notes.append(
+                f"best single half-interface: {best.chain_label} dSASA "
+                f"{best.dsasa:.1f} A^2 with {best.contacts} contacts, below the "
+                "bridging criteria"
+            )
+        return result
+
+    bridge = max(bridges, key=lambda item: item.dsasa_total)
+    receptor_first = bridge.chain_a == "receptor"
+    result.found = True
+    result.dsasa_receptor = bridge.dsasa_a if receptor_first else bridge.dsasa_b
+    result.dsasa_peptide = bridge.dsasa_b if receptor_first else bridge.dsasa_a
+    result.dsasa_total = bridge.dsasa_total
+    result.contacts_receptor = bridge.contacts_a if receptor_first else bridge.contacts_b
+    result.contacts_peptide = bridge.contacts_b if receptor_first else bridge.contacts_a
+    result.bridging_balance = bridge.bridging_balance
+    result.buried_fraction = bridge.buried_fraction
+    result.heavy_atoms = bridge.heavy_atoms
+    result.bridge_percentile = percentile_of(bridge.dsasa_total, "dsasa_total")
+    result.percentile_basis = (
+        f"dsasa_total against {len(reference_distribution()['dsasa_total'])} "
+        "experimentally observed bridges in BINMAN's atlas"
+    )
+    return result

@@ -1,0 +1,323 @@
+"""Confidence aggregation: Delta-ipTM, convergence and ipTM-min (spec 4.3 to 4.5).
+
+The headline number is
+
+    delta_iptm = iptm_min_ternary - iptm_min_binary
+
+taking the **minimum** across the five seeds in each condition rather than the
+mean, per spec 4.3. The minimum is the right statistic for a claim about whether
+an interface forms at all: a mean lets one confident seed carry four
+unconvinced ones.
+
+Which ipTM, though, matters more than the spec says. Boltz reports a global
+`iptm` over all chain pairs, and a `pair_chains_iptm` matrix per pair. For a
+ternary complex the global figure mixes the receptor-peptide interface with the
+receptor-ligand and peptide-ligand ones, so a glue that binds its pocket
+beautifully while the peptide drifts can raise the global ipTM without the
+degron interface existing at all. NOBBLE therefore reads the
+**receptor-to-peptide pair** specifically, and reports the global value beside
+it as a separate column. See D-NOB-022.
+
+Chain order is fixed by the YAML generator: receptor segments first in construct
+order, then the peptide, then the ligand. So the peptide's chain index is the
+segment count, which is read from the construct rather than assumed.
+"""
+from __future__ import annotations
+
+import json
+from collections import defaultdict
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+
+from nobble.curate import constructs as C
+
+MISSING = None
+
+
+@dataclass
+class SeedRecord:
+    """One inference: the confidence numbers for a single seed."""
+
+    job_id: str
+    seed: int
+    complex_type: str
+    conditioning: str
+    iptm_global: float | None
+    iptm_receptor_peptide: float | None
+    ptm: float | None
+    complex_plddt: float | None
+    ligand_iptm: float | None
+    confidence_score: float | None
+    affinity_pred_value: float | None
+    structure: str | None
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass
+class PairMetrics:
+    """Aggregated confidence for one (receptor, peptide, ligand) triple."""
+
+    pair_id: str
+    construct: str
+    e3_gene: str
+    peptide_id: str
+    peptide_gene: str | None
+    peptide_label: str | None
+    ligand_key: str | None
+    modality: str
+    tier: str
+    iptm_min_binary: float | None = None
+    iptm_min_ternary: float | None = None
+    iptm_min_ternary_conditioned: float | None = None
+    iptm_min_ternary_unconstrained: float | None = None
+    delta_iptm: float | None = None
+    delta_iptm_global: float | None = None
+    # Robust companions to the mandated minimum (D-NOB-023). Reported beside
+    # delta_iptm, never instead of it.
+    iptm_median_binary: float | None = None
+    iptm_median_ternary: float | None = None
+    delta_iptm_median: float | None = None
+    collapsed_seeds_binary: list[int] = field(default_factory=list)
+    collapsed_seeds_ternary: list[int] = field(default_factory=list)
+    seed_collapse_affects_delta: bool = False
+    iptm_min_binary_global: float | None = None
+    iptm_min_ternary_global: float | None = None
+    affinity_pred_value: float | None = None
+    conditioning_disagreement: float | None = None
+    forced: bool | None = None
+    seeds_binary: int = 0
+    seeds_ternary: int = 0
+    seed_records: list[dict] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+def peptide_chain_index(construct_name: str) -> int:
+    """Index of the peptide chain in the YAML's chain order."""
+    return len(C.CONSTRUCTS[construct_name].segments)
+
+
+def _pair_iptm(confidence: dict, first: int, second: int) -> float | None:
+    """One cell of Boltz's pair_chains_iptm matrix, symmetrised.
+
+    The matrix is not always symmetric (the smoke test showed 0.876 one way and
+    0.840 the other), so the minimum of the two directions is taken. Choosing the
+    minimum rather than the mean keeps the whole statistic conservative, which is
+    the same reasoning spec 4.3 applies to the seed aggregation.
+    """
+    matrix = confidence.get("pair_chains_iptm")
+    if not isinstance(matrix, dict):
+        return None
+    values = []
+    for a, b in ((first, second), (second, first)):
+        row = matrix.get(str(a)) or matrix.get(a)
+        if isinstance(row, dict):
+            value = row.get(str(b))
+            if value is None:
+                value = row.get(b)
+            if isinstance(value, (int, float)):
+                values.append(float(value))
+    return min(values) if values else None
+
+
+def seed_record(job: dict) -> SeedRecord:
+    confidence = job.get("confidence") or {}
+    affinity = job.get("affinity") or {}
+    index = peptide_chain_index(job["construct"])
+    return SeedRecord(
+        job_id=job["job_id"],
+        seed=int(job["seed"]),
+        complex_type=job["complex_type"],
+        conditioning=job["conditioning"],
+        iptm_global=confidence.get("iptm"),
+        iptm_receptor_peptide=_pair_iptm(confidence, 0, index),
+        ptm=confidence.get("ptm"),
+        complex_plddt=confidence.get("complex_plddt"),
+        ligand_iptm=confidence.get("ligand_iptm"),
+        confidence_score=confidence.get("confidence_score"),
+        # Spec 4.7 and D-NOB-005: recorded for the small-molecule chain only,
+        # and never a ranking key.
+        affinity_pred_value=affinity.get("affinity_pred_value") if affinity else None,
+        structure=job.get("structure"),
+    )
+
+
+def _minimum(values: list[float | None]) -> float | None:
+    present = [value for value in values if isinstance(value, (int, float))]
+    return min(present) if present else None
+
+
+def _median(values: list[float | None]) -> float | None:
+    present = sorted(value for value in values if isinstance(value, (int, float)))
+    if not present:
+        return None
+    middle = len(present) // 2
+    if len(present) % 2:
+        return present[middle]
+    return (present[middle - 1] + present[middle]) / 2
+
+
+# A seed whose interface confidence sits this far below the median of its own
+# condition is treated as a collapsed run rather than a low measurement.
+COLLAPSE_MARGIN = 0.30
+
+
+def _collapsed_seeds(values: list[tuple[int, float | None]]) -> list[int]:
+    """Seeds that fell far below the median of their own condition.
+
+    This exists because of what the benchmark panel showed on its first pair.
+    GSPT1/CRBN/CC-885, the single highest-value positive control in the panel,
+    returned receptor-peptide ipTM of 0.885, 0.877, 0.806, **0.082** and 0.911
+    across its five conditioned ternary seeds. Four seeds agree closely and one
+    diffusion run collapsed.
+
+    Spec 4.3 mandates the minimum across seeds, so that one run sets the
+    headline number and drags Delta-ipTM to -0.76 for a pair that four runs out
+    of five call a confident interface. The minimum is the right statistic for
+    the question "does this interface reliably form", but it is a measure of
+    worst-case seed behaviour, not of interface confidence, and the two part
+    company whenever a diffusion run fails outright.
+
+    The mandated minimum is still what `delta_iptm` reports. These diagnostics
+    sit beside it so the distinction is visible rather than silently folded into
+    the headline. See D-NOB-023.
+    """
+    present = [(seed, value) for seed, value in values if isinstance(value, (int, float))]
+    if len(present) < 3:
+        return []
+    median = _median([value for _seed, value in present])
+    if median is None:
+        return []
+    return sorted(seed for seed, value in present if median - value > COLLAPSE_MARGIN)
+
+
+def aggregate(results_path: Path) -> list[PairMetrics]:
+    """Aggregate every completed job into per-pair metrics."""
+    if not results_path.exists():
+        return []
+
+    jobs = [
+        json.loads(line) for line in results_path.read_text().splitlines() if line.strip()
+    ]
+    grouped: dict[str, list[dict]] = defaultdict(list)
+    for job in jobs:
+        grouped[job["pair_id"]].append(job)
+
+    output: list[PairMetrics] = []
+    for pair_id, pair_jobs in sorted(grouped.items()):
+        first = pair_jobs[0]
+        metrics = PairMetrics(
+            pair_id=pair_id,
+            construct=first["construct"],
+            e3_gene=first["e3_gene"],
+            peptide_id=first["peptide_id"],
+            peptide_gene=first.get("peptide_gene"),
+            peptide_label=first.get("peptide_label"),
+            ligand_key=next(
+                (job.get("ligand_key") for job in pair_jobs if job.get("ligand_key")), None
+            ),
+            modality=first.get("modality", "none"),
+            tier=first.get("tier", "unknown"),
+        )
+
+        records = [seed_record(job) for job in pair_jobs]
+        metrics.seed_records = [record.to_dict() for record in records]
+
+        binary = [item for item in records if item.complex_type == "binary"]
+        ternary = [item for item in records if item.complex_type == "ternary"]
+        conditioned = [item for item in ternary if item.conditioning == "conditioned"]
+        unconstrained = [item for item in ternary if item.conditioning == "unconstrained"]
+
+        metrics.seeds_binary = len(binary)
+        metrics.seeds_ternary = len(ternary)
+
+        metrics.iptm_min_binary = _minimum([item.iptm_receptor_peptide for item in binary])
+        metrics.iptm_min_ternary = _minimum([item.iptm_receptor_peptide for item in ternary])
+        metrics.iptm_min_ternary_conditioned = _minimum(
+            [item.iptm_receptor_peptide for item in conditioned]
+        )
+        metrics.iptm_min_ternary_unconstrained = _minimum(
+            [item.iptm_receptor_peptide for item in unconstrained]
+        )
+        metrics.iptm_min_binary_global = _minimum([item.iptm_global for item in binary])
+        metrics.iptm_min_ternary_global = _minimum([item.iptm_global for item in ternary])
+
+        metrics.iptm_median_binary = _median(
+            [item.iptm_receptor_peptide for item in binary]
+        )
+        metrics.iptm_median_ternary = _median(
+            [item.iptm_receptor_peptide for item in ternary]
+        )
+        metrics.collapsed_seeds_binary = _collapsed_seeds(
+            [(item.seed, item.iptm_receptor_peptide) for item in binary]
+        )
+        metrics.collapsed_seeds_ternary = _collapsed_seeds(
+            [(item.seed, item.iptm_receptor_peptide) for item in ternary]
+        )
+        if (metrics.iptm_median_binary is not None
+                and metrics.iptm_median_ternary is not None):
+            metrics.delta_iptm_median = round(
+                metrics.iptm_median_ternary - metrics.iptm_median_binary, 4
+            )
+
+        if metrics.iptm_min_binary is not None and metrics.iptm_min_ternary is not None:
+            metrics.delta_iptm = round(
+                metrics.iptm_min_ternary - metrics.iptm_min_binary, 4
+            )
+        else:
+            metrics.notes.append(
+                "delta_iptm not computed: "
+                f"{len(binary)} binary and {len(ternary)} ternary seeds present"
+            )
+
+        # Did a collapsed seed set the minimum that the headline number uses?
+        for records, collapsed, minimum in (
+            (binary, metrics.collapsed_seeds_binary, metrics.iptm_min_binary),
+            (ternary, metrics.collapsed_seeds_ternary, metrics.iptm_min_ternary),
+        ):
+            if not collapsed or minimum is None:
+                continue
+            setter = [
+                item.seed for item in records
+                if isinstance(item.iptm_receptor_peptide, (int, float))
+                and abs(item.iptm_receptor_peptide - minimum) < 1e-9
+            ]
+            if any(seed in collapsed for seed in setter):
+                metrics.seed_collapse_affects_delta = True
+                metrics.notes.append(
+                    f"seed(s) {collapsed} collapsed well below the median of their "
+                    "condition and set the mandated minimum, so delta_iptm here "
+                    "reports worst-case seed behaviour rather than interface "
+                    "confidence. delta_iptm_median is reported alongside"
+                )
+        if (metrics.iptm_min_binary_global is not None
+                and metrics.iptm_min_ternary_global is not None):
+            metrics.delta_iptm_global = round(
+                metrics.iptm_min_ternary_global - metrics.iptm_min_binary_global, 4
+            )
+
+        # Spec 4.7: agreement between the conditioned and unconstrained arms is
+        # the signal. A pose that only appears under conditioning is forced.
+        if (metrics.iptm_min_ternary_conditioned is not None
+                and metrics.iptm_min_ternary_unconstrained is not None):
+            metrics.conditioning_disagreement = round(
+                metrics.iptm_min_ternary_conditioned
+                - metrics.iptm_min_ternary_unconstrained, 4
+            )
+        else:
+            metrics.notes.append("conditioning disagreement not computable: one arm absent")
+
+        affinities = [
+            item.affinity_pred_value for item in ternary
+            if isinstance(item.affinity_pred_value, (int, float))
+        ]
+        metrics.affinity_pred_value = (
+            round(sum(affinities) / len(affinities), 4) if affinities else None
+        )
+
+        output.append(metrics)
+    return output
