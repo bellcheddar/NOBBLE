@@ -22,13 +22,26 @@ _CACHE: dict = {}
 
 
 def configure(campaign: str | None = None) -> Path | None:
-    """Pin the app to a campaign directory, or the most recent one."""
+    """Pin the app to a campaign directory, or the most recent one.
+
+    NOBBLE_CAMPAIGN points the deployed app at the published atlas, which has
+    the same layout as a campaign directory but holds only the scored records
+    and the predicted structures: the droplet serves a precomputed slice and
+    does no compute at request time.
+    """
     global _CAMPAIGN
+    import os
+
     if campaign:
         _CAMPAIGN = Path(campaign)
+    elif os.environ.get("NOBBLE_CAMPAIGN"):
+        _CAMPAIGN = Path(os.environ["NOBBLE_CAMPAIGN"])
     else:
-        from nobble.execute.campaign import latest
-        _CAMPAIGN = latest("benchmark")
+        try:
+            from nobble.execute.campaign import latest
+            _CAMPAIGN = latest("benchmark")
+        except Exception:                        # noqa: BLE001
+            _CAMPAIGN = None
     return _CAMPAIGN
 
 
@@ -87,6 +100,21 @@ def campaign_meta() -> dict:
         return {}
     path = _CAMPAIGN / "campaign.json"
     return _cached("campaign", path, lambda p: json.loads(p.read_text()))
+
+
+def precomputed(name: str) -> dict:
+    """A document precomputed into the atlas by deploy/build_atlas.py.
+
+    The app never imports the curation pipeline at request time: the droplet
+    has no gemmi, no pandas and no BINMAN checkout, and two routes that did
+    import it returned 500 there while working locally.
+    """
+    if _CAMPAIGN is None:
+        return {}
+    path = _CAMPAIGN / name
+    if not path.exists():
+        return {}
+    return _cached(f"pre:{name}", path, lambda p: json.loads(p.read_text()))
 
 
 def weight_fit() -> dict:

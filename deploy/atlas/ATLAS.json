@@ -1,0 +1,15 @@
+{
+  "campaign": "benchmark_20261103T192126Z",
+  "files": {
+    "campaign.json": 7502,
+    "validation.json": 10906,
+    "weights.json": 475,
+    "scores.jsonl": 5,
+    "results.jsonl": 72,
+    "benchmark.json": 7,
+    "about.json": 16
+  },
+  "redactions": 0,
+  "structures": 72,
+  "bytes": 10765392
+}

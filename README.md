@@ -2,13 +2,16 @@
 
 > **Does a molecular glue actually change the interface it is supposed to create? NOBBLE measures it, against 285,996 real ones.**
 
-![python](https://img.shields.io/badge/python-3.11-3776AB?logo=python&logoColor=white) ![boltz](https://img.shields.io/badge/Boltz--2-ternary%20co--folding-467FF7) ![backend](https://img.shields.io/badge/backend-Apple%20MPS-000000?logo=apple&logoColor=white) ![status](https://img.shields.io/badge/status-in%20development-fcb900) ![licence](https://img.shields.io/badge/licence-MIT-00897B) ![author](https://img.shields.io/badge/author-Marc%20C.%20Deller%2C%20D.Phil.-1C244B)
+![python](https://img.shields.io/badge/python-3.11-3776AB?logo=python&logoColor=white) ![boltz](https://img.shields.io/badge/Boltz--2-ternary%20co--folding-467FF7) ![backend](https://img.shields.io/badge/backend-Apple%20MPS-000000?logo=apple&logoColor=white) ![status](https://img.shields.io/badge/status-in%20development-fcb900) ![live](https://img.shields.io/badge/live-nobble.mdeller.com-467FF7) ![licence](https://img.shields.io/badge/licence-MIT-00897B) ![author](https://img.shields.io/badge/author-Marc%20C.%20Deller%2C%20D.Phil.-1C244B)
 
 <table>
 <tr>
 <td>🌐 <b>Website</b></td><td><a href="https://marcdeller.com" target="_blank" rel="noopener noreferrer">marcdeller.com</a></td>
 <td>✉️ <b>Contact</b></td><td><a href="mailto:marc@marcdeller.com">marc@marcdeller.com</a></td>
 <td>🐙 <b>GitHub</b></td><td><a href="https://github.com/bellcheddar" target="_blank" rel="noopener noreferrer">@bellcheddar</a></td>
+</tr>
+<tr>
+<td>🔬 <b>Live</b></td><td colspan="5"><a href="https://nobble.mdeller.com" target="_blank" rel="noopener noreferrer">nobble.mdeller.com</a></td>
 </tr>
 </table>
 
@@ -171,6 +174,26 @@ unusable.
 | Embeddings | ESM-2 (35M) for diversity reduction, on MPS |
 | Stores | BINMAN's SQLite atlas read-only, DuckDB and Parquet for analysis |
 | Application | Flask, Jinja, vanilla JS, Mol\*, Plotly, D3 |
+
+## 🌐 Deployment
+
+The droplet serves a **precomputed, read-only slice**: the scored records and
+the predicted structures, with no folding and no scoring at request time. That
+is a hard constraint rather than an optimisation, and the deployment proved
+why: two routes imported the curation stack to render, passed every local
+check, and returned 500 in production because the droplet has no gemmi. The
+slice is built by `deploy/build_atlas.py`, which also withholds the PROTAC-DB
+chemistry, because publishing to a public site is redistribution exactly as a
+public repository is.
+
+| Script | Does |
+|---|---|
+| `deploy/survey.sh` | Read-only survey of the host, so conventions are read rather than assumed |
+| `deploy/provision.sh` | One-time, idempotent: service user, systemd unit, nginx vhost |
+| `deploy/certbot.sh` | TLS certificate, kept separate because it is rate-limited |
+| `deploy/build_atlas.py` | Builds and redacts the published slice |
+| `deploy/deploy.sh` | Syncs, fixes ownership before pip, restarts, verifies every page |
+| `deploy/repair_perms.sh` | The one to reach for when every page 500s but `/healthz` is fine |
 
 ## 📄 Licence and reuse
 

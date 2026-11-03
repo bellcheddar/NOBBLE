@@ -80,11 +80,19 @@ def delta():
 
 @bp.route("/benchmark")
 def benchmark():
-    from nobble.curate import peptides as peptide_module
+    # Read the precomputed members rather than importing the curation stack:
+    # the droplet has no gemmi and this route used to 500 there. Locally the
+    # atlas may be absent, so fall back to computing it.
+    precomputed = data.precomputed("benchmark.json")
+    if precomputed.get("members"):
+        member_list = precomputed["members"]
+    else:
+        from nobble.curate import peptides as peptide_module
+        member_list = [dict(item) for item in peptide_module.BENCHMARK_CHAINS]
 
     members = {
         f"bench{item['index']:02d}_{item['gene']}_{item['e3']}": item
-        for item in peptide_module.BENCHMARK_CHAINS
+        for item in member_list
     }
     scored = {row["pair_id"]: row for row in data.scores()}
     cards = []
@@ -103,16 +111,29 @@ def benchmark():
 
 @bp.route("/about")
 def about():
-    from nobble.curate import binman_store, constructs
-    from nobble.score import lysine
+    # As for /benchmark: precomputed first, live computation only as a local
+    # fallback. Importing nobble.curate here is what made this route 500 on the
+    # droplet while passing every local check.
+    precomputed = data.precomputed("about.json")
+    if not precomputed:
+        from nobble.curate import binman_store, constructs
+        from nobble.score import lysine
+
+        precomputed = {
+            "sources": binman_store.available(),
+            "unavailable": list(binman_store.UNAVAILABLE),
+            "bridge_reference": binman_store.bridge_reference_count(),
+            "construct_budget": constructs.budget_report(),
+            "reach_auc": lysine.BINMAN_REACH_AUC,
+        }
 
     return render_template(
         "about.html", page_title="About", active="about",
-        sources=binman_store.available(),
-        unavailable=binman_store.UNAVAILABLE,
-        bridge_reference=binman_store.bridge_reference_count(),
-        construct_budget=constructs.budget_report(),
-        reach_auc=lysine.BINMAN_REACH_AUC,
+        sources=precomputed.get("sources", {}),
+        unavailable=precomputed.get("unavailable", []),
+        bridge_reference=precomputed.get("bridge_reference", 0),
+        construct_budget=precomputed.get("construct_budget", []),
+        reach_auc=precomputed.get("reach_auc", {}),
         weight_fit=data.weight_fit(),
         throughput=data.throughput(),
         components=data.COMPONENTS,
@@ -160,9 +181,16 @@ def structure(job_id: str):
         path = row.get("structure")
         if not path:
             abort(404, description="no structure recorded for this job")
-        resolved = Path(path).resolve()
         campaign = data.campaign_dir()
-        if campaign is None or not str(resolved).startswith(str(campaign.resolve())):
+        if campaign is None:
+            abort(404, description="no campaign configured")
+        # A published atlas records paths relative to itself; a local campaign
+        # records absolute ones. Both are resolved against the campaign
+        # directory and then checked to be inside it, so neither form can
+        # escape.
+        candidate = Path(path)
+        resolved = (candidate if candidate.is_absolute() else campaign / candidate).resolve()
+        if not str(resolved).startswith(str(campaign.resolve())):
             abort(404, description="structure is outside the campaign directory")
         if not resolved.exists():
             abort(404, description="structure file is missing")
@@ -191,13 +219,22 @@ def crystal(pdb_id: str):
 @bp.route("/api/pair/<pair_id>/structures")
 def api_pair_structures(pair_id: str):
     """Every completed structure for a pair, for the seed-overlay toggle."""
-    from nobble.validate.layers import RECOVERY_TARGETS
+    # Read the crystal mapping from the atlas rather than importing
+    # nobble.validate, which pulls in gemmi. This endpoint feeds the Pose
+    # viewer, so importing the scoring stack here would have left the viewer
+    # unable to load any structure on the droplet.
+    crystal_map = data.precomputed("benchmark.json").get("crystal_by_pair") or {}
+    if not crystal_map:
+        try:
+            from nobble.validate.layers import RECOVERY_TARGETS
+            crystal_map = {k: v["pdb_id"] for k, v in RECOVERY_TARGETS.items()}
+        except Exception:                           # noqa: BLE001
+            crystal_map = {}
 
     rows = [row for row in data.results() if row.get("pair_id") == pair_id]
-    target = RECOVERY_TARGETS.get(pair_id, {})
     return jsonify({
         "pair_id": pair_id,
-        "crystal": target.get("pdb_id"),
+        "crystal": crystal_map.get(pair_id),
         "structures": [
             {
                 "job_id": row["job_id"],

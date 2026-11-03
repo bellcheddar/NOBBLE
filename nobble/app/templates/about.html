@@ -162,7 +162,7 @@
     </table>
   </div>
   <p class="panel__hint" style="margin-top:0.6rem">
-    Reference bridge distribution: <strong class="mono">{{ '{:,}'.format(bridge_reference) }}</strong>
+    Reference bridge distribution: <strong class="mono">{{ '{:,}'.format(bridge_reference or 0) }}</strong>
     experimentally observed bridges, which is what every bridge percentile on
     these pages is measured against.
   </p>

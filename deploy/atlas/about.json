@@ -1,0 +1,104 @@
+{
+  "sources": {
+    "sievers_zf_screen": true,
+    "mgtbind_ternary": true,
+    "mgtbind_compounds": true,
+    "mgdb_glues": true,
+    "molgluedb_glues": true,
+    "ubibrowser_literature_e3": true,
+    "ubibrowser_predicted_e3": true,
+    "protacdb_protacs": true,
+    "digly_sites": true,
+    "biolip2_annotations": true,
+    "biolip2_artefacts": true,
+    "assayed_ubiquitylation": true,
+    "mgtbind_complexes": true,
+    "mgtbind_compounds_raw": true,
+    "degronopedia": false,
+    "protcid_interfaces": false
+  },
+  "unavailable": [
+    "degronopedia",
+    "protcid_interfaces"
+  ],
+  "bridge_reference": 285996,
+  "construct_budget": [
+    {
+      "name": "CRBN_CULT",
+      "e3_gene": "CRBN",
+      "residues": 109,
+      "tokens": 154,
+      "cap": 400,
+      "within_cap": true,
+      "declared_exception": false,
+      "acceptable": true,
+      "error": null
+    },
+    {
+      "name": "VHL_VCB",
+      "e3_gene": "VHL",
+      "residues": 370,
+      "tokens": 415,
+      "cap": 400,
+      "within_cap": false,
+      "declared_exception": true,
+      "acceptable": true,
+      "error": null
+    },
+    {
+      "name": "DCAF15_DDB1_DDA1",
+      "e3_gene": "DCAF15",
+      "residues": 1184,
+      "tokens": 1229,
+      "cap": 400,
+      "within_cap": false,
+      "declared_exception": true,
+      "acceptable": true,
+      "error": null
+    },
+    {
+      "name": "DDB1_BPC",
+      "e3_gene": "DDB1",
+      "residues": 310,
+      "tokens": 355,
+      "cap": 400,
+      "within_cap": true,
+      "declared_exception": false,
+      "acceptable": true,
+      "error": null
+    },
+    {
+      "name": "KEAP1_KELCH",
+      "e3_gene": "KEAP1",
+      "residues": 316,
+      "tokens": 361,
+      "cap": 400,
+      "within_cap": true,
+      "declared_exception": false,
+      "acceptable": true,
+      "error": null
+    },
+    {
+      "name": "FEM1B_ANK",
+      "e3_gene": "FEM1B",
+      "residues": 297,
+      "tokens": 342,
+      "cap": 400,
+      "within_cap": true,
+      "declared_exception": false,
+      "acceptable": true,
+      "error": null
+    }
+  ],
+  "reach_auc": {
+    "cb_cb_distance": 0.4223,
+    "nz_centroid_distance": 0.477,
+    "nz_rel_sasa": 0.4595,
+    "nz_rel_sasa_within_protein": 0.502,
+    "n_lysines": 369,
+    "n_ternary_entries": 43,
+    "ubiquitylated_median_cb_cb": 18.73,
+    "unmodified_median_cb_cb": 14.89,
+    "source": "BINMAN data/interim/degradability_reach.json and D-068"
+  }
+}

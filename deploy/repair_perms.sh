@@ -19,8 +19,8 @@ trap '"${SSH[@]}" -O exit "$DROPLET_SSH" >/dev/null 2>&1 || true' EXIT
 "${SSH[@]}" "$DROPLET_SSH" bash -s <<REMOTE
 set -euo pipefail
 cd "$REMOTE_DIR"
-chown -R "$SERVICE_USER":"$SERVICE_USER" \
-  \$(find . -maxdepth 1 -mindepth 1 ! -name '.venv' ! -name 'data' ! -name '.env' -print)
+find . -maxdepth 1 -mindepth 1 ! -name '.venv' ! -name '.env' -print0 \
+  | xargs -0 -r chown -R "$SERVICE_USER":"$SERVICE_USER"
 find . -path ./.venv -prune -o -type d -print0 | xargs -0 chmod 755
 find . -path ./.venv -prune -o -type f -print0 | xargs -0 chmod 644
 chmod 755 deploy/*.sh 2>/dev/null || true

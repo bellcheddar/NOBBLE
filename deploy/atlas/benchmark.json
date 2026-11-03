@@ -1,0 +1,217 @@
+{
+  "members": [
+    {
+      "index": 1,
+      "gene": "GSPT1",
+      "e3": "CRBN",
+      "pdb_id": "5HXB",
+      "accession": "P15170"
+    },
+    {
+      "index": 2,
+      "gene": "BRD4",
+      "e3": "VHL",
+      "pdb_id": "5T35",
+      "accession": "O60885"
+    },
+    {
+      "index": 3,
+      "gene": "BRD4",
+      "e3": "CRBN",
+      "pdb_id": "6BNB",
+      "accession": "O60885"
+    },
+    {
+      "index": 4,
+      "gene": "IKZF1",
+      "e3": "CRBN",
+      "pdb_id": "6H0F",
+      "accession": "Q13422"
+    },
+    {
+      "index": 5,
+      "gene": "CSNK1A1",
+      "e3": "CRBN",
+      "pdb_id": "5FQD",
+      "accession": "P48729"
+    },
+    {
+      "index": 6,
+      "gene": "RBM39",
+      "e3": "DCAF15",
+      "pdb_id": "6Q0W",
+      "accession": "Q14498"
+    },
+    {
+      "index": 7,
+      "gene": "CDK12",
+      "e3": "DDB1",
+      "pdb_id": "6TD3",
+      "accession": "Q9NYV4"
+    }
+  ],
+  "substrate_plan": [
+    {
+      "member": 1,
+      "gene": "GSPT1",
+      "e3": "CRBN",
+      "receptor_construct": "CRBN_CULT",
+      "receptor_residues": 109,
+      "substrate": {
+        "mode": "folded_domain",
+        "accession": "P15170",
+        "interpro": "IPR054696",
+        "start": 393,
+        "end": 491,
+        "length": 99,
+        "reason": "the 15-mer covers only 15% of IPR054696 and cannot fold alone"
+      },
+      "ligand_heavy_atoms": 31,
+      "tokens": 239,
+      "cap": 400,
+      "within_cap": true,
+      "declared_exception": false,
+      "acceptable": true
+    },
+    {
+      "member": 2,
+      "gene": "BRD4",
+      "e3": "VHL",
+      "receptor_construct": "VHL_VCB",
+      "receptor_residues": 370,
+      "substrate": {
+        "mode": "folded_domain",
+        "accession": "O60885",
+        "interpro": "IPR001487",
+        "start": 348,
+        "end": 459,
+        "length": 112,
+        "reason": "the 15-mer covers only 17% of IPR001487 and cannot fold alone"
+      },
+      "ligand_heavy_atoms": 69,
+      "tokens": 551,
+      "cap": 400,
+      "within_cap": false,
+      "declared_exception": true,
+      "acceptable": true
+    },
+    {
+      "member": 3,
+      "gene": "BRD4",
+      "e3": "CRBN",
+      "receptor_construct": "CRBN_CULT",
+      "receptor_residues": 109,
+      "substrate": {
+        "mode": "folded_domain",
+        "accession": "O60885",
+        "interpro": "IPR001487",
+        "start": 56,
+        "end": 166,
+        "length": 111,
+        "reason": "the 15-mer covers only 18% of IPR001487 and cannot fold alone"
+      },
+      "ligand_heavy_atoms": 49,
+      "tokens": 269,
+      "cap": 400,
+      "within_cap": true,
+      "declared_exception": false,
+      "acceptable": true
+    },
+    {
+      "member": 4,
+      "gene": "IKZF1",
+      "e3": "CRBN",
+      "receptor_construct": "CRBN_CULT",
+      "receptor_residues": 109,
+      "substrate": {
+        "mode": "peptide_15mer",
+        "accession": "Q13422",
+        "start": 144,
+        "end": 158,
+        "length": 15,
+        "reason": "the epitope is linear, so a 15-mer is the right construct"
+      },
+      "ligand_heavy_atoms": 20,
+      "tokens": 144,
+      "cap": 400,
+      "within_cap": true,
+      "declared_exception": false,
+      "acceptable": true
+    },
+    {
+      "member": 5,
+      "gene": "CSNK1A1",
+      "e3": "CRBN",
+      "receptor_construct": "CRBN_CULT",
+      "receptor_residues": 109,
+      "substrate": {
+        "mode": "folded_domain",
+        "accession": "P48729",
+        "interpro": "IPR000719",
+        "start": 17,
+        "end": 285,
+        "length": 269,
+        "reason": "the 15-mer covers only 7% of IPR000719 and cannot fold alone"
+      },
+      "ligand_heavy_atoms": 19,
+      "tokens": 397,
+      "cap": 400,
+      "within_cap": true,
+      "declared_exception": false,
+      "acceptable": true
+    },
+    {
+      "member": 6,
+      "gene": "RBM39",
+      "e3": "DCAF15",
+      "receptor_construct": "DCAF15_DDB1_DDA1",
+      "receptor_residues": 1184,
+      "substrate": {
+        "mode": "folded_domain",
+        "accession": "Q14498",
+        "interpro": "IPR000504",
+        "start": 250,
+        "end": 328,
+        "length": 79,
+        "reason": "the 15-mer covers only 21% of IPR000504 and cannot fold alone"
+      },
+      "ligand_heavy_atoms": 24,
+      "tokens": 1287,
+      "cap": 400,
+      "within_cap": false,
+      "declared_exception": true,
+      "acceptable": true
+    },
+    {
+      "member": 7,
+      "gene": "CDK12",
+      "e3": "DDB1",
+      "receptor_construct": "DDB1_BPC",
+      "receptor_residues": 310,
+      "substrate": {
+        "mode": "folded_domain",
+        "accession": "Q9NYV4",
+        "interpro": "IPR000719",
+        "start": 727,
+        "end": 1020,
+        "length": 294,
+        "reason": "the 15-mer covers only 5% of IPR000719 and cannot fold alone"
+      },
+      "ligand_heavy_atoms": 32,
+      "tokens": 636,
+      "cap": 400,
+      "within_cap": false,
+      "declared_exception": false,
+      "acceptable": false
+    }
+  ],
+  "crystal_by_pair": {
+    "bench01_GSPT1_CRBN": "5HXB",
+    "bench02_BRD4_VHL": "5T35",
+    "bench03_BRD4_CRBN": "6BNB",
+    "bench04_IKZF1_CRBN": "6H0F",
+    "bench05_CSNK1A1_CRBN": "5FQD",
+    "bench06_RBM39_DCAF15": "6Q0W",
+    "bench07_CDK12_DDB1": "6TD3"
+  }
+}
