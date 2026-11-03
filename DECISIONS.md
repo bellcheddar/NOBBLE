@@ -121,3 +121,110 @@ vhost for the subdomain and a certbot certificate, both root actions on the
 droplet.
 
 **Reversal.** Not applicable: this is a finding, not a choice.
+
+---
+
+## D-NOB-012: deposited and canonical residue numbering are different frames, and every cross-frame comparison goes through an explicit mapping
+
+**Date:** 2026-11-03
+
+**Decision.** `nobble/curate/numbering.py` anchors each deposited chain in its
+canonical UniProt sequence and returns the offset. Nothing in NOBBLE compares a
+deposited residue number with a BINMAN residue number directly.
+
+**Why this is not housekeeping.** The Phase 1 degron gate failed on GSPT1 first
+time. The cause was not BINMAN's Degron Scan. 5HXB numbers its GSPT1 chain
+440 to 634, in the frame of the 637-residue isoform; UniProt canonical P15170 is
+499 residues, and so is the AlphaFold model the scan ran on. The offset is 138.
+The literature degron glycine at 575 is canonical residue **437**, which is
+exactly the tip residue of the scan's second-ranked GSPT1 hairpin
+(419-442, tip 437G, pLDDT 86.5, geometry score 0.694).
+
+So the scan was right and the comparison was wrong. Measured naively, a correct
+scan looks like a miss on the single highest-value benchmark member in the panel,
+and the spec's instruction would have sent the build off to fix a scan that has
+no bug. Hardcoding either number would have made the pipeline silently wrong in
+the other frame.
+
+GSPT1 is the only panel member with a non-zero offset: the other six already
+agree with canonical numbering, which is exactly what makes this trap dangerous.
+
+**Reversal.** Not a preference: the mapping is required for correctness.
+
+---
+
+## D-NOB-013: the DDB1 receptor for benchmark member 7 is BPC alone, chosen by measurement
+
+**Date:** 2026-11-03
+
+**Decision.** Benchmark member 7 (cyclin K / DDB1 / CR-8) uses DDB1's C-terminal
+beta-propeller (BPC, IPR004871, 790-1099) as the whole receptor.
+
+**Reason.** CR-8 contacts DDB1 only at residues 907, 908, 909, 928 and 947, all
+inside BPC, with no BPA or BPB atom within 5 A (measured on 6TD3). Dropping both
+other propellers costs nothing structurally and brings the job to 355 tokens,
+inside the 400-token tier-1 cap, so this member needs no declared exception.
+Carrying BPA as well would have put it at 689 tokens and forced a third
+exception for no structural gain.
+
+**Reversal.** `nobble/curate/constructs.py`, the `DDB1_BPC` construct.
+
+---
+
+## D-NOB-014: FEM1B's substrate-binding domain is ankyrin repeats, not TPR
+
+**Date:** 2026-11-03
+
+**Decision.** The FEM1B construct is the N-terminal ankyrin-repeat region
+(IPR036770, residues 5-301, 297 aa).
+
+**Reason.** Spec 1.1's token table calls this construct "FEM1B TPR (~360 aa)".
+InterPro annotates no TPR domain on Q9UK73 at all: FEM1B is an ankyrin-repeat
+protein and recognises its C-degron substrates through those repeats. The
+residue count the spec gives (~360) is close to the ANK region's 297, so the
+intent is clear and only the domain name was wrong.
+
+**Reversal.** `nobble/curate/constructs.py`, `FEM1B_ANK`.
+
+---
+
+## D-NOB-015: DCAF15 measures 1,229 tokens, not the ~900 the spec estimates
+
+**Date:** 2026-11-03
+
+**Finding, recorded rather than worked around.** Spec 1.1 states that a DDB1
+BPA-BPC truncation keeps the DCAF15 job "under 1,000 tokens" and estimates ~900.
+Built from real InterPro boundaries the construct is 1,184 residues (DCAF15
+35-259 and 387-599, DDB1 BPA 15-348 and BPC 790-1099, DDA1 1-102), which with a
+15-mer and a 30-atom ligand is **1,229 tokens**: roughly 37 per cent over the
+stated figure and over the 1,000 the spec treats as the ceiling for it.
+
+**Decision.** Keep the construct as specified and carry the true number, because
+spec 1.1's justification is structural rather than budgetary: DCAF15 does not
+engage RBM39 without DDB1 and DDA1. The declared exception stands, at its
+measured size. The campaign sizer treats DCAF15 jobs at their real token cost,
+so the 48-hour budget is computed from 1,229 and not from 900. If Phase 2's
+measured throughput makes this member unaffordable, the reduction to try first is
+DDB1 BPC alone, by the same measurement that settled D-NOB-013.
+
+**Reversal.** Not a choice to reverse: the figure is measured. The construct can
+be narrowed as described above.
+
+---
+
+## D-NOB-016: for benchmark member 7 the peptide comes from CDK12, because cyclin K does not touch the glue
+
+**Date:** 2026-11-03
+
+**Finding.** In 6TD3, CR-8 makes **no** contact with cyclin K within 5 A (zero
+atoms), while making 18 contacts with CDK12 across residues 732 to 877 and five
+with DDB1 BPC. The ternary interface is DDB1:CR-8:CDK12.
+
+**Decision.** The member keeps its spec label (cyclin K is what is degraded, and
+that is the readout the literature reports), but the peptide chain submitted to
+Boltz is drawn from the CDK12 interface region, since that is the chain that
+forms the interface Delta-ipTM is supposed to measure. Submitting a cyclin K
+peptide would measure an interface that does not exist in the crystal and would
+score the benchmark's most unusual member against the wrong chain.
+
+**Reversal.** `nobble/curate/benchmark.py`, panel member 7's substrate accession.
