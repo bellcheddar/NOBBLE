@@ -10,7 +10,7 @@ Rewritten after every phase and at least every 30 minutes during long compute.
 | 1 Curation and manifest | **complete** | All gates pass. Tier A 17, Tier B 15 (frozen), 25,567-peptide library reduced to 220, 11 MSAs cached, manifest emitted with 0 errors |
 | 2 Execution | **running** | Benchmark queue of 100 jobs in tmux session `nobble-bench`. Smoke test 42.5 s for 124 tokens on MPS; warm rate 31.9 s. Resume verified in practice |
 | 3 Scoring and validation | **complete** | Every component, the three validation layers and the composite weight fitter are built and running. The fitter and two of the three layers correctly report `not_computed` with their reasons until the Sievers arm supplies matched negatives |
-| 4 Application | **built, QC clean** | Six tabs on the Depot system, reading the campaign live. Playwright: 12 captures at two viewports, 0 non-200, 0 console errors, 0 serious axe violations. Remaining: Mol* wiring in the Pose tab and the BINMAN-LM query head |
+| 4 Application | **complete** | Six tabs on the Depot system, Mol* wired, BINMAN-LM query head with a deterministic executor. Playwright: 12 captures at two viewports, 0 non-200, 0 console errors, 0 serious axe violations |
 
 ## Phase 1 gates: all passing
 
@@ -101,6 +101,11 @@ Rewritten after every phase and at least every 30 minutes during long compute.
 | Delta | Delta-ipTM against bridge percentile with lasso to pin, distribution panel, matched-control ROC (reports honestly that it is not computable until the Sievers arm runs) |
 | Benchmark | seven cards, scored or queued, with colour-coded stats and tooltips |
 | About | calibration caveat, the two unvalidated signals with their AUCs, construct budget, data licences |
+
+BINMAN-LM is optional: the head translates a question into a query object and
+the executor runs it in Python, so the model never emits a number. With
+`BINMAN_LM_URL` unset every tab still works and `/api/ask` reports
+`unavailable` rather than guessing.
 
 Run locally: `PYTHONPATH=. python -c "from nobble.app import create_app; create_app().run(port=5055)"`.
 QC: `npx node qc/qc.mjs` with the app running.

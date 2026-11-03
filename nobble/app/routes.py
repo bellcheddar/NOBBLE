@@ -211,6 +211,31 @@ def api_pair_structures(pair_id: str):
     })
 
 
+@bp.route("/api/ask", methods=["POST"])
+def api_ask():
+    """Natural-language question to a query object, executed deterministically.
+
+    The model never produces a number: it proposes a query, the executor runs
+    it over the scored records, and every figure returned was computed by the
+    pipeline. An unconfigured or unreachable model is a normal state.
+    """
+    from nobble.app import lm as lm_module
+
+    payload = request.get_json(silent=True) or {}
+    question = str(payload.get("question") or "").strip()
+    if not question:
+        return jsonify({"status": "rejected", "explanation": "no question supplied"}), 400
+    return jsonify(lm_module.ask(question, data.scores()).to_dict())
+
+
+@bp.route("/api/schema")
+def api_schema():
+    """The query schema the model is given. Published so it can be checked."""
+    from nobble.app import lm as lm_module
+
+    return jsonify(lm_module.QUERY_SCHEMA)
+
+
 @bp.route("/healthz")
 def healthz():
     state = data.campaign_state()
