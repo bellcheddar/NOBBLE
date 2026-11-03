@@ -135,6 +135,7 @@ def about():
         construct_budget=precomputed.get("construct_budget", []),
         reach_auc=precomputed.get("reach_auc", {}),
         weight_fit=data.weight_fit(),
+        validation=data.precomputed("validation.json"),
         throughput=data.throughput(),
         components=data.COMPONENTS,
     )

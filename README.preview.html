@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+
+.emd { color:#111111; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif;
+  font-size:clamp(16px,1rem + 0.2vw,18px); line-height:1.7; overflow-wrap:anywhere; width:100%; max-width:none; }
+.emd *,.emd *::before,.emd *::after { box-sizing:border-box; }
+.emd h1,.emd h2,.emd h3,.emd h4,.emd h5,.emd h6 { line-height:1.2; margin:1.4em 0 0.6em; overflow-wrap:anywhere; }
+.emd h1 { font-size:clamp(2rem,1.5rem + 2.4vw,2.75rem); margin-top:0.2em; }
+.emd h1 img { vertical-align:middle; margin-right:0.4rem; }
+.emd h2 { font-size:clamp(1.5rem,1.25rem + 1.4vw,2rem); border-bottom:1px solid #e5e7eb; padding-bottom:0.3em; }
+.emd h3 { font-size:clamp(1.2rem,1.05rem + 0.9vw,1.5rem); }
+.emd p,.emd li,.emd blockquote,.emd pre { max-width:none; }
+.emd p,.emd ul,.emd ol,.emd blockquote,.emd pre,.emd table,.emd .emd-table-wrap,.emd hr { margin:0 0 1rem; }
+.emd ul,.emd ol { padding-left:1.4rem; }
+.emd ul.emd-tasklist { list-style:none; padding-left:0.2rem; }
+.emd ul.emd-tasklist li { margin:0.15rem 0; }
+.emd a { color:#467FF7; text-decoration:none; overflow-wrap:anywhere; }
+.emd a:hover { text-decoration:underline; }
+.emd img { max-width:100%; height:auto; }
+.emd p img { vertical-align:middle; }
+.emd pre,.emd code { font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace; }
+.emd code { background:#f6f8fa; padding:0.15em 0.35em; border-radius:6px; overflow-wrap:anywhere; }
+.emd pre { background:#f6f8fa; padding:1rem; overflow-x:auto; border-radius:10px; border:1px solid #e5e7eb; }
+.emd pre code { background:transparent; padding:0; overflow-wrap:normal; }
+.emd blockquote { padding:0.2rem 1rem; border-left:4px solid #467FF7; color:#555555; }
+.emd hr { border:0; border-top:1px solid #e5e7eb; }
+.emd .emd-table-wrap { width:100%; overflow-x:auto; }
+.emd table { width:100%; border-collapse:collapse; border-spacing:0; font-size:0.95rem; }
+.emd th,.emd td { border:1px solid #e5e7eb; padding:0.7rem 0.8rem; text-align:left; vertical-align:top; white-space:normal; word-break:break-word; overflow-wrap:anywhere; }
+.emd th { font-weight:700; }
+.emd .emd-data-table { table-layout:fixed; }
+.emd .emd-info-table { width:auto; max-width:100%; }
+.emd .emd-info-table th,.emd .emd-info-table td { border:0; padding:0.25rem 0.5rem; }
+@media (max-width:767px){
+  .emd { font-size:16px; line-height:1.65; }
+  .emd .emd-table-wrap { overflow-x:visible; }
+  .emd .emd-data-table,.emd .emd-data-table tbody,.emd .emd-data-table tr,.emd .emd-data-table td { display:block !important; width:100% !important; }
+  .emd .emd-data-table thead,.emd .emd-data-table th { display:none !important; }
+  .emd .emd-data-table { font-size:0.84rem; border:0; }
+  .emd .emd-data-table tr { margin:0 0 0.8rem; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; background:#ffffff; }
+  .emd .emd-data-table td { border:0; border-top:1px solid #e5e7eb; padding:0.45rem 0.7rem; line-height:1.35; }
+  .emd .emd-data-table tr td:first-child { border-top:0; }
+  .emd .emd-data-table td::before { content:attr(data-label); display:block; font-size:0.7rem; line-height:1.2; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:#555555; margin-bottom:0.2rem; }
+  .emd .emd-data-table td[data-label=""]::before { content:none; }
+  .emd .emd-info-table,.emd .emd-info-table tbody,.emd .emd-info-table tr { display:block; }
+  .emd .emd-info-table td { display:inline-block; width:auto; padding:0.15rem 0.4rem 0.15rem 0; }
+}
+
+</style>
+</head>
+<body>
+<div class="emd">
+<h1>🧬 NOBBLE</h1>
+<blockquote>
+<p><strong>Does a molecular glue actually change the interface it is supposed to create? NOBBLE measures it, against 285,996 real ones.</strong></p>
+</blockquote>
+<p><img alt="python" src="https://img.shields.io/badge/python-3.11-3776AB?logo=python&amp;logoColor=white"> <img alt="boltz" src="https://img.shields.io/badge/Boltz--2-ternary%20co--folding-467FF7"> <img alt="backend" src="https://img.shields.io/badge/backend-Apple%20MPS-000000?logo=apple&amp;logoColor=white"> <img alt="status" src="https://img.shields.io/badge/status-in%20development-fcb900"> <img alt="live" src="https://img.shields.io/badge/live-nobble.mdeller.com-467FF7"> <img alt="licence" src="https://img.shields.io/badge/licence-MIT-00897B"> <img alt="author" src="https://img.shields.io/badge/author-Marc%20C.%20Deller%2C%20D.Phil.-1C244B"></p>
+<table class="emd-info-table">
+<tr>
+<td>🌐 <b>Website</b></td><td><a href="https://marcdeller.com" target="_blank" rel="noopener noreferrer">marcdeller.com</a></td>
+<td>✉️ <b>Contact</b></td><td><a href="mailto:marc@marcdeller.com">marc@marcdeller.com</a></td>
+<td>🐙 <b>GitHub</b></td><td><a href="https://github.com/bellcheddar/NOBBLE" target="_blank" rel="noopener noreferrer">bellcheddar/NOBBLE</a></td>
+</tr>
+<tr>
+<td>🔬 <b>Live</b></td><td colspan="5"><a href="https://nobble.mdeller.com" target="_blank" rel="noopener noreferrer">nobble.mdeller.com</a></td>
+</tr>
+</table>
+
+<hr>
+<p><strong>N</strong>eosubstrate and <strong>O</strong>ligopeptide <strong>B</strong>inder <strong>B</strong>enchmarking for <strong>L</strong>igase
+<strong>E</strong>ngagement. NOBBLE generates and scores peptide poses against curated
+targeted-protein-degradation (TPD) machinery using Boltz-2 ternary co-folding,
+and asks one question of every pair: does the presence of the glue or degrader
+change the predicted interface, and does that change separate experimentally
+degraded substrates from experimentally non-degraded ones assayed in the same
+screen?</p>
+<p>Why it matters: a co-folding model will report high confidence in a ternary
+complex that does not exist, and it will do so in a way that looks exactly like
+success. NOBBLE's answer is not to trust the model's self-assessment but to
+compare every predicted interface against the distribution of 285,996
+experimentally observed small-molecule bridges, to run a matched control for
+every positive, and to publish the pairs where the method fails as prominently
+as the ones where it works. It is useful for: triaging neosubstrate hypotheses
+before committing wet-lab effort, calibrating how far a co-folding model can be
+trusted on induced interfaces, and benchmarking glue-dependence against
+published degradation screens.</p>
+<h2>🎯 The headline metric</h2>
+<pre><code>delta_iptm = iptm_min_ternary - iptm_min_binary
+</code></pre>
+<p>The difference in interface confidence between the ternary complex (E3 domain +
+peptide + small molecule) and the binary complex (E3 domain + peptide), taking
+the minimum across five seeds in each condition. Everything else in the
+pipeline exists to make that number trustworthy or to explain it.</p>
+<p>Delta-ipTM is measured on the <strong>receptor-to-peptide chain pair</strong>, not the global
+ipTM: on a ternary complex the global figure averages in the receptor-to-ligand
+interface, which is the easy one, so a glue sitting perfectly in its pocket
+while the degron fails to dock would raise it.</p>
+<h2>✨ What is in the box</h2>
+<div class="emd-table-wrap"><table class="emd-data-table">
+<thead>
+<tr>
+<th>Module</th>
+<th>Spec phase</th>
+<th>Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td data-label="Module"><code>nobble/curate/</code></td>
+<td data-label="Spec phase">1</td>
+<td data-label="Does">Benchmark panel resolution, receptor constructs from InterPro, tier selection, peptide library, manifest and validation</td>
+</tr>
+<tr>
+<td data-label="Module"><code>nobble/execute/</code></td>
+<td data-label="Spec phase">2</td>
+<td data-label="Does">MSA precomputation, Boltz YAML generation, a resumable job queue with per-job checkpointing</td>
+</tr>
+<tr>
+<td data-label="Module"><code>nobble/score/</code></td>
+<td data-label="Spec phase">3</td>
+<td data-label="Does">Bridge percentile, Delta-ipTM, pose convergence, docking checks, lysine geometry, PLIP fingerprints</td>
+</tr>
+<tr>
+<td data-label="Module"><code>nobble/validate/</code></td>
+<td data-label="Spec phase">3</td>
+<td data-label="Does">Pose recovery, time-split blind evaluation, matched-control ROC</td>
+</tr>
+<tr>
+<td data-label="Module"><code>nobble/app/</code></td>
+<td data-label="Spec phase">4</td>
+<td data-label="Does">Flask application, six tabs, Mol* and Plotly throughout</td>
+</tr>
+</tbody>
+</table></div>
+<p>NOBBLE is not a standalone stack. It is a campaign preset on
+<a href="https://github.com/bellcheddar/BoltzMaker">BoltzMaker</a> plus a fifth module on
+<a href="https://github.com/bellcheddar/BINMAN">BINMAN</a>, and shared code is widened in
+place in those repositories rather than forked.</p>
+<h2>🔬 The benchmark panel</h2>
+<p>Seven pairs with published crystallographic ternaries, run first in every
+campaign, to prove the pipeline works before any discovery claim is made. Every
+PDB accession, chain identifier and ligand code below is resolved
+<strong>programmatically</strong> at build time from the curated sources and the deposited
+structures: none is written into the code, because hardcoded accessions rot and
+are a known source of silent error.</p>
+<div class="emd-table-wrap"><table class="emd-data-table">
+<thead>
+<tr>
+<th>#</th>
+<th>Substrate</th>
+<th>E3</th>
+<th>Small molecule</th>
+<th>Modality</th>
+<th>Resolved to</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td data-label="#">1</td>
+<td data-label="Substrate">GSPT1, domain II hairpin</td>
+<td data-label="E3">CRBN</td>
+<td data-label="Small molecule">CC-885</td>
+<td data-label="Modality">Glue</td>
+<td data-label="Resolved to">5HXB (<code>85C</code>)</td>
+<td data-label="Role">Canonical glycine-degron glue benchmark</td>
+</tr>
+<tr>
+<td data-label="#">2</td>
+<td data-label="Substrate">BRD4 BD2</td>
+<td data-label="E3">VHL (VCB)</td>
+<td data-label="Small molecule">MZ1</td>
+<td data-label="Modality">PROTAC</td>
+<td data-label="Resolved to">5T35 (<code>759</code>)</td>
+<td data-label="Role">Canonical bivalent ternary benchmark</td>
+</tr>
+<tr>
+<td data-label="#">3</td>
+<td data-label="Substrate">BRD4 BD1</td>
+<td data-label="E3">CRBN</td>
+<td data-label="Small molecule">dBET57</td>
+<td data-label="Modality">PROTAC</td>
+<td data-label="Resolved to">6BNB</td>
+<td data-label="Role">E3 swap on the same substrate</td>
+</tr>
+<tr>
+<td data-label="#">4</td>
+<td data-label="Substrate">IKZF1 ZF2</td>
+<td data-label="E3">CRBN</td>
+<td data-label="Small molecule">pomalidomide</td>
+<td data-label="Modality">Glue</td>
+<td data-label="Resolved to">6H0F (<code>Y70</code>)</td>
+<td data-label="Role">Founding IMiD neosubstrate observation</td>
+</tr>
+<tr>
+<td data-label="#">5</td>
+<td data-label="Substrate">CK1alpha</td>
+<td data-label="E3">CRBN</td>
+<td data-label="Small molecule">lenalidomide</td>
+<td data-label="Modality">Glue</td>
+<td data-label="Resolved to">5FQD (<code>LVY</code>)</td>
+<td data-label="Role">Same glue, different neosubstrate</td>
+</tr>
+<tr>
+<td data-label="#">6</td>
+<td data-label="Substrate">RBM39 RRM2</td>
+<td data-label="E3">DCAF15</td>
+<td data-label="Small molecule">indisulam</td>
+<td data-label="Modality">Glue</td>
+<td data-label="Resolved to">6Q0W (<code>EF6</code>)</td>
+<td data-label="Role">Aryl sulfonamide arm</td>
+</tr>
+<tr>
+<td data-label="#">7</td>
+<td data-label="Substrate">cyclin K</td>
+<td data-label="E3">DDB1</td>
+<td data-label="Small molecule">CR-8</td>
+<td data-label="Modality">Glue</td>
+<td data-label="Resolved to">6TD3 (<code>RC8</code>)</td>
+<td data-label="Role">Glue acting without a substrate receptor</td>
+</tr>
+</tbody>
+</table></div>
+<h2>🎯 Scoring</h2>
+<p>Seven signals, in descending order of trust. The composite is reported alongside
+its components, never instead of them, and its weights are fitted on the
+benchmark panel and the Sievers matched set rather than hand-set.</p>
+<div class="emd-table-wrap"><table class="emd-data-table">
+<thead>
+<tr>
+<th>Signal</th>
+<th>What it is</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td data-label="Signal">Bridge percentile</td>
+<td data-label="What it is">Buried surface, contact counts and bridging balance, as a percentile against 285,996 observed bridges</td>
+<td data-label="Status">primary</td>
+</tr>
+<tr>
+<td data-label="Signal">Delta-ipTM</td>
+<td data-label="What it is">Glue dependence, receptor-to-peptide pair, minimum across seeds</td>
+<td data-label="Status">headline</td>
+</tr>
+<tr>
+<td data-label="Signal">Pose convergence</td>
+<td data-label="What it is">Pairwise peptide backbone RMSD across seeds, superposed on the receptor</td>
+<td data-label="Status">working</td>
+</tr>
+<tr>
+<td data-label="Signal">ipTM-min</td>
+<td data-label="What it is">Reported as enrichment, never as a verdict</td>
+<td data-label="Status">working</td>
+</tr>
+<tr>
+<td data-label="Signal">PLIP fingerprint</td>
+<td data-label="What it is">Interaction pattern against the canonical degron contacts for that E3 class</td>
+<td data-label="Status">working</td>
+</tr>
+<tr>
+<td data-label="Signal">Lysine geometry</td>
+<td data-label="What it is">Lysine exposure and distance to the glue</td>
+<td data-label="Status">reported as measurement, <strong>not validated</strong></td>
+</tr>
+<tr>
+<td data-label="Signal">ProtCID packing veto</td>
+<td data-label="What it is">Crystal-packing motifs flagged as furniture</td>
+<td data-label="Status"><strong>not computed</strong>, source unavailable</td>
+</tr>
+</tbody>
+</table></div>
+<p>Two of those carry honest caveats rather than numbers, and both are documented
+in <code>DECISIONS.md</code> with the measurements behind them.</p>
+<h2>📊 Early results</h2>
+<p>From the benchmark panel, at tier-1 triage settings, written up in <code>FINDINGS.md</code>:</p>
+<ul>
+<li><strong>Geometry separates poses that ipTM cannot.</strong> For GSPT1 / CRBN / CC-885, a
+  pose that bridges scores ipTM 0.885 and one that does not scores 0.877. The
+  highest ipTM in the ternary set, 0.916, does not bridge at all.</li>
+<li><strong>The glue docks reliably; the degron does not follow.</strong> All five canonical
+  CRBN contacts (W380, W386, W400, H378, F402) matched in every seed, so CC-885
+  is placed correctly and reproducibly, while only 3 of 10 ternary trajectories
+  bring the degron into contact with it. The PLIP fingerprint and the buried
+  surface filter reach that verdict independently.</li>
+<li><strong>One trajectory in five failed to dock the peptide at all</strong>, leaving it 81 A
+  from the receptor in free solvent. A confidence aggregate cannot tell that
+  apart from a weak interface, so NOBBLE checks docking explicitly.</li>
+</ul>
+<p>These are interim, single-pair, triage-tier numbers. They are published here
+because a pipeline that only reports its successes is not a benchmark.</p>
+<h2>📋 Requirements</h2>
+<div class="emd-table-wrap"><table class="emd-data-table">
+<thead>
+<tr>
+<th>Requirement</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td data-label="Requirement">Apple Silicon with MPS</td>
+<td data-label="Notes">Developed on an M2 Ultra (16 performance cores, 128 GB unified memory, 60 GPU cores). No CUDA path in this build</td>
+</tr>
+<tr>
+<td data-label="Requirement">Boltz 2.2 or later</td>
+<td data-label="Notes">Supplied by BoltzMaker's pixi environment, with its model weights cached</td>
+</tr>
+<tr>
+<td data-label="Requirement">BINMAN checkout</td>
+<td data-label="Notes">Supplies the bridge atlas, the degron scan, the ligase triage and the geometry filter</td>
+</tr>
+<tr>
+<td data-label="Requirement">BoltzMaker checkout</td>
+<td data-label="Notes">Supplies Boltz, PLIP, OpenBabel and <code>cif2plip</code></td>
+</tr>
+<tr>
+<td data-label="Requirement">pixi</td>
+<td data-label="Notes">Both environments are pixi-managed and <code>osx-arm64</code> only</td>
+</tr>
+</tbody>
+</table></div>
+<p>Nothing in the codebase hard-codes a core count, a memory figure, a device or a
+threshold. Hardware settings are derived by <code>tools/hwprobe.py</code> into
+<code>config/hardware.toml</code> and <code>config/tuning.toml</code>; every cutoff lives in
+<code>config/thresholds.toml</code>.</p>
+<h2>🚀 Usage</h2>
+<pre><code class="language-bash"># Phase 0: probe the machine and derive the tuning
+python3 tools/hwprobe.py
+
+# Phase 1: check the gates (panel resolution, degron recovery, token budget)
+python -m pytest tests/test_phase1.py -q
+
+# Phase 1: precompute one MSA per receptor construct, once, offline
+bash tools/run_msa.sh
+
+# Phase 2: assemble the benchmark campaign and run its queue
+python -c &quot;from nobble.execute.campaign import assemble_benchmark; print(assemble_benchmark())&quot;
+bash tools/run_queue.sh
+
+# Phase 3: score whatever has landed, re-runnable against a live queue
+python -m nobble.score.run
+</code></pre>
+<p>Long runs belong in <code>tmux</code>: <code>tools/run_queue.sh</code> wraps the queue in
+<code>caffeinate -dimsu</code> and the queue itself is resumable, because multi-day MPS
+runs hit OOM and NaN diffusion steps and a queue that cannot resume mid-run is
+unusable.</p>
+<h2>🔧 Tech stack</h2>
+<div class="emd-table-wrap"><table class="emd-data-table">
+<thead>
+<tr>
+<th>Layer</th>
+<th>Choice</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td data-label="Layer">Co-folding</td>
+<td data-label="Choice">Boltz-2, MPS backend, optional kernels disabled</td>
+</tr>
+<tr>
+<td data-label="Layer">Structure handling</td>
+<td data-label="Choice">gemmi, FreeSASA, mkdssp</td>
+</tr>
+<tr>
+<td data-label="Layer">Interactions</td>
+<td data-label="Choice">PLIP via <code>cif2plip</code>, with the CONECT serial-gap fix asserted on every structure</td>
+</tr>
+<tr>
+<td data-label="Layer">Embeddings</td>
+<td data-label="Choice">ESM-2 (35M) for diversity reduction, on MPS</td>
+</tr>
+<tr>
+<td data-label="Layer">Stores</td>
+<td data-label="Choice">BINMAN's SQLite atlas read-only, DuckDB and Parquet for analysis</td>
+</tr>
+<tr>
+<td data-label="Layer">Application</td>
+<td data-label="Choice">Flask, Jinja, vanilla JS, Mol*, Plotly, D3</td>
+</tr>
+</tbody>
+</table></div>
+<h2>🌐 Deployment</h2>
+<p>The droplet serves a <strong>precomputed, read-only slice</strong>: the scored records and
+the predicted structures, with no folding and no scoring at request time. That
+is a hard constraint rather than an optimisation, and the deployment proved
+why: two routes imported the curation stack to render, passed every local
+check, and returned 500 in production because the droplet has no gemmi. The
+slice is built by <code>deploy/build_atlas.py</code>, which also withholds the PROTAC-DB
+chemistry, because publishing to a public site is redistribution exactly as a
+public repository is.</p>
+<div class="emd-table-wrap"><table class="emd-data-table">
+<thead>
+<tr>
+<th>Script</th>
+<th>Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td data-label="Script"><code>deploy/survey.sh</code></td>
+<td data-label="Does">Read-only survey of the host, so conventions are read rather than assumed</td>
+</tr>
+<tr>
+<td data-label="Script"><code>deploy/provision.sh</code></td>
+<td data-label="Does">One-time, idempotent: service user, systemd unit, nginx vhost</td>
+</tr>
+<tr>
+<td data-label="Script"><code>deploy/certbot.sh</code></td>
+<td data-label="Does">TLS certificate, kept separate because it is rate-limited</td>
+</tr>
+<tr>
+<td data-label="Script"><code>deploy/build_atlas.py</code></td>
+<td data-label="Does">Builds and redacts the published slice</td>
+</tr>
+<tr>
+<td data-label="Script"><code>deploy/deploy.sh</code></td>
+<td data-label="Does">Syncs, fixes ownership before pip, restarts, verifies every page</td>
+</tr>
+<tr>
+<td data-label="Script"><code>deploy/repair_perms.sh</code></td>
+<td data-label="Does">The one to reach for when every page 500s but <code>/healthz</code> is fine</td>
+</tr>
+</tbody>
+</table></div>
+<h2>📄 Licence and reuse</h2>
+<p>The code in this repository is MIT licensed. <strong>The data is not ours to give.</strong>
+NOBBLE reads curated third-party databases through BINMAN, several of which
+restrict redistribution: PROTAC-DB is internal-use only, UbiBrowser ships as
+derived counts, and BioLiP2 annotations are not redistributed. No third-party
+dataset is bundled here, and the generated campaign artefacts are deliberately
+excluded from version control because some of them embed those records. If you
+reuse this, acquire the sources yourself under their own terms and cite them.</p>
+<h2>🧾 Provenance</h2>
+<p><code>DECISIONS.md</code> records every judgement made during the build, with the
+alternatives, the reason and how to reverse it, including the places where the
+build specification turned out to be wrong about its own data. <code>BUILD_LOG.md</code> is
+the timestamped event log, <code>PROGRESS.md</code> the phase checklist, <code>FINDINGS.md</code> the
+results, and <code>BUILD_SPEC.md</code> the authoritative specification the build follows.</p>
+<hr>
+<h2>👤 Author</h2>
+<p><strong>Marc C. Deller, D.Phil.</strong><br>
+Structural biologist &amp; drug discovery scientist  </p>
+<table class="emd-info-table">
+<tr>
+<td>🌐</td><td><a href="https://marcdeller.com" target="_blank" rel="noopener noreferrer">marcdeller.com</a></td>
+<td>✉️</td><td><a href="mailto:marc@marcdeller.com">marc@marcdeller.com</a></td>
+<td>🐙</td><td><a href="https://github.com/bellcheddar/NOBBLE" target="_blank" rel="noopener noreferrer">github.com/bellcheddar/NOBBLE</a></td>
+</tr>
+</table>
+</div>
+</body>
+</html>

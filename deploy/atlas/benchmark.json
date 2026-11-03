@@ -71,6 +71,7 @@
       "cap": 400,
       "within_cap": true,
       "declared_exception": false,
+      "declared_reason": null,
       "acceptable": true
     },
     {
@@ -93,6 +94,7 @@
       "cap": 400,
       "within_cap": false,
       "declared_exception": true,
+      "declared_reason": null,
       "acceptable": true
     },
     {
@@ -115,6 +117,7 @@
       "cap": 400,
       "within_cap": true,
       "declared_exception": false,
+      "declared_reason": null,
       "acceptable": true
     },
     {
@@ -136,6 +139,7 @@
       "cap": 400,
       "within_cap": true,
       "declared_exception": false,
+      "declared_reason": null,
       "acceptable": true
     },
     {
@@ -158,6 +162,7 @@
       "cap": 400,
       "within_cap": true,
       "declared_exception": false,
+      "declared_reason": null,
       "acceptable": true
     },
     {
@@ -180,6 +185,7 @@
       "cap": 400,
       "within_cap": false,
       "declared_exception": true,
+      "declared_reason": null,
       "acceptable": true
     },
     {
@@ -201,8 +207,9 @@
       "tokens": 636,
       "cap": 400,
       "within_cap": false,
-      "declared_exception": false,
-      "acceptable": false
+      "declared_exception": true,
+      "declared_reason": "substrate is a 294-residue folded domain that cannot be truncated without destroying it (D-NOB-027)",
+      "acceptable": true
     }
   ],
   "crystal_by_pair": {

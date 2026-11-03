@@ -1,0 +1,47 @@
+{
+  "README.md": {
+    "repo": "NOBBLE",
+    "emoji": "\ud83e\uddec",
+    "title": "NOBBLE",
+    "tagline": "Does a molecular glue actually change the interface it is supposed to create? NOBBLE measures it, against 285,996 real ones.",
+    "why": "Why it matters: a co-folding model will report high confidence in a ternary complex that does not exist, and it will do so in a way that looks exactly like success. On the first benchmark pair a pose that genuinely bridged scored ipTM 0.885 and one that did not scored 0.877, and the highest confidence in the whole set bridged nothing at all. NOBBLE's answer is to stop asking the model how sure it is: every predicted interface is scored against the distribution of 285,996 experimentally observed small-molecule bridges, every positive carries a matched control, and the pairs where the method fails are published as prominently as the ones where it works. It is useful for: triaging neosubstrate hypotheses before committing wet-lab effort, calibrating how far a co-folding model can be trusted on induced interfaces, and benchmarking glue dependence against published degradation screens.",
+    "badges": [
+      [
+        "python",
+        "3.11",
+        "3776AB",
+        "python"
+      ],
+      [
+        "Boltz--2",
+        "ternary%20co--folding",
+        "467FF7",
+        ""
+      ],
+      [
+        "backend",
+        "Apple%20MPS",
+        "000000",
+        "apple"
+      ],
+      [
+        "live",
+        "nobble.mdeller.com",
+        "2C6D60",
+        ""
+      ],
+      [
+        "status",
+        "in%20development",
+        "fcb900",
+        ""
+      ],
+      [
+        "licence",
+        "MIT",
+        "00897B",
+        ""
+      ]
+    ]
+  }
+}

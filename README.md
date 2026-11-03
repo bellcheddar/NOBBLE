@@ -8,7 +8,7 @@
 <tr>
 <td>🌐 <b>Website</b></td><td><a href="https://marcdeller.com" target="_blank" rel="noopener noreferrer">marcdeller.com</a></td>
 <td>✉️ <b>Contact</b></td><td><a href="mailto:marc@marcdeller.com">marc@marcdeller.com</a></td>
-<td>🐙 <b>GitHub</b></td><td><a href="https://github.com/bellcheddar" target="_blank" rel="noopener noreferrer">@bellcheddar</a></td>
+<td>🐙 <b>GitHub</b></td><td><a href="https://github.com/bellcheddar/NOBBLE" target="_blank" rel="noopener noreferrer">bellcheddar/NOBBLE</a></td>
 </tr>
 <tr>
 <td>🔬 <b>Live</b></td><td colspan="5"><a href="https://nobble.mdeller.com" target="_blank" rel="noopener noreferrer">nobble.mdeller.com</a></td>
@@ -224,6 +224,6 @@ Structural biologist & drug discovery scientist
 <tr>
 <td>🌐</td><td><a href="https://marcdeller.com" target="_blank" rel="noopener noreferrer">marcdeller.com</a></td>
 <td>✉️</td><td><a href="mailto:marc@marcdeller.com">marc@marcdeller.com</a></td>
-<td>🐙</td><td><a href="https://github.com/bellcheddar" target="_blank" rel="noopener noreferrer">github.com/bellcheddar</a></td>
+<td>🐙</td><td><a href="https://github.com/bellcheddar/NOBBLE" target="_blank" rel="noopener noreferrer">github.com/bellcheddar/NOBBLE</a></td>
 </tr>
 </table>

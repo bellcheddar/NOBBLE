@@ -218,21 +218,85 @@
     failure rather than its hits. A poor ROC is not a gate failure; reporting no
     ROC, or reporting one without the matched negatives, is.
   </p>
-  <div class="card__grid">
-    <div class="stat"><span class="stat__label">Pose recovery</span>
-      <span class="stat__value">pending</span>
-      <span class="stat__sub">RMSD to the deposited ternary, as a success-rate curve at 1, 2, 3 and 5 A</span></div>
-    <div class="stat"><span class="stat__label">Time split</span>
-      <span class="stat__value">pending</span>
-      <span class="stat__sub">entries deposited after the Boltz-2 training cutoff, run blind. The only number that estimates prospective performance</span></div>
-    <div class="stat"><span class="stat__label">Matched-control ROC</span>
-      <span class="stat__value">pending</span>
-      <span class="stat__sub">Delta-ipTM on the Sievers degraded against non-degraded split</span></div>
-  </div>
-  <p class="panel__hint" style="margin-top:0.7rem">
-    These are reported as pending because the campaign that feeds them is still
-    running. They are not reported as passing.
-  </p>
+  {% set layers = (validation or {}).get('layers', {}) %}
+  {% set recovery = layers.get('pose_recovery', {}) %}
+  {% set split = layers.get('time_split', {}) %}
+  {% set roc = layers.get('matched_control_roc', {}) %}
+
+  <h3 style="font-family:var(--display);font-size:0.9rem">1. Pose recovery</h3>
+  {% if recovery.get('computed') %}
+    {% set curve = recovery.summary.overall_curve %}
+    <div class="card__grid">
+      <div class="stat"><span class="stat__label">Poses compared</span>
+        <span class="stat__value">{{ curve.n }}</span>
+        <span class="stat__sub">across {{ recovery.summary.pairs_with_recovery }} of {{ recovery.summary.pairs_expected }} pairs</span></div>
+      <div class="stat"><span class="stat__label">Median RMSD</span>
+        <span class="stat__value">{{ curve.median_rmsd }} A</span></div>
+      {% for point in ['1.0', '2.0', '3.0', '5.0'] %}
+      <div class="stat {% if curve.get('within_' ~ point ~ 'A') and curve.get('within_' ~ point ~ 'A') > 0.5 %}stat--good{% else %}stat--bad{% endif %}">
+        <span class="stat__label">Within {{ point }} A</span>
+        <span class="stat__value">{{ '%.1f'|format(100 * (curve.get('within_' ~ point ~ 'A') or 0)) }}%</span></div>
+      {% endfor %}
+    </div>
+    <div class="table-wrap" tabindex="0" role="group" aria-label="Scrollable table" style="max-height:none;margin-top:0.7rem">
+      <table class="ntable">
+        <thead><tr><th>Pair</th><th class="num">Poses</th><th class="num">Best</th><th class="num">Median</th><th class="num">Worst</th></tr></thead>
+        <tbody>
+          {% for pair, s in recovery.summary.by_pair.items() %}
+          <tr>
+            <td class="mono">{{ pair }}</td>
+            <td class="num">{{ s.n }}</td>
+            <td class="num">{{ s.best_rmsd }} A</td>
+            <td class="num">{{ s.median_rmsd }} A</td>
+            <td class="num">{{ s.worst_rmsd }} A</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="panel__hint" style="margin-top:0.5rem">
+      Superposed on the receptor, peptide backbone atoms only. Every record
+      carries its own anchor size and anchor RMSD, because a pose RMSD means
+      nothing without evidence that the frame it was measured in was sound.
+      {% if recovery.get('notes') %}<br>{{ recovery.notes|join('; ') }}{% endif %}
+    </p>
+  {% else %}
+    <p class="panel__hint"><span class="flag flag--pending">not computed</span>
+      {{ recovery.get('status', 'no campaign') }}</p>
+  {% endif %}
+
+  <h3 style="font-family:var(--display);font-size:0.9rem;margin-top:1rem">2. Time split</h3>
+  {% if split.get('computed') %}
+    <div class="card__grid">
+      <div class="stat"><span class="stat__label">Retrospective</span>
+        <span class="stat__value">{{ split.summary.retrospective.median_rmsd }} A</span>
+        <span class="stat__sub">{{ split.summary.retrospective.n }} pair(s), may be memorised</span></div>
+      <div class="stat stat--good"><span class="stat__label">Prospective (blind)</span>
+        <span class="stat__value">{{ split.summary.prospective.median_rmsd }} A</span>
+        <span class="stat__sub">{{ split.summary.prospective.n }} pair(s) after the cutoff</span></div>
+    </div>
+  {% else %}
+    <p class="panel__hint"><span class="flag flag--pending">not computed</span>
+      {{ split.get('status', 'no campaign') }}</p>
+    {% if split.get('notes') %}<p class="panel__hint">{{ split.notes|join(' ') }}</p>{% endif %}
+  {% endif %}
+
+  <h3 style="font-family:var(--display);font-size:0.9rem;margin-top:1rem">3. Matched-control ROC</h3>
+  {% if roc.get('computed') %}
+    <div class="card__grid">
+      <div class="stat"><span class="stat__label">AUC</span>
+        <span class="stat__value">{{ roc.summary.auc }}</span>
+        <span class="stat__sub">95% CI {{ roc.summary.ci95[0] }} to {{ roc.summary.ci95[1] }}</span></div>
+      <div class="stat"><span class="stat__label">Split</span>
+        <span class="stat__value">{{ roc.summary.positives }} / {{ roc.summary.matched_negatives }}</span>
+        <span class="stat__sub">positives / matched negatives</span></div>
+    </div>
+    <p class="panel__hint">{{ roc.summary.interpretation }}</p>
+  {% else %}
+    <p class="panel__hint"><span class="flag flag--pending">not computed</span>
+      {{ roc.get('status', 'no campaign') }}</p>
+  {% endif %}
+
 </section>
 
 {% if throughput %}
