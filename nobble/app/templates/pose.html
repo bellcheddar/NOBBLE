@@ -25,33 +25,34 @@
       </select>
     </label>
 
-    <div class="viewer" id="viewer" role="img"
-         aria-label="Three-dimensional view of the predicted ternary complex for {{ selected.pair_id }}">
-      <div class="empty" style="margin:0;border:0;background:none">
-        <h3>Structure viewer</h3>
-        <p>
-          Mol* is vendored and the predicted mmCIF files are on disk, but the
-          campaign's structure files are deliberately excluded from version
-          control, so this viewer loads them from the local campaign directory
-          only. The seed structures for this pair are listed below with their
-          measured geometry.
-        </p>
+    <div class="viewer" id="viewer" data-pair="{{ selected.pair_id }}">
+      {# Mol* mounts into a container div and creates its own canvas inside it.
+         Passing a <canvas> instead leaves the drawing buffer at its intrinsic
+         300x150 while CSS stretches the element, which renders nothing. #}
+      <div class="viewer__canvas" id="viewer-canvas"></div>
+      <div class="viewer__empty" id="viewer-empty">
+        <h3>Loading structure</h3>
+        <p>If this persists, the campaign's structure files are not on this host.</p>
       </div>
+      <div class="viewer__readout mono" id="viewer-readout" aria-live="polite"></div>
     </div>
 
     <div class="viewer__controls">
       <button type="button" data-view="reset">Reset</button>
-      <button type="button" data-view="repr" aria-pressed="false">Repr</button>
-      <button type="button" data-view="labels" aria-pressed="false">Labels</button>
+      <button type="button" data-view="seeds" aria-pressed="false"
+              title="Overlay every unconstrained ternary seed: the spread is pose convergence, shown directly">All seeds</button>
+      <button type="button" data-view="crystal" aria-pressed="false"
+              title="Load the deposited ternary alongside the prediction, benchmark pairs only">Crystal</button>
       <button type="button" data-view="spin" aria-pressed="false">Spin</button>
-      <button type="button" data-view="interface" aria-pressed="false">Interface</button>
-      <button type="button" data-view="seeds" aria-pressed="false" title="Overlay all five seeds to show convergence visually">All seeds</button>
-      <button type="button" data-view="crystal" aria-pressed="false" title="Superpose the deposited crystal ternary, benchmark pairs only">Crystal</button>
     </div>
+    <p class="panel__hint" style="margin-top:0.4rem">
+      The per-seed geometry below is the text alternative for this viewer: every
+      number it can show is in the table.
+    </p>
 
     <h3 style="margin-top:1.1rem;font-family:var(--display);font-size:0.9rem">Per-seed geometry</h3>
     <div class="table-wrap" tabindex="0" role="group" aria-label="Scrollable table" style="max-height:20rem">
-      <table class="ledger">
+      <table class="ntable">
         <thead><tr>
           <th>Job</th><th>Complex</th><th>Conditioning</th><th class="num">Seed</th>
           <th class="num">ipTM (receptor-peptide)</th><th class="num">ipTM (global)</th>
@@ -83,6 +84,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='vendor/molstar/molstar.js') }}"></script>
 <script>
 (function () {
   const select = document.getElementById('pair-select');
@@ -91,14 +93,144 @@
       window.location.search = '?pair=' + encodeURIComponent(select.value);
     });
   }
+  const host = document.getElementById('viewer');
+  const canvas = document.getElementById('viewer-canvas');
+  const empty = document.getElementById('viewer-empty');
+  const readout = document.getElementById('viewer-readout');
+  if (!host || !canvas) { return; }
+
+  const pairId = host.dataset.pair;
+  let plugin = null;
+  let catalogue = null;
+  const loaded = [];
+
+  function say(message) { readout.textContent = message || ''; }
+
+  function showEmpty(title, body) {
+    empty.hidden = false;
+    empty.querySelector('h3').textContent = title;
+    empty.querySelector('p').textContent = body;
+  }
+
+  function hideEmpty() { empty.hidden = true; }
+
+  /* Lazily: a page that may never be scrolled to should not build a WebGL
+   * context before anything asks for one. */
+  function init() {
+    if (plugin) { return Promise.resolve(plugin); }
+    if (!window.molstar || !window.molstar.Viewer) {
+      showEmpty('Viewer unavailable', 'Mol* did not load on this browser.');
+      return Promise.reject(new Error('molstar unavailable'));
+    }
+    return window.molstar.Viewer.create(canvas, {
+      layoutIsExpanded: false, layoutShowControls: false, layoutShowSequence: false,
+      layoutShowLog: false, layoutShowLeftPanel: false,
+      viewportShowExpand: false, viewportShowSelectionMode: false,
+      viewportShowAnimation: false
+    }).then(function (viewer) { plugin = viewer; return viewer; });
+  }
+
+  function clear() {
+    loaded.length = 0;
+    return plugin && plugin.plugin && plugin.plugin.clear
+      ? plugin.plugin.clear()
+      : Promise.resolve();
+  }
+
+  function catalogueFor() {
+    if (catalogue) { return Promise.resolve(catalogue); }
+    return fetch('/api/pair/' + encodeURIComponent(pairId) + '/structures')
+      .then(function (r) { return r.json(); })
+      .then(function (data) { catalogue = data; return data; });
+  }
+
+  /* The representative pose: a conditioned ternary if one exists, because that
+   * is the arm the pocket constraint applies to, else any ternary, else the
+   * binary. */
+  function representative(data) {
+    return data.structures.find(function (s) {
+      return s.complex_type === 'ternary' && s.conditioning === 'conditioned';
+    }) || data.structures.find(function (s) { return s.complex_type === 'ternary'; })
+      || data.structures[0];
+  }
+
+  function loadOne(url, label) {
+    return plugin.loadStructureFromUrl(url, 'mmcif', false).then(function () {
+      loaded.push(label);
+    });
+  }
+
+  function loadDefault() {
+    return init().then(catalogueFor).then(function (data) {
+      if (!data.structures.length) {
+        showEmpty('Nothing to show yet',
+          'No job for this pair has completed, so there is no predicted structure.');
+        return;
+      }
+      const pick = representative(data);
+      return clear().then(function () { return loadOne(pick.url, pick.job_id); })
+        .then(function () {
+          hideEmpty();
+          say(pick.complex_type + ' · ' + pick.conditioning + ' · seed ' + pick.seed);
+        });
+    }).catch(function (error) {
+      console.error('viewer load failed', error);
+      showEmpty('Could not load the structure', String(error.message || error));
+    });
+  }
+
+  const actions = {
+    reset: function () { catalogue = null; return loadDefault(); },
+    seeds: function (on) {
+      if (!on) { return loadDefault(); }
+      return init().then(catalogueFor).then(function (data) {
+        const ternaries = data.structures.filter(function (s) {
+          return s.complex_type === 'ternary' && s.conditioning === 'unconstrained';
+        });
+        if (!ternaries.length) { say('no unconstrained ternary seeds yet'); return; }
+        return clear().then(function () {
+          return ternaries.reduce(function (chain, s) {
+            return chain.then(function () { return loadOne(s.url, s.job_id); });
+          }, Promise.resolve());
+        }).then(function () {
+          hideEmpty();
+          say(ternaries.length + ' seeds overlaid: spread shows convergence directly');
+        });
+      });
+    },
+    crystal: function (on) {
+      if (!on) { return loadDefault(); }
+      return init().then(catalogueFor).then(function (data) {
+        if (!data.crystal) {
+          say('no deposited structure for this pair');
+          return;
+        }
+        return loadOne('/crystal/' + data.crystal + '.cif', data.crystal).then(function () {
+          hideEmpty();
+          say('deposited ' + data.crystal + ' loaded alongside the prediction');
+        });
+      });
+    },
+    spin: function (on) {
+      if (plugin && plugin.plugin && plugin.plugin.canvas3d) {
+        plugin.plugin.canvas3d.setProps({ trackball: { animate: on ? { name: 'spin', params: { speed: 1 } } : { name: 'off', params: {} } } });
+      }
+    }
+  };
+
   document.querySelectorAll('[data-view]').forEach(function (button) {
     button.addEventListener('click', function () {
+      let on = null;
       if (button.hasAttribute('aria-pressed')) {
-        button.setAttribute('aria-pressed',
-          button.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+        on = button.getAttribute('aria-pressed') !== 'true';
+        button.setAttribute('aria-pressed', on ? 'true' : 'false');
       }
+      const action = actions[button.dataset.view];
+      if (action) { Promise.resolve(action(on)).catch(function (e) { console.error(e); }); }
     });
   });
+
+  loadDefault();
 })();
 </script>
 {% endblock %}

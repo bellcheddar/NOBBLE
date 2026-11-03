@@ -558,3 +558,40 @@ rather than assumed: assuming it would have attributed every degron contact to
 the receptor, which is precisely the comparison F2b turns on.
 
 **Reversal.** `nobble/score/plip.py`, `conect_integrity`.
+
+---
+
+## D-NOB-026: NOBBLE's own CSS classes are prefixed, because inheriting a design system inherits its namespace
+
+**Date:** 2026-11-03
+
+**Finding.** The application's data tables were given `class="ledger"`, which
+reads naturally and was wrong. `depot.css`, inherited wholesale from BINMAN,
+already defines `.ledger` as BINMAN's **page layout grid**:
+
+```css
+.ledger { display: grid; grid-template-columns: var(--rail-w) minmax(0, 1fr); }
+```
+
+A `<table class="ledger">` therefore computed to `display: grid`, which
+blockifies its children: `thead` and `tbody` stopped participating in table
+layout, the header row and the first body row both landed at the same
+coordinate, and the header painted over the first row of data.
+
+**What made it hard to see, and what to do about it.** The page looked almost
+right, and the first body row was simply invisible behind the header: on the
+Pose tab seed 1 of fifteen was missing and nothing said so. A full-page
+screenshot shows the same symptom that a horizontally scrolling table shows, so
+the first reading of it was wrong. It was settled by measurement rather than by
+looking: `thead` and the first row both reported `top: 843.4`, `thead`
+computed to `display: block` rather than `table-header-group`, and the table
+itself computed to `display: grid`. Enumerating every CSS rule matching the
+element found none, which is what finally pointed at the class on the table
+rather than at a rule targeting the thead.
+
+**Decision.** Anything NOBBLE adds to the inherited stylesheet carries its own
+name: the tables are `.ntable`. `depot.css` is never edited, so BINMAN remains
+the single source of the design system and the two cannot drift.
+
+**Reversal.** Not a preference. Reusing a name that the inherited sheet already
+defines is a collision whichever way round it is written.

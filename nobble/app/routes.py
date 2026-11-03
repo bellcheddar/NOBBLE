@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import json
 
+from pathlib import Path
+
 from flask import Blueprint, abort, jsonify, render_template, request
 
 from nobble.app import data
@@ -138,6 +140,74 @@ def api_state():
 @bp.route("/api/components")
 def api_components():
     return jsonify(data.COMPONENTS)
+
+
+@bp.route("/structure/<path:job_id>.cif")
+def structure(job_id: str):
+    """Serve one predicted mmCIF from the campaign directory.
+
+    Structures are deliberately not in version control and not in the published
+    atlas, so they are served from the local campaign only. The job identifier
+    is matched against the campaign's own records rather than used to build a
+    path, so a crafted identifier cannot escape the directory.
+    """
+    from flask import Response
+
+    for row in data.results():
+        if row.get("job_id") != job_id:
+            continue
+        path = row.get("structure")
+        if not path:
+            abort(404, description="no structure recorded for this job")
+        resolved = Path(path).resolve()
+        campaign = data.campaign_dir()
+        if campaign is None or not str(resolved).startswith(str(campaign.resolve())):
+            abort(404, description="structure is outside the campaign directory")
+        if not resolved.exists():
+            abort(404, description="structure file is missing")
+        return Response(resolved.read_text(), mimetype="chemical/x-mmcif")
+    abort(404, description=f"no completed job {job_id}")
+
+
+@bp.route("/crystal/<pdb_id>.cif")
+def crystal(pdb_id: str):
+    """Serve a deposited assembly from BINMAN's cache, for superposition."""
+    from flask import Response
+
+    from nobble.curate import structures as structure_module
+
+    if not pdb_id.isalnum() or len(pdb_id) != 4:
+        abort(404, description="not a PDB identifier")
+    path = structure_module.assembly_path(pdb_id)
+    if not path.exists():
+        abort(404, description=f"{pdb_id} is not in the assembly cache")
+    import gzip
+
+    with gzip.open(path, "rt", errors="replace") as handle:
+        return Response(handle.read(), mimetype="chemical/x-mmcif")
+
+
+@bp.route("/api/pair/<pair_id>/structures")
+def api_pair_structures(pair_id: str):
+    """Every completed structure for a pair, for the seed-overlay toggle."""
+    from nobble.validate.layers import RECOVERY_TARGETS
+
+    rows = [row for row in data.results() if row.get("pair_id") == pair_id]
+    target = RECOVERY_TARGETS.get(pair_id, {})
+    return jsonify({
+        "pair_id": pair_id,
+        "crystal": target.get("pdb_id"),
+        "structures": [
+            {
+                "job_id": row["job_id"],
+                "complex_type": row.get("complex_type"),
+                "conditioning": row.get("conditioning"),
+                "seed": row.get("seed"),
+                "url": f"/structure/{row['job_id']}.cif",
+            }
+            for row in rows if row.get("structure")
+        ],
+    })
 
 
 @bp.route("/healthz")

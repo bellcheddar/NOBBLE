@@ -42,7 +42,7 @@
 <section class="panel">
   <h2>Scoring signals and how far each is trusted</h2>
   <div class="table-wrap" tabindex="0" role="group" aria-label="Scrollable table" style="max-height:none">
-    <table class="ledger">
+    <table class="ntable">
       <thead><tr><th>Signal</th><th>Units</th><th>Source</th><th>Trust</th><th>Note</th></tr></thead>
       <tbody>
         {% for key, meta in components.items() %}
@@ -115,7 +115,7 @@
     fold or function without its partners.
   </p>
   <div class="table-wrap" tabindex="0" role="group" aria-label="Scrollable table" style="max-height:none">
-    <table class="ledger">
+    <table class="ntable">
       <thead><tr><th>Construct</th><th>E3</th><th class="num">Residues</th><th class="num">Tokens</th><th>Verdict</th></tr></thead>
       <tbody>
         {% for row in construct_budget %}
@@ -146,7 +146,7 @@
     bundles no third-party dataset.
   </p>
   <div class="table-wrap" tabindex="0" role="group" aria-label="Scrollable table" style="max-height:none">
-    <table class="ledger">
+    <table class="ntable">
       <thead><tr><th>Source</th><th>Status</th></tr></thead>
       <tbody>
         {% for name, present in sources.items() %}

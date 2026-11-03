@@ -44,7 +44,7 @@
       </div>
 
       <div class="table-wrap" tabindex="0" role="group" aria-label="Scrollable table">
-        <table class="ledger" id="ledger">
+        <table class="ntable" id="pair-table">
           <thead>
             <tr>
               <th data-sort="pair_id">Pair</th>
@@ -131,7 +131,7 @@
   const COMPONENTS = {{ components | tojson }};
   if (!PAIRS.length) { return; }
 
-  const body = document.querySelector('#ledger tbody');
+  const body = document.querySelector('#pair-table tbody');
   const count = document.getElementById('ledger-count');
   let sortKey = 'composite';
   let sortDir = -1;
@@ -235,7 +235,7 @@
     });
   }
 
-  document.querySelectorAll('#ledger th[data-sort]').forEach(th => {
+  document.querySelectorAll('#pair-table th[data-sort]').forEach(th => {
     th.addEventListener('click', () => {
       const key = th.dataset.sort;
       if (key === sortKey) { sortDir = -sortDir; } else { sortKey = key; sortDir = -1; }
