@@ -1,0 +1,391 @@
+/* NOBBLE additions on top of the Depot system inherited from BINMAN.
+ *
+ * Only what NOBBLE adds: the tab strip, the pin bar with its PEPTIDE slot, the
+ * campaign progress chip, the weights panel and the benchmark cards. Colours,
+ * type and spacing all come from depot.css tokens, so a theme change there
+ * carries through here and the two modules cannot drift apart.
+ */
+
+/* ------------------------------------------------------------------ header */
+
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: var(--gutter);
+  flex-wrap: wrap;
+  padding: 0.7rem 1.1rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.brand-block { display: flex; flex-direction: column; gap: 0.1rem; }
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: var(--ink);
+}
+.brand__mark { width: 26px; height: 26px; color: var(--accent); flex: 0 0 auto; }
+.brand__word {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.12rem;
+  letter-spacing: 0.08em;
+}
+.brand__strap {
+  margin: 0;
+  font-size: 0.68rem;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+.tabs { display: flex; gap: 0.15rem; flex-wrap: wrap; margin-left: auto; }
+.tab {
+  font-family: var(--display);
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.45rem 0.7rem;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+}
+.tab:hover { color: var(--ink); background: var(--surface-2); }
+.tab:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.tab--on { color: var(--ink); border-bottom-color: var(--accent); }
+
+.header-tools { display: flex; align-items: center; gap: 0.6rem; }
+
+.campaign-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.7rem;
+  padding: 0.3rem 0.55rem;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.chip__id { color: var(--muted); max-width: 16ch; overflow: hidden; text-overflow: ellipsis; }
+.chip__bar {
+  display: block;
+  width: 72px;
+  height: 6px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.chip__fill { display: block; height: 100%; background: var(--accent); }
+.chip__live {
+  color: var(--on-accent);
+  background: var(--good);
+  padding: 0.05rem 0.3rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.theme-toggle {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+/* ----------------------------------------------------------------- pin bar */
+
+.pinbar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  padding: 0.45rem 1.1rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  font-size: 0.72rem;
+}
+.pinbar__label {
+  font-family: var(--display);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-size: 0.66rem;
+}
+.pin {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.pin__slot {
+  font-size: 0.6rem;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.pin--set { border-color: var(--accent); background: var(--accent-soft); }
+.pin--empty .pin__value { color: var(--muted); }
+.pin__clear {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0 0.1rem;
+}
+.pin__clear:hover { color: var(--bad); }
+.pin__reset {
+  margin-left: 0.3rem;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: 0.66rem;
+  padding: 0.22rem 0.45rem;
+  cursor: pointer;
+}
+.pin__reset:hover { color: var(--ink); border-color: var(--ink); }
+
+/* ------------------------------------------------------------------- layout */
+
+.app-main { padding: 1.1rem; max-width: 1680px; margin: 0 auto; }
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.95rem 1.05rem;
+  margin-bottom: 1.1rem;
+  box-shadow: var(--shadow);
+}
+.panel > h2, .panel > h3 {
+  font-family: var(--display);
+  margin: 0 0 0.2rem;
+  font-size: 1rem;
+  letter-spacing: 0.01em;
+}
+.panel__hint { margin: 0 0 0.8rem; color: var(--muted); font-size: 0.78rem; max-width: 76ch; }
+
+.split { display: grid; gap: 1.1rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1100px) {
+  .split--2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .split--sidebar { grid-template-columns: minmax(0, 1fr) 19rem; }
+}
+
+.mono { font-family: var(--data); font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------------------------------ tables */
+
+.ledger { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+.ledger th, .ledger td {
+  text-align: left;
+  padding: 0.38rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.ledger th {
+  font-family: var(--display);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  cursor: pointer;
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+}
+.ledger tbody tr:hover { background: var(--surface-2); }
+/* The pair identifier is long and uninformative past its prefix, so it is
+   truncated with the full value on hover rather than setting the table's
+   width. Flags wrap instead of forcing a horizontal scroll: a 12-column table
+   that overflows its panel is harder to read than one that wraps its least
+   precise column. */
+.ledger td:first-child {
+  max-width: 15ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.72rem;
+}
+.ledger td:last-child, .ledger th:last-child { white-space: normal; min-width: 9rem; }
+.ledger td.num { font-size: 0.74rem; }
+.ledger tbody tr.row--pinned { background: var(--accent-soft); }
+.ledger td.num { text-align: right; font-family: var(--data); font-variant-numeric: tabular-nums; }
+/* A scrollable region must be reachable by keyboard, or its content is
+   unreachable without a pointer. */
+.table-wrap { max-height: 32rem; overflow: auto; border: 1px solid var(--line); }
+.table-wrap:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+
+/* ------------------------------------------------------------------- flags */
+
+.flag {
+  display: inline-block;
+  font-size: 0.6rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.1rem 0.32rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.flag--glue { border-color: var(--good); color: var(--good); }
+.flag--protac { border-color: var(--accent); color: var(--accent); }
+.flag--warn { border-color: var(--warn); color: var(--warn); }
+.flag--bad { border-color: var(--bad); color: var(--bad); }
+.flag--pending { border-style: dashed; }
+
+/* ----------------------------------------------------------------- weights */
+
+.weights { display: flex; flex-direction: column; gap: 0.75rem; }
+.weight { display: flex; flex-direction: column; gap: 0.2rem; }
+.weight__head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.4rem; }
+.weight__label { font-size: 0.74rem; }
+.weight__value { font-family: var(--data); font-size: 0.72rem; color: var(--muted); }
+.weight input[type="range"] { width: 100%; accent-color: var(--accent); }
+.weight__note { font-size: 0.66rem; color: var(--muted); margin: 0; }
+.weight--unvalidated .weight__label::after {
+  content: ' not validated';
+  font-size: 0.6rem;
+  color: var(--warn);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ------------------------------------------------------------------- cards */
+
+.cards { display: grid; gap: 1.1rem; grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+  box-shadow: var(--shadow);
+}
+/* A pending card is signalled by its dashed border and its own background, not
+   by opacity. Opacity on the container blends every descendant toward the page
+   and silently drops text contrast: axe measured 4.05 against the 4.5 needed,
+   on text that passes at full opacity. A container-level opacity can never be
+   safe for body text for that reason. */
+.card--pending { border-style: dashed; background: var(--surface-2); }
+.card--pending .card__title,
+.card--pending .card__role,
+.card--pending .empty p,
+.card--pending .empty h3 { color: var(--ink); }
+.card--pending .card__head .mono { color: var(--muted); }
+.card__head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
+.card__title { font-family: var(--display); font-size: 0.95rem; margin: 0; }
+.card__role { font-size: 0.72rem; color: var(--muted); margin: 0.25rem 0 0.7rem; }
+.card__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr)); gap: 0.5rem; }
+.stat { border-left: 2px solid var(--line); padding-left: 0.45rem; }
+.stat--good { border-left-color: var(--good); }
+.stat--warn { border-left-color: var(--warn); }
+.stat--bad { border-left-color: var(--bad); }
+.stat__label { display: block; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.stat__value { display: block; font-family: var(--data); font-size: 0.95rem; }
+.stat__sub { display: block; font-size: 0.62rem; color: var(--muted); }
+
+/* ------------------------------------------------------------------ viewer */
+
+.viewer {
+  position: relative;
+  width: 100%;
+  height: 30rem;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+.viewer__controls { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.viewer__controls button {
+  font-family: var(--display);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.3rem 0.55rem;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.viewer__controls button:hover { border-color: var(--accent); color: var(--accent); }
+.viewer__controls button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+
+.chart { width: 100%; height: 26rem; }
+.chart--short { height: 18rem; }
+
+/* ----------------------------------------------------------------- tooltip */
+
+.tip {
+  position: fixed;
+  z-index: 90;
+  max-width: 24rem;
+  padding: 0.5rem 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.tip--on { opacity: 1; }
+.tip__row { display: block; color: var(--muted); }
+.tip__src { display: block; margin-top: 0.3rem; color: var(--muted); font-size: 0.66rem; font-style: italic; }
+
+/* ------------------------------------------------------------------- empty */
+
+.empty {
+  padding: 1.6rem;
+  text-align: center;
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.empty h3 { font-family: var(--display); margin: 0 0 0.3rem; color: var(--ink); }
+.empty p { margin: 0.2rem auto; max-width: 54ch; font-size: 0.8rem; }
+
+/* ------------------------------------------------------------------ footer */
+
+.app-footer {
+  padding: 1rem 1.1rem 2rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+.app-footer p { margin: 0.2rem 0; }
+.app-footer a { color: var(--accent); }
+.app-footer__caveat { font-style: italic; }
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+}
+.skip-link:focus {
+  left: 0.5rem;
+  top: 0.5rem;
+  z-index: 100;
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius);
+}
+
+@media (max-width: 760px) {
+  .tabs { margin-left: 0; width: 100%; }
+  .app-main { padding: 0.7rem; }
+  .viewer { height: 22rem; }
+  .chart { height: 20rem; }
+}

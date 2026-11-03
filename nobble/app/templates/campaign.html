@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="split split--sidebar">
+  <section class="panel">
+    <h2>Pair ledger</h2>
+    <p class="panel__hint">
+      Every (receptor, peptide, ligand) triple in the campaign. Sort by any column.
+      Click a row to pin it into every other tab. Hover any number for its raw
+      value, units and where it came from. The composite is re-weighted in the
+      browser from components the pipeline already measured: moving a slider
+      re-ranks this table without a server round trip.
+    </p>
+
+    {% if not pairs %}
+      <div class="empty">
+        <h3>Nothing scored yet</h3>
+        <p>
+          The campaign has no scored pairs. If a queue is running, the chip in the
+          header shows its progress; scores appear here as each pair's jobs finish
+          and <code class="mono">nobble.score.run</code> is run against them.
+        </p>
+      </div>
+    {% else %}
+      <div class="ledger-filters">
+        <label>Modality
+          <select id="f-modality">
+            <option value="">all</option>
+            <option value="glue">glue</option>
+            <option value="protac">PROTAC</option>
+          </select>
+        </label>
+        <label>Tier
+          <select id="f-tier">
+            <option value="">all</option>
+            <option value="benchmark">benchmark</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+          </select>
+        </label>
+        <label><input type="checkbox" id="f-bridged"> bridging seeds only</label>
+        <label><input type="checkbox" id="f-pinned"> pinned only</label>
+        <span class="ledger-count mono" id="ledger-count"></span>
+      </div>
+
+      <div class="table-wrap" tabindex="0" role="group" aria-label="Scrollable table">
+        <table class="ledger" id="ledger">
+          <thead>
+            <tr>
+              <th data-sort="pair_id">Pair</th>
+              <th data-sort="e3_gene">E3</th>
+              <th data-sort="peptide_gene">Target</th>
+              <th data-sort="ligand_key">Ligand</th>
+              <th data-sort="modality">Mode</th>
+              <th data-sort="composite" class="num">Composite</th>
+              <th data-sort="bridge_percentile" class="num">Bridge %ile</th>
+              <th data-sort="bridge_formation_rate" class="num">Bridge rate</th>
+              <th data-sort="delta_iptm" class="num">&Delta;-ipTM</th>
+              <th data-sort="convergence_score" class="num">Converge</th>
+              <th data-sort="plip_fingerprint_match" class="num">PLIP</th>
+              <th>Flags</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    {% endif %}
+  </section>
+
+  <aside>
+    <section class="panel">
+      <h3>Composite weights</h3>
+      <p class="panel__hint">
+        Spec 4.8 fits these on the benchmark panel and the Sievers matched set,
+        never by hand. Until that fit has the data, these sliders explore the
+        weighting: they do not publish one. The pipeline's own
+        <code class="mono">nobble_score</code> stays null for the same reason.
+      </p>
+      <div class="weights" id="weights">
+        {% for key, meta in components.items() %}
+        <div class="weight{% if meta.trust == 'not validated' %} weight--unvalidated{% endif %}"
+             data-weight-key="{{ key }}">
+          <div class="weight__head">
+            <label class="weight__label" for="w-{{ key }}">{{ meta.label }}</label>
+            <span class="weight__value" data-weight-display>{{ meta.default_weight }}</span>
+          </div>
+          <input type="range" id="w-{{ key }}" min="0" max="1" step="0.05"
+                 value="{{ meta.default_weight }}"
+                 aria-describedby="wn-{{ key }}">
+          <p class="weight__note" id="wn-{{ key }}">{{ meta.note }}</p>
+        </div>
+        {% endfor %}
+      </div>
+      <button class="pin__reset" type="button" id="w-reset" style="margin-top:0.7rem">Reset weights</button>
+    </section>
+
+    <section class="panel">
+      <h3>Throughput</h3>
+      {% if throughput %}
+      <div class="card__grid">
+        <div class="stat"><span class="stat__label">s / token</span>
+          <span class="stat__value">{{ throughput.median_seconds_per_token }}</span>
+          <span class="stat__sub">median, measured</span></div>
+        <div class="stat"><span class="stat__label">Jobs timed</span>
+          <span class="stat__value">{{ throughput.jobs_timed }}</span></div>
+        <div class="stat"><span class="stat__label">Affordable pairs</span>
+          <span class="stat__value">{{ throughput.affordable_pairs }}</span>
+          <span class="stat__sub">in {{ throughput.wall_clock_budget_hours }} h</span></div>
+        <div class="stat"><span class="stat__label">Jobs per pair</span>
+          <span class="stat__value">{{ throughput.jobs_per_pair }}</span>
+          <span class="stat__sub">computed, not quoted</span></div>
+      </div>
+      {% else %}
+        <p class="panel__hint">Not measured yet. Phase 2 writes it from the benchmark panel.</p>
+      {% endif %}
+    </section>
+  </aside>
+</div>
+
+<style>
+  .ledger-filters { display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.6rem; font-size: 0.74rem; }
+  .ledger-filters select { background: var(--surface-2); border: 1px solid var(--line); color: var(--ink); padding: 0.2rem; border-radius: var(--radius); }
+  .ledger-count { margin-left: auto; color: var(--muted); }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const PAIRS = {{ pairs | tojson }};
+  const COMPONENTS = {{ components | tojson }};
+  if (!PAIRS.length) { return; }
+
+  const body = document.querySelector('#ledger tbody');
+  const count = document.getElementById('ledger-count');
+  let sortKey = 'composite';
+  let sortDir = -1;
+
+  const defaults = {};
+  Object.keys(COMPONENTS).forEach(k => { defaults[k] = COMPONENTS[k].default_weight; });
+  let weights = NOBBLE.weights.load(defaults);
+
+  function fmt(value, places) {
+    if (value === null || value === undefined) { return '—'; }
+    if (typeof value !== 'number') { return String(value); }
+    return value.toFixed(places === undefined ? 3 : places);
+  }
+
+  function tipAttrs(key, value, pair) {
+    const meta = COMPONENTS[key] || {};
+    const bits = [
+      'data-tip="' + (meta.note || '').replace(/"/g, '&quot;') + '"',
+      'data-tip-title="' + (meta.label || key) + '"',
+      'data-tip-value="' + (value === null || value === undefined ? 'not computed' : value) + '"',
+      'data-tip-units="' + (meta.units || '') + '"',
+      'data-tip-source="' + (meta.source || '') + '"',
+      'tabindex="0"'
+    ];
+    if (key === 'bridge_percentile' && value !== null && value !== undefined) {
+      bits.push('data-tip-percentile="' + value + ' of 285,996 observed bridges"');
+    }
+    return bits.join(' ');
+  }
+
+  function flags(pair) {
+    const out = [];
+    out.push('<span class="flag flag--' + (pair.modality === 'protac' ? 'protac' : 'glue') + '">' +
+      (pair.modality || 'none') + '</span>');
+    if (pair.seed_collapse_affects_delta) {
+      out.push('<span class="flag flag--warn" title="A collapsed seed set the mandated minimum, so Delta-ipTM here reports worst-case seed behaviour. The median is shown in the tooltip.">seed collapse</span>');
+    }
+    if (pair.undocked_seeds && pair.undocked_seeds.length) {
+      out.push('<span class="flag flag--bad" title="' + pair.undocked_seeds.length +
+        ' seed(s) left the peptide off the receptor entirely">undocked ' + pair.undocked_seeds.length + '</span>');
+    }
+    if (pair.forced) { out.push('<span class="flag flag--warn" title="Pose appears only under pocket conditioning">forced</span>'); }
+    if (pair.furniture === null) { out.push('<span class="flag flag--pending" title="ProtCID was never acquired, so the packing veto is not computed">furniture n/c</span>'); }
+    return out.join(' ');
+  }
+
+  function render() {
+    const modality = document.getElementById('f-modality').value;
+    const tier = document.getElementById('f-tier').value;
+    const bridgedOnly = document.getElementById('f-bridged').checked;
+    const pinnedOnly = document.getElementById('f-pinned').checked;
+    const pins = NOBBLE.pins.get();
+
+    let rows = PAIRS.map(p => Object.assign({}, p, { composite: NOBBLE.weights.composite(p, weights) }));
+    rows = rows.filter(p => (!modality || p.modality === modality) &&
+                            (!tier || p.tier === tier) &&
+                            (!bridgedOnly || (p.bridging_seeds_with_bridge || 0) > 0) &&
+                            (!pinnedOnly || NOBBLE.pins.matches(p)));
+
+    rows.sort((a, b) => {
+      const x = a[sortKey], y = b[sortKey];
+      if (x === null || x === undefined) { return 1; }
+      if (y === null || y === undefined) { return -1; }
+      if (typeof x === 'number') { return (x - y) * sortDir; }
+      return String(x).localeCompare(String(y)) * sortDir;
+    });
+
+    body.innerHTML = rows.map(p => {
+      const pinned = NOBBLE.pins.matches(p) && Object.keys(pins).length;
+      return '<tr class="' + (pinned ? 'row--pinned' : '') + '" data-pair="' + p.pair_id + '">' +
+        '<td class="mono" title="' + p.pair_id + '">' + p.pair_id + '</td>' +
+        '<td>' + (p.e3_gene || '—') + '</td>' +
+        '<td>' + (p.peptide_gene || '—') + '</td>' +
+        '<td class="mono">' + (p.ligand_key || '—') + '</td>' +
+        '<td>' + (p.modality || '—') + '</td>' +
+        '<td class="num" ' + tipAttrs('composite', p.composite, p) + '>' + fmt(p.composite) + '</td>' +
+        '<td class="num" ' + tipAttrs('bridge_percentile', p.bridge_percentile, p) + '>' + fmt(p.bridge_percentile, 1) + '</td>' +
+        '<td class="num" title="Fraction of ternary seeds in which the glue actually bridged receptor to peptide">' +
+          (p.bridging_seeds_with_bridge || 0) + '/' + (p.bridging_seeds_total || 0) + '</td>' +
+        '<td class="num" ' + tipAttrs('delta_iptm', p.delta_iptm, p) +
+          ' data-tip-source="model-derived. median across seeds: ' + fmt(p.delta_iptm_median) + '">' +
+          fmt(p.delta_iptm) + '</td>' +
+        '<td class="num" ' + tipAttrs('convergence_score', p.convergence_score, p) + '>' + fmt(p.convergence_score) + '</td>' +
+        '<td class="num" ' + tipAttrs('plip_fingerprint_match', p.plip_fingerprint_match, p) + '>' + fmt(p.plip_fingerprint_match, 2) + '</td>' +
+        '<td>' + flags(p) + '</td>' +
+        '</tr>';
+    }).join('');
+
+    count.textContent = rows.length + ' of ' + PAIRS.length + ' pairs';
+    NOBBLE.tip.bind(body);
+
+    body.querySelectorAll('tr').forEach(tr => {
+      tr.addEventListener('click', () => {
+        const pair = PAIRS.find(p => p.pair_id === tr.dataset.pair);
+        if (!pair) { return; }
+        NOBBLE.pins.setMany({
+          E3: pair.e3_gene, GLUE: pair.ligand_key,
+          TARGET: pair.peptide_gene, PEPTIDE: pair.peptide_id
+        });
+      });
+    });
+  }
+
+  document.querySelectorAll('#ledger th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.sort;
+      if (key === sortKey) { sortDir = -sortDir; } else { sortKey = key; sortDir = -1; }
+      render();
+    });
+  });
+
+  ['f-modality', 'f-tier', 'f-bridged', 'f-pinned'].forEach(id => {
+    document.getElementById(id).addEventListener('change', render);
+  });
+
+  document.querySelectorAll('#weights input[type="range"]').forEach(input => {
+    const key = input.closest('[data-weight-key]').dataset.weightKey;
+    input.value = weights[key] !== undefined ? weights[key] : defaults[key];
+    input.closest('.weight').querySelector('[data-weight-display]').textContent = Number(input.value).toFixed(2);
+    input.addEventListener('input', () => {
+      weights[key] = Number(input.value);
+      input.closest('.weight').querySelector('[data-weight-display]').textContent = Number(input.value).toFixed(2);
+      NOBBLE.weights.save(weights);
+      render();
+    });
+  });
+
+  document.getElementById('w-reset').addEventListener('click', () => {
+    weights = Object.assign({}, defaults);
+    NOBBLE.weights.save(weights);
+    document.querySelectorAll('#weights input[type="range"]').forEach(input => {
+      const key = input.closest('[data-weight-key]').dataset.weightKey;
+      input.value = defaults[key];
+      input.closest('.weight').querySelector('[data-weight-display]').textContent = Number(defaults[key]).toFixed(2);
+    });
+    render();
+  });
+
+  NOBBLE.pins.onChange(render);
+  render();
+})();
+</script>
+{% endblock %}

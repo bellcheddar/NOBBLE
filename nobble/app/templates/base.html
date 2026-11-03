@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en-GB" data-theme-default>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ page_title }}{% endblock %} · NOBBLE</title>
+<meta name="description" content="NOBBLE: glue dependence of predicted ternary degrader complexes, scored against 285,996 experimentally observed bridges.">
+<meta name="theme-color" content="#E9EAE5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131512" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/fonts/fonts.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabulator/tabulator.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/molstar/molstar.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/depot.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/nobble.css') }}">
+<script>
+  /* Apply the stored theme before first paint so the page never flashes. */
+  (function () {
+    try {
+      var stored = localStorage.getItem('nobble-theme');
+      if (stored === 'dark' || stored === 'light') {
+        document.documentElement.setAttribute('data-theme', stored);
+      }
+    } catch (e) { /* private mode: fall through to the media query */ }
+  })();
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="app-header">
+  <div class="brand-block">
+    <a class="brand" href="{{ url_for('nobble.campaign') }}">
+      <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+        <!-- Two protein lobes with a wedge between them: the glue bridging an
+             E3 and a substrate, which is the one thing NOBBLE measures. -->
+        <circle cx="9" cy="16" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/>
+        <circle cx="23" cy="16" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/>
+        <rect x="14.2" y="12.6" width="3.6" height="6.8" fill="currentColor"/>
+      </svg>
+      <span class="brand__word">NOBBLE</span>
+    </a>
+    <p class="brand__strap">Glue dependence, measured against real interfaces</p>
+  </div>
+
+  <nav class="tabs" aria-label="Sections">
+    {% for slug, label, hint in tabs %}
+      <a class="tab{% if active == slug %} tab--on{% endif %}"
+         href="{{ url_for('nobble.' + slug) }}"
+         title="{{ hint }}"
+         {% if active == slug %}aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </nav>
+
+  <div class="header-tools">
+    <div class="campaign-chip" title="Jobs completed in the current campaign. The app reads the campaign live, so this advances while a queue is running.">
+      {% if campaign_state.present %}
+        <span class="chip__id mono">{{ campaign_state.campaign_id }}</span>
+        <span class="chip__bar" role="img"
+              aria-label="{{ campaign_state.jobs_done }} of {{ campaign_state.jobs_total }} jobs complete">
+          <span class="chip__fill" style="width: {{ campaign_state.percent }}%"></span>
+        </span>
+        <span class="chip__count mono">{{ campaign_state.jobs_done }}/{{ campaign_state.jobs_total }}</span>
+        {% if campaign_state.running %}<span class="chip__live" title="The queue is still running">live</span>{% endif %}
+      {% else %}
+        <span class="chip__id mono">no campaign</span>
+      {% endif %}
+    </div>
+    <button class="theme-toggle" type="button" data-theme-toggle
+            aria-label="Switch between light and dark theme">
+      <span aria-hidden="true">◐</span>
+    </button>
+  </div>
+</header>
+
+<div class="pinbar" id="pinbar" aria-live="polite">
+  <span class="pinbar__label">Pinned</span>
+  {% for slot in ['E3', 'GLUE', 'TARGET', 'PEPTIDE'] %}
+    <span class="pin pin--empty" data-pin-slot="{{ slot }}">
+      <span class="pin__slot">{{ slot }}</span>
+      <span class="pin__value mono" data-pin-value>none</span>
+      <button class="pin__clear" type="button" data-pin-clear="{{ slot }}"
+              aria-label="Clear the pinned {{ slot }}" hidden>&times;</button>
+    </span>
+  {% endfor %}
+  <button class="pin__reset" type="button" data-pin-reset
+          title="Clear every pinned slot">Clear all</button>
+</div>
+
+<main id="main" class="app-main">
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="app-footer">
+  <p>
+    <strong>NOBBLE</strong> · Neosubstrate and Oligopeptide Binder Benchmarking for Ligase Engagement ·
+    a campaign preset on <a href="https://github.com/bellcheddar/BoltzMaker" target="_blank" rel="noopener noreferrer">BoltzMaker</a>
+    and a fifth module on <a href="https://binman.mdeller.com" target="_blank" rel="noopener noreferrer">BINMAN</a>
+  </p>
+  <p class="app-footer__caveat">
+    Confidence metrics are reported as enrichment, never as a verdict. See the
+    <a href="{{ url_for('nobble.about') }}">About</a> page for the calibration caveat and the validation numbers.
+  </p>
+</footer>
+
+<div class="tip" id="tip" role="tooltip" aria-hidden="true"></div>
+
+<script src="{{ url_for('static', filename='vendor/plotly/plotly.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/tabulator/tabulator.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/nobble.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

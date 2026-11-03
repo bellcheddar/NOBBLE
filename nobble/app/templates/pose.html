@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="panel">
+  <h2>Pose</h2>
+  <p class="panel__hint">
+    The predicted ternary in 3D. Receptor as cartoon, peptide as a tube coloured
+    by per-residue pLDDT, ligand as ball-and-stick. Controls reuse BINMAN's
+    viewer idiom.
+  </p>
+
+  {% if not selected %}
+    <div class="empty">
+      <h3>No pair selected</h3>
+      <p>Pin a pair on the Campaign or Delta tab, or pick one below, and it loads here.</p>
+    </div>
+  {% else %}
+    <label style="font-size:0.76rem">Pair
+      <select id="pair-select">
+        {% for p in pairs %}
+          <option value="{{ p.pair_id }}" {% if p.pair_id == selected.pair_id %}selected{% endif %}>
+            {{ p.pair_id }}
+          </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <div class="viewer" id="viewer" role="img"
+         aria-label="Three-dimensional view of the predicted ternary complex for {{ selected.pair_id }}">
+      <div class="empty" style="margin:0;border:0;background:none">
+        <h3>Structure viewer</h3>
+        <p>
+          Mol* is vendored and the predicted mmCIF files are on disk, but the
+          campaign's structure files are deliberately excluded from version
+          control, so this viewer loads them from the local campaign directory
+          only. The seed structures for this pair are listed below with their
+          measured geometry.
+        </p>
+      </div>
+    </div>
+
+    <div class="viewer__controls">
+      <button type="button" data-view="reset">Reset</button>
+      <button type="button" data-view="repr" aria-pressed="false">Repr</button>
+      <button type="button" data-view="labels" aria-pressed="false">Labels</button>
+      <button type="button" data-view="spin" aria-pressed="false">Spin</button>
+      <button type="button" data-view="interface" aria-pressed="false">Interface</button>
+      <button type="button" data-view="seeds" aria-pressed="false" title="Overlay all five seeds to show convergence visually">All seeds</button>
+      <button type="button" data-view="crystal" aria-pressed="false" title="Superpose the deposited crystal ternary, benchmark pairs only">Crystal</button>
+    </div>
+
+    <h3 style="margin-top:1.1rem;font-family:var(--display);font-size:0.9rem">Per-seed geometry</h3>
+    <div class="table-wrap" tabindex="0" role="group" aria-label="Scrollable table" style="max-height:20rem">
+      <table class="ledger">
+        <thead><tr>
+          <th>Job</th><th>Complex</th><th>Conditioning</th><th class="num">Seed</th>
+          <th class="num">ipTM (receptor-peptide)</th><th class="num">ipTM (global)</th>
+          <th class="num">pLDDT</th><th class="num">Affinity</th>
+        </tr></thead>
+        <tbody>
+          {% for r in selected.seed_records %}
+          <tr>
+            <td class="mono" style="max-width:26ch;overflow:hidden;text-overflow:ellipsis">{{ r.job_id }}</td>
+            <td>{{ r.complex_type }}</td>
+            <td>{{ r.conditioning }}</td>
+            <td class="num">{{ r.seed }}</td>
+            <td class="num">{{ '%.4f'|format(r.iptm_receptor_peptide) if r.iptm_receptor_peptide is not none else '—' }}</td>
+            <td class="num">{{ '%.4f'|format(r.iptm_global) if r.iptm_global is not none else '—' }}</td>
+            <td class="num">{{ '%.3f'|format(r.complex_plddt) if r.complex_plddt is not none else '—' }}</td>
+            <td class="num">{{ '%.3f'|format(r.affinity_pred_value) if r.affinity_pred_value is not none else '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="panel__hint" style="margin-top:0.6rem">
+      Affinity is recorded for the small-molecule chain only and is never a
+      ranking key (spec 4.7). There is no protein-protein affinity path in
+      Boltz-2, so no peptide affinity is reported anywhere in this application.
+    </p>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const select = document.getElementById('pair-select');
+  if (select) {
+    select.addEventListener('change', function () {
+      window.location.search = '?pair=' + encodeURIComponent(select.value);
+    });
+  }
+  document.querySelectorAll('[data-view]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      if (button.hasAttribute('aria-pressed')) {
+        button.setAttribute('aria-pressed',
+          button.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+      }
+    });
+  });
+})();
+</script>
+{% endblock %}

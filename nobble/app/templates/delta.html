@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="panel">
+  <h2>Glue dependence</h2>
+  <p class="panel__hint">
+    The headline view. &Delta;-ipTM against bridge percentile, coloured by
+    experimental label, sized by the number of lysines in the peptide. Lasso or
+    box select to push a set into the pinned selection; every other tab follows.
+    &Delta;-ipTM is the spec's definition (minimum across seeds); the median is in
+    every tooltip, because one collapsed seed can invert the minimum.
+  </p>
+
+  {% if not pairs %}
+    <div class="empty">
+      <h3>No scored pairs yet</h3>
+      <p>This view needs at least one pair with both a binary and a ternary arm complete.</p>
+    </div>
+  {% else %}
+    <div class="split split--2">
+      <div>
+        <div class="chart" id="scatter"></div>
+      </div>
+      <div>
+        <div class="chart" id="marginal"></div>
+      </div>
+    </div>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h3>Matched-control ROC</h3>
+  <p class="panel__hint">
+    &Delta;-ipTM on the Sievers degraded versus non-degraded split. The negatives
+    came out of the same screen as the positives, which is what makes this curve
+    mean anything. Drag the threshold to read precision and recall off the live
+    numbers.
+  </p>
+  <div id="roc-wrap">
+    <div class="empty" id="roc-empty">
+      <h3>Not computable yet</h3>
+      <p>
+        The ROC needs the Sievers matched set, which the campaign runs after the
+        benchmark panel. With only benchmark pairs scored there are no matched
+        experimental negatives to plot, and a curve drawn without them would be
+        meaningless rather than preliminary.
+      </p>
+      <p id="roc-counts" class="mono"></p>
+    </div>
+    <div class="chart chart--short" id="roc" hidden></div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const PAIRS = {{ pairs | tojson }};
+  if (!PAIRS.length) { return; }
+
+  const LABEL_COLOUR = {
+    degraded: '#2C6D60',
+    not_degraded: '#A33A2A',
+    negative_control: '#79610D',
+    unknown: '#61655F'
+  };
+
+  function lysineCount(p) {
+    return (p.lysine_reach && p.lysine_reach.peptide_lysines) || 0;
+  }
+
+  function buildScatter() {
+    const groups = {};
+    PAIRS.forEach(p => {
+      if (p.delta_iptm === null || p.delta_iptm === undefined) { return; }
+      const label = p.peptide_label || 'unknown';
+      groups[label] = groups[label] || [];
+      groups[label].push(p);
+    });
+
+    const traces = Object.keys(groups).map(label => {
+      const rows = groups[label];
+      return {
+        name: label + ' (' + rows.length + ')',
+        x: rows.map(p => p.delta_iptm),
+        y: rows.map(p => p.bridge_percentile === null ? 0 : p.bridge_percentile),
+        text: rows.map(p => p.pair_id),
+        customdata: rows.map(p => [
+          p.peptide_gene || '—', p.e3_gene || '—', p.ligand_key || '—',
+          p.delta_iptm_median === null || p.delta_iptm_median === undefined ? 'n/a' : p.delta_iptm_median,
+          (p.bridging_seeds_with_bridge || 0) + '/' + (p.bridging_seeds_total || 0),
+          lysineCount(p),
+          p.seed_collapse_affects_delta ? 'yes' : 'no'
+        ]),
+        mode: 'markers',
+        type: 'scatter',
+        marker: {
+          size: rows.map(p => 9 + 3 * lysineCount(p)),
+          color: LABEL_COLOUR[label] || LABEL_COLOUR.unknown,
+          line: { width: 1, color: 'rgba(0,0,0,0.35)' },
+          opacity: 0.85
+        },
+        hovertemplate:
+          '<b>%{text}</b><br>' +
+          'target %{customdata[0]} · E3 %{customdata[1]} · ligand %{customdata[2]}<br>' +
+          '&Delta;-ipTM (min) %{x:.4f}<br>' +
+          '&Delta;-ipTM (median) %{customdata[3]}<br>' +
+          'bridge percentile %{y:.1f}<br>' +
+          'bridging seeds %{customdata[4]}<br>' +
+          'peptide lysines %{customdata[5]}<br>' +
+          'seed collapse set the minimum: %{customdata[6]}' +
+          '<extra></extra>'
+      };
+    });
+
+    Plotly.newPlot('scatter', traces, NOBBLE.plotLayout({
+      title: { text: 'Delta-ipTM against bridge percentile', font: { size: 13 } },
+      xaxis: { title: 'Delta-ipTM (ternary minus binary, minimum across seeds)', zeroline: true, zerolinewidth: 2 },
+      yaxis: { title: 'Bridge percentile (of 285,996 observed bridges)', range: [-2, 102] },
+      dragmode: 'lasso',
+      showlegend: true,
+      legend: { orientation: 'h', y: -0.22 },
+      shapes: [{
+        type: 'line', x0: 0, x1: 0, yref: 'paper', y0: 0, y1: 1,
+        line: { dash: 'dot', width: 1, color: '#61655F' }
+      }]
+    }), NOBBLE.plotConfig);
+
+    document.getElementById('scatter').on('plotly_selected', function (event) {
+      if (!event || !event.points || !event.points.length) { return; }
+      const ids = event.points.map(pt => pt.text);
+      const first = PAIRS.find(p => p.pair_id === ids[0]);
+      if (first) {
+        NOBBLE.pins.setMany({
+          E3: first.e3_gene, GLUE: first.ligand_key,
+          TARGET: first.peptide_gene, PEPTIDE: first.peptide_id
+        });
+      }
+      window.dispatchEvent(new CustomEvent('nobble:selected', { detail: ids }));
+    });
+  }
+
+  function buildMarginal() {
+    const withDelta = PAIRS.filter(p => p.delta_iptm !== null && p.delta_iptm !== undefined);
+    const traces = [
+      {
+        name: 'Delta-ipTM (min)',
+        x: withDelta.map(p => p.delta_iptm),
+        type: 'histogram', opacity: 0.75,
+        marker: { color: '#A64708' },
+        hovertemplate: 'Delta-ipTM %{x:.3f}<br>%{y} pair(s)<extra></extra>'
+      },
+      {
+        name: 'Delta-ipTM (median)',
+        x: withDelta.map(p => p.delta_iptm_median).filter(v => v !== null && v !== undefined),
+        type: 'histogram', opacity: 0.75,
+        marker: { color: '#2C6D60' },
+        hovertemplate: 'Delta-ipTM median %{x:.3f}<br>%{y} pair(s)<extra></extra>'
+      }
+    ];
+    Plotly.newPlot('marginal', traces, NOBBLE.plotLayout({
+      title: { text: 'Distribution: mandated minimum against the median', font: { size: 13 } },
+      xaxis: { title: 'Delta-ipTM' },
+      yaxis: { title: 'pairs' },
+      barmode: 'overlay',
+      showlegend: true,
+      legend: { orientation: 'h', y: -0.22 }
+    }), NOBBLE.plotConfig);
+  }
+
+  function buildRoc() {
+    const positives = PAIRS.filter(p => p.peptide_label === 'degraded' &&
+      p.delta_iptm !== null && p.delta_iptm !== undefined);
+    const negatives = PAIRS.filter(p => p.peptide_label === 'not_degraded' &&
+      p.delta_iptm !== null && p.delta_iptm !== undefined);
+
+    const counts = document.getElementById('roc-counts');
+    counts.textContent = positives.length + ' positive(s), ' + negatives.length +
+      ' matched negative(s) scored so far';
+
+    if (positives.length < 3 || negatives.length < 3) { return; }
+
+    const all = positives.concat(negatives)
+      .map(p => p.delta_iptm).sort((a, b) => a - b);
+    const points = all.map(threshold => {
+      const tp = positives.filter(p => p.delta_iptm >= threshold).length;
+      const fp = negatives.filter(p => p.delta_iptm >= threshold).length;
+      return {
+        threshold: threshold,
+        tpr: tp / positives.length,
+        fpr: fp / negatives.length,
+        precision: (tp + fp) ? tp / (tp + fp) : 1
+      };
+    });
+    let auc = 0;
+    for (let i = 1; i < points.length; i += 1) {
+      auc += Math.abs(points[i - 1].fpr - points[i].fpr) * (points[i - 1].tpr + points[i].tpr) / 2;
+    }
+
+    document.getElementById('roc-empty').hidden = true;
+    const node = document.getElementById('roc');
+    node.hidden = false;
+    Plotly.newPlot('roc', [
+      {
+        x: points.map(p => p.fpr), y: points.map(p => p.tpr),
+        customdata: points.map(p => [p.threshold, p.precision]),
+        mode: 'lines+markers', type: 'scatter', name: 'ROC',
+        line: { color: '#A64708', width: 2 },
+        hovertemplate: 'threshold %{customdata[0]:.4f}<br>recall %{y:.3f}<br>' +
+          'false positive rate %{x:.3f}<br>precision %{customdata[1]:.3f}<extra></extra>'
+      },
+      {
+        x: [0, 1], y: [0, 1], mode: 'lines', name: 'chance',
+        line: { dash: 'dot', color: '#61655F', width: 1 }, hoverinfo: 'skip'
+      }
+    ], NOBBLE.plotLayout({
+      title: { text: 'Matched-control ROC, AUC ' + auc.toFixed(3), font: { size: 13 } },
+      xaxis: { title: 'false positive rate', range: [0, 1] },
+      yaxis: { title: 'recall', range: [0, 1] },
+      showlegend: false
+    }), NOBBLE.plotConfig);
+  }
+
+  buildScatter();
+  buildMarginal();
+  buildRoc();
+
+  window.addEventListener('nobble:theme', function () {
+    buildScatter(); buildMarginal(); buildRoc();
+  });
+  window.addEventListener('resize', function () {
+    ['scatter', 'marginal', 'roc'].forEach(id => {
+      const node = document.getElementById(id);
+      if (node && !node.hidden) { Plotly.Plots.resize(id); }
+    });
+  });
+})();
+</script>
+{% endblock %}

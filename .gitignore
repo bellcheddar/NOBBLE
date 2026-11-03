@@ -26,3 +26,11 @@ logs/
 # macOS
 .DS_Store
 .env
+
+# Phase 4 app: vendored libraries and QC artefacts
+node_modules/
+package-lock.json
+package.json
+qc/screenshots/
+qc/qc_report.json
+nobble/app/static/vendor/

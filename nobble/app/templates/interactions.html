@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="panel">
+  <h2>Interactions</h2>
+  <p class="panel__hint">
+    The PLIP contact set for the predicted ternary, as an interactive heatmap of
+    receptor residue against interaction type. Hover any cell for the
+    interaction type, distance and geometry. Alongside it, the canonical degron
+    fingerprint for this E3 class, with matched contacts highlighted and missing
+    ones greyed.
+  </p>
+
+  {% if not selected %}
+    <div class="empty">
+      <h3>No pair selected</h3>
+      <p>Pin a pair on the Campaign or Delta tab and it loads here.</p>
+    </div>
+  {% elif not selected.plip or selected.plip.status != 'ok' %}
+    <div class="empty">
+      <h3>No fingerprint for this pair</h3>
+      <p>
+        {{ selected.plip.status if selected.plip else 'PLIP has not run on this pair yet.' }}
+      </p>
+      <p>
+        Every converted structure is asserted for CONECT integrity before its
+        fingerprint is accepted. A file whose serials are not contiguous is
+        rejected rather than fingerprinted, because OpenBabel would silently
+        discard the bond table past the first gap and perceive the ligand from
+        interatomic distances instead, producing a plausible but wrong contact
+        set.
+      </p>
+    </div>
+  {% else %}
+    <label style="font-size:0.76rem">Pair
+      <select id="pair-select">
+        {% for p in pairs %}
+          <option value="{{ p.pair_id }}" {% if p.pair_id == selected.pair_id %}selected{% endif %}>{{ p.pair_id }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <div class="split split--2" style="margin-top:0.8rem">
+      <div><div class="chart" id="contacts"></div></div>
+      <div>
+        <h3 style="font-family:var(--display);font-size:0.9rem;margin-top:0">Canonical fingerprint: {{ selected.plip.canonical_e3 }}</h3>
+        <ul class="fp-list">
+          {% for residue in selected.plip.canonical_matched %}
+            <li class="fp fp--hit"><span class="mono">{{ residue }}</span> matched</li>
+          {% endfor %}
+          {% for residue in selected.plip.canonical_missing %}
+            <li class="fp fp--miss"><span class="mono">{{ residue }}</span> missing</li>
+          {% endfor %}
+        </ul>
+
+        <h3 style="font-family:var(--display);font-size:0.9rem">Glue to degron</h3>
+        {% if selected.plip.peptide_contacts %}
+          <p style="font-size:0.78rem">
+            {{ selected.plip.peptide_contacts|length }} contact(s):
+            <span class="mono">{{ selected.plip.peptide_contacts|join(', ') }}</span>
+          </p>
+        {% else %}
+          <p style="font-size:0.78rem;color:var(--bad)">
+            No contact between the glue and the degron peptide in this pose. The
+            glue can be perfectly placed in its receptor pocket and still not
+            bridge: that is the distinction the bridge percentile measures.
+          </p>
+        {% endif %}
+
+        <h3 style="font-family:var(--display);font-size:0.9rem">CONECT integrity</h3>
+        <p class="mono" style="font-size:0.7rem;color:var(--muted)">
+          {{ selected.plip.conect.detail if selected.plip.conect else 'not recorded' }}
+        </p>
+      </div>
+    </div>
+  {% endif %}
+</section>
+
+<style>
+  .fp-list { list-style: none; padding: 0; margin: 0 0 1rem; display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  .fp { font-size: 0.7rem; padding: 0.18rem 0.4rem; border: 1px solid var(--line); border-radius: var(--radius); }
+  .fp--hit { border-color: var(--good); color: var(--good); }
+  .fp--miss { color: var(--muted); border-style: dashed; }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const select = document.getElementById('pair-select');
+  if (select) {
+    select.addEventListener('change', function () {
+      window.location.search = '?pair=' + encodeURIComponent(select.value);
+    });
+  }
+
+  const PLIP = {{ (selected.plip if selected and selected.plip else {}) | tojson }};
+  if (!PLIP.interactions || !PLIP.interactions.length) { return; }
+
+  /* Residue against interaction type, cell value is the contact count and the
+   * hover carries the closest distance and the geometry string PLIP reports. */
+  const residues = [];
+  const types = [];
+  PLIP.interactions.forEach(function (row) {
+    const label = (row.prot_restype || '') + (row.prot_resnr || '') + ' ' + (row.prot_chain || '');
+    if (residues.indexOf(label) < 0) { residues.push(label); }
+    const kind = row.interaction_type || 'unknown';
+    if (types.indexOf(kind) < 0) { types.push(kind); }
+  });
+
+  const counts = types.map(() => residues.map(() => 0));
+  const detail = types.map(() => residues.map(() => []));
+  PLIP.interactions.forEach(function (row) {
+    const label = (row.prot_restype || '') + (row.prot_resnr || '') + ' ' + (row.prot_chain || '');
+    const i = types.indexOf(row.interaction_type || 'unknown');
+    const j = residues.indexOf(label);
+    counts[i][j] += 1;
+    detail[i][j].push((row.distance_A || '?') + ' A' + (row.geometry ? ' · ' + row.geometry : ''));
+  });
+
+  Plotly.newPlot('contacts', [{
+    z: counts, x: residues, y: types,
+    customdata: detail.map(r => r.map(c => c.join('<br>') || 'none')),
+    type: 'heatmap',
+    colorscale: [[0, 'rgba(0,0,0,0)'], [0.01, '#F6E3D3'], [1, '#A64708']],
+    showscale: true,
+    colorbar: { title: 'contacts', thickness: 10 },
+    hovertemplate: '<b>%{y}</b><br>residue %{x}<br>contacts %{z}<br>%{customdata}<extra></extra>'
+  }], NOBBLE.plotLayout({
+    title: { text: 'PLIP contacts: receptor and degron residues against interaction type', font: { size: 13 } },
+    xaxis: { title: 'residue', tickangle: -45, automargin: true },
+    yaxis: { title: '', automargin: true },
+    margin: { l: 110, r: 18, t: 34, b: 110 }
+  }), NOBBLE.plotConfig);
+
+  window.addEventListener('resize', function () { Plotly.Plots.resize('contacts'); });
+})();
+</script>
+{% endblock %}

@@ -166,6 +166,28 @@ def score_campaign(campaign: Path, with_plip: bool = True, limit: int | None = N
                  entry["conditioning_disagreement"] > 0.2)
             if entry.get("conditioning_disagreement") is not None else None
         )
+        # Guarantee the schema. A pair whose PLIP or geometry has not run yet
+        # must still carry every key, as null, rather than omitting it: a
+        # consumer that reaches for a missing key gets an error instead of a
+        # "not computed", and the app's Benchmark tab did exactly that on the
+        # first pair whose ternary arm had not finished.
+        for key in (
+            "bridge_percentile", "bridge_percentile_range", "bridge_formation_rate",
+            "bridging_seeds_total", "bridging_seeds_with_bridge",
+            "dsasa_total_median", "bridging_balance_median",
+            "convergence_score", "plip_fingerprint_match",
+            "plip_glue_to_peptide_contacts", "plip", "lysine_reach",
+            "seeds_docked", "seeds_total", "delta_iptm", "delta_iptm_median",
+            "iptm_min_binary", "iptm_min_ternary", "conditioning_disagreement",
+            "seed_collapse_affects_delta", "peptide_label", "peptide_gene",
+            "ligand_key", "modality", "tier", "e3_gene", "construct",
+        ):
+            entry.setdefault(key, None)
+        entry.setdefault("undocked_seeds", [])
+        entry.setdefault("notes", [])
+        entry.setdefault("seed_records", [])
+        entry.setdefault("convergence", {})
+        entry.setdefault("errors", [])
         scored.append(entry)
 
     output = campaign / "scores.jsonl"

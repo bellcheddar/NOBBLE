@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="panel">
+  <h2>Benchmark panel</h2>
+  <p class="panel__hint">
+    Seven pairs with published crystallographic ternaries, run first in every
+    campaign. This is the page a sceptical reader opens first, so it reports what
+    each pair tests, what the pipeline predicted and where it disagreed with the
+    deposited structure. Every accession, chain and ligand code below was
+    resolved programmatically at build time: none is hardcoded.
+  </p>
+  <p class="panel__hint">
+    GSPT1 and BRD4 lead, as community standards. BRD4 appears twice, on VHL and
+    on CRBN, which tests an E3 swap on the same substrate.
+  </p>
+</section>
+
+<div class="cards">
+  {% for card in cards %}
+  {% set s = card.scores or {} %}
+  <article class="card{% if card.pending %} card--pending{% endif %}">
+    <div class="card__head">
+      <h3 class="card__title">
+        {{ card.member.index }}. {{ card.member.gene }} / {{ card.member.e3 }}
+      </h3>
+      <span class="mono" style="font-size:0.72rem;color:var(--muted)">{{ card.member.pdb_id }}</span>
+    </div>
+    <p class="card__role">
+      {% if card.member.gene == 'GSPT1' %}Canonical glycine-degron glue benchmark: the highest-value single test in the panel.
+      {% elif card.member.gene == 'BRD4' and card.member.e3 == 'VHL' %}Canonical bivalent ternary benchmark: tests that a linked degrader is handled as such rather than as a glue.
+      {% elif card.member.gene == 'BRD4' %}Second BRD4 arm on a different E3: tests an E3 swap on the same substrate.
+      {% elif card.member.gene == 'IKZF1' %}The founding IMiD neosubstrate observation.
+      {% elif card.member.gene == 'CSNK1A1' %}Same glue, different neosubstrate: tests specificity, not just recall.
+      {% elif card.member.gene == 'RBM39' %}Aryl sulfonamide arm: exercises the DCAF15 token exception.
+      {% else %}Glue acting without a substrate receptor at all.
+      {% endif %}
+    </p>
+
+    {% if card.pending %}
+      <div class="empty" style="padding:0.9rem">
+        <h3>Queued</h3>
+        <p>This pair has no completed jobs yet. The header chip shows campaign progress.</p>
+      </div>
+    {% else %}
+      <div class="card__grid">
+        <div class="stat {% if s.get('bridge_percentile') and s.get('bridge_percentile') > 50 %}stat--good{% elif s.get('bridge_percentile') %}stat--warn{% else %}stat--bad{% endif %}"
+             data-tip="Buried surface of the glue against both chains, as a percentile of 285,996 experimentally observed bridges. Spec 4.1 makes this the primary signal because it compares a prediction to real interfaces."
+             data-tip-title="Bridge percentile"
+             data-tip-value="{{ s.get('bridge_percentile') if s.get('bridge_percentile') is not none else 'no bridge formed' }}"
+             data-tip-source="measured against BINMAN's atlas" tabindex="0">
+          <span class="stat__label">Bridge %ile</span>
+          <span class="stat__value">{{ '%.1f'|format(s.get('bridge_percentile')) if s.get('bridge_percentile') is not none else '—' }}</span>
+          <span class="stat__sub">{{ s.get('bridging_seeds_with_bridge') }}/{{ s.get('bridging_seeds_total') }} seeds bridged</span>
+        </div>
+
+        <div class="stat"
+             data-tip="Ternary minus binary interface confidence on the receptor-to-peptide chain pair, minimum across seeds per spec 4.3. The median is given below it, because one collapsed diffusion run can invert the minimum."
+             data-tip-title="Delta-ipTM"
+             data-tip-value="{{ s.get('delta_iptm') if s.get('delta_iptm') is not none else 'not computed' }}"
+             data-tip-source="model-derived" tabindex="0">
+          <span class="stat__label">&Delta;-ipTM</span>
+          <span class="stat__value">{{ '%.3f'|format(s.get('delta_iptm')) if s.get('delta_iptm') is not none else '—' }}</span>
+          <span class="stat__sub">median {{ '%.3f'|format(s.get('delta_iptm_median')) if s.get('delta_iptm_median') is not none else '—' }}</span>
+        </div>
+
+        <div class="stat"
+             data-tip="Fraction of the canonical degron contacts for this E3 class that the prediction reproduces, measured by PLIP."
+             data-tip-title="PLIP fingerprint match"
+             data-tip-value="{{ s.get('plip_fingerprint_match') if s.get('plip_fingerprint_match') is not none else 'not computed' }}"
+             data-tip-source="measured from the prediction" tabindex="0">
+          <span class="stat__label">PLIP match</span>
+          <span class="stat__value">{{ '%.2f'|format(s.get('plip_fingerprint_match')) if s.get('plip_fingerprint_match') is not none else '—' }}</span>
+          <span class="stat__sub">glue-degron contacts {{ s.get('plip_glue_to_peptide_contacts') if s.get('plip_glue_to_peptide_contacts') is not none else '—' }}</span>
+        </div>
+
+        <div class="stat"
+             data-tip="Pairwise peptide backbone RMSD across seeds after superposing on the receptor. Converges to 1 when every seed puts the peptide in the same place."
+             data-tip-title="Pose convergence"
+             data-tip-value="{{ s.get('convergence_score') if s.get('convergence_score') is not none else 'not computed' }}"
+             data-tip-source="measured from the predictions" tabindex="0">
+          <span class="stat__label">Convergence</span>
+          <span class="stat__value">{{ '%.3f'|format(s.get('convergence_score')) if s.get('convergence_score') is not none else '—' }}</span>
+          <span class="stat__sub">
+            {% set tc = s.get("convergence").get('ternary_unconstrained') if s.get("convergence") else none %}
+            {{ 'mean %.1f A'|format(tc.mean_rmsd) if tc and tc.mean_rmsd else '—' }}
+          </span>
+        </div>
+
+        <div class="stat {% if s.get('seeds_docked') == s.get('seeds_total') %}stat--good{% else %}stat--warn{% endif %}"
+             data-tip="Whether the predicted peptide touches the receptor at all. A trajectory that leaves it in solvent is a failed run, not a weak interface, and is excluded from interface aggregates."
+             data-tip-title="Peptide docked"
+             data-tip-value="{{ s.get('seeds_docked') }} of {{ s.get('seeds_total') }}"
+             data-tip-source="measured from the predictions" tabindex="0">
+          <span class="stat__label">Docked</span>
+          <span class="stat__value">{{ s.get('seeds_docked') }}/{{ s.get('seeds_total') }}</span>
+          <span class="stat__sub">{{ (s.get('undocked_seeds') or [])|length }} undocked</span>
+        </div>
+
+        <div class="stat"
+             data-tip="Lysine count and exposure in the predicted peptide. Reported as a measurement only: BINMAN's reach window is deliberately unfitted, with Cb-Cb AUC between 0.42 and 0.48 on 369 assayed lysines, at or below chance."
+             data-tip-title="Lysine geometry (not validated)"
+             data-tip-value="{{ (s.get('lysine_reach') or {}).get('peptide_lysines') if s.get('lysine_reach') else '—' }}"
+             data-tip-source="measured, but not a validated predictor" tabindex="0">
+          <span class="stat__label">Lysines</span>
+          <span class="stat__value">{{ (s.get('lysine_reach') or {}).get('peptide_lysines') if s.get('lysine_reach') else '—' }}</span>
+          <span class="stat__sub">not a validated signal</span>
+        </div>
+      </div>
+
+      <p style="margin:0.75rem 0 0;font-size:0.72rem;color:var(--muted)">
+        Peptide <span class="mono">{{ s.get('peptide_id') }}</span>
+        {% if s.get('notes') %}<br>{{ s.get('notes')|join('; ') }}{% endif %}
+      </p>
+      <div class="viewer__controls" style="margin-top:0.6rem">
+        <a class="pin__reset" href="{{ url_for('nobble.pose', pair=card.pair_id) }}">Open in Pose</a>
+        <a class="pin__reset" href="{{ url_for('nobble.interactions', pair=card.pair_id) }}">Open in Interactions</a>
+      </div>
+    {% endif %}
+  </article>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="panel">
+  <h2>What NOBBLE measures</h2>
+  <p class="panel__hint">
+    NOBBLE generates and scores peptide poses against curated
+    targeted-protein-degradation machinery using Boltz-2 ternary co-folding, and
+    asks one question of every pair: does the presence of the glue or degrader
+    change the predicted interface, and does that change separate experimentally
+    degraded substrates from experimentally non-degraded ones assayed in the same
+    screen?
+  </p>
+  <pre class="mono" style="background:var(--surface-2);padding:0.7rem;border:1px solid var(--line);border-radius:var(--radius);overflow:auto">delta_iptm = iptm_min_ternary - iptm_min_binary</pre>
+  <p class="panel__hint">
+    Measured on the receptor-to-peptide chain pair, not the global ipTM: on a
+    ternary complex the global figure averages in the receptor-to-ligand
+    interface, which is the easy one, so a glue sitting perfectly in its pocket
+    while the degron fails to dock would raise it.
+  </p>
+</section>
+
+<section class="panel">
+  <h2>The confidence caveat, stated plainly</h2>
+  <p class="panel__hint">
+    The Thera-SAbDab benchmark of Boltz-2 across 519 therapeutic antibodies
+    paired with cognate and non-cognate antigens found that its confidence
+    metrics gave only weak, though above-chance, discrimination: ROC-AUC between
+    0.5 and 0.60, with ipTM-min carrying the strongest signal and multivariate
+    modelling adding essentially nothing. Peptide-protein should fare better than
+    antibody-antigen, but <strong>this application does not present ipTM as a
+    verdict</strong>. It is reported as enrichment, alongside the geometry.
+  </p>
+  <p class="panel__hint">
+    That is not a theoretical caution. On the benchmark panel's first pair, a pose
+    that genuinely bridged receptor to peptide scored ipTM 0.885 and one that did
+    not scored 0.877; the highest ipTM in the whole ternary set, 0.916, did not
+    bridge at all. The bridge percentile separated them; ipTM did not.
+  </p>
+</section>
+
+<section class="panel">
+  <h2>Scoring signals and how far each is trusted</h2>
+  <div class="table-wrap" tabindex="0" role="group" aria-label="Scrollable table" style="max-height:none">
+    <table class="ledger">
+      <thead><tr><th>Signal</th><th>Units</th><th>Source</th><th>Trust</th><th>Note</th></tr></thead>
+      <tbody>
+        {% for key, meta in components.items() %}
+        <tr>
+          <td>{{ meta.label }}</td>
+          <td class="mono">{{ meta.units }}</td>
+          <td>{{ meta.source }}</td>
+          <td>
+            {% if meta.trust == 'not validated' %}
+              <span class="flag flag--warn">not validated</span>
+            {% else %}{{ meta.trust }}{% endif %}
+          </td>
+          <td style="white-space:normal;max-width:46ch">{{ meta.note }}</td>
+        </tr>
+        {% endfor %}
+        <tr>
+          <td>ProtCID packing veto</td><td class="mono">flag</td>
+          <td>unavailable</td>
+          <td><span class="flag flag--pending">not computed</span></td>
+          <td style="white-space:normal;max-width:46ch">
+            ProtCID publishes through a JavaScript front end with no bulk export,
+            so it was never acquired. Every pair reports
+            <code class="mono">furniture: null</code> with status
+            <code class="mono">not_computed</code>, never <code class="mono">false</code>:
+            recording it as false would assert a check that was never run.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Lysine reach: why there is no score</h2>
+  <p class="panel__hint">
+    The specification asks for BINMAN's reach-window fit, described as already
+    calibrated against 976 observed diGly sites. It is not calibrated. BINMAN
+    attempted the fit, measured it and declined to ship it, and these are the
+    numbers behind that decision:
+  </p>
+  <div class="card__grid" style="max-width:52rem">
+    <div class="stat stat--bad"><span class="stat__label">Cb-Cb distance</span>
+      <span class="stat__value">{{ reach_auc.cb_cb_distance }}</span><span class="stat__sub">AUC</span></div>
+    <div class="stat stat--bad"><span class="stat__label">NZ to centroid</span>
+      <span class="stat__value">{{ reach_auc.nz_centroid_distance }}</span><span class="stat__sub">AUC</span></div>
+    <div class="stat stat--bad"><span class="stat__label">NZ relative SASA</span>
+      <span class="stat__value">{{ reach_auc.nz_rel_sasa }}</span><span class="stat__sub">AUC</span></div>
+    <div class="stat"><span class="stat__label">Assayed lysines</span>
+      <span class="stat__value">{{ reach_auc.n_lysines }}</span><span class="stat__sub">in {{ reach_auc.n_ternary_entries }} ternaries</span></div>
+  </div>
+  <p class="panel__hint" style="margin-top:0.7rem">
+    All at or below chance, and the Cb-Cb direction is slightly inverted:
+    ubiquitylated lysines sit <em>farther</em> from the ligand
+    ({{ reach_auc.ubiquitylated_median_cb_cb }} A median) than unmodified ones
+    ({{ reach_auc.unmodified_median_cb_cb }} A). The explanation is mechanistic
+    rather than technical, which is why refitting is unlikely to help: the ligand
+    site is where a substrate is recruited, not where ubiquitin is transferred,
+    and the E2 that transfers it sits elsewhere on the cullin scaffold and is not
+    in the trimmed construct at all. NOBBLE therefore reports lysine geometry as
+    a measurement and emits no reach score.
+  </p>
+</section>
+
+<section class="panel">
+  <h2>Receptor constructs and the token budget</h2>
+  <p class="panel__hint">
+    Every construct is defined by a named InterPro entry, never by a residue
+    range, and its boundaries are resolved at build time. Two are declared
+    exceptions to the 400-token tier-1 cap, both because the receptor does not
+    fold or function without its partners.
+  </p>
+  <div class="table-wrap" tabindex="0" role="group" aria-label="Scrollable table" style="max-height:none">
+    <table class="ledger">
+      <thead><tr><th>Construct</th><th>E3</th><th class="num">Residues</th><th class="num">Tokens</th><th>Verdict</th></tr></thead>
+      <tbody>
+        {% for row in construct_budget %}
+        <tr>
+          <td class="mono">{{ row.name }}</td>
+          <td>{{ row.e3_gene }}</td>
+          <td class="num">{{ row.residues }}</td>
+          <td class="num">{{ row.tokens }}</td>
+          <td>
+            {% if row.declared_exception %}<span class="flag flag--warn">declared exception</span>
+            {% elif row.within_cap %}<span class="flag flag--glue">within cap</span>
+            {% else %}<span class="flag flag--bad">over cap</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Data sources</h2>
+  <p class="panel__hint">
+    NOBBLE re-acquires nothing. Every source below is read from what BINMAN
+    already curated and pinned. Licence terms carry over unchanged: PROTAC-DB is
+    internal-use only and never redistributed, UbiBrowser ships as derived counts
+    only, and BioLiP2 annotations are not redistributed. The published repository
+    bundles no third-party dataset.
+  </p>
+  <div class="table-wrap" tabindex="0" role="group" aria-label="Scrollable table" style="max-height:none">
+    <table class="ledger">
+      <thead><tr><th>Source</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for name, present in sources.items() %}
+        <tr>
+          <td class="mono">{{ name }}</td>
+          <td>
+            {% if present %}<span class="flag flag--glue">resolved</span>
+            {% else %}<span class="flag flag--bad">unavailable</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="panel__hint" style="margin-top:0.6rem">
+    Reference bridge distribution: <strong class="mono">{{ '{:,}'.format(bridge_reference) }}</strong>
+    experimentally observed bridges, which is what every bridge percentile on
+    these pages is measured against.
+  </p>
+</section>
+
+<section class="panel">
+  <h2>Validation</h2>
+  <p class="panel__hint">
+    Three layers, all gating. A campaign that fails any of them publishes its
+    failure rather than its hits. A poor ROC is not a gate failure; reporting no
+    ROC, or reporting one without the matched negatives, is.
+  </p>
+  <div class="card__grid">
+    <div class="stat"><span class="stat__label">Pose recovery</span>
+      <span class="stat__value">pending</span>
+      <span class="stat__sub">RMSD to the deposited ternary, as a success-rate curve at 1, 2, 3 and 5 A</span></div>
+    <div class="stat"><span class="stat__label">Time split</span>
+      <span class="stat__value">pending</span>
+      <span class="stat__sub">entries deposited after the Boltz-2 training cutoff, run blind. The only number that estimates prospective performance</span></div>
+    <div class="stat"><span class="stat__label">Matched-control ROC</span>
+      <span class="stat__value">pending</span>
+      <span class="stat__sub">Delta-ipTM on the Sievers degraded against non-degraded split</span></div>
+  </div>
+  <p class="panel__hint" style="margin-top:0.7rem">
+    These are reported as pending because the campaign that feeds them is still
+    running. They are not reported as passing.
+  </p>
+</section>
+
+{% if throughput %}
+<section class="panel">
+  <h2>Measured throughput</h2>
+  <p class="panel__hint">
+    The campaign sizes itself from this measurement, not from the
+    specification's estimate. Note that the figure is dominated by whichever
+    jobs have run so far: pairformer cost is superlinear in sequence length, so
+    a rate measured on small constructs is optimistic for large ones.
+  </p>
+  <div class="card__grid">
+    <div class="stat"><span class="stat__label">Median s/token</span><span class="stat__value">{{ throughput.median_seconds_per_token }}</span></div>
+    <div class="stat"><span class="stat__label">Fastest</span><span class="stat__value">{{ throughput.fastest_seconds_per_token }}</span></div>
+    <div class="stat"><span class="stat__label">Slowest</span><span class="stat__value">{{ throughput.slowest_seconds_per_token }}</span></div>
+    <div class="stat"><span class="stat__label">Jobs timed</span><span class="stat__value">{{ throughput.jobs_timed }}</span></div>
+    <div class="stat"><span class="stat__label">Affordable pairs</span><span class="stat__value">{{ throughput.affordable_pairs }}</span><span class="stat__sub">in {{ throughput.wall_clock_budget_hours }} h</span></div>
+    <div class="stat"><span class="stat__label">Device</span><span class="stat__value">{{ throughput.device }}</span></div>
+  </div>
+</section>
+{% endif %}
+
+<section class="panel">
+  <h2>Provenance</h2>
+  <p class="panel__hint">
+    The repository records every judgement made during the build, with the
+    alternatives, the reason and how to reverse it, including the places where
+    the build specification turned out to be wrong about its own data:
+    <code class="mono">DECISIONS.md</code> for decisions,
+    <code class="mono">FINDINGS.md</code> for results,
+    <code class="mono">BUILD_LOG.md</code> for the event log and
+    <code class="mono">BUILD_SPEC.md</code> for the specification itself.
+  </p>
+  <p class="panel__hint">
+    <a href="https://github.com/bellcheddar/NOBBLE" target="_blank" rel="noopener noreferrer">github.com/bellcheddar/NOBBLE</a>
+    · built on <a href="https://github.com/bellcheddar/BoltzMaker" target="_blank" rel="noopener noreferrer">BoltzMaker</a>
+    and <a href="https://github.com/bellcheddar/BINMAN" target="_blank" rel="noopener noreferrer">BINMAN</a>
+  </p>
+</section>
+{% endblock %}
