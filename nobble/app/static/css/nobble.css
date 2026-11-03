@@ -52,9 +52,10 @@
   color: var(--muted);
   letter-spacing: 0.02em;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 46ch;
+  /* It fits whole or it does not appear. Truncated at 46ch it read
+     "...Benchmarking fo..." and lost "for Ligase Engagement", which takes the
+     L and the E with it: two of the six letters the line exists to show. No
+     ellipsis, no max-width; the breakpoints below hide it instead. */
 }
 .backronym b {
   font-weight: 700;
@@ -522,12 +523,14 @@
   border-radius: var(--radius);
 }
 
+/* Below this the header has no room for the expansion without squeezing the
+   tabs, so it goes rather than being clipped. The visually hidden copy keeps
+   it available to a screen reader at every width. */
+@media (max-width: 1180px) {
+  .backronym span[aria-hidden] { display: none; }
+}
+
 @media (max-width: 760px) {
-  /* The expansion does not fit a phone, and truncated to "Neosubstrate and
-     Oligo..." it loses the letters that are the whole point. It is hidden
-     rather than clipped; the aria-label keeps it available to a screen
-     reader. */
-  .backronym { display: none; }
   /* The status panel keeps its dot, state and bar on a phone and drops the
      four numbers, which are unreadable at that size and are all on the
      About page anyway. */
