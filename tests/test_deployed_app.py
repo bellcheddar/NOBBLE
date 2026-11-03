@@ -77,3 +77,37 @@ def test_published_atlas_withholds_protacdb_chemistry():
     for path in ATLAS.rglob("*"):
         if path.is_file() and path.suffix in (".json", ".jsonl"):
             assert marker not in path.read_text(errors="replace"), path
+
+
+def test_comparison_refuses_to_conclude_when_the_control_moves(tmp_path, monkeypatch):
+    """A comparison whose control moved must not be read as evidence.
+
+    The corrected campaign changes one variable. IKZF1 keeps its 15-mer in both
+    and is the check that nothing else did: if its recovery shifts, the other
+    differences cannot be attributed to the construct, and the report has to
+    say so rather than reporting an improvement.
+    """
+    from nobble.validate import compare as compare_module
+
+    def fake_recovery(campaign):
+        if "corrected" in campaign.name:
+            return {
+                "corr01_GSPT1_CRBN": {"median_rmsd": 6.0, "poses": 10, "anchor_rmsd": 1.8},
+                "corr04_IKZF1_CRBN": {"median_rmsd": 12.0, "poses": 10, "anchor_rmsd": 1.8},
+            }
+        return {
+            "bench01_GSPT1_CRBN": {"median_rmsd": 29.0, "poses": 10, "anchor_rmsd": 1.8},
+            "bench04_IKZF1_CRBN": {"median_rmsd": 5.4, "poses": 10, "anchor_rmsd": 1.8},
+        }
+
+    monkeypatch.setattr(compare_module, "_recovery_by_pair", fake_recovery)
+    baseline = tmp_path / "benchmark_x"
+    corrected = tmp_path / "corrected_x"
+    baseline.mkdir()
+    corrected.mkdir()
+
+    report = compare_module.compare(baseline, corrected)
+    # GSPT1 improved by 23 A, which looks like a triumph, and must not be
+    # reported as one while the control has moved by 6.6 A.
+    assert not report["control_held"]
+    assert "NOT TRUSTWORTHY" in report["conclusion"]

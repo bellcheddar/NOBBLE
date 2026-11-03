@@ -196,7 +196,11 @@ def assemble() -> dict:
             "15-mer cut from the same domain did not. IKZF1 keeps its 15-mer "
             "as the internal control and its number should not move."
         ),
-        "pairs": pairs, "jobs_emitted": written,
+        # Both keys, matching the benchmark builder: `pairs` as a count and
+        # the records under `pair_detail`, plus the records under `pairs` for
+        # anything already reading that.
+        "pairs": pairs, "pair_count": len(pairs), "pair_detail": pairs,
+        "jobs_emitted": written,
         "compare_against": "the tier-1 benchmark campaign, same deposited structures",
     }
     (directory / "campaign.json").write_text(json.dumps(summary, indent=2, default=str))
