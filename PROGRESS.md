@@ -19,6 +19,7 @@ Rewritten after every phase and at least every 30 minutes during long compute.
 | All seven benchmark pairs resolve to deposited structures | **pass** (7/7) |
 | Degron Scan independently recovers GSPT1 domain II hairpin and IKZF1 ZF2 | **pass** (2/2, scan tip residue exactly matches the deposited degron in both) |
 | Every job under 400 tokens, or a declared exception | **pass** (6 constructs, 2 declared exceptions) |
+| Queue survives a kill and resumes without duplicating or dropping a job | **pass** at the state-machine level (`tests/test_resume.py`, 7 tests: torn writes, killed mid-flight, repeated restarts, failed jobs). Observed once end to end on the real queue, which skipped its completed job and resumed correctly. A deliberate forced kill of the production run was not performed |
 | Zero manifest validation errors | **pass** (7 pairs, 105 jobs, 0 errors, 10 warnings, all `smiles_fallback` for dBET57) |
 | Tier B set present, at least 10 ligases | **pass** (15 ligases; DCAF8L1, CCNF, ASB8 at ranks 1-3 as spec 3.3 predicts) |
 
