@@ -102,6 +102,56 @@ def campaign_meta() -> dict:
     return _cached("campaign", path, lambda p: json.loads(p.read_text()))
 
 
+def site_status() -> dict:
+    """Small, honest status for the header panel.
+
+    Everything here is read from the published slice, so the figure on screen
+    is the figure the pipeline produced. "Healthy" means the app can read its
+    campaign, not that the science worked: a campaign with no scored pairs is
+    a healthy app with nothing to show, and the panel says so rather than
+    showing a green light over an empty atlas.
+    """
+    state = campaign_state()
+    scored = scores()
+    validation = precomputed("validation.json")
+    layers = validation.get("layers", {})
+    recovery = layers.get("pose_recovery", {})
+
+    bridged = sum(1 for row in scored if (row.get("bridging_seeds_with_bridge") or 0) > 0)
+    structures = sum(1 for row in results() if row.get("structure"))
+
+    atlas = precomputed("ATLAS.json")
+    computed = [name for name, layer in layers.items() if layer.get("computed")]
+
+    if not state["present"]:
+        health, note = "no data", "no campaign is configured on this host"
+    elif not state["jobs_total"]:
+        health, note = "unknown", "campaign present but its job total is not published"
+    elif not scored:
+        health, note = "idle", "campaign present, nothing scored yet"
+    elif state["running"]:
+        health, note = "running", f"{state['jobs_done']} of {state['jobs_total']} jobs complete"
+    else:
+        health, note = "complete", "campaign finished"
+
+    return {
+        "health": health,
+        "note": note,
+        "pairs_scored": len(scored),
+        "pairs_bridged": bridged,
+        "jobs_done": state["jobs_done"],
+        "jobs_total": state["jobs_total"],
+        "percent": state["percent"],
+        "structures": structures,
+        "validation_computed": len(computed),
+        "validation_total": len(layers) or 3,
+        "median_rmsd": (recovery.get("summary", {})
+                        .get("overall_curve", {}).get("median_rmsd")),
+        "campaign_id": state["campaign_id"],
+        "atlas_bytes": atlas.get("bytes"),
+    }
+
+
 def precomputed(name: str) -> dict:
     """A document precomputed into the atlas by deploy/build_atlas.py.
 
@@ -164,14 +214,27 @@ def campaign_state() -> dict:
     queue_rows = queue()
     done = results()
     scored = scores()
+
+    # A published atlas carries no queue, so the totals come from ATLAS.json.
+    # Without this the deployed app divides by a missing denominator, reads
+    # "75 of 0" and reports a running campaign as complete.
+    atlas = precomputed("ATLAS.json")
+    jobs_total = len(queue_rows) or int(atlas.get("jobs_total") or 0)
+    pairs_total = (
+        len({row.get("pair_id") for row in queue_rows})
+        or int(atlas.get("pairs_total") or 0)
+        or (meta.get("pairs") if isinstance(meta.get("pairs"), int) else 0)
+    )
+
     state = CampaignState(
         campaign_id=meta.get("campaign_id") or (_CAMPAIGN.name if _CAMPAIGN else None),
         present=bool(_CAMPAIGN and _CAMPAIGN.exists()),
-        pairs_total=meta.get("pairs", 0) or len({row.get("pair_id") for row in queue_rows}),
+        pairs_total=pairs_total,
         pairs_scored=len(scored),
-        jobs_total=len(queue_rows),
+        jobs_total=jobs_total,
         jobs_done=len(done),
-        running=len(done) < len(queue_rows),
+        # Unknown total means unknown state, not a finished one.
+        running=bool(jobs_total) and len(done) < jobs_total,
     )
     return state.to_dict()
 

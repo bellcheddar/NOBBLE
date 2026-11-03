@@ -223,6 +223,52 @@
     });
   }
 
+  /* ------------------------------------------------------- live status */
+
+  /* The header panel is rendered server-side, so on a page left open during a
+   * campaign it goes stale. This refreshes it from /api/status after the page
+   * has rendered, and then on a slow timer.
+   *
+   * It is also the hit beacon the mdeller.com launcher counts. That counter
+   * requires a request the page's own JavaScript makes after rendering, never
+   * the HTML document, which every scanner fetches, and never a path under an
+   * access_log off location, which is both /static/ locations here. An API
+   * call from the rendered page satisfies all three.
+   *
+   * The interval is deliberately long. AlphaFraud polls every 60 seconds and
+   * an idle tab logs about 60 visits an hour with nobody at the keyboard,
+   * which is a measure of the poll rather than of anyone arriving. */
+  const STATUS_REFRESH_MS = 15 * 60 * 1000;
+
+  function paintStatus(data) {
+    const root = document.querySelector('.status');
+    if (!root || !data) { return; }
+    const dot = root.querySelector('.status__dot');
+    if (dot) {
+      dot.className = 'status__dot status__dot--' + String(data.health).replace(/ /g, '-');
+    }
+    const state = root.querySelector('.status__state');
+    if (state) { state.textContent = data.health; }
+    const fill = root.querySelector('.status__fill');
+    if (fill) { fill.style.width = (data.percent || 0) + '%'; }
+    const cells = root.querySelectorAll('.status__stats dd');
+    if (cells.length >= 4) {
+      cells[0].textContent = data.jobs_done + '/' + data.jobs_total;
+      cells[1].innerHTML = data.pairs_scored +
+        '<span class="status__sub">/' + data.pairs_bridged + ' br</span>';
+      cells[2].textContent = (data.median_rmsd === null || data.median_rmsd === undefined)
+        ? '\u2014' : data.median_rmsd;
+      cells[3].textContent = data.validation_computed + '/' + data.validation_total;
+    }
+  }
+
+  function refreshStatus() {
+    fetch('/api/status', { headers: { 'Accept': 'application/json' } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(paintStatus)
+      .catch(function () { /* offline or restarting: keep what is on screen */ });
+  }
+
   /* ----------------------------------------------------------------- init */
 
   function init() {
@@ -237,6 +283,12 @@
     });
     const reset = document.querySelector('[data-pin-reset]');
     if (reset) { reset.addEventListener('click', api.clear); }
+
+    /* After paint, not during it: the beacon has to represent a rendered page. */
+    if (document.querySelector('.status')) {
+      window.setTimeout(refreshStatus, 1200);
+      window.setInterval(refreshStatus, STATUS_REFRESH_MS);
+    }
   }
 
   window.NOBBLE = {

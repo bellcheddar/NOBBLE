@@ -43,7 +43,31 @@
       </svg>
       <span class="brand__word">NOBBLE</span>
     </a>
-    <p class="brand__strap">Glue dependence, measured against real interfaces</p>
+    {# The backronym, and it degrades.
+
+       PUNT's version pulses the initials so the name lights up. This does the
+       opposite and means something by it: the expansion dissolves away from
+       left to right and leaves NOBBLE standing, which is what a degrader does
+       to a protein. The word nobble means to knock out, so the subtitle gets
+       knocked out.
+
+       Every remainder span carries its own stagger index, so the dissolve
+       sweeps rather than blinking all at once. The initials never move,
+       because nothing here changes layout: it is opacity and blur only, so
+       there is no reflow and no jitter at any width. #}
+    {# aria-label is prohibited on a <p>: its role accepts no accessible name,
+       and axe reports it. The expansion is given to assistive technology as
+       real text in a visually hidden span instead, and the animated copy is
+       hidden from it. #}
+    <p class="backronym">
+      <span class="visually-hidden">Neosubstrate and Oligopeptide Binder Benchmarking for Ligase Engagement</span>
+      <span aria-hidden="true"><b>N</b><i style="--i:0">eosubstrate</i> <i style="--i:1">and</i>
+      <b>O</b><i style="--i:2">ligopeptide</i>
+      <b>B</b><i style="--i:3">inder</i>
+      <b>B</b><i style="--i:4">enchmarking</i> <i style="--i:5">for</i>
+      <b>L</b><i style="--i:6">igase</i>
+      <b>E</b><i style="--i:7">ngagement</i></span>
+    </p>
   </div>
 
   <nav class="tabs" aria-label="Sections">
@@ -56,19 +80,49 @@
   </nav>
 
   <div class="header-tools">
-    <div class="campaign-chip" title="Jobs completed in the current campaign. The app reads the campaign live, so this advances while a queue is running.">
-      {% if campaign_state.present %}
-        <span class="chip__id mono">{{ campaign_state.campaign_id }}</span>
-        <span class="chip__bar" role="img"
-              aria-label="{{ campaign_state.jobs_done }} of {{ campaign_state.jobs_total }} jobs complete">
-          <span class="chip__fill" style="width: {{ campaign_state.percent }}%"></span>
-        </span>
-        <span class="chip__count mono">{{ campaign_state.jobs_done }}/{{ campaign_state.jobs_total }}</span>
-        {% if campaign_state.running %}<span class="chip__live" title="The queue is still running">live</span>{% endif %}
-      {% else %}
-        <span class="chip__id mono">no campaign</span>
-      {% endif %}
+    {# Site stats, status and health. Four numbers and a state, because a
+       header panel that needs reading twice is not a status panel. Every
+       figure comes from the published slice, so what is on screen is what the
+       pipeline produced. #}
+    <div class="status" role="group" aria-label="Campaign status">
+      <span class="status__dot status__dot--{{ site_status.health | replace(' ', '-') }}"
+            aria-hidden="true"></span>
+      <span class="status__state">{{ site_status.health }}</span>
+      <span class="status__bar" aria-hidden="true">
+        <span class="status__fill" style="width: {{ site_status.percent }}%"></span>
+      </span>
+      <dl class="status__stats">
+        <div data-tip="Jobs completed out of the campaign's total. The app reads the campaign live, so this advances while a queue is running."
+             data-tip-title="Jobs" data-tip-value="{{ site_status.jobs_done }} of {{ site_status.jobs_total }}"
+             data-tip-source="measured" tabindex="0">
+          <dt>jobs</dt><dd class="mono">{{ site_status.jobs_done }}/{{ site_status.jobs_total }}</dd>
+        </div>
+        <div data-tip="Pairs with at least one scored job, and how many of those formed a glue bridge between receptor and peptide in at least one seed."
+             data-tip-title="Pairs" data-tip-value="{{ site_status.pairs_scored }} scored, {{ site_status.pairs_bridged }} bridged"
+             data-tip-source="measured" tabindex="0">
+          <dt>pairs</dt><dd class="mono">{{ site_status.pairs_scored }}<span class="status__sub">/{{ site_status.pairs_bridged }} br</span></dd>
+        </div>
+        <div data-tip="Median peptide backbone RMSD to the deposited crystal ternary, superposed on the receptor. Lower is better; under 5 A is a recovered pose."
+             data-tip-title="Median pose RMSD"
+             data-tip-value="{{ site_status.median_rmsd if site_status.median_rmsd is not none else 'not computed' }}"
+             data-tip-units="angstrom" data-tip-source="measured against deposited structures" tabindex="0">
+          <dt>RMSD</dt><dd class="mono">{{ site_status.median_rmsd if site_status.median_rmsd is not none else '—' }}</dd>
+        </div>
+        <div data-tip="Validation layers computed out of three. Two of them report not computed with their reasons until the Sievers arm supplies matched negatives."
+             data-tip-title="Validation"
+             data-tip-value="{{ site_status.validation_computed }} of {{ site_status.validation_total }}"
+             data-tip-source="spec section 5" tabindex="0">
+          <dt>valid</dt><dd class="mono">{{ site_status.validation_computed }}/{{ site_status.validation_total }}</dd>
+        </div>
+      </dl>
     </div>
+
+    <nav class="header-links" aria-label="Elsewhere">
+      <a href="https://marcdeller.com" target="_blank" rel="noopener noreferrer">marcdeller.com</a>
+      <a href="mailto:marc@marcdeller.com">marc@marcdeller.com</a>
+      <a href="https://github.com/bellcheddar/NOBBLE" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </nav>
+
     <button class="theme-toggle" type="button" data-theme-toggle
             aria-label="Switch between light and dark theme">
       <span aria-hidden="true">◐</span>

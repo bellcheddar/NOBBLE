@@ -37,6 +37,61 @@
   font-size: 1.12rem;
   letter-spacing: 0.08em;
 }
+/* The backronym, which degrades.
+ *
+ * The expansion dissolves left to right and leaves the initials spelling
+ * NOBBLE, then returns. A degrader knocks a protein out; this knocks the
+ * subtitle out.
+ *
+ * Only opacity, blur and colour animate. Nothing changes the box, so the
+ * initials hold their position exactly and the line never reflows, which is
+ * what keeps it from jittering in a sticky header at any width. */
+.backronym {
+  margin: 0;
+  font-size: 0.68rem;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 46ch;
+}
+.backronym b {
+  font-weight: 700;
+  font-style: normal;
+  color: var(--accent);
+  /* The initials brighten as the rest leaves, so what remains is the name. */
+  animation: nobble-remains 9s ease-in-out infinite;
+}
+.backronym i {
+  font-style: normal;
+  /* --i staggers the sweep: eight steps across roughly a third of the cycle,
+     so it reads as progressive loss rather than a single blink. */
+  animation: nobble-degrade 9s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 0.11s);
+}
+
+@keyframes nobble-degrade {
+  0%, 34%   { opacity: 1; filter: blur(0); }
+  46%, 62%  { opacity: 0; filter: blur(2px); }
+  76%, 100% { opacity: 1; filter: blur(0); }
+}
+
+@keyframes nobble-remains {
+  0%, 34%   { color: var(--accent); letter-spacing: 0.02em; }
+  46%, 62%  { color: var(--ink); letter-spacing: 0.1em; }
+  76%, 100% { color: var(--accent); letter-spacing: 0.02em; }
+}
+
+/* An animation that loops forever in a sticky header is exactly the kind a
+   vestibular trigger makes unusable, and the sentence has to stay readable
+   without it: reduced motion gets the full expansion, static. */
+@media (prefers-reduced-motion: reduce) {
+  .backronym b, .backronym i { animation: none; }
+  .backronym i { opacity: 1; filter: none; }
+  .backronym b { color: var(--accent); }
+}
+
 .brand__strap {
   margin: 0;
   font-size: 0.68rem;
@@ -61,33 +116,73 @@
 
 .header-tools { display: flex; align-items: center; gap: 0.6rem; }
 
-.campaign-chip {
+/* ------------------------------------------------- status and health panel */
+
+.status {
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  font-size: 0.7rem;
-  padding: 0.3rem 0.55rem;
+  padding: 0.28rem 0.5rem;
   background: var(--surface-2);
   border: 1px solid var(--line);
   border-radius: var(--radius);
+  font-size: 0.66rem;
 }
-.chip__id { color: var(--muted); max-width: 16ch; overflow: hidden; text-overflow: ellipsis; }
-.chip__bar {
-  display: block;
-  width: 72px;
-  height: 6px;
-  background: var(--bg);
-  border: 1px solid var(--line);
-  overflow: hidden;
+.status__dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--muted); flex: 0 0 auto;
 }
-.chip__fill { display: block; height: 100%; background: var(--accent); }
-.chip__live {
-  color: var(--on-accent);
-  background: var(--good);
-  padding: 0.05rem 0.3rem;
-  font-size: 0.6rem;
-  letter-spacing: 0.06em;
+/* Running is the only state that pulses: a steady light for a steady state,
+   and nothing blinking once the work is finished. */
+.status__dot--running { background: var(--good); animation: status-pulse 2s ease-in-out infinite; }
+.status__dot--complete { background: var(--good); }
+.status__dot--idle { background: var(--warn); }
+.status__dot--no-data { background: var(--bad); }
+.status__dot--unknown { background: var(--warn); }
+@keyframes status-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+.status__state {
+  font-family: var(--display);
   text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.6rem;
+  color: var(--muted);
+}
+.status__bar {
+  display: block; width: 54px; height: 5px;
+  background: var(--bg); border: 1px solid var(--line); overflow: hidden;
+}
+.status__fill { display: block; height: 100%; background: var(--accent); }
+
+.status__stats { display: flex; gap: 0.5rem; margin: 0; }
+.status__stats > div { display: flex; flex-direction: column; line-height: 1.15; cursor: help; }
+.status__stats > div:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.status__stats dt {
+  font-size: 0.52rem; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.status__stats dd { margin: 0; font-size: 0.72rem; color: var(--ink); }
+.status__sub { color: var(--muted); font-size: 0.6rem; }
+
+.header-links { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.header-links a {
+  font-family: var(--data);
+  font-size: 0.62rem;
+  padding: 0.16rem 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.header-links a:hover, .header-links a:focus-visible {
+  color: var(--accent); border-color: var(--accent);
+}
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
 
 .theme-toggle {
@@ -428,6 +523,16 @@
 }
 
 @media (max-width: 760px) {
+  /* The expansion does not fit a phone, and truncated to "Neosubstrate and
+     Oligo..." it loses the letters that are the whole point. It is hidden
+     rather than clipped; the aria-label keeps it available to a screen
+     reader. */
+  .backronym { display: none; }
+  /* The status panel keeps its dot, state and bar on a phone and drops the
+     four numbers, which are unreadable at that size and are all on the
+     About page anyway. */
+  .status__stats { display: none; }
+  .header-links a { font-size: 0.58rem; }
   .tabs { margin-left: 0; width: 100%; }
   .app-main { padding: 0.7rem; }
   .viewer { height: 22rem; }

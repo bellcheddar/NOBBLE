@@ -25,6 +25,7 @@ def create_app(campaign: str | None = None) -> Flask:
         state = data_module.campaign_state()
         return {
             "campaign_state": state,
+            "site_status": data_module.site_status(),
             "tabs": [
                 ("campaign", "Campaign", "The pair ledger"),
                 ("pose", "Pose", "Predicted ternary in 3D"),

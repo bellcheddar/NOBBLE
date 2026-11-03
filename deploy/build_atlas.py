@@ -176,6 +176,21 @@ def main() -> int:
         except Exception as problem:               # noqa: BLE001
             summary["comparison_error"] = f"{type(problem).__name__}: {problem}"
 
+    # The queue itself is not published (it is large and carries the YAML
+    # paths of the build machine), but its size must be, or the deployed app
+    # has no denominator: it then reads 75 of 0 jobs and reports a running
+    # campaign as complete, which is a status panel telling a lie.
+    source_queue = campaign / "queue.jsonl"
+    if source_queue.exists():
+        summary["jobs_total"] = sum(
+            1 for line in source_queue.read_text().splitlines() if line.strip()
+        )
+        pair_ids = set()
+        for line in source_queue.read_text().splitlines():
+            if line.strip():
+                pair_ids.add(json.loads(line).get("pair_id"))
+        summary["pairs_total"] = len(pair_ids)
+
     structures = list((OUT / "structures").glob("*.cif"))
     summary["structures"] = len(structures)
     summary["bytes"] = sum(p.stat().st_size for p in OUT.rglob("*") if p.is_file())

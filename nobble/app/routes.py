@@ -275,6 +275,11 @@ def api_schema():
     return jsonify(lm_module.QUERY_SCHEMA)
 
 
+@bp.route("/api/status")
+def api_status():
+    return jsonify(data.site_status())
+
+
 @bp.route("/healthz")
 def healthz():
     state = data.campaign_state()
