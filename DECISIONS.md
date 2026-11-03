@@ -524,3 +524,37 @@ may well want to see per pose).
 **Reversal.** If BINMAN's window is ever fitted and clears its own floor, set
 `fitted = true` there and add the score here; the measurements this module
 already produces are the inputs it would need.
+
+---
+
+## D-NOB-025: the CONECT integrity assertion counts TER serials
+
+**Date:** 2026-11-03
+
+**Decision.** `conect_integrity` builds its serial sequence from ATOM, HETATM
+**and TER** records in file order, and resolves CONECT targets against the
+ATOM/HETATM serials only.
+
+**Reason.** Spec 4.6 requires asserting on CONECT integrity for every structure
+rather than sample-checking, so the assertion has to be right or it rejects
+everything. The first version collected only ATOM and HETATM serials.
+`renumber_contiguous` gives every TER its own serial, so an A/P/L complex has two
+TER serials sitting between atom serials, and the atoms-only sequence shows one
+apparent discontinuity per chain boundary. It reported exactly that: two "gaps"
+at 854 and 970 on a file whose serials were in fact perfectly contiguous, and it
+would have failed every structure the fix had just repaired.
+
+A second, unrelated failure was found at the same time and is worth recording
+because it has now happened three times in this build: several tools are console
+scripts resolved through PATH rather than importable modules, and invoking a
+pixi environment's interpreter directly does not activate the environment.
+`mkdssp`, `pdb_tidy` and `pdb_validate` were all reported missing while
+installed. `paths.tool_env()` now assembles PATH and `LIBCIFPP_DATA_DIR` in one
+place so no caller has to remember.
+
+Note also that cif2plip renumbers chains to strict single-letter identifiers, so
+NOBBLE's A/P/L become A/B/C. The mapping is parsed from the script's output
+rather than assumed: assuming it would have attributed every degron contact to
+the receptor, which is precisely the comparison F2b turns on.
+
+**Reversal.** `nobble/score/plip.py`, `conect_integrity`.

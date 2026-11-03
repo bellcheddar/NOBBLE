@@ -80,6 +80,38 @@ diffusion sample precisely to keep triage cheap. Whether tier 2's 25 samples
 recover a converged pose is a question this campaign will answer directly, and
 it is the right question to put to the Benchmark tab.
 
+## F2b. PLIP confirms F1 independently: the glue is placed perfectly, the degron is not
+
+The interaction fingerprint was computed for the same seeds, which is a wholly
+different measurement from the dSASA bridging filter: PLIP perceives explicit
+hydrophobic contacts and hydrogen bonds from a bond table, where the bridging
+filter integrates buried surface area.
+
+For the receptor side the agreement with the literature is complete. Every one of
+the five canonical CRBN degron contacts is matched in every seed examined, with
+none missing:
+
+| construct position | canonical residue | role |
+|---|---|---|
+| TRP63 | W380 | tri-tryptophan pocket |
+| TRP69 | W386 | tri-tryptophan pocket |
+| TRP83 | W400 | tri-tryptophan pocket |
+| HIS61 | H378 | glutarimide hydrogen bond |
+| PHE85 | F402 | pocket floor |
+
+So CC-885 is placed in the CRBN IMiD pocket correctly and reproducibly. That is
+a real positive control passing: the receptor half of the ternary is right.
+
+The degron half is not. Counting PLIP contacts between the glue and the peptide
+chain: seed 1 makes **one** (SER7), seeds 2 and 3 make **none**. That is the same
+verdict the bridging filter reached on the same seeds by a different route, and
+the two methods agreeing makes it very unlikely to be an artefact of either.
+
+The conclusion is specific and worth stating plainly: at tier-1 settings the
+model reliably docks the glue into its pocket and does not reliably bring the
+degron to it. A scoring stack that read only the receptor-side fingerprint, or
+only ipTM, would call these poses correct.
+
 ## F3. One of the seven scoring signals has no demonstrated discriminating power
 
 Spec 4 lists seven signals "in descending order of trust". The second,

@@ -69,3 +69,28 @@ def science_env() -> dict:
     """Environment for subprocesses that import torch next to conda-forge numpy."""
     settings = tuning().get("env", {})
     return dict(os.environ, **{key: str(value) for key, value in settings.items()})
+
+
+def tool_env(*environments) -> dict:
+    """science_env plus the given pixi environments' bin directories on PATH.
+
+    Needed because several tools are console scripts inside a pixi environment
+    rather than importable modules: mkdssp, pdb_tidy and pdb_validate are all
+    found via PATH by the code that calls them. Invoking an environment's
+    interpreter directly does not activate it, so PATH still points at the outer
+    shell's and the tool is reported missing even though it is installed. This
+    has now caused two separate silent failures (a DSSP run and a PLIP
+    conversion), so the PATH is assembled here rather than per caller.
+    """
+    environment = science_env()
+    roots = environments or (BOLTZMAKER, BINMAN)
+    bins = [str(Path(root) / ".pixi" / "envs" / "default" / "bin") for root in roots]
+    existing = environment.get("PATH", "")
+    environment["PATH"] = os.pathsep.join([*bins, existing]) if existing else os.pathsep.join(bins)
+    # libcifpp's dictionaries, which mkdssp loads by this variable.
+    for root in roots:
+        share = Path(root) / ".pixi" / "envs" / "default" / "share" / "libcifpp"
+        if share.exists():
+            environment.setdefault("LIBCIFPP_DATA_DIR", str(share))
+            break
+    return environment
