@@ -140,31 +140,66 @@
     });
   }
 
+  /* One row per pair, the mandated minimum and the median joined by a line.
+   *
+   * This was a histogram. With five pairs the auto-binning drew a single bar
+   * spanning -1 to -0.1 where exactly one value sits, at -0.756, which makes
+   * the spread look continuous and overstates it. A distribution plot needs a
+   * distribution; a handful of pairs needs to show the pairs. The join also
+   * does the job the histogram could not: the length of each line is how far
+   * a collapsed seed has dragged that pair's headline number from its median,
+   * which is the whole of D-NOB-023 in one mark. */
   function buildMarginal() {
-    const withDelta = PAIRS.filter(p => p.delta_iptm !== null && p.delta_iptm !== undefined);
-    const traces = [
-      {
-        name: 'Delta-ipTM (min)',
-        x: withDelta.map(p => p.delta_iptm),
-        type: 'histogram', opacity: 0.75,
-        marker: { color: '#A64708' },
-        hovertemplate: 'Delta-ipTM %{x:.3f}<br>%{y} pair(s)<extra></extra>'
-      },
-      {
-        name: 'Delta-ipTM (median)',
-        x: withDelta.map(p => p.delta_iptm_median).filter(v => v !== null && v !== undefined),
-        type: 'histogram', opacity: 0.75,
-        marker: { color: '#2C6D60' },
-        hovertemplate: 'Delta-ipTM median %{x:.3f}<br>%{y} pair(s)<extra></extra>'
-      }
-    ];
+    const rows = PAIRS
+      .filter(p => p.delta_iptm !== null && p.delta_iptm !== undefined)
+      .slice()
+      .sort((a, b) => (a.delta_iptm_median ?? a.delta_iptm) - (b.delta_iptm_median ?? b.delta_iptm));
+
+    const labels = rows.map(p => (p.peptide_gene || p.pair_id) + ' / ' + (p.e3_gene || ''));
+    const traces = [];
+
+    rows.forEach((p, i) => {
+      if (p.delta_iptm_median === null || p.delta_iptm_median === undefined) { return; }
+      traces.push({
+        x: [p.delta_iptm, p.delta_iptm_median],
+        y: [labels[i], labels[i]],
+        mode: 'lines', type: 'scatter',
+        line: { color: '#C9CBC3', width: 3 },
+        hoverinfo: 'skip', showlegend: false
+      });
+    });
+
+    traces.push({
+      name: 'difference of minima (spec 4.3)',
+      x: rows.map(p => p.delta_iptm), y: labels,
+      mode: 'markers', type: 'scatter',
+      marker: { size: 13, color: '#A64708', line: { width: 1, color: '#0c183c' } },
+      customdata: rows.map(p => [
+        (p.bridging_seeds_with_bridge || 0) + '/' + (p.bridging_seeds_total || 0),
+        p.seed_collapse_affects_delta ? 'yes' : 'no'
+      ]),
+      hovertemplate: '<b>%{y}</b><br>minimum across seeds %{x:.4f}<br>' +
+        'bridging seeds %{customdata[0]}<br>' +
+        'a collapsed seed set this: %{customdata[1]}<extra></extra>'
+    });
+
+    traces.push({
+      name: 'difference of medians',
+      x: rows.map(p => p.delta_iptm_median), y: labels,
+      mode: 'markers', type: 'scatter',
+      marker: { size: 13, color: '#2C6D60', line: { width: 1, color: '#0c183c' } },
+      hovertemplate: '<b>%{y}</b><br>median across seeds %{x:.4f}<extra></extra>'
+    });
+
     Plotly.newPlot('marginal', traces, NOBBLE.plotLayout({
-      title: { text: 'Distribution: mandated minimum against the median', font: { size: 13 } },
-      xaxis: { title: 'Delta-ipTM' },
-      yaxis: { title: 'pairs' },
-      barmode: 'overlay',
+      title: { text: 'Per pair: difference of minima against difference of medians', font: { size: 13 } },
+      xaxis: { title: 'Delta-ipTM', zeroline: true, zerolinewidth: 2 },
+      yaxis: { automargin: true, type: 'category' },
+      margin: { l: 150, r: 18, t: 34, b: 52 },
       showlegend: true,
-      legend: { orientation: 'h', y: -0.22 }
+      legend: { orientation: 'h', y: -0.2 },
+      shapes: [{ type: 'line', x0: 0, x1: 0, yref: 'paper', y0: 0, y1: 1,
+                 line: { dash: 'dot', width: 1, color: '#61655F' } }]
     }), NOBBLE.plotConfig);
   }
 

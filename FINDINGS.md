@@ -300,6 +300,37 @@ generator should size itself from the measured rate rather than the estimate,
 and `data/throughput.json` is rewritten on every refresh so the number tracks
 the campaign rather than its first job.
 
+## F8. Delta-ipTM is a difference of minima, and on IKZF1 that is the interesting part
+
+Spec 4.3 defines the headline metric as `iptm_min_ternary - iptm_min_binary`:
+a difference **of** minima, not the minimum **of** the differences. The two are
+not the same statistic and the distinction is not pedantry, because the first
+is not bounded by the per-seed values.
+
+IKZF1 / CRBN makes it concrete. Its difference of minima is **+0.316** and its
+difference of medians is **+0.136**, which looks impossible until the
+components are read:
+
+| | minimum across seeds | median across seeds |
+|---|---|---|
+| binary | 0.607 | 0.791 |
+| ternary | 0.923 | 0.927 |
+
+The ternary arm is almost perfectly stable, 0.923 against a median of 0.927,
+while the binary arm has a seed that falls to 0.607 from a median of 0.791. So
+the glue does not merely raise the interface confidence: it **removes the
+variance**. Every seed agrees about the ternary and the seeds disagree about
+the binary.
+
+That is a better description of glue dependence than the headline number
+alone, and it is visible only because both statistics are reported. It also
+means a large Delta-ipTM can arise from a stabilised ternary as much as from a
+raised one, and those are different claims about the chemistry.
+
+The Delta tab now labels the two series as differences of minima and of
+medians rather than as "minimum" and "median", which implied they were two
+statistics of the same quantity.
+
 ## Pending
 
 Remaining benchmark pairs, the Sievers matched-control ROC, lysine reach, PLIP
