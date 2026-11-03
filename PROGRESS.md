@@ -10,7 +10,7 @@ Rewritten after every phase and at least every 30 minutes during long compute.
 | 1 Curation and manifest | **complete** | All gates pass. Tier A 17, Tier B 15 (frozen), 25,567-peptide library reduced to 220, 11 MSAs cached, manifest emitted with 0 errors |
 | 2 Execution | **running** | Benchmark queue of 100 jobs in tmux session `nobble-bench`. Smoke test 42.5 s for 124 tokens on MPS; warm rate 31.9 s. Resume verified in practice |
 | 3 Scoring and validation | **mostly built** | Metrics, geometry, poses, docking, lysine and PLIP all working and scoring live results. Remaining: composite weight fit and the three validation layers of spec 5, both of which need the full panel |
-| 4 Application | not started | |
+| 4 Application | **built, QC clean** | Six tabs on the Depot system, reading the campaign live. Playwright: 12 captures at two viewports, 0 non-200, 0 console errors, 0 serious axe violations. Remaining: Mol* wiring in the Pose tab and the BINMAN-LM query head |
 
 ## Phase 1 gates: all passing
 
@@ -87,6 +87,20 @@ Rewritten after every phase and at least every 30 minutes during long compute.
 | DDB1_BPC | 310 | 355 | within cap, no exception needed (D-NOB-013) |
 | KEAP1_KELCH | 316 | 361 | within cap |
 | FEM1B_ANK | 297 | 342 | within cap (ankyrin, not TPR: D-NOB-014) |
+
+## Phase 4 application
+
+| Tab | State |
+|---|---|
+| Campaign | ledger with filters, sorting, pin-on-click and browser-side re-weighting |
+| Pose | per-seed geometry table and viewer controls. Mol* structure loading still to wire |
+| Interactions | PLIP heatmap, canonical fingerprint comparison, CONECT integrity shown |
+| Delta | Delta-ipTM against bridge percentile with lasso to pin, distribution panel, matched-control ROC (reports honestly that it is not computable until the Sievers arm runs) |
+| Benchmark | seven cards, scored or queued, with colour-coded stats and tooltips |
+| About | calibration caveat, the two unvalidated signals with their AUCs, construct budget, data licences |
+
+Run locally: `PYTHONPATH=. python -c "from nobble.app import create_app; create_app().run(port=5055)"`.
+QC: `npx node qc/qc.mjs` with the app running.
 
 ## Gates open
 
