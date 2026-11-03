@@ -281,6 +281,25 @@ that quantity. The component is kept as a candidate for the weight fit, but its
 fitted weight will be published next to these AUCs so nobody reads a non-zero
 weight as validation.
 
+## F7. The measured throughput is worse than the smoke test implied, as warned
+
+The first throughput figure came from a single 124-token job and read 0.343
+seconds per token, which sized the campaign at 271 pairs against spec 1.2's
+estimate of 200 to 250. That was published with a caveat that it was measured
+on the smallest job and that pairformer cost is superlinear in length.
+
+Measured across 75 completed jobs spanning 124 to 1,223 tokens, the median is
+**0.456 seconds per token**, and the campaign sizes at **175 pairs** in the
+48-hour budget. The DCAF15 members run at 0.66 to 0.69 seconds per token
+individually, roughly double the small-construct rate.
+
+So the real figure is below spec 1.2's own estimate rather than above it, and a
+campaign planned on the smoke test would have been oversubscribed by about 55
+per cent. This is exactly what spec 1.2 asks for when it says the manifest
+generator should size itself from the measured rate rather than the estimate,
+and `data/throughput.json` is rewritten on every refresh so the number tracks
+the campaign rather than its first job.
+
 ## Pending
 
 Remaining benchmark pairs, the Sievers matched-control ROC, lysine reach, PLIP
