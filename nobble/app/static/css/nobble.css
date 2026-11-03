@@ -408,57 +408,10 @@
 .stat__sub { display: block; font-size: 0.62rem; color: var(--muted); }
 
 /* ------------------------------------------------------------------ viewer */
-
-.viewer {
-  position: relative;
-  width: 100%;
-  height: 30rem;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-}
-.viewer__canvas { position: absolute; inset: 0; }
-.viewer__canvas canvas { width: 100% !important; height: 100% !important; display: block; }
-.viewer__empty {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 1rem;
-  background: var(--surface-2);
-  color: var(--muted);
-}
-.viewer__empty h3 { font-family: var(--display); margin: 0 0 0.3rem; color: var(--ink); font-size: 0.95rem; }
-.viewer__empty p { margin: 0; max-width: 46ch; font-size: 0.78rem; }
-.viewer__readout {
-  position: absolute;
-  left: 0.5rem;
-  bottom: 0.5rem;
-  font-size: 0.68rem;
-  color: var(--ink);
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 0.2rem 0.45rem;
-  pointer-events: none;
-}
-.viewer__controls { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-top: 0.5rem; }
-.viewer__controls button {
-  font-family: var(--display);
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 0.3rem 0.55rem;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  color: var(--ink);
-  border-radius: var(--radius);
-  cursor: pointer;
-}
-.viewer__controls button:hover { border-color: var(--accent); color: var(--accent); }
-.viewer__controls button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+/* Nothing here. The viewer frame, its bar, canvas, empty state and overlay are
+   all styled by depot.css, which is BINMAN's stylesheet taken whole. Earlier
+   versions of this file redefined .viewer and .viewer__canvas and fought it;
+   the overrides are gone so the two modules render identically. */
 
 .chart { width: 100%; height: 26rem; }
 .chart--short { height: 18rem; }

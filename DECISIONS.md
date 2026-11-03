@@ -739,3 +739,45 @@ time and removes the failure mode.
 
 The MSA precompute is the exception and did run alongside, because it is
 network-bound and never touches the GPU.
+
+---
+
+## D-NOB-031: the Mol* presentation is BINMAN's, taken whole, with one corrected theme
+
+**Date:** 2026-11-03
+
+**Decision.** `molstar-bridge.js` is copied from BINMAN unchanged and never
+edited here. NOBBLE's Pose tab adopts BINMAN's viewer markup, its control bar
+and its stylesheet, so the two modules render identically: the translucent
+gaussian-surface polymer at alpha 0.45 with radiusOffset 1.6, the ligand as
+sticks with pinned magenta carbons inside an emissive shell at alpha 0.09, the
+bloom in emissive mode, the furniture list and the framing radii. Every one of
+those numbers was tuned against real structures and the reasons are in that
+file's comments; reproducing them here by hand would have drifted on the first
+value guessed.
+
+**The one departure, and why it is a correction rather than a preference.**
+The bridge colours confidence with Mol*'s `uncertainty` theme, which maps a
+**high** B-factor to **high uncertainty** and therefore to a warm colour.
+pLDDT runs the other way: high is good. A Boltz prediction writes pLDDT into
+the B-factor column and these average 96 out of 100, so `uncertainty` painted
+the entire model in the "very low confidence" band. The viewer was stating the
+exact inverse of the truth about its own model, in the most legible way
+available to it.
+
+Mol* ships `plddt-confidence`, which is the real AlphaFold four-band scale. It
+reads the `ma_qa_metric` category, and Boltz writes that category: checked in
+the loaded file rather than assumed. NOBBLE therefore asks the bridge not to
+colour (`plddt: false`) and applies `plddt-confidence` afterwards, scoped to
+the **polymer components only**. Applied to every component it overrode the
+ligand's `element-symbol` theme and took its pinned magenta carbons with it,
+so the ligand stopped reading chemically and began reporting a confidence it
+does not have.
+
+**Not fixed in BINMAN, deliberately.** The same inversion would affect any
+model BINMAN loads that carries `ma_qa_metric`, so it is worth raising there.
+Editing another live application's shared file from inside this build is not
+the way to raise it, and a forked copy that drifts is worse than no copy.
+
+**Reversal.** `colourByConfidence` in `nobble/app/templates/pose.html`; remove
+it and pass `plddt: true` to return to the bridge's behaviour exactly.

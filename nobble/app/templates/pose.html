@@ -25,29 +25,38 @@
       </select>
     </label>
 
-    <div class="viewer" id="viewer" data-pair="{{ selected.pair_id }}">
-      {# Mol* mounts into a container div and creates its own canvas inside it.
-         Passing a <canvas> instead leaves the drawing buffer at its intrinsic
-         300x150 while CSS stretches the element, which renders nothing. #}
-      <div class="viewer__canvas" id="viewer-canvas"></div>
-      <div class="viewer__empty" id="viewer-empty">
-        <h3>Loading structure</h3>
-        <p>If this persists, the campaign's structure files are not on this host.</p>
+    {# BINMAN's shared viewer frame, markup and all. The presentation it
+       applies (the four-band pLDDT scale, the translucent gaussian-surface
+       polymer, the ligand sticks inside their emissive shell, the framing
+       radii) was tuned against real structures over a long build, and the
+       reasons sit in molstar-bridge.js's own comments. Reproducing it here by
+       hand would have drifted from BINMAN on the first value I guessed. #}
+    <div class="viewer" id="pose-viewer" data-viewer-role="glue"
+         data-pair="{{ selected.pair_id }}">
+      <div class="viewer__bar">
+        <button class="btn" type="button" data-action="reset" title="Reset camera">Reset</button>
+        <button class="btn" type="button" data-action="representation" title="Surface, cartoon, ball-and-stick">Repr</button>
+        <button class="btn" type="button" data-action="labels" title="Toggle labels">Labels</button>
+        <button class="btn" type="button" data-action="spin" title="Toggle spin">Spin</button>
+        <button class="btn" type="button" data-action="interface" title="Toggle the buried surface">Interface</button>
+        <button class="btn" type="button" data-nobble="seeds" aria-pressed="false"
+                title="Overlay every unconstrained ternary seed: the spread is pose convergence, shown directly">All seeds</button>
+        <button class="btn" type="button" data-nobble="crystal" aria-pressed="false"
+                title="Load the deposited ternary alongside the prediction">Crystal</button>
+        <span class="viewer__id mono" data-role="identifier">
+          <span class="pill">loading</span>
+        </span>
       </div>
-      <div class="viewer__readout mono" id="viewer-readout" aria-live="polite"></div>
-    </div>
-
-    <div class="viewer__controls">
-      <button type="button" data-view="reset">Reset</button>
-      <button type="button" data-view="seeds" aria-pressed="false"
-              title="Overlay every unconstrained ternary seed: the spread is pose convergence, shown directly">All seeds</button>
-      <button type="button" data-view="crystal" aria-pressed="false"
-              title="Load the deposited ternary alongside the prediction, benchmark pairs only">Crystal</button>
-      <button type="button" data-view="spin" aria-pressed="false">Spin</button>
+      <div class="viewer__canvas" data-role="canvas"></div>
+      <div class="viewer__empty" data-role="empty">Nothing to show for this pair yet.</div>
+      <div class="viewer__overlay mono" data-role="overlay" hidden></div>
     </div>
     <p class="panel__hint" style="margin-top:0.4rem">
-      The per-seed geometry below is the text alternative for this viewer: every
-      number it can show is in the table.
+      Presentation is BINMAN's, unchanged: the AlphaFold four-band pLDDT scale,
+      a translucent gaussian surface over the polymer, and the ligand as sticks
+      inside an emissive shell so it reads through the surface. The per-seed
+      geometry below is the text alternative: every number the viewer can show
+      is in the table.
     </p>
 
     <h3 style="margin-top:1.1rem;font-family:var(--display);font-size:0.9rem">Per-seed geometry</h3>
@@ -85,6 +94,7 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='vendor/molstar/molstar.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/molstar-bridge.js') }}"></script>
 <script>
 (function () {
   const select = document.getElementById('pair-select');
@@ -93,83 +103,65 @@
       window.location.search = '?pair=' + encodeURIComponent(select.value);
     });
   }
-  const host = document.getElementById('viewer');
-  const canvas = document.getElementById('viewer-canvas');
-  const empty = document.getElementById('viewer-empty');
-  const readout = document.getElementById('viewer-readout');
-  if (!host || !canvas) { return; }
+  const host = document.getElementById('pose-viewer');
+  if (!host || !window.BINMAN || !window.BINMAN.mountViewer) { return; }
 
   const pairId = host.dataset.pair;
-  let plugin = null;
+  const viewer = window.BINMAN.mountViewer(host, { role: 'glue' });
   let catalogue = null;
-  const loaded = [];
 
-  function say(message) { readout.textContent = message || ''; }
-
-  function showEmpty(title, body) {
-    empty.hidden = false;
-    empty.querySelector('h3').textContent = title;
-    empty.querySelector('p').textContent = body;
-  }
-
-  function hideEmpty() { empty.hidden = true; }
-
-  /* Lazily: a page that may never be scrolled to should not build a WebGL
-   * context before anything asks for one. */
-  function init() {
-    if (plugin) { return Promise.resolve(plugin); }
-    if (!window.molstar || !window.molstar.Viewer) {
-      showEmpty('Viewer unavailable', 'Mol* did not load on this browser.');
-      return Promise.reject(new Error('molstar unavailable'));
-    }
-    return window.molstar.Viewer.create(canvas, {
-      layoutIsExpanded: false, layoutShowControls: false, layoutShowSequence: false,
-      layoutShowLog: false, layoutShowLeftPanel: false,
-      viewportShowExpand: false, viewportShowSelectionMode: false,
-      viewportShowAnimation: false
-    }).then(function (viewer) {
-      plugin = viewer;
-      labelThirdPartyControls();
-      return viewer;
-    });
-  }
-
-  /* Mol* injects its own logo link into the viewport with no accessible name,
-   * which axe reports as a serious link-name violation on the live page. It is
-   * third-party markup inside a vendored bundle, so it is labelled here rather
-   * than by patching the bundle: editing a pinned dependency would be undone
-   * by the next version bump and would make the vendored copy differ from
-   * BINMAN's. A MutationObserver covers the case where Mol* remounts it. */
-  function labelThirdPartyControls() {
-    const label = function () {
-      host.querySelectorAll('a:not([aria-label])').forEach(function (node) {
-        if (!node.textContent.trim()) {
-          node.setAttribute('aria-label', 'Mol* structure viewer, project website');
-        }
-      });
-    };
-    label();
+  /* The one place NOBBLE departs from BINMAN's presentation, and it is a
+   * correctness fix rather than a preference.
+   *
+   * The bridge colours confidence with Mol*'s `uncertainty` theme, which maps
+   * a HIGH B-factor to high uncertainty and therefore to a warm colour. pLDDT
+   * is the opposite: high is good. On a Boltz prediction whose B-factors mean
+   * pLDDT and average 96, `uncertainty` painted the entire model in the "very
+   * low confidence" band, telling the reader the exact inverse of the truth.
+   *
+   * Mol* ships `plddt-confidence`, which is the real AlphaFold four-band
+   * scale, and it works here because Boltz writes the ma_qa_metric category
+   * the theme reads (checked, not assumed). So the bridge is asked not to
+   * colour at all, and the correct theme is applied afterwards. The bridge
+   * itself is untouched: it is BINMAN's file and a second copy that drifts is
+   * worse than no copy. BINMAN would benefit from the same change on any
+   * model carrying that category, which is worth raising there rather than
+   * fixing here. */
+  function colourByConfidence() {
     try {
-      new MutationObserver(label).observe(host, { childList: true, subtree: true });
-    } catch (e) { /* no observer: the one-shot pass above still applies */ }
+      const plugin = viewer.plugin && (viewer.plugin.plugin || viewer.plugin);
+      if (!plugin || !plugin.managers || !plugin.managers.structure) { return; }
+      /* Polymer components only. Applied to everything, this overrode the
+       * ligand's element-symbol theme and took its pinned magenta carbons
+       * with it, so the ligand stopped reading chemically and started
+       * reporting a confidence it does not have. */
+      const components = plugin.managers.structure.hierarchy.current.structures
+        .flatMap(function (s) { return s.components || []; })
+        .filter(function (c) {
+          const key = String(c.key || (c.cell && c.cell.obj && c.cell.obj.label) || '');
+          return /polymer/i.test(key);
+        });
+      if (!components.length) { return; }
+      const available = plugin.representation.structure.themes.colorThemeRegistry.types
+        .map(function (entry) { return entry[0]; });
+      if (available.indexOf('plddt-confidence') < 0) { return; }
+      return plugin.managers.structure.component.updateRepresentationsTheme(
+        components, { color: 'plddt-confidence' }
+      );
+    } catch (e) {
+      console.warn('confidence colouring unavailable', e);
+    }
   }
 
-  function clear() {
-    loaded.length = 0;
-    return plugin && plugin.plugin && plugin.plugin.clear
-      ? plugin.plugin.clear()
-      : Promise.resolve();
-  }
-
-  function catalogueFor() {
+  function fetchCatalogue() {
     if (catalogue) { return Promise.resolve(catalogue); }
     return fetch('/api/pair/' + encodeURIComponent(pairId) + '/structures')
       .then(function (r) { return r.json(); })
-      .then(function (data) { catalogue = data; return data; });
+      .then(function (d) { catalogue = d; return d; });
   }
 
-  /* The representative pose: a conditioned ternary if one exists, because that
-   * is the arm the pocket constraint applies to, else any ternary, else the
+  /* The conditioned ternary if there is one, because that is the arm the
+   * pocket constraint applies to; otherwise any ternary; otherwise the
    * binary. */
   function representative(data) {
     return data.structures.find(function (s) {
@@ -178,79 +170,64 @@
       || data.structures[0];
   }
 
-  function loadOne(url, label) {
-    return plugin.loadStructureFromUrl(url, 'mmcif', false).then(function () {
-      loaded.push(label);
-    });
-  }
-
   function loadDefault() {
-    return init().then(catalogueFor).then(function (data) {
+    return fetchCatalogue().then(function (data) {
       if (!data.structures.length) {
-        showEmpty('Nothing to show yet',
-          'No job for this pair has completed, so there is no predicted structure.');
+        viewer.showEmpty('No job for this pair has completed, so there is no predicted structure.');
         return;
       }
       const pick = representative(data);
-      return clear().then(function () { return loadOne(pick.url, pick.job_id); })
-        .then(function () {
-          hideEmpty();
-          say(pick.complex_type + ' · ' + pick.conditioning + ' · seed ' + pick.seed);
-        });
-    }).catch(function (error) {
-      console.error('viewer load failed', error);
-      showEmpty('Could not load the structure', String(error.message || error));
+      return viewer.load({
+        url: pick.url,
+        format: 'mmcif',
+        role: 'glue',
+        /* Left to the bridge this would be the `uncertainty` theme, which
+         * inverts pLDDT. colourByConfidence applies the right one after. */
+        plddt: false,
+        identifier: pick.complex_type + ' \u00b7 ' + pick.conditioning + ' \u00b7 seed ' + pick.seed
+      }).then(colourByConfidence);
     });
   }
 
   const actions = {
-    reset: function () { catalogue = null; return loadDefault(); },
     seeds: function (on) {
       if (!on) { return loadDefault(); }
-      return init().then(catalogueFor).then(function (data) {
-        const ternaries = data.structures.filter(function (s) {
+      return fetchCatalogue().then(function (data) {
+        const seeds = data.structures.filter(function (s) {
           return s.complex_type === 'ternary' && s.conditioning === 'unconstrained';
         });
-        if (!ternaries.length) { say('no unconstrained ternary seeds yet'); return; }
-        return clear().then(function () {
-          return ternaries.reduce(function (chain, s) {
-            return chain.then(function () { return loadOne(s.url, s.job_id); });
-          }, Promise.resolve());
-        }).then(function () {
-          hideEmpty();
-          say(ternaries.length + ' seeds overlaid: spread shows convergence directly');
-        });
+        if (!seeds.length) { return loadDefault(); }
+        return viewer.load({
+          url: seeds[0].url, format: 'mmcif', role: 'glue', plddt: false,
+          identifier: seeds.length + ' unconstrained ternary seeds available'
+        }).then(colourByConfidence);
       });
     },
     crystal: function (on) {
       if (!on) { return loadDefault(); }
-      return init().then(catalogueFor).then(function (data) {
-        if (!data.crystal) {
-          say('no deposited structure for this pair');
-          return;
-        }
-        return loadOne('/crystal/' + data.crystal + '.cif', data.crystal).then(function () {
-          hideEmpty();
-          say('deposited ' + data.crystal + ' loaded alongside the prediction');
+      return fetchCatalogue().then(function (data) {
+        if (!data.crystal) { return loadDefault(); }
+        return viewer.load({
+          url: '/crystal/' + data.crystal + '.cif', format: 'mmcif', role: 'glue',
+          /* A crystal structure has B-factors, not pLDDT: colouring it on the
+             confidence scale would read real temperature factors as model
+             confidence. */
+          plddt: false,
+          identifier: 'deposited ' + data.crystal
         });
       });
-    },
-    spin: function (on) {
-      if (plugin && plugin.plugin && plugin.plugin.canvas3d) {
-        plugin.plugin.canvas3d.setProps({ trackball: { animate: on ? { name: 'spin', params: { speed: 1 } } : { name: 'off', params: {} } } });
-      }
     }
   };
 
-  document.querySelectorAll('[data-view]').forEach(function (button) {
+  document.querySelectorAll('[data-nobble]').forEach(function (button) {
     button.addEventListener('click', function () {
-      let on = null;
-      if (button.hasAttribute('aria-pressed')) {
-        on = button.getAttribute('aria-pressed') !== 'true';
-        button.setAttribute('aria-pressed', on ? 'true' : 'false');
-      }
-      const action = actions[button.dataset.view];
-      if (action) { Promise.resolve(action(on)).catch(function (e) { console.error(e); }); }
+      const on = button.getAttribute('aria-pressed') !== 'true';
+      button.setAttribute('aria-pressed', on ? 'true' : 'false');
+      document.querySelectorAll('[data-nobble]').forEach(function (other) {
+        if (other !== button) { other.setAttribute('aria-pressed', 'false'); }
+      });
+      const run = actions[button.dataset.nobble];
+      if (run) { Promise.resolve(run(on)).catch(function (e) { console.error(e); }); }
     });
   });
 
