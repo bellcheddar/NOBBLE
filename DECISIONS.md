@@ -228,3 +228,153 @@ peptide would measure an interface that does not exist in the crystal and would
 score the benchmark's most unusual member against the wrong chain.
 
 **Reversal.** `nobble/curate/benchmark.py`, panel member 7's substrate accession.
+
+---
+
+## D-NOB-017: the Open Targets tumour-enrichment filter is unpopulated, so it is skipped and recorded, not applied
+
+**Date:** 2026-11-03
+
+**Finding.** Spec 3.3's fourth Tier B filter is "Open Targets tumour enrichment
+above the repertoire median". BINMAN's `ligase.tumour_enriched` column is **0 for
+all 650 rows**: it has one distinct value and therefore no discriminating power.
+Applied literally, the Tier B funnel runs 564 ligandable-unproven to 33 on
+fpocket, 26 on pLDDT and then to **zero**, failing the Phase 1 gate on a column
+that was never filled in.
+
+What settles the diagnosis rather than leaving it a judgement call: the three
+ligases spec 3.3 itself says "should appear" at the top of this ranking, DCAF8L1,
+CCNF and ASB8, all carry `tumour_enriched = 0` as well. The spec's own expected
+answer is incompatible with its own filter as applied to this store, so the
+filter is unpopulated rather than selective.
+
+**Decision.** Skip the filter when the column carries no variance, record the
+skip in the funnel and in `tier_b_selection.provenance.json` as
+`not_computed: open_targets_enrichment_unpopulated`, and never report any ligase
+as tumour-enriched or not. The check is written to apply itself automatically if
+the column is ever populated, so no code change is needed then.
+
+**Result.** Tier B selects 15 ligases and the gate passes. DCAF8L1, CCNF and ASB8
+come out at ranks 1, 2 and 3, which is exactly what spec 3.3 predicts and is good
+evidence the rest of the selection function is right.
+
+**Alternatives.** Substitute a tumour-enrichment source of my own (re-acquiring a
+source the spec assigns to BINMAN, and unverifiable here); or let the gate fail
+(reports a data gap as a science result, which spec 5 is written against).
+
+**Reversal.** Populate `ligase.tumour_enriched` in BINMAN and re-run
+`nobble.curate.freeze.write_tier_b(force=True)`. The filter re-arms itself.
+
+---
+
+## D-NOB-018: degron regions come from BINMAN's structural scan, because UbiBrowser carries no coordinates
+
+**Date:** 2026-11-03
+
+**Decision.** Spec 3.4 tiles curated degrons "across the annotated degron region
+plus or minus 20 residues". UbiBrowser's literature export is two columns, E3
+gene and substrate gene, with no degron coordinates at all, and Degronopedia
+(which would have carried them) was never acquired (D-NOB-010). The region
+therefore comes from BINMAN's own Degron Scan for that substrate, taking its
+three highest-scoring degrons per protein.
+
+**Reason.** It is the only degron coordinate source available, and it is the one
+the Phase 1 gate independently validated against two deposited ternaries: the
+scan's tip residue is exactly the deposited degron residue for both GSPT1 and
+IKZF1. Using it is better evidenced than using an annotation that is absent.
+
+**Consequence.** The curated arm inherits the scan's motif bias. Every one of the
+12,029 curated peptides carries `motif_family = crbn_hairpin_glycine`, because
+that is the only geometry the scan looks for. So this arm is a CRBN-style
+glycine-degron library, not a general degron library, and the About page must say
+so rather than implying proteome-wide degron coverage.
+
+**Reversal.** Acquire Degronopedia, or widen BINMAN's scan with further motif
+families (its `motif_family` column exists for exactly that), then re-run.
+
+---
+
+## D-NOB-019: jobs per pair is computed from the axes emitted, not quoted from the spec
+
+**Date:** 2026-11-03
+
+**Finding.** The spec gives two incompatible job counts. Spec 1.2 says "two jobs
+(binary and ternary) across five seeds, so a 400-pair campaign is 4,000
+inferences", which is 10 per pair. Phase 2's build list then adds a third axis,
+"(conditioned + unconstrained)", which would make it 20.
+
+**Decision.** Neither number is hardcoded. `manifest.jobs_per_pair()` computes it
+from the axes actually emitted, and the real figure is **15**: conditioning
+places a ligand in a pocket, so it is meaningless for the binary arm, which has
+no ligand. The binary arm runs 5 seeds unconstrained and the ternary arm runs 5
+seeds in each of the two conditioning states.
+
+**Why it matters.** This number multiplies the entire campaign budget. Inheriting
+the wrong one would misplan the 48-hour run by a third in one direction or a
+third in the other.
+
+**Reversal.** `nobble/curate/manifest.py`, `jobs_per_pair` and the `COMPLEXES` and
+`CONDITIONS` tuples it is derived from.
+
+---
+
+## D-NOB-020: the numbering frame resolver is per-residue and gap-aware
+
+**Date:** 2026-11-03
+
+**Finding, and a second instance of the D-NOB-012 trap.** The first frame
+resolver concatenated a chain's observed residues into one string and compared
+positions. That works for substrate peptides, which are short and continuous,
+and fails for receptors, which are not: 5HXB's CRBN chain, 5FQD's CRBN chain,
+6Q0W's DCAF15 chain and 6TD3's DDB1 chain all have unmodelled internal loops.
+Every residue after the first gap disagreed, so all four were rejected as "not a
+contiguous run" and **four of the seven benchmark pockets could not be
+measured**, which would have silently reduced those pairs to unconstrained-only
+and destroyed the conditioning-agreement signal of spec 4.7 for most of the
+panel.
+
+Their true offset is zero in every case: the numbering already matched.
+
+**Decision.** `resolve_frame` now compares each observed residue by its own
+deposited number, derives candidate offsets from exact k-mer matches on
+contiguous runs, and picks the offset with the best agreement across the whole
+chain. All six receptor chains now resolve at 0 per cent mismatch, and no
+substrate regressed (GSPT1 remains 138, the rest remain 0).
+
+**Independent check that it is right.** The CRBN pocket, measured through this
+mapping from three unrelated depositions (5HXB, 6H0F, 5FQD), lands on construct
+positions 63, 69 and 83, which are W380, W386 and W400: the tri-tryptophan IMiD
+pocket, recovered by measurement from three structures that agree, with no
+residue number written anywhere in the code.
+
+**Reversal.** Not a preference: the previous version was wrong.
+
+---
+
+## D-NOB-021: the Sievers arm is matched-sampled, and it dominates the first campaign's budget
+
+**Date:** 2026-11-03
+
+**Decision.** The Sievers screen contributes all 32 degraded zinc fingers plus
+four length- and composition-matched non-degraded controls each, 160 peptides in
+total, rather than all 5,663 rows or a random sample.
+
+**Reason.** The screen is 32 positives against 5,631 negatives. That imbalance is
+the real biology (IMiD-sensitive zinc fingers are rare), but no campaign budget
+runs 5,663 peptides, and the value of this set is specifically that its negatives
+came out of the same screen as its positives. Matching preserves that; diversity
+selection would actively destroy it, since a useful control here is one that
+resembles its positive. Spec 3.4's diversity reduction still governs the rest of
+the library.
+
+**Consequence to flag.** At the pre-measurement budget of 220 peptides, those 160
+plus the 7 benchmark members and their scrambles leave room for only 7 diverse
+discovery peptides. The headline calibration set crowds out discovery in the
+first campaign. The measured throughput from the benchmark panel resizes this
+automatically (`diversity.campaign_budget` reads `data/throughput.json`), and the
+first measurement, 0.343 s/token, sizes the run at 271 pairs rather than the
+spec's 200 to 250. The queue is priority-ordered regardless, so a run cut short
+still yields the benchmark panel and then the ROC before it reaches discovery.
+
+**Reversal.** `nobble/curate/peptides.py`, `sievers_matched_set`, and the budget
+in `nobble/curate/diversity.py`.

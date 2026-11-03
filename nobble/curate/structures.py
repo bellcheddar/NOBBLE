@@ -145,3 +145,26 @@ def contacts_to_ligand(
                     }
                 )
     return sorted(hits, key=lambda item: item["min_distance"])
+
+
+def chain_residues(pdb_id: str, chain_name: str) -> list[tuple[int, str]]:
+    """Observed amino acids of a chain as (seqid, one-letter), gaps preserved.
+
+    Unlike `chain_summary`, which concatenates the observed residues into one
+    string, this keeps each residue's own deposited number. Receptor chains
+    routinely have unmodelled internal loops, so a concatenated sequence is not a
+    contiguous run of the canonical one and anything that assumes it is will
+    mis-align.
+    """
+    structure = read_assembly(pdb_id)
+    residues: list[tuple[int, str]] = []
+    for chain in structure[0]:
+        if chain.name != chain_name:
+            continue
+        for residue in chain:
+            if not is_amino_acid(residue):
+                continue
+            info = gemmi.find_tabulated_residue(residue.name)
+            code = (info.one_letter_code or "X").upper()
+            residues.append((residue.seqid.num, code))
+    return residues

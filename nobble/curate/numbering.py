@@ -114,69 +114,112 @@ def canonical_sequence(accession: str) -> str:
 
 
 def resolve_frame(pdb_id: str, chain: str, accession: str) -> Frame:
-    """Anchor a deposited chain in its canonical sequence by exact substring match.
+    """Anchor a deposited chain in its canonical sequence and return the offset.
 
-    Exact matching rather than alignment is deliberate: an offset is only
-    meaningful when the deposited fragment is a contiguous, unmutated run of the
-    canonical sequence. A deposition carrying point mutations will fail to anchor
-    and raise, which is the correct outcome, because an offset derived from a
-    gapped alignment would be applied to residues the gap invalidates.
+    The comparison is per-residue by deposited number, not by position in a
+    concatenated string. Receptor chains routinely have unmodelled internal
+    loops: 5HXB's CRBN chain, 5FQD's CRBN chain, 6Q0W's DCAF15 chain and 6TD3's
+    DDB1 chain all do. Treating their observed residues as one contiguous run
+    makes every residue after the first gap disagree with the canonical
+    sequence, and an earlier version of this function rejected all four of them
+    as "not a contiguous run" while their numbering in fact already matched
+    canonical exactly (offset 0).
+
+    Candidate offsets come from exact k-mer matches on contiguous runs; each is
+    then scored against every observed residue, and the best-agreeing offset
+    wins. A chain whose best offset still disagrees beyond
+    MAX_MISMATCH_FRACTION raises, which is correct: that is a different protein
+    or a heavily engineered construct, not an offset problem.
     """
-    summary = [item for item in structures.chain_summary(pdb_id) if item["chain"] == chain]
-    if not summary:
-        raise FrameUnresolved(f"{pdb_id} has no chain {chain}")
-    observed = summary[0]
-    deposited = observed["sequence"]
-    if not deposited:
+    observed = structures.chain_residues(pdb_id, chain)
+    if not observed:
         raise FrameUnresolved(f"{pdb_id} chain {chain} holds no amino acids")
 
     canonical = canonical_sequence(accession)
+    if not canonical:
+        raise FrameUnresolved(f"no canonical sequence for {accession}")
+
+    by_seqid = dict(observed)
+    first_seqid = observed[0][0]
+    last_seqid = observed[-1][0]
 
     def agreement(offset: int) -> tuple[int, int]:
-        """Count mismatches between the deposited chain and canonical at an offset."""
+        """Mismatches and comparisons for one candidate offset, gap-aware."""
         mismatches = aligned = 0
-        for position, residue in enumerate(deposited):
-            canonical_index = observed["first_seqid"] + position - offset - 1
-            if 0 <= canonical_index < len(canonical):
+        for seqid, code in observed:
+            index = seqid - offset - 1
+            if 0 <= index < len(canonical):
                 aligned += 1
-                if canonical[canonical_index] != residue:
+                if canonical[index] != code:
                     mismatches += 1
         return mismatches, aligned
 
-    for anchor_length in ANCHOR_LENGTHS:
-        if len(deposited) < anchor_length:
-            continue
-        slide_limit = min(MAX_ANCHOR_SLIDE, len(deposited) - anchor_length) + 1
-        for slide in range(slide_limit):
-            anchor = deposited[slide:slide + anchor_length]
-            position = canonical.find(anchor)
-            if position < 0:
-                continue
-            if canonical.find(anchor, position + 1) >= 0:
-                # Ambiguous at this length: the chain starts inside a repeat.
-                continue
-            offset = (observed["first_seqid"] + slide) - (position + 1)
-            mismatches, aligned = agreement(offset)
-            if aligned and mismatches / aligned > MAX_MISMATCH_FRACTION:
-                continue
-            return Frame(
-                pdb_id=pdb_id.upper(),
-                chain=chain,
-                accession=accession,
-                offset=offset,
-                deposited_start=observed["first_seqid"],
-                deposited_end=observed["last_seqid"],
-                canonical_start=position + 1 - slide,
-                canonical_length=len(canonical),
-                anchor_length=anchor_length,
-                anchor_slide=slide,
-                mismatches=mismatches,
-                aligned=aligned,
-                identical=offset == 0,
-            )
+    # Candidate offsets from exact k-mer matches over contiguous runs.
+    candidates: dict[int, None] = {}
+    runs: list[list[tuple[int, str]]] = [[observed[0]]]
+    for entry in observed[1:]:
+        if entry[0] == runs[-1][-1][0] + 1:
+            runs[-1].append(entry)
+        else:
+            runs.append([entry])
 
-    raise FrameUnresolved(
-        f"{pdb_id} chain {chain} could not be anchored in {accession}: the deposited "
-        "sequence is not a contiguous run of the canonical one (expression tag, "
-        "mutation or a different isoform)"
+    for anchor_length in ANCHOR_LENGTHS:
+        for run in sorted(runs, key=len, reverse=True):
+            if len(run) < anchor_length:
+                continue
+            for slide in range(0, min(MAX_ANCHOR_SLIDE, len(run) - anchor_length) + 1):
+                window = run[slide : slide + anchor_length]
+                anchor = "".join(code for _seqid, code in window)
+                position = canonical.find(anchor)
+                while position >= 0:
+                    candidates.setdefault(window[0][0] - (position + 1), None)
+                    position = canonical.find(anchor, position + 1)
+            if candidates:
+                break
+        if candidates:
+            break
+
+    # Offset zero is always worth testing: most depositions already agree.
+    candidates.setdefault(0, None)
+
+    best: tuple[float, int, int, int] | None = None
+    for offset in candidates:
+        mismatches, aligned = agreement(offset)
+        if not aligned:
+            continue
+        rate = mismatches / aligned
+        # Prefer the lowest mismatch rate, then the most residues aligned, then
+        # the smallest absolute offset, so a tie resolves to the simplest frame.
+        score = (rate, -aligned, abs(offset))
+        if best is None or score < (best[0], -best[2], abs(best[1])):
+            best = (rate, offset, aligned, mismatches)
+
+    if best is None:
+        raise FrameUnresolved(
+            f"{pdb_id} chain {chain}: no candidate offset aligned any residue of {accession}"
+        )
+
+    rate, offset, aligned, mismatches = best
+    if rate > MAX_MISMATCH_FRACTION:
+        raise FrameUnresolved(
+            f"{pdb_id} chain {chain} does not match {accession} at any offset: best "
+            f"offset {offset} disagrees on {mismatches} of {aligned} observed residues "
+            f"({rate:.0%}), above the {MAX_MISMATCH_FRACTION:.0%} tolerance"
+        )
+
+    canonical_start = first_seqid - offset
+    return Frame(
+        pdb_id=pdb_id.upper(),
+        chain=chain,
+        accession=accession,
+        offset=offset,
+        deposited_start=first_seqid,
+        deposited_end=last_seqid,
+        canonical_start=canonical_start,
+        canonical_length=len(canonical),
+        anchor_length=min(ANCHOR_LENGTHS),
+        anchor_slide=0,
+        mismatches=mismatches,
+        aligned=aligned,
+        identical=offset == 0,
     )

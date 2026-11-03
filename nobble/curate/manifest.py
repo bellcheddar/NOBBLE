@@ -1,0 +1,290 @@
+"""Manifest generation and validation (spec Phase 1).
+
+A manifest row is one Boltz job. Every tier-1 pair expands to the full job set
+spec 1.2 and Phase 2 describe:
+
+    (binary, ternary) x (conditioned, unconstrained) x 5 seeds = 20 jobs per pair
+
+Spec 1.2 quotes "two jobs (binary and ternary) across five seeds, so a 400-pair
+campaign is 4,000 inferences", which counts 10 per pair and omits the
+conditioning axis that Phase 2's build list then adds. Both readings are carried
+explicitly here: `jobs_per_pair` is computed from the axes actually emitted
+rather than quoted, so the campaign sizer cannot inherit the ambiguity. See
+D-NOB-019.
+
+Validation is the Phase 1 gate: PTM completeness (spec 2.3), token count against
+the cap (spec 1.1), CCD resolution and the affinity heavy-atom cap (spec 2.2).
+A peptide whose degron class requires a modification and which is submitted
+without one is an error here, not a low-scoring result later.
+"""
+from __future__ import annotations
+
+import json
+from dataclasses import asdict, dataclass, field
+
+from nobble import paths
+from nobble.curate import constructs as C
+from nobble.curate import ligands as L
+
+# Which construct serves each E3. Only receptors with a defined
+# substrate-binding domain can be built: a peptide whose annotated E3 has no
+# construct is recorded as unroutable rather than silently reassigned to CRBN.
+E3_TO_CONSTRUCT = {
+    "CRBN": "CRBN_CULT",
+    "VHL": "VHL_VCB",
+    "DCAF15": "DCAF15_DDB1_DDA1",
+    "DDB1": "DDB1_BPC",
+    "KEAP1": "KEAP1_KELCH",
+    "FEM1B": "FEM1B_ANK",
+}
+
+SEEDS = (1, 2, 3, 4, 5)
+CONDITIONS = ("conditioned", "unconstrained")
+COMPLEXES = ("binary", "ternary")
+
+
+@dataclass
+class Job:
+    """One Boltz inference."""
+
+    job_id: str
+    pair_id: str
+    tier: str                      # benchmark | A | B
+    construct: str
+    e3_gene: str
+    peptide_id: str
+    peptide_sequence: str
+    peptide_gene: str | None
+    peptide_label: str | None
+    ligand_key: str | None
+    ligand_encoding: str | None
+    modality: str
+    complex_type: str              # binary | ternary
+    conditioning: str              # conditioned | unconstrained
+    seed: int
+    tokens: int
+    affinity_available: bool
+    required_modification: dict | None
+    flags: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass
+class ValidationIssue:
+    severity: str                  # error | warning
+    code: str
+    detail: str
+    job_id: str | None = None
+    pair_id: str | None = None
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+def jobs_per_pair() -> int:
+    """Computed from the axes emitted, never quoted from the spec."""
+    # A binary complex has no ligand, so conditioning on a ligand pocket is
+    # meaningless for it: the binary arm runs unconstrained only. That makes the
+    # real count 5 binary + 10 ternary = 15, not the 10 spec 1.2 quotes nor the
+    # 20 a naive product of all three axes would give.
+    return len(SEEDS) * (1 + len(CONDITIONS))
+
+
+def expand_pair(
+    pair_id: str,
+    tier: str,
+    construct: C.Construct,
+    peptide,
+    ligand: L.Ligand | None,
+) -> list[Job]:
+    """Expand one (receptor, peptide, ligand) triple into its job set."""
+    jobs: list[Job] = []
+    base_tokens = construct.residue_count() + peptide.length
+
+    for complex_type in COMPLEXES:
+        if complex_type == "ternary" and ligand is None:
+            continue
+        ligand_atoms = (ligand.heavy_atoms or 0) if complex_type == "ternary" else 0
+        tokens = base_tokens + ligand_atoms
+        # Conditioning places the ligand in a pocket, so it only applies to the
+        # ternary arm.
+        conditions = CONDITIONS if complex_type == "ternary" else ("unconstrained",)
+        for conditioning in conditions:
+            for seed in SEEDS:
+                flags: list[str] = []
+                if construct.exception:
+                    flags.append("token_cap_declared_exception")
+                if ligand is not None and complex_type == "ternary":
+                    if not ligand.affinity_available:
+                        flags.append("affinity_unavailable")
+                    if ligand.encoding == "smiles":
+                        flags.append("smiles_fallback")
+                    if ligand.is_furniture:
+                        flags.append("ligand_flagged_furniture")
+                job_id = (
+                    f"{pair_id}__{complex_type}__{conditioning}__seed{seed}"
+                )
+                jobs.append(
+                    Job(
+                        job_id=job_id,
+                        pair_id=pair_id,
+                        tier=tier,
+                        construct=construct.name,
+                        e3_gene=construct.e3_gene,
+                        peptide_id=peptide.peptide_id,
+                        peptide_sequence=peptide.sequence,
+                        peptide_gene=peptide.gene,
+                        peptide_label=peptide.label,
+                        ligand_key=ligand.key if (ligand and complex_type == "ternary") else None,
+                        ligand_encoding=(
+                            ligand.encoding if (ligand and complex_type == "ternary") else None
+                        ),
+                        modality=ligand.modality if ligand else "none",
+                        complex_type=complex_type,
+                        conditioning=conditioning,
+                        seed=seed,
+                        tokens=tokens,
+                        affinity_available=bool(
+                            ligand and complex_type == "ternary" and ligand.affinity_available
+                        ),
+                        required_modification=peptide.required_modification,
+                        flags=flags,
+                    )
+                )
+    return jobs
+
+
+def validate(jobs: list[Job]) -> list[ValidationIssue]:
+    """Spec Phase 1 manifest validation. Errors block the gate; warnings do not."""
+    limits = paths.thresholds()["manifest"]
+    cap = int(limits["token_cap_tier1"])
+    issues: list[ValidationIssue] = []
+    declared = {name for name, item in C.CONSTRUCTS.items() if item.exception}
+
+    for job in jobs:
+        # Token cap (spec 1.1).
+        if job.tokens > cap and job.construct not in declared:
+            issues.append(ValidationIssue(
+                "error", "token_cap_exceeded",
+                f"{job.tokens} tokens exceeds the {cap}-token tier-1 cap and "
+                f"{job.construct} is not a declared exception",
+                job.job_id, job.pair_id,
+            ))
+
+        # PTM completeness (spec 2.3). A degron class that requires a
+        # modification and carries none is a manifest error by construction.
+        requirement = job.required_modification
+        if requirement:
+            if not any(residue in job.peptide_sequence for residue in requirement["residue"]):
+                issues.append(ValidationIssue(
+                    "error", "ptm_residue_absent",
+                    f"degron class requires {requirement['note']} on "
+                    f"{requirement['residue']} but the peptide carries no such residue",
+                    job.job_id, job.pair_id,
+                ))
+
+        # Ligand encoding (spec 2.2).
+        if job.complex_type == "ternary":
+            if job.ligand_key is None:
+                issues.append(ValidationIssue(
+                    "error", "ternary_without_ligand",
+                    "a ternary job must carry a ligand chain",
+                    job.job_id, job.pair_id,
+                ))
+            elif job.ligand_encoding == "smiles":
+                issues.append(ValidationIssue(
+                    "warning", "smiles_fallback",
+                    "no CCD match: encoded as SMILES and flagged",
+                    job.job_id, job.pair_id,
+                ))
+            if not job.affinity_available:
+                issues.append(ValidationIssue(
+                    "warning", "affinity_unavailable",
+                    "affinity head unavailable for this ligand; structure prediction runs",
+                    job.job_id, job.pair_id,
+                ))
+    return issues
+
+
+def build_benchmark_manifest() -> dict:
+    """The seven benchmark pairs, which spec 3.1 runs first in every campaign."""
+    from nobble.curate import peptides as P
+
+    peptide_list = P.benchmark_peptides()
+    ligand_map = L.benchmark_ligands()
+    # Keyed on gene AND E3: BRD4 is two distinct members (BD2/VHL/MZ1 and
+    # BD1/CRBN/dBET), and keying on gene alone silently collapses them, which
+    # drops the canonical bivalent benchmark and double-counts the other arm.
+    by_member = {(item["gene"], item["e3"]): item for item in P.BENCHMARK_CHAINS}
+
+    jobs: list[Job] = []
+    pairs: list[dict] = []
+    unroutable: list[dict] = []
+
+    for peptide in peptide_list:
+        member = by_member.get((peptide.gene, peptide.e3_hint))
+        if member is None:
+            continue
+        construct_name = E3_TO_CONSTRUCT.get(member["e3"])
+        if construct_name is None:
+            unroutable.append({"peptide": peptide.peptide_id, "e3": member["e3"],
+                               "reason": "no receptor construct defined"})
+            continue
+        construct = C.CONSTRUCTS[construct_name]
+        ligand = ligand_map.get(member["index"])
+        pair_id = f"bench{member['index']:02d}_{peptide.gene}_{member['e3']}"
+        pair_jobs = expand_pair(pair_id, "benchmark", construct, peptide, ligand)
+        jobs.extend(pair_jobs)
+        pairs.append({
+            "pair_id": pair_id,
+            "member": member["index"],
+            "tier": "benchmark",
+            "construct": construct.name,
+            "e3_gene": construct.e3_gene,
+            "peptide_id": peptide.peptide_id,
+            "peptide_sequence": peptide.sequence,
+            "peptide_gene": peptide.gene,
+            "ligand": ligand.to_dict() if ligand else None,
+            "jobs": len(pair_jobs),
+        })
+
+    issues = validate(jobs)
+    return {
+        "pairs": pairs,
+        "jobs": jobs,
+        "unroutable": unroutable,
+        "jobs_per_pair": jobs_per_pair(),
+        "issues": [issue.to_dict() for issue in issues],
+        "errors": sum(1 for issue in issues if issue.severity == "error"),
+        "warnings": sum(1 for issue in issues if issue.severity == "warning"),
+    }
+
+
+def write(manifest: dict, name: str = "benchmark") -> dict:
+    """Write the manifest to data/manifests/<name>.jsonl plus a summary."""
+    path = paths.MANIFESTS / f"{name}.jsonl"
+    with path.open("w") as handle:
+        for job in manifest["jobs"]:
+            handle.write(json.dumps(job.to_dict()) + "\n")
+
+    summary_path = paths.MANIFESTS / f"{name}.summary.json"
+    summary_path.write_text(json.dumps(
+        {
+            "pairs": manifest["pairs"],
+            "pair_count": len(manifest["pairs"]),
+            "job_count": len(manifest["jobs"]),
+            "jobs_per_pair": manifest["jobs_per_pair"],
+            "unroutable": manifest["unroutable"],
+            "errors": manifest["errors"],
+            "warnings": manifest["warnings"],
+            "issues": manifest["issues"],
+            "token_range": [
+                min((job.tokens for job in manifest["jobs"]), default=0),
+                max((job.tokens for job in manifest["jobs"]), default=0),
+            ],
+        },
+        indent=2,
+    ))
+    return {"manifest": str(path), "summary": str(summary_path)}
