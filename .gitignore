@@ -1,12 +1,28 @@
+# Python
 __pycache__/
 *.pyc
 .venv/
 .pixi/
 wandb/
 **/wandb/
+
+# Generated data and run artefacts. None of this is source, all of it is
+# reproducible from the code, and some of it embeds records from third-party
+# databases whose licences forbid redistribution (PROTAC-DB is internal-use
+# only; UbiBrowser ships as derived counts; BioLiP2 annotations are not
+# redistributed). Keeping the whole tree out is simpler and safer than
+# redacting individual fields.
+campaigns/
 data/msa/
-data/nobble.duckdb
 data/cache/
-campaigns/*/outputs/
+data/interim/
+data/manifests/
+data/nobble.duckdb
+data/throughput.json
+data/tier_b_selection.parquet
+data/tier_b_selection.provenance.json
+logs/
+
+# macOS
 .DS_Store
 .env
