@@ -16,7 +16,7 @@
   "outstanding": [
     {
       "campaign": "campaign_20261104T004632Z",
-      "jobs_done": 81,
+      "jobs_done": 84,
       "jobs_total": 2360
     },
     {
@@ -25,11 +25,11 @@
       "jobs_total": 240
     }
   ],
-  "comparison_conclusion": "F6 supported: 6 pair(s) improved by more than 2 A with the whole domain, the control held, and none got worse. Bridge formation agrees and is independent of the crystal: 4 pair(s) bridged in more seeds and none in fewer",
+  "comparison_conclusion": "F6 supported: 6 pair(s) improved by more than 2 A with the whole domain, the control held, and none got worse. Bridge formation agrees and is independent of the crystal: 4 pair(s) bridged in more seeds and none in fewer. 1 pair(s) used a substrate domain the plan no longer specifies (CSNK1A1): the measurement stands and describes a different construct from the one the plan beside it gives",
   "jobs_total": 100,
   "pairs_total": 7,
   "structures": 100,
-  "bytes": 25746790,
+  "bytes": 25747330,
   "redacted_ligands": [
     "dBET57"
   ]

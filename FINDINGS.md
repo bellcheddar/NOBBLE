@@ -4311,3 +4311,37 @@ worth asking of a configuration, and only one of them had an answer.
 
 Mutation-checked both ways: a typo'd key read by index and the same typo
 read through `.get` are each caught.
+
+## F96. The caveat existed and had not reached the page
+
+F93 put the superseded-substrate caveat on the comparison's conclusion,
+because that sentence is the line that gets quoted and CSNK1A1 is one of
+the six pairs in the improved list. The caveat was written, tested, and
+committed.
+
+It was not on the page. `comparison.json` is built by the atlas and the
+atlas had not been rebuilt since, so the published conclusion still ended
+at "Bridge formation agrees and is independent of the crystal". Both the
+live site and the local bundle: the caveat existed in `compare.run()`'s
+output and in nothing a reader could see.
+
+That is the same shape as the thing it was written to fix. F81 found a
+warning in `notes` that nothing downstream read; this is a warning in a
+function's return value that nothing downstream had rebuilt. A caveat that
+has not been published is not a caveat, and the test that proved it renders
+was passing against a freshly computed report rather than the deployed one.
+
+Rebuilt and deployed. The live conclusion now carries it.
+
+Found by re-running the chain's six stages end to end, which was the point
+of doing that rather than trusting the unit tests: scoring, validation,
+tier 2, the comparison, the design report and the atlas all still run after
+a day of changes to eight modules, and the one thing wrong was something no
+test could have caught, because it was a fact about the deployed artefact
+rather than about the code.
+
+The gap this leaves is worth naming. Nothing checks that the published
+atlas was built from the current code. F88 did it by hand, diffing 11,002
+leaf values after the scoring changes, and found two deliberate moves. That
+check is not automated, and a caveat added to a report is exactly what it
+would catch.
