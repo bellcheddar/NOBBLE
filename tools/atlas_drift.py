@@ -114,9 +114,35 @@ def _refresh_derived(campaign: Path) -> None:
     except Exception as problem:                        # noqa: BLE001
         print(f"   could not recompute validation.json: "
               f"{type(problem).__name__}: {problem}")
-        return
-    (campaign / "validation.json").write_text(
-        json.dumps(payload, indent=2, default=str))
+    else:
+        (campaign / "validation.json").write_text(
+            json.dumps(payload, indent=2, default=str))
+
+    # `weights.json` is copied too, and was equally stale: the rebuild that
+    # exposed this showed it growing from 475 bytes to 893. Recomputed for
+    # the same reason and at no cost, since the fit reads `scores.jsonl` and
+    # returns in milliseconds. My first version of this recomputed only
+    # validation, which is the narrower-than-the-problem shape five times
+    # over today (F172).
+    try:
+        from nobble.score.weights import fit as fit_weights
+
+        result = fit_weights(campaign)
+    except Exception as problem:                        # noqa: BLE001
+        print(f"   could not recompute weights.json: "
+              f"{type(problem).__name__}: {problem}")
+    else:
+        payload = result.to_dict() if hasattr(result, "to_dict") else result
+        (campaign / "weights.json").write_text(
+            json.dumps(payload, indent=2, default=str))
+
+    # `scores.jsonl` is not recomputed, and that is a stated limit rather
+    # than an oversight. Scoring runs PLIP and the geometry filter over every
+    # structure and takes minutes, which a check the deploy waits on cannot
+    # afford. So a stale `scores.jsonl` in a campaign is invisible here, and
+    # the thing that keeps it current is `refresh.sh`, which scores before it
+    # publishes. `campaign.json` is not recomputed either, because it records
+    # what an assembler built and there is nothing to recompute it from.
 
 
 def drift() -> dict:

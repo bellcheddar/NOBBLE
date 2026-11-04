@@ -233,3 +233,58 @@ def test_the_check_passes_while_only_costs_move():
         pytest.skip("no recomputed values to distinguish from drift")
     assert report["status"] == "in step", report["moved"][:3]
     assert atlas_drift.main(["--quiet"]) == 0
+
+
+def test_the_check_recomputes_every_document_the_atlas_copies():
+    """Not just the one that happened to be noticed (F172).
+
+    `build_atlas.py` copies three flat documents from the campaign:
+    `campaign.json`, `validation.json` and `weights.json`. A rebuild that
+    copies a stale file matches the stale published one, so the check is
+    blind to any of them being out of date with the code.
+
+    F171 recomputed validation and stopped there, while the same rebuild had
+    shown `weights.json` growing from 475 bytes to 893: equally stale,
+    equally copied, and cheap to recompute because the fit reads
+    `scores.jsonl` and returns in milliseconds.
+
+    `scores.jsonl` is not recomputed and the source says why, because a
+    limit a reader can find is different from one they discover.
+    """
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    builder = (root / "deploy" / "build_atlas.py").read_text()
+    copied = re.search(r'for name in \(("campaign\.json"[^)]*)\)', builder)
+    assert copied, "build_atlas no longer copies a tuple of flat documents"
+    names = re.findall(r'"([^"]+\.json)"', copied.group(1))
+    assert len(names) >= 3, names
+
+    source = (root / "tools" / "atlas_drift.py").read_text()
+    refresh = source[source.index("def _refresh_derived"):]
+    refresh = refresh[:refresh.index("\ndef ")]
+
+    recomputed = {"validation.json": "run_layers",
+                  "weights.json": "fit_weights"}
+    for name, call in recomputed.items():
+        assert name in names, f"{name} is no longer copied by the atlas"
+        assert call in refresh, (
+            f"{name} is copied into the atlas and not recomputed before the "
+            "comparison, so a stale one matches a stale published one"
+        )
+
+    # Whatever is copied and not recomputed has to be accounted for in the
+    # source, so the gap is a stated limit rather than something a reader
+    # finds out by being wrong.
+    for name in names:
+        if name in recomputed:
+            continue
+        assert name in refresh, (
+            f"{name} is copied into the atlas, not recomputed, and not "
+            "mentioned as a deliberate exclusion"
+        )
+    assert "scores.jsonl" in refresh, (
+        "the one copied artefact that is too expensive to recompute is not "
+        "named as such"
+    )

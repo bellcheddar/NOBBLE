@@ -7865,3 +7865,33 @@ The deploy was blocked while this stood, which is the check working. What was
 not working is that it had been passing for as long as the staleness was
 symmetric, and a check that cannot fail while both sides are wrong together
 is the most expensive kind to trust.
+
+## F172. My fix for F171 was narrower than the thing it named
+
+F171 found the drift check comparing a stale published atlas against a
+rebuild that copied the same stale file, and fixed it by recomputing
+`validation.json` before the comparison. `build_atlas.py` copies three flat
+documents, not one.
+
+The evidence was in F171's own output. Beside
+`ATLAS.json.files.validation.json: 29099 -> 39654` sat
+`ATLAS.json.files.weights.json: 475 -> 893`. The weights document was
+equally stale, equally copied, and visible in the same four lines I read to
+write the finding. It is also free to recompute: the fit reads
+`scores.jsonl` and returns in milliseconds.
+
+So the check now recomputes both, and the two copied documents it does not
+recompute are named in the source with the reason. `scores.jsonl` would take
+minutes, because scoring runs PLIP and the geometry filter over every
+structure, and a check the deploy waits on cannot afford that; what keeps it
+current is `refresh.sh`, which scores before it publishes. `campaign.json`
+records what an assembler built and there is nothing to recompute it from.
+The test requires every copied document to be either recomputed or mentioned
+as a deliberate exclusion, so the next one added has to be one or the other.
+
+This is the fifth time today a check has turned out narrower than its name,
+after F139, F158, F161 and F166, and the first where the wider case was
+sitting in the output of the finding I was writing. The pattern is not that
+these are hard to see. It is that having found one instance, I stopped
+looking, and the remedy is mechanical: when a fix names a category, make the
+test enumerate the category rather than assert the instance.
