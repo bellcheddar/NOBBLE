@@ -4634,3 +4634,75 @@ of chains. `_pair_iptm` already symmetrises on the minimum, for the reason
 spec 4.3 gives for seed aggregation, and `iptm_receptor_peptide` for this
 job is 0.8561: the conservative direction, over receptor chains only, with
 the zinc's zero column and high row both outside it.
+
+## F103. The RMSD nobody had checked was comparing the right residues
+
+The live site reports a median pose RMSD of 17.14 angstrom and 0 of 65 poses
+within 3 angstrom. That is a positive control failing, so it is either Gate
+G6 or a measurement bug, and the second had to be ruled out first.
+
+Three hypotheses, taken in order of how much damage each would do.
+
+**The frame is broken.** It is not. The detail rows carry
+`receptor_anchor_atoms` and `receptor_rmsd`, and the first pair reads 436
+atoms at 1.751 angstrom. The receptor superposes.
+
+**The reference chains are different copies in the asymmetric unit.** A
+peptide from one copy compared against a receptor from another would be tens
+of angstrom away and consistent across seeds, which is exactly the observed
+pattern: bench07's ten seeds span 44.28 to 45.23, agreeing with each other
+to within an angstrom while sitting 45 angstrom from the reference. Ten
+independent diffusion runs do not agree to an angstrom on a wrong pose. They
+agree because the error is in the reference, not the prediction.
+
+Measured, in all seven depositions, as the minimum interatomic distance
+between the named receptor and substrate chains: 2.51, 2.80, 2.68, 1.84,
+2.71, 2.74 and 1.90 angstrom. Every pair is a genuine interface. The
+hypothesis is wrong.
+
+**The window is mapped onto the wrong stretch.** The correspondence crosses
+two independently resolved frames, and the function's own docstring says
+"getting this wrong produces a confident RMSD against the wrong residues".
+Checked by comparing residue identity for every matched position across all
+seven: `CLVDKKSGEKSKTRP` against `CLVDKKSGEKSKTRP` for GSPT1, whose frame is
+138 residues from canonical, and the same for the other six. The
+correspondence is right.
+
+So the measurement is sound and 17.14 angstrom is a real number about a real
+thing. It is also a number the project had already explained and the site had
+already labelled: F6 diagnosed it as the cost of cutting a 15-mer out of a
+folded domain, the corrected campaign re-ran six pairs as whole domains, and
+the published benchmark page puts the two side by side with IKZF1 named as
+the control that keeps its 15-mer in both. No gate. The question had been
+asked and answered, which is the second time in this session that checking
+beat escalating.
+
+**The gap was that none of it was asserted.** The docstring warned about the
+failure, three layers of frame resolution guarded against it, and no code
+compared a single residue. A frame that resolved wrongly later, against a new
+deposition or a changed accession, would produce a confident number on the
+layer that decides whether the positive controls work.
+
+So the residues are now compared, and the RMSD is withheld when too few
+agree. The control shifts the substrate frame by fifty residues and confirms
+the RMSD is refused; the receptor anchor is untouched in that test and still
+superposes under 5 angstrom, which is the whole reason the peptide identity
+had to be the thing that caught it.
+
+**My first version of the check was wrong, and real data caught it.** It
+required exact equality. Run against the corrected campaign, CDK12 refused:
+294 residues matched, receptor anchored at 0.956 angstrom, and 293 of 294
+identical. The one difference is a K where 6TD3's construct carries an R,
+sequence variation between the crystallised protein and UniProt Q9NYV4.
+Exact equality would have discarded a correct measurement of the pair whose
+recovery F13 made a recorded prediction about. The floor now lives in
+`thresholds.toml` at 0.9, which separates variation from misalignment by a
+wide margin: a misaligned window agrees at chance, around 5 per cent, and
+the seven real ones agree at 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 and 0.9966. A
+difference above the floor is reported in a note naming the positions and
+the RMSD stands.
+
+Measured while there, the corrected campaign's first-seed recoveries:
+GSPT1 1.118, BRD4/VHL 1.46, BRD4/CRBN 16.152, IKZF1 5.357, CSNK1A1 6.122,
+RBM39 0.659, CDK12 2.367. Three pairs under 1.5 angstrom against a 15-mer
+panel where nothing came within 5.

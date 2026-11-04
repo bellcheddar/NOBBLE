@@ -70,6 +70,20 @@ class RecoveryResult:
     # mapping bug.
     receptor_anchor_atoms: int = 0
     receptor_rmsd: float | None = None
+    # The residues actually compared, as one-letter codes, predicted against
+    # deposited. Two numbers establish that the frame is good; these two
+    # strings establish that it is the right frame. The receptor can superpose
+    # at 1.75 A onto a correctly aligned receptor while the peptide window is
+    # mapped onto a different stretch of the same deposited chain, and that
+    # failure arrives as a confident RMSD against the wrong residues, which is
+    # what this function's own docstring has always warned about without
+    # checking (F103).
+    peptide_predicted_sequence: str = ""
+    peptide_deposited_sequence: str = ""
+    # Fraction of the compared window carrying the same residue on both
+    # sides. Recorded whether or not it passes, so a variant is visible
+    # rather than merely tolerated.
+    peptide_identity: float | None = None
     notes: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -241,6 +255,25 @@ def _peptide_start_from_library(peptide_id: str | None) -> int | None:
     return entry[1] if entry else None
 
 
+IDENTITY_FLOOR = float(paths.thresholds()["scoring"]["recovery_identity_floor"])
+
+
+def _one_letter(residue_name: str) -> str:
+    """One-letter code for a residue name, or "?" when gemmi does not know it.
+
+    "?" rather than a blank or a guess: it has to compare unequal to a real
+    code so that an unrecognised residue on either side fails the identity
+    check instead of passing it silently.
+    """
+    if not residue_name:
+        return "?"
+    import gemmi
+
+    code = gemmi.find_tabulated_residue(residue_name)
+    letter = (code.one_letter_code or "").upper() if code else ""
+    return letter if letter.isalpha() else "?"
+
+
 def recovery_against_crystal(
     job: dict, pdb_id: str, substrate_chain: str, substrate_accession: str,
     receptor_chain: str, receptor_accession: str,
@@ -349,13 +382,23 @@ def recovery_against_crystal(
         )
         return result
 
+    # Residue names on the deposited side, for the identity check below.
+    deposited_names: dict[int, str] = {}
+    for chain in deposited[0]:
+        if chain.name != substrate_chain:
+            continue
+        for residue in chain:
+            deposited_names[residue.seqid.num] = residue.name
+
     peptide_moving, peptide_fixed = [], []
+    predicted_codes, deposited_codes = [], []
     for chain in predicted[0]:
         if chain.name != PEPTIDE_CHAIN:
             continue
         for residue in chain:
             canonical = peptide_start + residue.seqid.num - 1
             deposited_number = substrate_frame.to_deposited(canonical)
+            matched_here = False
             for atom in residue:
                 if atom.name not in BACKBONE:
                     continue
@@ -363,12 +406,62 @@ def recovery_against_crystal(
                 if target is not None:
                     peptide_moving.append(atom.pos)
                     peptide_fixed.append(target)
+                    matched_here = True
+            if matched_here:
+                predicted_codes.append(_one_letter(residue.name))
+                deposited_codes.append(
+                    _one_letter(deposited_names.get(deposited_number, "")))
 
     if not peptide_moving:
         result.notes.append(
             "no overlapping peptide backbone atoms between the prediction and "
             "the deposition after frame mapping"
         )
+        return result
+
+    result.peptide_predicted_sequence = "".join(predicted_codes)
+    result.peptide_deposited_sequence = "".join(deposited_codes)
+    agreeing = sum(1 for predicted_code, deposited_code
+                   in zip(predicted_codes, deposited_codes)
+                   if predicted_code == deposited_code)
+    result.peptide_identity = (
+        round(agreeing / len(predicted_codes), 4) if predicted_codes else None
+    )
+    differing = [
+        index + 1 for index, (predicted_code, deposited_code)
+        in enumerate(zip(predicted_codes, deposited_codes))
+        if predicted_code != deposited_code
+    ]
+    if differing and result.peptide_identity is not None \
+            and result.peptide_identity >= IDENTITY_FLOOR:
+        # Aligned, and not identical. Ordinary sequence variation between the
+        # canonical isoform and the crystallised construct: 6TD3 carries an R
+        # where Q9NYV4 has a K. Reported, not refused, because discarding a
+        # 294-residue measurement over one conservative substitution loses a
+        # real result to a check meant to catch misalignment.
+        result.notes.append(
+            f"{len(differing)} residue(s) differ between the prediction and "
+            f"{pdb_id} chain {substrate_chain} at window position(s) "
+            f"{differing[:8]}, identity {result.peptide_identity}: taken as "
+            "sequence variation rather than a frame error, and the RMSD is "
+            "reported"
+        )
+    if result.peptide_identity is not None and result.peptide_identity < IDENTITY_FLOOR:
+        # A refusal, not a note. Nothing downstream reads `notes`, and an RMSD
+        # against the wrong residues is confident, stable across seeds and
+        # indistinguishable from a real result: ten seeds agreeing to within
+        # an angstrom of each other and sitting 45 A from the reference is
+        # exactly what a window mapped onto the wrong stretch looks like
+        # (F81's lesson, applied here).
+        result.notes.append(
+            f"only {result.peptide_identity} of the compared window carries "
+            f"the same residue in the prediction and in {pdb_id} chain "
+            f"{substrate_chain}, below the {IDENTITY_FLOOR} floor: "
+            f"{result.peptide_predicted_sequence[:60]} against "
+            f"{result.peptide_deposited_sequence[:60]}. The frame mapping for "
+            f"{substrate_accession} is wrong, so no RMSD is reported"
+        )
+        result.atoms_compared = len(peptide_moving)
         return result
 
     result.rmsd = round(_rmsd(peptide_moving, peptide_fixed, transform) or 0.0, 3)

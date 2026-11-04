@@ -89,6 +89,25 @@ significance_alpha = 0.05
 # the same place imprecisely. Was a bare 10.0 inside the expression that
 # computes the score (F87).
 convergence_scale_a = 10.0
+
+# Pose recovery: how much of the compared window must carry the same residue
+# in the prediction and in the deposition before the RMSD is believed.
+#
+# Not a biology cutoff, a correctness one. The window is mapped onto the
+# deposited chain by residue number through two resolved frames, and a frame
+# resolved wrongly maps it onto a different stretch of the same chain: the
+# receptor still superposes, the atom count still looks right, and the RMSD
+# comes back confident, stable across seeds and wrong. That is what this
+# function's docstring has always warned about.
+#
+# The floor has to tell that failure apart from ordinary sequence variation.
+# A misaligned window matches at chance, around 5 per cent, or at a
+# detectable shift. A correctly aligned one matches almost everywhere:
+# measured across all seven benchmark depositions, six are identical and
+# CDK12 is 293 of 294, a single K to R where 6TD3's construct differs from
+# UniProt Q9NYV4. Exact equality would have thrown that measurement away
+# (F103).
+recovery_identity_floor = 0.9
 seeds = 5
 
 [gates]
