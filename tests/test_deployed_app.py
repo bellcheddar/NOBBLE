@@ -99,6 +99,28 @@ def test_structures_serve_from_the_atlas(droplet_like):
         assert len(response.data) > 1000
 
 
+# The dBET57 SMILES from PROTAC-DB, the one benchmark ligand with no CCD
+# entry and so the only published record whose chemistry is theirs.
+PROTACDB_MARKER = "CC1=C(C)C2=C(S1)"
+
+
+def _protacdb_leaks(bundle) -> tuple[list[str], int]:
+    """Published records carrying PROTAC-DB chemistry, and how many were read.
+
+    Returns the count as well as the offenders so a caller can tell an
+    empty bundle from a clean one. The two used to be indistinguishable.
+    """
+    from pathlib import Path as _Path
+
+    leaked, examined = [], 0
+    for path in _Path(bundle).rglob("*"):
+        if path.is_file() and path.suffix in (".json", ".jsonl"):
+            examined += 1
+            if PROTACDB_MARKER in path.read_text(errors="replace"):
+                leaked.append(str(path))
+    return leaked, examined
+
+
 @pytest.mark.skipif(not ATLAS.exists(), reason="no published atlas")
 def test_published_atlas_withholds_protacdb_chemistry():
     """Publishing to a public site is redistribution, exactly as a repo is.
@@ -108,16 +130,31 @@ def test_published_atlas_withholds_protacdb_chemistry():
     files actually read is asserted first: a licensing guarantee that holds
     vacuously is not a guarantee (F72).
     """
-    marker = "CC1=C(C)C2=C(S1)"          # the dBET57 SMILES from PROTAC-DB
-    examined = 0
-    for path in ATLAS.rglob("*"):
-        if path.is_file() and path.suffix in (".json", ".jsonl"):
-            examined += 1
-            assert marker not in path.read_text(errors="replace"), path
+    leaked, examined = _protacdb_leaks(ATLAS)
+    assert not leaked, leaked
     assert examined > 0, (
         "no published record was examined, so this test proves nothing about "
         "whether PROTAC-DB chemistry travels"
     )
+
+
+def test_the_leak_check_notices_an_empty_bundle(tmp_path):
+    """The negative control. Weakening the guard above to `>= 0` passed,
+    because the real atlas has files either way: the only way to tell a
+    working guard from a broken one is to hand it a bundle with nothing in
+    it (F65, F72)."""
+    leaked, examined = _protacdb_leaks(tmp_path)
+    assert leaked == [] and examined == 0
+
+
+def test_the_leak_check_finds_a_planted_marker(tmp_path):
+    """And the other control: a bundle that does carry the chemistry must
+    be reported, or the sweep above is only counting files."""
+    (tmp_path / "campaign.json").write_text(
+        '{"smiles": "CC1=C(C)C2=C(S1)N(C)C(=O)N2"}')
+    leaked, examined = _protacdb_leaks(tmp_path)
+    assert examined == 1
+    assert len(leaked) == 1
 
 
 def test_the_published_atlas_says_what_it_withheld():
