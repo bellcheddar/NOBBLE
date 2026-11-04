@@ -261,3 +261,22 @@
   in early, but its own tab says the composite is untrustworthy until the
   Sievers arm runs, so early lifts would need caveating into uselessness and
   rerunning. Preflight gates the main campaign. D-NOB-039.
+- 2026-11-04T07:50Z Rendered the design tab's scan chart against a synthetic
+  profile rather than waiting for the real one, and it was broken. The inline
+  script sat in the `content` block, which Jinja renders before base.html
+  loads Plotly, so it threw "Plotly is not defined". The routine QC never saw
+  it: with no profile the script returns early and never touches Plotly, so
+  the failure would have appeared only after the 4.9-hour scan produced data.
+  Moved into the `scripts` block, where every other charted page puts it.
+  Then two sizing passes: an explicit Plotly height of 320 exceeded the
+  18rem .chart--short container and clipped the axis title, so the height is
+  removed and the chart fills its container like the others.
+  qc/scan_check.mjs keeps the check: it measures bars actually plotted from
+  the live plugin state rather than reading the HTML.
+- 2026-11-04T07:50Z Writing the synthetic fixture turned up a second defect.
+  A naive generator emitted "A9A", a substitution of a residue for itself,
+  and scan_profile ranked it most sensitive. Its two runs differ only by
+  seed, so its lift is the noise floor, and nothing downstream distinguishes
+  that from an effect. The real alanine scan never emits one (it scans an
+  alanine to glycine) but lift.compute now refuses it rather than relying on
+  every future generator remembering. 92 tests pass.

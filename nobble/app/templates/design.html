@@ -117,7 +117,9 @@
   </table>
 </section>
 {% endif %}
+{% endblock %}
 
+{% block scripts %}
 <script>
 (function () {
   const PROFILE = {{ (design.get('profile') or {}) | tojson }};
@@ -131,10 +133,9 @@
     marker: { color: scored.map(p => p.lift < 0 ? '#A64708' : '#2F6F4F') },
     hovertemplate: '%{x}<br>lift %{y:.4f}<extra></extra>'
   }], {
-    margin: { l: 50, r: 16, t: 10, b: 50 },
+    margin: { l: 55, r: 16, t: 12, b: 56 },
     xaxis: { title: { text: 'position and wild-type residue', font: { size: 12 } } },
-    yaxis: { title: { text: 'design lift', font: { size: 12 } }, zeroline: true },
-    height: 300
+    yaxis: { title: { text: 'design lift', font: { size: 12 } }, zeroline: true }
   }, { displayModeBar: false, responsive: true });
 }());
 </script>

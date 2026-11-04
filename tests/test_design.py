@@ -257,3 +257,28 @@ def test_design_linkage_survives_scoring(tmp_path):
     assert pair.peptide_sequence == "PFQANQCGASFTQKG"
     # And the linkage reaches the serialised row lift reads.
     assert pair.to_dict()["parent_peptide_id"] == "benchmark_888fd2c63e"
+
+
+def test_a_substitution_for_itself_is_refused():
+    """A no-op variant's two runs differ only by seed, so the difference
+    between them is the noise floor. Nothing downstream distinguishes that
+    from a real effect: it sorts into the ranking like any other number and
+    can come out on top, which is how it was found."""
+    base = dict(construct="CRBN_CULT", e3_gene="CRBN", ligand_key="Y70",
+                modality="glue", seeds_binary=5, seeds_ternary=5)
+    result = Lmod.compute({**base, "delta_iptm": 0.1, "substitution": "A9A"},
+                          {**base, "delta_iptm": 0.3})
+    assert result.lift is None
+    assert "for itself" in result.status
+
+    real = Lmod.compute({**base, "delta_iptm": 0.1, "substitution": "A9G"},
+                        {**base, "delta_iptm": 0.3})
+    assert real.lift == -0.2
+
+
+def test_the_alanine_scan_never_emits_a_no_op():
+    """The guard above is belt and braces: the generator already avoids
+    this by scanning an alanine to glycine."""
+    for sequence in ("AAAA", "PFQCNQCGASFTQKG", "ACDEFGHIKLMNPQRSTVWY"):
+        for variant in V.generate("p", sequence)["variants"]:
+            assert variant["wild_type"] != variant["mutant"], variant["substitution"]

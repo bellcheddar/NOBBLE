@@ -62,6 +62,23 @@ def compute(variant_row: dict, parent_row: dict) -> Lift:
         substitution=variant_row.get("substitution"),
     )
 
+    # A substitution that changes nothing is not a variant. Its two runs
+    # differ only by seed, so its "lift" is the noise floor, and nothing
+    # downstream distinguishes that from a real effect: it sorts into the
+    # ranking like any other number and can come out on top. The alanine
+    # scan never emits one, because a position already alanine is scanned
+    # to glycine, but the refusal belongs here rather than relying on every
+    # future generator remembering.
+    substitution = variant_row.get("substitution")
+    if isinstance(substitution, str) and len(substitution) >= 3:
+        if substitution[0] == substitution[-1]:
+            result.status = (
+                f"not_computed: {substitution} substitutes a residue for "
+                "itself. The two runs differ only by seed, so the difference "
+                "between them is the noise floor rather than an effect"
+            )
+            return result
+
     variant_delta = variant_row.get("delta_iptm")
     parent_delta = parent_row.get("delta_iptm")
     result.variant_delta_iptm = variant_delta
