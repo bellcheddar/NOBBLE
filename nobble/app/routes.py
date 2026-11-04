@@ -299,7 +299,27 @@ def crystal(pdb_id: str):
 
 @bp.route("/api/pair/<pair_id>/structures")
 def api_pair_structures(pair_id: str):
-    """Every completed structure for a pair, for the seed-overlay toggle."""
+    """Every completed structure for a pair, for the seed-overlay toggle.
+
+    404 on a pair the campaign has no record of. This returned 200 with
+    `{"pair_id": "nope", "crystal": null, "structures": []}`, asserting that
+    a pair exists and produced nothing, and those are two different states:
+    a pair whose jobs all failed is a real and visible outcome, and the
+    viewer would have rendered one for a pair that does not exist (F122).
+
+    Existence is judged on the campaign's *results*, not on `data.scores()`
+    the way the sibling `/api/pair/<pair_id>` does, and the difference
+    matters. Scoring runs after the campaign, so for the whole length of a
+    run every completed pair is in `results.jsonl` and none are in
+    `scores.jsonl`. Using the sibling's check here 404s every pair while the
+    campaign is still going, which is exactly when the viewer is used. The
+    tier-2 catalogue tests caught that within a minute of my writing it.
+    """
+    known = {row.get("pair_id") for row in data.results()}
+    known |= {row.get("pair_id") for row in data.results_tier2()}
+    if known and pair_id not in known:
+        abort(404, description=f"no pair {pair_id} in this campaign")
+
     # Read the crystal mapping from the atlas rather than importing
     # nobble.validate, which pulls in gemmi. This endpoint feeds the Pose
     # viewer, so importing the scoring stack here would have left the viewer

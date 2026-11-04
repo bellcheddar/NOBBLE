@@ -5647,3 +5647,47 @@ being nothing to miss.
 Three findings in a row from one question: what does this code do with the
 case it does not mention. The bootstrap's percentile literals (F119), the
 ROC's missing third branch (F120), and this.
+
+## F122. Two sibling endpoints disagreed about whether a pair exists
+
+The app is public, so I probed it with input it does not expect: unknown
+ids, percent-encoded `../`, a four-thousand-character parameter, a GET on a
+POST route. Nothing raised, nothing returned 5xx, and both
+`/structure/<job>.cif` and `/crystal/<pdb>.cif` refuse a traversal by
+matching the identifier against the campaign's own records rather than by
+sanitising a path.
+
+One thing disagreed with itself. `/api/pair/<id>` returned 404 for a pair the
+campaign has no record of. `/api/pair/<id>/structures` returned 200 with
+`{"pair_id": "nope", "crystal": null, "structures": []}`, which asserts that
+the pair exists and produced nothing.
+
+Those are two different states, and this project separates them everywhere
+else: F116 on an absent bridge against a percentile of zero, F85 on an
+unmeasurable RMSD against a pending one, F99 on a missing confidence against
+a reason. A pair whose jobs all failed is a real outcome with a real empty
+list, and the Pose viewer would have rendered one of those for a pair that
+does not exist.
+
+**And my first fix was wrong, which the existing tests caught within a
+minute.** I used the sibling's check, `_pair_or_404`, which looks in
+`data.scores()`. Scoring runs after the campaign, so for the whole length of
+a run every completed pair is in `results.jsonl` and none are in
+`scores.jsonl`. That fix 404s every pair while a campaign is running, which
+is precisely when the viewer is used. `test_tier2_catalogue` writes an empty
+`scores.jsonl` beside a populated `results.jsonl` for exactly this reason and
+failed three times over.
+
+Existence is judged on the campaign's results now, tier 1 or tier 2, which is
+what the endpoint reads anyway.
+
+Then my test for the fix was wrong twice. It asserted the endpoint uses
+`_pair_or_404`, which is the thing that was wrong; and its replacement called
+`data.configure()` on a bare temporary directory, which does not pin it, so
+the app fell back to the newest real campaign and 404ed a pair the fixture
+had just written. It runs `create_app(<dir>)` in a subprocess now, the way
+`test_tier2_catalogue` already did.
+
+Three wrong attempts at one twelve-line change, each caught immediately,
+which is the argument for small changes against a suite that runs in two
+minutes.
