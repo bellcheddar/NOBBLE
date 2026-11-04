@@ -1819,3 +1819,62 @@ fold alone" is answered most conservatively by the domain it fills most of,
 and a 23-residue zinc finger covering all of a 23-residue finger annotation
 is self-sufficient however many larger domains contain it. The two questions
 were sharing one ordering, which is what made the bug possible.
+
+## D-NOB-062: one significance level, and it now sets the ROC's interval too
+
+**Date:** 2026-11-04
+
+D-NOB-047 moved `p < 0.05` out of `benchmark.html` into
+`scoring.significance_alpha`, on the grounds that "a reader changing what the
+project counts as significant should not have to know it is written in
+markup". The config comment that came with it said the value "applies to
+presentation rather than to any decision about the data".
+
+That was true of the template and not of the matched-control ROC. Its
+bootstrap took its bounds from `int(0.025 * rounds)` and
+`int(0.975 * rounds)`, and reported "not distinguishable from chance at 95
+per cent confidence" as a string, with two further copies in `about.html` and
+in the design caveat. Four literals, agreeing with the configured 0.05 by
+coincidence.
+
+**Decided.** `significance_alpha` sets the ROC's interval as well. The bounds
+are the alpha/2 and 1 - alpha/2 order statistics, `confidence_level()`
+computes the percentage from it, the layer reports that percentage in a
+`confidence_level` field beside `ci95`, and every surface prints it from
+there. `scoring.bootstrap_rounds` replaces the `rounds` default argument.
+
+**This widens what alpha governs, which is why it is a decision and not a
+tidy-up.** It previously changed how one chart was styled. It now also
+changes the width of the headline result's confidence interval, and therefore
+whether the ROC's `interpretation` reads "above chance", since that branches
+on the lower bound against 0.5. A reader turning alpha down to 0.01 is now
+asking for a stricter verdict and will get one, which is what the field is
+for.
+
+**Alternatives.** A second key, `roc_confidence_alpha`, keeping the two
+independent: rejected, because the config says in terms that this is "the
+only significance level this project applies", and a second one would make
+that false. Leave the four literals and allowlist them: rejected for
+D-NOB-047's own reason, one level deeper. Derive only the prose from config
+and leave the bootstrap at a fixed 95 per cent: rejected, because that is the
+state this started in, where the printed number and the computed number
+agreed by luck.
+
+**The `ci95` key keeps its name.** It is the conventional one and it is read
+by the published atlas, the About page and the drift check, so renaming it
+has a cost and no benefit while `confidence_level` states the actual level
+beside it. If alpha changes, the key is a conventional name and the field is
+the fact.
+
+**Reversal.** Put `0.025` and `0.975` back in the return statement and the
+percentages back in the three surfaces; `tests/test_significance_level.py`
+fails in four places, which is the point. To keep the derivation and decouple
+the ROC again, add a second key and read it in `_bootstrap_interval` only.
+
+**Note on how it was missed.** The cutoff sweep examined this function. Its
+allowlist carried `_bootstrap_interval.rounds` with a reason, so someone
+looked at the signature and waved the default through, correctly. The two
+percentile literals are one line below in the return statement, and the sweep
+reads comparisons, module constants and default arguments, not arithmetic
+(F80). An allowlist records what was looked at and waved through, which is
+not the same as what was looked at.

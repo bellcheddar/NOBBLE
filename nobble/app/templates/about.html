@@ -241,7 +241,11 @@
     <div class="card__grid">
       <div class="stat"><span class="stat__label">AUC</span>
         <span class="stat__value">{{ roc.summary.auc }}</span>
-        <span class="stat__sub">95% CI {{ roc.summary.ci95[0] }} to {{ roc.summary.ci95[1] }}</span></div>
+        {# The level comes from the layer, not from markup: it is computed
+           from scoring.significance_alpha and printing a literal 95 here
+           would disagree with the interval the moment alpha changed
+           (F119). #}
+        <span class="stat__sub">{{ roc.summary.confidence_level | default(95, true) }}% CI {{ roc.summary.ci95[0] }} to {{ roc.summary.ci95[1] }}</span></div>
       <div class="stat"><span class="stat__label">Split</span>
         <span class="stat__value">{{ roc.summary.positives }} / {{ roc.summary.matched_negatives }}</span>
         <span class="stat__sub">positives / matched negatives</span></div>

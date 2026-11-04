@@ -5514,3 +5514,58 @@ Sections 1 and 2's remaining clauses are covered by tests that already exist:
 house style, the MSA policy through preflight, the token cap through the
 construct budget, and the campaign budget through `projected_hours` and Gate
 G1's exit code at curation time.
+
+## F119. The significance level was in config and in four other places
+
+`config/thresholds.toml` says `significance_alpha = 0.05` is "the only
+significance level this project applies". D-NOB-047 put it there, having
+found it as a literal `p < 0.05` in `benchmark.html`, and gave the reason: "a
+reader changing what the project counts as significant should not have to
+know it is written in markup."
+
+It was also written in arithmetic, in prose, in a second template and in a
+caveat I wrote this morning.
+
+The matched-control ROC's bootstrap returned
+`(values[int(0.025 * rounds)], values[int(0.975 * rounds)])`. Its layer
+reported "not distinguishable from chance at 95 per cent confidence".
+`about.html` printed "95% CI". And F105's design caveat printed "95 per cent
+CI". Four copies of a 95 that is `1 - alpha`, agreeing with the configured
+value by coincidence rather than by derivation.
+
+So turning alpha down to 0.01 restyled one chart on the benchmark page and
+left the headline result's interval at 95 per cent, with three surfaces
+saying so. The one number the project calls its only significance level
+governed the least important thing it touches.
+
+All four derive from it now. The bounds are the alpha/2 and
+1 - alpha/2 order statistics, `confidence_level()` computes the percentage,
+and the layer reports it in a `confidence_level` field beside `ci95` so no
+surface has to know what alpha was when the atlas was built. The `rounds`
+default argument became `scoring.bootstrap_rounds`.
+
+This widens what alpha governs, so it is recorded as D-NOB-062 rather than
+treated as a tidy-up: it now changes the interval's width and therefore
+whether `interpretation` reads "above chance", which branches on the lower
+bound against 0.5.
+
+**How it was missed is the interesting part.** The cutoff sweep examined this
+exact function. Its allowlist carried `_bootstrap_interval.rounds` with a
+written reason, "a precision and compute trade-off rather than a cutoff on
+data", which is right. So someone read the signature, considered the default,
+and waved it through. The two percentile literals are one line below, inside
+the return statement, and F80 had already recorded that the sweep reads
+comparisons, module constants and default arguments and not arithmetic.
+
+An allowlist entry is evidence that a line was looked at. It is not evidence
+that the lines around it were. That allowance is now retired, with the note
+kept in its place, because the absence of an entry would read as the function
+never having been examined.
+
+Two of my own tests needed fixing on the way, both the same shape. One
+scanned for a hard-coded 95 and failed on its own docstring explaining the
+old literals; prefix-skipping cannot see a continuation line inside a
+docstring, so the docstrings are blanked before the scan. The degenerate
+bootstrap test pins the indexing rather than the sampling, because a
+perfectly separated set gives AUC 1.0 on every resample and a perfectly tied
+one gives 0.5, so the bounds are known without reasoning about randomness.

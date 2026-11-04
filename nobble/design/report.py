@@ -268,7 +268,15 @@ def _score_validation(campaign: Path | None = None) -> tuple[dict, str]:
     if status == "computed" and summary.get("auc") is not None:
         interpretation = str(summary.get("interpretation") or "")
         low, high = (summary.get("ci95") or [None, None])[:2]
-        band = f", 95 per cent CI {low} to {high}" if low is not None else ""
+        # The level from the layer that computed the interval, with the
+        # configured one as the fallback, rather than a literal of my own:
+        # F105 wrote "95 per cent" here while layers.py had it in two more
+        # places, and all four agreed with config by coincidence (F119).
+        from nobble.validate.layers import confidence_level
+
+        level = summary.get("confidence_level") or confidence_level()
+        band = (f", {level:g} per cent CI {low} to {high}"
+                if low is not None else "")
         if interpretation.startswith("above chance"):
             caveat = (f"The composite separates the matched controls at AUC "
                       f"{summary['auc']}{band}, above chance. {ordering}")

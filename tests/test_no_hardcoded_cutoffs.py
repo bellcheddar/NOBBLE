@@ -234,8 +234,15 @@ ALLOWED_DEFAULTS = {
     "aggregate.sampling_tier": "names the sampling tier",
     "score_campaign.sampling_tier": "names the sampling tier",
     # Procedure parameters: precision and reproducibility, not data cutoffs.
-    "_bootstrap_interval.rounds": "resampling count, a precision and compute "
-                                  "trade-off rather than a cutoff on data",
+    #
+    # `_bootstrap_interval.rounds` was allowed here and is gone: the count
+    # now comes from `scoring.bootstrap_rounds`. Worth noting what the
+    # allowance meant. The sweep examined this function, was shown its
+    # `rounds` default, and had it explained away as a compute trade-off,
+    # which it was. One line below, in the return statement, sat 0.025 and
+    # 0.975, and the sweep cannot see inside an expression (F80, F119). An
+    # allowlist records what was looked at and waved through, not what was
+    # looked at.
     "_bootstrap_interval.seed": "fixed seed for reproducibility",
     "embed.batch_size": "how many sequences go to the model at once, a memory "
                         "trade-off with no effect on any result",

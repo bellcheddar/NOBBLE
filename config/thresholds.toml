@@ -81,9 +81,22 @@ frame_poor_anchor_rmsd_a = 5.0
 # Pose recovery success-rate curve breakpoints, in angstrom.
 rmsd_breakpoints = [1.0, 2.0, 3.0, 5.0]
 # Below this p-value a reported correlation is shown as holding rather than
-# as provisional. The only significance level this project applies, and it
-# applies it to presentation rather than to any decision about the data.
+# as provisional, and it is also the alpha of the matched-control ROC's
+# bootstrap interval: the bounds are the alpha/2 and 1 - alpha/2 order
+# statistics, and the "N per cent confidence" the layer reports is computed
+# from it.
+#
+# The only significance level this project applies. It used to say that it
+# applied "to presentation rather than to any decision about the data", which
+# was true of the template D-NOB-047 moved it out of and not of the ROC,
+# where 0.025 and 0.975 sat inside an expression and "95 per cent" sat in a
+# string. Those agreed with this by coincidence, and the cutoff sweep does
+# not look inside arithmetic (F80, F119).
 significance_alpha = 0.05
+# Resamples per class for that interval. Not a cutoff, a budget: 2,000 is
+# enough that the bounds are stable to the fourth decimal with the seed
+# fixed, and it was a default argument.
+bootstrap_rounds = 2000
 # Mean pairwise peptide RMSD at which the convergence score (spec 4.4)
 # reaches zero: roughly where two poses are in different places rather than
 # the same place imprecisely. Was a bare 10.0 inside the expression that

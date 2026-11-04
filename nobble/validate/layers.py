@@ -367,8 +367,33 @@ def _auc(positives: list[float], negatives: list[float]) -> float:
     return mann_whitney_auc(positives, negatives)
 
 
+def confidence_level() -> float:
+    """The configured interval, as a percentage, for reporting.
+
+    One source for the number the layer computes and the number it prints.
+    They were 0.025 and 0.975 inside an expression and "95 per cent" inside a
+    string, agreeing with `significance_alpha` by coincidence (F119).
+    """
+    alpha = float(paths.thresholds()["scoring"]["significance_alpha"])
+    return round(100.0 * (1.0 - alpha), 4)
+
+
 def _bootstrap_interval(positives: list[float], negatives: list[float],
-                        rounds: int = 2000, seed: int = 20261103) -> tuple[float, float]:
+                        rounds: int | None = None,
+                        seed: int = 20261103) -> tuple[float, float]:
+    """Percentile bootstrap on the AUC, stratified by class.
+
+    Each class is resampled to its own size, which keeps the 24 against 96
+    imbalance the arm actually has rather than balancing it away. The bounds
+    are the alpha/2 and 1 - alpha/2 order statistics, with alpha read from
+    config: the two percentile literals used to be arithmetic inside this
+    return statement, which is where the cutoff sweep does not look.
+    """
+    scoring = paths.thresholds()["scoring"]
+    alpha = float(scoring["significance_alpha"])
+    if rounds is None:
+        rounds = int(scoring["bootstrap_rounds"])
+
     generator = random.Random(seed)
     values = []
     for _ in range(rounds):
@@ -376,7 +401,9 @@ def _bootstrap_interval(positives: list[float], negatives: list[float],
         n = [generator.choice(negatives) for _ in negatives]
         values.append(_auc(p, n))
     values.sort()
-    return (round(values[int(0.025 * rounds)], 4), round(values[int(0.975 * rounds)], 4))
+    low = min(int((alpha / 2.0) * rounds), rounds - 1)
+    high = min(int((1.0 - alpha / 2.0) * rounds), rounds - 1)
+    return (round(values[low], 4), round(values[high], 4))
 
 
 # The tier the matched-control curve is computed over. Named because
@@ -488,10 +515,14 @@ def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerR
     layer.status = "computed"
     layer.summary |= {
         "auc": round(auc, 4),
+        # The key keeps its conventional name; `confidence_level` states the
+        # level actually used, so the two cannot disagree if alpha changes.
         "ci95": [low, high],
+        "confidence_level": confidence_level(),
         "interpretation": (
             "above chance" if low > 0.5
-            else "not distinguishable from chance at 95 per cent confidence"
+            else "not distinguishable from chance at "
+                 f"{confidence_level():g} per cent confidence"
         ),
     }
     if balance["imbalanced"]:
