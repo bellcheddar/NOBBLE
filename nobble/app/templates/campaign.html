@@ -240,6 +240,24 @@
      reads as a perfect rate. The denominator is deliberately the measured
      seeds only (F33), so the unmeasurable ones have to be said rather than
      left out. Silent when there are none, which is every pair so far. */
+  /* Spec 2.2: prefer CCD codes, "fall back to smiles: only when no CCD match
+     exists, and flag those jobs in the manifest so the difference is visible
+     in the results table". The manifest did flag it and the table could not
+     show it, because the encoding was dropped when scoring aggregated jobs
+     into pairs (F51).
+
+     A marker on the ligand rather than a column: six of seven pairs resolve
+     to a CCD and a column of blanks is worse than a mark on the exception.
+     Named, so a test can run it (F50). */
+  const ligandCell = p => {
+    const key = p.ligand_key || '\u2014';
+    if (p.ligand_encoding !== 'smiles') { return key; }
+    return key + ' <span class="flag flag--warn" title="No CCD match: this'
+      + ' ligand was encoded from SMILES, so its chemistry is PROTAC-DB\'s'
+      + ' rather than the wwPDB component dictionary\'s and is withheld from'
+      + ' the published records">SMILES</span>';
+  };
+
   const bridgedOf = p => (p.bridging_seeds_with_bridge || 0) + '/'
     + (p.bridging_seeds_total || 0)
     + ((p.bridging_seeds_unmeasurable || 0)
@@ -273,7 +291,7 @@
         '<td class="mono" title="' + p.pair_id + '">' + p.pair_id + '</td>' +
         '<td>' + (p.e3_gene || '—') + '</td>' +
         '<td>' + (p.peptide_gene || '—') + '</td>' +
-        '<td class="mono">' + (p.ligand_key || '—') + '</td>' +
+        '<td class="mono">' + ligandCell(p) + '</td>' +
         '<td>' + (p.modality || '—') + '</td>' +
         '<td class="num" ' + tipAttrs('composite', p.composite, p) +
           ' data-tip="Weighted mean of the components that have values for this pair. ' +

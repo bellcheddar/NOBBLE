@@ -2413,3 +2413,44 @@ The source checks that remain are the ones whose subject really is the
 text: the AST sweeps for hard-coded cutoffs, the shell parse that feeds
 each chain invocation to its own argparse, and the documents-against-code
 tests. Those assert about source because source is what they are about.
+
+## F51. The manifest flagged it and the table could not show it
+
+Continuing the spec reading into section 2. Two rules, one clean and one
+half-done.
+
+**Clean.** Spec 2.2 on the affinity cap: "Where a ligand is over the cap,
+run the structure prediction normally and record `affinity_unavailable`
+rather than failing the job." `ligands.py` records exactly that string,
+with the heavy-atom count and the cap, in three places, and no job fails
+for being over it.
+
+**Half-done.** The same section: "Fall back to `smiles:` only when no CCD
+match exists, and flag those jobs in the manifest **so the difference is
+visible in the results table**."
+
+The manifest flags it properly. Every affected queue row carries
+`ligand_encoding: smiles` and `flags: ['smiles_fallback']`, and the
+campaign summary records twenty warnings reading "no CCD match: encoded as
+SMILES and flagged". The instruction's purpose is the second clause, and
+none of it reached the table: `aggregate` builds pair-level metrics without
+carrying the encoding across, so the scored record's `ligand_encoding` was
+null and the table had nothing to show. One join away from unknowable.
+
+Which matters because the two are not interchangeable. A CCD-resolved
+ligand's chemistry is the wwPDB component dictionary's and travels freely.
+A SMILES fallback's is PROTAC-DB's, is withheld from every published record
+(F22), and is the less canonical of the two. A reader comparing
+`bench03_BRD4_CRBN` against its six neighbours had no way to know its
+ligand rests on a fallback.
+
+The encoding and the merged flags now reach the pair record, taken from the
+arm that has them exactly as `ligand_key` already was, since a binary job
+carries neither. The table marks the exception rather than adding a column:
+six of seven benchmark pairs resolve to a CCD, and a column of blanks is
+worse than a mark on the one that does not. The mark says what the fallback
+costs rather than carrying a bare label.
+
+Both the helper and its test follow F50: `ligandCell` is named so the test
+can run it under node rather than grep the template, and it is run against
+a CCD pair, a SMILES pair, and a pair with no ligand at all.

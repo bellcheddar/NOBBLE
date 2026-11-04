@@ -113,6 +113,12 @@ class PairMetrics:
     # only healthy value: a non-empty one means the manifest emitted jobs
     # for two different things under one pair id (F42).
     pair_level_disagreements: dict = field(default_factory=dict)
+    # How the ligand chain was encoded, and the manifest's flag for it. Spec
+    # 2.2 wants a SMILES fallback flagged "so the difference is visible in
+    # the results table", and both were on the queue row and dropped here,
+    # so the table could not show what the manifest had recorded (F51).
+    ligand_encoding: str | None = None
+    ligand_flags: list = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -326,6 +332,15 @@ def aggregate(results_path: Path, sampling_tier: int = 1) -> list[PairMetrics]:
             ligand_key=next(
                 (job.get("ligand_key") for job in pair_jobs if job.get("ligand_key")), None
             ),
+            # Taken the same way as ligand_key, from the first job that has
+            # one, because the binary arm carries neither.
+            ligand_encoding=next(
+                (job.get("ligand_encoding") for job in pair_jobs
+                 if job.get("ligand_encoding")), None
+            ),
+            ligand_flags=sorted({
+                flag for job in pair_jobs for flag in (job.get("flags") or [])
+            }),
             modality=first.get("modality", "none"),
             tier=first.get("tier", "unknown"),
             peptide_sequence=first.get("peptide_sequence"),
