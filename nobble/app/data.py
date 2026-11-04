@@ -384,3 +384,36 @@ def design() -> dict:
     that has already caused two 500s in production.
     """
     return precomputed("design.json")
+
+
+# Keys the campaign and Delta pages embed in their page payload and never
+# read. Measured on the benchmark atlas: `seed_records` is 56 per cent of a
+# score row, `plip` 20, `contact_map` 10 and `convergence` 5, and neither
+# page accesses any of them. They are per-seed and per-contact detail, read
+# by the pose and interactions pages from `/api/pair/<pair_id>`, which still
+# serves the whole row, and by `/api/pairs`, which the client never calls.
+#
+# This matters at campaign scale rather than at benchmark scale. Both pages
+# serialise every pair into the document with `{{ pairs | tojson }}`, so the
+# page grows with the campaign: measured on a 158-pair atlas, the shape the
+# running campaign will produce, the landing page is 3.37 MB of HTML, of
+# which 99 per cent is in keys the page never touches. Trimming is the
+# difference between a landing page the droplet can serve over a slow
+# connection and one it cannot.
+#
+# A deny-list rather than a list of keys to keep. Keeping is the safe-looking
+# choice and is the more dangerous one: a scalar left out of an allow-list
+# shows up as a blank cell on a page nobody is watching, while a heavy key
+# left in a deny-list only costs bytes. The test enumerates this tuple
+# against what each page actually accesses, so a fifth entry has to be shown
+# unused before it can be added.
+PAGE_PAYLOAD_OMITS = ("seed_records", "plip", "contact_map", "convergence")
+
+
+def scores_for_pages() -> list[dict]:
+    """`scores()` without the per-seed detail the pages embed and never read."""
+    return [
+        {key: value for key, value in row.items()
+         if key not in PAGE_PAYLOAD_OMITS}
+        for row in scores()
+    ]

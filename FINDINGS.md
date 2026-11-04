@@ -7932,3 +7932,102 @@ would miss new outputs, which is a worse failure than publishing a duplicate
 that a test catches within one suite run. The lesson is narrower than my
 instinct: a sync-backed working tree puts files in the build's output
 directory, and the defence belongs in the checks rather than in the commit.
+
+## F174. The landing page grew with the campaign, and 99 per cent of it was unread
+
+The app has only ever served a 100-job atlas. The running campaign is 2,360
+jobs over 158 pairs, so I built an atlas of that shape and served it.
+
+The landing page was 3,289 KB of HTML. So was Delta. Both embed every scored
+pair with `{{ pairs | tojson }}`, which is the right shape for a read-only
+atlas, with nothing to fetch and no spinner, but it means the document grows
+with the campaign.
+
+Of those bytes, 99 per cent sat in keys neither page accesses. Measured by
+intersecting the keys a score row carries against every property access in
+each page's own template, the base it extends and the scripts it loads:
+`seed_records` is 56 per cent of a row, `plip` 20, `contact_map` 10 and
+`convergence` 5. They are per-seed and per-contact detail that the pose and
+interactions pages read from `/api/pair/<pair_id>`, which still serves the
+whole row, and that `/api/pairs` still publishes in full. The client never
+calls `/api/pairs`, so nothing lost a source.
+
+Leaving the four out took the page from 3,289 KB to 514 KB, and gzipped from
+427 KB to 18 KB. Render time went from 34 ms to 6 ms. Resident memory is
+unchanged at 84 MB for the whole atlas, which is what it should be: the rows
+are still loaded, they are just not all serialised into the document.
+
+Verified rather than assumed. Every scalar the pages sort and render on is
+identical before and after, pair by pair, and in a real browser the campaign
+table renders 7 rows across 12 columns with no empty cell and no console
+error, with Delta, pose, interactions, benchmark, design and about all
+drawing their marks.
+
+A deny-list, not a list of keys to keep, and that is the deliberate part.
+Keeping is the safe-looking choice and the more dangerous one: a scalar left
+out of an allow-list renders as a blank cell on a page nobody is watching,
+while a heavy key left in a deny-list only costs bytes. Two tests hold the
+list to what the pages access, in both directions.
+
+Neither of those would have caught how this happened. The page did not grow
+because someone added a key to a list; it grew because fields were added to
+a score row and nobody asked whether the page reads them, and no list of
+names covers a field nobody has thought about. So there is also a budget, in
+`config/thresholds.toml` because it decides an acceptance: bytes of payload
+per pair, 3,125 measured against 6,000 allowed. Its reach is measured and
+stated rather than implied, because this is the sixth time today a check has
+been narrower than its name: `seed_records` returning adds 11,069 bytes per
+pair and `plip` 3,869, both of which breach it, while `contact_map` adds
+2,048 and `convergence` 917, neither of which does alone. The budget is the
+half of the problem a list of names cannot reach, not a replacement for it.
+
+One consequence for the pending work. `deploy/enable_gzip.sh` has been
+waiting on a shell on the droplet and reads as a refinement. At campaign
+scale it is not: without it the landing page is a 514 KB download rather
+than 18 KB, and before this trim it would have been 3.3 MB rather than
+427 KB. The trim does more than gzip here, and both are worth having.
+
+## F175. The deploy never asked whether the bundle would fit
+
+F174 put a number on the published bundle: 265 MB of structures for the
+running campaign, against 25 MB for the benchmark atlas every deploy so far
+has shipped. That made a gap in `deploy.sh` worth closing. It rsyncs
+`deploy/atlas` with `--delete` and has never asked how much room is on the
+far side.
+
+The failure is not a refused deploy, which would be fine. It is rsync
+running out of space part way through, which leaves a half-written atlas
+behind a live site: pages that resolve, structures that 404, and a catalogue
+listing poses the viewer cannot open. The site would look healthy to
+`/healthz` and to the page-by-page check at the end of the deploy, because
+both ask whether the app answers, not whether its data is complete.
+
+So the deploy now reads `df` once over the connection it has already opened,
+before it writes anything, and refuses if the bundle would not leave the
+configured margin free. Two details are deliberate. It compares the whole
+incoming bundle against free space rather than the growth from what is
+already there, because `--delete` removes the old copy after the transfer
+rather than before, so the peak is both at once. And an unreadable `df`
+refuses rather than passing, because an empty answer must not read as plenty
+of room, which is the same mistake F161 made when an unmeasured campaign
+priced at zero hours and opened a gate.
+
+The margin is 1,024 MB in `config/thresholds.toml`, and it is the room the
+droplet needs to keep working rather than slack on the measurement: the same
+deploy pip installs into a virtualenv and the service writes logs, and a
+deploy should not be the thing that fills the disk.
+
+The honest limit of this: the only real test of the check is a real deploy,
+which I cannot run, since ssh to the droplet is not mine to make. So the
+arithmetic sits in `tools/space_check.py` where it can be tested directly,
+the ten tests cover the boundary, the inclusive case, the difference-not-
+total mistake, both exit statuses and the missing-bundle case, and two of
+them read the ordering out of `deploy.sh` to confirm the check runs before
+the first rsync and after the guard on an empty `df`.
+
+Two of those tests failed first time and both were my fault rather than the
+code's. One asserted the configured margin does not appear in the tool's
+source, which hit the `/ 1024` byte conversions. The other anchored an
+ordering test on the first mention of `tools/space_check.py` in the script,
+which is the comment above the call, so it compared the rsync against the
+comment rather than against the command. Both now anchor on the invocation.

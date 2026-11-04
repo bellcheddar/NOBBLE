@@ -198,3 +198,29 @@ wide_bounds_below_per_side = 5
 # Spec 5: reporting a curve without the matched negatives is itself the
 # failure, so refusing here is correct behaviour rather than a gap.
 roc_minimum_per_side = 3
+
+[app]
+# Bytes of embedded pair payload per pair, above which the campaign and
+# Delta pages are judged to be carrying detail they do not read. Both pages
+# serialise every pair into the document, so the page grows with the
+# campaign and a field added to a score row is paid for on every pair.
+#
+# A budget rather than a per-key rule. `data.PAGE_PAYLOAD_OMITS` names the
+# four keys already known to be dead weight and a test holds that list to
+# what the pages access; this catches the other direction, a new heavy field
+# appearing in `scores.jsonl` that is neither read nor named. Measured at
+# 3,125 bytes per pair on the published atlas, against 17,903 for the four
+# omitted keys alone, so the bound has headroom for ordinary growth and
+# still fails if per-seed or per-contact detail comes back.
+page_payload_bytes_per_pair_max = 6000
+
+[deploy]
+# Megabytes that must still be free on the droplet after the atlas has been
+# rsynced. Not a fudge factor on the measurement: the same deploy pip
+# installs into a virtualenv and the service writes logs, so this is the
+# room the droplet needs to keep working, and a deploy should not be the
+# thing that fills its disk.
+#
+# The bundle itself is projected at 265 MB for the running campaign against
+# 25 MB for the benchmark one, which is why the question now arises at all.
+droplet_free_margin_mb = 1024

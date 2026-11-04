@@ -876,5 +876,32 @@ is added, so it is not written here (F168). Browser QC clean on a named build:
 fourteen pages, 0 non-200, copy budget within, 0 console errors, 0 serious
 axe violations.
 
-**Main campaign in flight at 464 of 2,360**, 11.7 hours spent at 0.4632
-s/token measured, 1,896 jobs and 301,388 tokens remaining.
+**Main campaign in flight at 650 of 2,360**, 14.97 hours spent on this
+campaign and 28.1 across all three, measured from the manifests rather
+than estimated. Around 36 hours remain at the observed rate.
+
+**The running chain will not publish on its own, and that is handled.** It
+is commit `2b0dc27`, established by inode rather than inferred: the shell
+holds a 5,400-byte copy while the file on disk is 8,812, with its offset at
+end of file, so the in-place edits never reached it. That version has no F47
+correction step, `stale_inputs` still reports fifteen `bench02_BRD4_VHL`
+jobs run on a YAML the fixed rule no longer emits, and `build_atlas.py`
+refuses while that is true. The decision is to let it finish and then rerun
+`bash tools/run_chain.sh`, which corrects those fifteen, publishes, refines
+and deploys (D-NOB-069). Every stage is resumable, so the second run's queue
+pass costs minutes.
+
+**The post-compute pipeline is about ten minutes, measured.** A full rescore
+of the benchmark campaign is 25.6 s for 7 pairs over 100 jobs, which puts
+158 pairs over 2,360 jobs at roughly ten minutes. The rescore was also
+byte-identical in size to the file it replaced, which is the idempotence the
+pipeline claims. So nothing long is waiting behind the queue except tier 2
+and the design scan, both of which are compute rather than bookkeeping.
+
+**The app has now been measured at campaign scale** rather than on the
+100-job benchmark atlas it had only ever served. A 158-pair atlas, the
+shape this campaign will produce, put 3,289 KB of HTML on the landing
+page, 99 per cent of it in four keys neither page reads. Trimmed to
+514 KB, 18 KB gzipped (F174). Memory holds at 84 MB for the whole
+atlas and the projected published bundle is 265 MB of structures, both
+comfortable on the droplet.

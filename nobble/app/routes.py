@@ -34,7 +34,7 @@ def campaign():
         "campaign.html",
         page_title="Campaign",
         active="campaign",
-        pairs=data.scores(),
+        pairs=data.scores_for_pages(),
         components=data.COMPONENTS,
         meta=data.campaign_meta(),
         throughput=data.throughput(),
@@ -102,7 +102,7 @@ def delta():
            .get("matched_control_roc") or {})
     return render_template(
         "delta.html", page_title="Delta", active="delta",
-        pairs=data.scores(), components=data.COMPONENTS,
+        pairs=data.scores_for_pages(), components=data.COMPONENTS,
         roc_summary=roc.get("summary") or {},
         roc_status=roc.get("status") or "",
         roc_minimum_per_side=int(

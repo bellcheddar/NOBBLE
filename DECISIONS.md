@@ -2038,3 +2038,50 @@ VHL and DCAF15.
 
 **Reversal.** Delete the file and the module. Tier B returns to being
 selected, frozen and unrunnable with nothing saying why.
+
+## D-NOB-069. The running chain finishes, then the current one runs after it
+
+**Decision.** The chain that has been running since 01:02 is left alone to
+finish, and `bash tools/run_chain.sh` is run again after it exits. Nothing
+is killed and the script on disk is not edited again while it runs.
+
+**What this is about.** The running shell holds `tools/run_chain.sh` on a
+different inode from the file now at that path: 5,400 bytes against 8,812,
+with its read offset equal to the size, so it has the whole of the old
+script in memory and will execute exactly commit `2b0dc27` to the end. That
+is the reassuring half of the finding, because editing a script bash is part
+way through can make it resume mid-token. It did not, because the edits
+replaced the file rather than writing into it.
+
+The consequence is that the running chain has no F47 correction step. Fifteen
+of `bench02_BRD4_VHL`'s jobs ran on a YAML carrying a hydroxyproline the
+fixed rule no longer emits, `nobble.validate.inputs.stale_inputs` still
+reports all fifteen, and `build_atlas.py` refuses while that is true. So the
+chain will spend its remaining thirty-six hours on the queue, reach
+`refresh.sh`, refuse to publish, run tier 2 and the design scan, refuse
+again, and then deploy the benchmark atlas it already deployed.
+
+**Alternatives.** Kill the chain when `run_queue` returns and start the
+current script, which would save one pointless deploy and one tier-2 pass.
+Rejected: it means matching a process by inode and killing it at a moment
+nothing signals reliably, against a saving of a redundant rsync of an atlas
+the droplet already has. The old chain's remaining work is not wasted
+either, since tier 2 and the design scan are real compute on real results.
+
+Edit the file in place so the running shell picks up the correction. Rejected
+outright: bash reads a script by offset and an in-place edit of a running
+script is how a shell ends up executing half of one line and half of
+another.
+
+**Why re-running is enough.** Every stage is resumable and idempotent, which
+is the property the project has been built for. The second run's `run_queue`
+skips all 2,360 completed job ids from `state.jsonl` and costs minutes, the
+F47 correction clears exactly fifteen rows and re-runs them, and the refresh
+that follows publishes for the first time. Tier 2 then re-selects its top
+decile from scores that no longer include the stale pair, which is the right
+order and not merely a repeat.
+
+**How to reverse it.** Nothing to reverse: the decision is to run a script
+that is already the documented next step. The risk it accepts is a window
+between the two runs in which the published atlas is the benchmark one,
+which is stale rather than wrong, and is what the site serves today.

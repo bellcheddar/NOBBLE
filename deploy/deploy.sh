@@ -61,6 +61,24 @@ trap '"${SSH[@]}" -O exit "$DROPLET_SSH" >/dev/null 2>&1 || true' EXIT
   exit 1; }
 echo "    ssh ok, multiplexed"
 
+# Will it fit? One `df` over the connection already open, before anything is
+# written. The benchmark atlas was 25 MB and the question never arose; the
+# running campaign projects to 265 MB, and rsync running out of space part
+# way through leaves a half-written atlas behind a live site (F175). The
+# arithmetic is in tools/space_check.py so it can be tested, since this path
+# is only exercised for real by a real deploy.
+echo "==> room on the droplet"
+FREE_KB=$("${SSH[@]}" "$DROPLET_SSH" \
+  "df -Pk '$REMOTE_DIR' 2>/dev/null | awk 'NR==2 {print \$4}'")
+if [[ -z "${FREE_KB:-}" ]]; then
+  echo "deploy: could not read free space on the droplet. Not guessing:" >&2
+  echo "        check that $REMOTE_DIR exists on the far side." >&2
+  exit 2
+fi
+PYTHONPATH=. KMP_DUPLICATE_LIB_OK=TRUE \
+  "${ATLAS_PY:-../BINMAN/.pixi/envs/default/bin/python}" \
+  tools/space_check.py --free-kb "$FREE_KB" --bundle deploy/atlas
+
 # The digest of the tree about to be shipped, taken before the rsync so it
 # describes what is sent rather than what is on the Mac afterwards.
 echo "==> fingerprint the tree being shipped"
