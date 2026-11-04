@@ -1584,3 +1584,54 @@ own reason rather than as an absent bridge, which is what F33 turns on.
 Both gaps shared a cause. Stubbing a dependency to test its consumer is
 right, and it leaves the dependency untested unless something else
 exercises it. Nothing else did.
+
+## F35. Guards nobody had reached
+
+A second mutation sweep, over the modules the first did not cover. Two
+mutations were caught: the numbering frame's bounds check, and the design
+generator's refusal to emit a substitution of a residue for itself. Five
+were not, and they are all the same kind of thing: guards against
+conditions no finished campaign has produced, which is why nothing had
+ever exercised them.
+
+That is a weaker class of finding than F34, where the rule defining the
+headline number was untested. These are defensive. But a 2,360-job run
+whose fallback ladder is designed to let individual items fail is exactly
+where such conditions arrive, and three of the five turn a failure into a
+plausible number rather than an error.
+
+**A ternary arm with no ligand.** `expand_pair` skips the ternary arm when
+`ligand is None`. Without that, the ternary job carries no ligand chain,
+so it is the binary job with a different label, and Delta-ipTM becomes
+ternary minus binary over two runs that differ only by seed: a number near
+zero, produced by construction and indistinguishable from a real
+measurement of no glue dependence. Reachable whenever ligand resolution
+fails, which is a CCD miss with no PROTAC-DB fallback.
+
+**An RMSD over mismatched atom sets.** `_rmsd` refuses when the two atom
+lists differ in length. Without that, `zip` truncates to the shorter and
+the RMSD is computed over a prefix. That is the exact failure
+`recovery_against_crystal`'s own docstring warns about: "getting this
+wrong produces a confident RMSD against the wrong residues". Reachable
+because the predicted peptide and the deposited chain are matched across
+two numbering frames, and a frame that resolves only partially leaves
+fewer matched atoms on one side.
+
+**A substitution outside the peptide.** `saturate` raises on a position
+past the end, which would otherwise produce a label like K99A against a
+15-mer: a variant id no residue backs, ranking in the scan profile like
+any other. It raises rather than recording a status, which is right here,
+because positions come from the alanine scan's own output and an
+out-of-range one is a bug upstream rather than a datum.
+
+The remaining two are left untested deliberately, and saying so is the
+point: an empty radii table in `score/lysine.py` and a sequence shorter
+than the tile length in `curate/peptides.py` both produce an obvious
+absence rather than a confident wrong figure, so a test would be
+confirming that Python raises.
+
+Two of my three first attempts at these tests were written against APIs
+that do not exist, `Peptide` with the wrong fields and a
+`variants.substitute` that was never there. They failed immediately and
+loudly, which is the one failure mode this session has had no trouble
+with.
