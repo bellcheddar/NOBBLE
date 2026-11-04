@@ -888,3 +888,53 @@ first version of the assignment parsed the drug list back out of the prose in
 `nobble/curate/peptides.py`. Widen the preference list to use more IMiDs, or
 return `IMID_CCD["POM"]` unconditionally to go back to one drug for the arm.
 `tests/test_sievers_drugs.py` fails first in either case.
+
+## D-NOB-034: a C2H2 zinc finger is submitted with its zinc, in both arms
+
+**Date:** 2026-11-04
+
+There was no zinc anywhere in NOBBLE. The Sievers arm was about to submit
+120 whole C2H2 zinc fingers as bare 23-to-26-residue chains, and all 120
+carry the complete coordination motif (at least two cysteines and two
+histidines; checked, not assumed).
+
+A C2H2 finger is held in its fold by a single Zn(2+) ion coordinated by
+those four residues. Without it the chain is not a domain with a missing
+accessory, it is a disordered 23-mer. The arm takes these whole rather than
+tiled on the explicit grounds that a zinc finger is a folding unit, so
+leaving the ion out contradicts the reason the arm is built the way it is,
+in the one arm that carries the headline ROC.
+
+**Decided.** Peptides whose class is `zinc_finger` and that carry a complete
+C2H2 site are submitted with a `ZN` ligand chain.
+
+**In both arms, which is the part worth stating.** Delta-ipTM is the ternary
+ipTM minus the binary one. A cofactor present only in the ternary arm would
+fold the peptide differently between the two, and the difference would
+report "the glue changed the interface" for what was really "the peptide
+folded this time". That is the same class of error as pooling sampling tiers
+into one minimum (D-NOB-032), one level up: a quantity defined as a
+difference is only interpretable when its two terms differ in one thing.
+
+**Scrambles of zinc fingers get the ion too.** A composition-matched
+scramble carries the same cysteines and histidines in shuffled positions and
+cannot form a canonical site. It still gets the zinc, because its job is to
+differ from its positive in exactly one variable, the residue order.
+Withholding it would make the control differ in two, and a negative that
+fails for the wrong reason says nothing about the positive.
+
+**The 15-mer benchmark degrons are excluded although IKZF1's is a zinc
+finger fragment.** Its histidines fall outside the window, so there is no
+site to complete, and bench04 scored the best Delta-ipTM in the panel
+without one. The test is the complete motif, not the source.
+
+**Not yet validated empirically.** This is reasoning from the chemistry, not
+a measurement. Boltz-2 may well predict a canonical finger from sequence
+alone, as AlphaFold2 generally does. The cheap test is two jobs, one finger
+folded with and without the ion, comparing peptide-chain pLDDT, and it
+should run before the main campaign rather than after. Recorded as a
+pending check rather than claimed as settled.
+
+**Reversal.** `requires_structural_zinc` in `nobble/curate/peptides.py`;
+return `{"required": False}` to go back. `tests/test_zinc.py` fails first,
+including the both-arms case.

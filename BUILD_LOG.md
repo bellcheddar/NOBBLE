@@ -94,3 +94,16 @@
   A positive with no control is worse than running neither. The benchmark
   builder now exposes the resolved Ligand objects instead.
   tests/test_campaign_manifest.py (5 tests). 63 tests pass.
+- 2026-11-04T03:00Z Structural zinc added. There was none in the codebase and
+  the Sievers arm was about to submit 120 whole C2H2 zinc fingers as bare
+  23-26mers; all 120 carry the complete coordination motif, checked. A C2H2
+  finger without its Zn is a disordered peptide, not a domain, which
+  contradicts the arm's own reason for taking fingers whole. ZN chain now
+  added for complete sites, in BOTH arms: a cofactor in the ternary only
+  would make Delta-ipTM report "the glue changed the interface" for "the
+  peptide folded this time". Scrambles of fingers get it too, so the control
+  differs from its positive in one variable rather than two. The 15-mer
+  benchmark degrons are excluded (IKZF1's histidines fall outside its
+  window). Not yet validated empirically: a two-job with/without test should
+  run before the main campaign. D-NOB-034. tests/test_zinc.py (5 tests).
+  68 tests pass. Campaign manifest rewritten: 158 pairs, 2,370 jobs, 0 errors.

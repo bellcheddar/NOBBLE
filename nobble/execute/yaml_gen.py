@@ -26,10 +26,13 @@ from dataclasses import dataclass
 from nobble import paths
 from nobble.curate import constructs as C
 from nobble.curate import numbering, structures
+from nobble.curate import peptides as P
 from nobble.execute import msa as msa_module
 
 PEPTIDE_CHAIN = "P"
 LIGAND_CHAIN = "L"
+# A structural metal that belongs to the peptide, not to the glue mechanism.
+COFACTOR_CHAIN = "Z"
 RECEPTOR_CHAINS = "ABCDEFGH"
 POCKET_MAX_DISTANCE = 6.0
 
@@ -166,6 +169,16 @@ def build_yaml(job, peptide, ligand, pocket: PocketConstraint | None) -> dict:
     if modifications:
         peptide_entry["modifications"] = modifications
     sequences.append({"protein": peptide_entry})
+
+    # A C2H2 zinc finger needs its ion in BOTH arms or neither. Delta-ipTM is
+    # the ternary ipTM minus the binary one, so a cofactor present in only the
+    # ternary arm would fold the peptide differently between them and the
+    # difference would report "the glue changed the interface" for what was
+    # really "the peptide folded this time". Same class of error as mixing
+    # sampling tiers into one minimum (D-NOB-032), one level up.
+    zinc = P.requires_structural_zinc(peptide)
+    if zinc["required"]:
+        sequences.append({"ligand": {"id": COFACTOR_CHAIN, "ccd": zinc["ccd"]}})
 
     document: dict = {"version": 1, "sequences": sequences}
 

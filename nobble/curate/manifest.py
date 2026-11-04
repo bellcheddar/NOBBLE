@@ -107,7 +107,13 @@ def expand_pair(
 ) -> list[Job]:
     """Expand one (receptor, peptide, ligand) triple into its job set."""
     jobs: list[Job] = []
-    base_tokens = construct.residue_count() + peptide.length
+    # A structural zinc is one heavy atom, so one token, and it is present in
+    # both arms (see yaml_gen). Counting it in only one would understate the
+    # binary arm against the token cap it is validated on.
+    from nobble.curate import peptides as _P
+
+    cofactor_tokens = 1 if _P.requires_structural_zinc(peptide)["required"] else 0
+    base_tokens = construct.residue_count() + peptide.length + cofactor_tokens
 
     for complex_type in COMPLEXES:
         if complex_type == "ternary" and ligand is None:
