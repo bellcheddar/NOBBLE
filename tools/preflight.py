@@ -79,6 +79,13 @@ def preflight(campaign: Path) -> dict:
                     errors.append({"job": job_id,
                                    "problem": "receptor chain has no cached MSA: "
                                               "the campaign would call a server"})
+                elif cached and not Path(body["msa"]).exists():
+                    # The YAML naming a cached file is not the same as the
+                    # file being there. A missing a3m fails at whichever job
+                    # reaches it, hours into a run.
+                    errors.append({"job": job_id,
+                                   "problem": f"cached MSA missing on disk: "
+                                              f"{body['msa']}"})
             elif body.get("ccd") == "ZN":
                 has_zinc = True
 

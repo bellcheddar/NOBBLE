@@ -396,3 +396,8 @@
   a modality and the fallback prefers a glue, picking GSPT1/CRBN instead, and
   says plainly that a parent chosen this way has not been ranked against
   anything. 101 tests pass.
+- 2026-11-04T11:20Z Preflight now checks that a cached MSA actually exists on
+  disk, not merely that the YAML names one. The two are not the same, and a
+  missing a3m fails at whichever job reaches it, hours into a run. Verified
+  by pointing a job at a non-existent path and confirming preflight refuses.
+  Both assembled campaigns pass: all 9 referenced MSAs present.
