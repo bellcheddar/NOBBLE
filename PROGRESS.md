@@ -738,4 +738,55 @@ validation layers, compare, the design report, tier-2 selection, the atlas
 build, drift, provenance and the prediction scorer. All clean, and
 `check_prediction` now accounts for all three of its testable verdicts.
 
-Suite 909 passing.
+**This session, F132 to F148.** Seventeen findings, written up in
+FINDINGS.md. Four themes.
+
+*Specified and never run.* Tier B is selected, frozen and gate-passed and has
+no pairs in any campaign, though spec 3.3 says not to defer it: Gate G1 is
+open on it and the cost is measured above. Its ligand set, `glue_recall_set`,
+selected a size bucket of 7,676 CCDs and returned fragments; it is now
+compounds observed bridging a triaged ligase, 121 chemotypes, with all five
+curated glues retained.
+
+*Priced on one side only.* Refinement was never compared to
+`max_compute_hours`: a per-job timeout bounds one job and the decile is 150
+of them. `nobble/execute/budget.py` prices it as a range that collapses to a
+measured factor once one refinement has run, and `tier2.run` reduces the
+decile to what fits. The status page reported only the tier-1 half of the
+gate and now reports both, with what survives reduction.
+
+*Verification against the wrong subject.* A browser QC run reported fourteen
+clean pages against a server started hours earlier. `/healthz` now reports a
+source fingerprint, `qc.mjs` refuses a server that is not the working tree,
+and `deploy.sh` refuses a droplet that is not serving what was shipped. Every
+page answering 200 says the app works, not that it is this version.
+
+*Published and read by nothing.* Tier 2's scores were in the atlas and no
+page read them; the pose tab now shows the quantities whose shape survives a
+change of sample count and names those it withholds. The design scan's
+profile was computed for the parent the report ranks first rather than the
+one the campaign scanned, and those are already apart. And the F47
+correction, which sits on the publish path, corrected nothing on every
+invocation the chain has made: an absolute glob result compared against the
+relative path the chain passes.
+
+Also: CLAUDE.md's copy budget was never measured and `/pose` had drifted to
+49 words of presentation provenance; `qc/copy_budget.mjs` measures it inside
+browser QC now. BINMAN-LM's Head C reported the genes the campaign *has*
+under the name `missing`. The mutation harness could not tell the runner's
+appends from a rewrite, so its own test failed intermittently.
+
+Verified and left alone: the matched-control ROC computes on a realistic
+fixture at AUC 0.80 with the benchmark pairs correctly excluded; the
+composite fitter fits 158 labelled pairs at objective 0.923 with its
+in-sample caveat; spec 1.3's MSA policy is implemented exactly, receptors
+referencing cached `.a3m` files and the peptide chain `msa: empty`; the
+design lift path scores 15 of 15 positions; the publish path serves refined
+poses from a scratch-built atlas, all ten URLs at 200.
+
+**Suite 1,003 passing, 3 skipped.** Browser QC clean on a named build:
+fourteen pages, 0 non-200, copy budget within, 0 console errors, 0 serious
+axe violations.
+
+**Main campaign in flight at 464 of 2,360**, 11.7 hours spent at 0.4632
+s/token measured, 1,896 jobs and 301,388 tokens remaining.

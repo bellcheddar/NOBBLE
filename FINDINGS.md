@@ -6849,3 +6849,44 @@ every row's structure is on disk. Both directions, because a file nothing
 points at is dead weight on the droplet and a row pointing at nothing is a
 404 in the viewer. The current atlas holds 100 of each and they match
 exactly.
+
+## F149. Three scientific paths verified before they run, and nothing to fix
+
+The campaign has roughly forty hours left, after which scoring, the ROC, the
+composite fit and the publish all run for the first time on real data.
+Finding out then that one of them refuses is forty hours too late, so each
+was run on a fixture with the campaign's own shape.
+
+The matched-control ROC. Its arm scoping and its labels agree exactly with
+what the pipeline writes: `tier == "sievers_zf"` with `degraded` and
+`not_degraded`, which the queue carries for 24 and 96 pairs. On a fixture of
+that shape it computes: AUC 0.8043, a bootstrap interval excluding 0.5, the
+seven benchmark pairs correctly excluded from the curve, and the seed balance
+reported as balanced. The secondary graded test still names itself as
+unavailable, which is right.
+
+The composite fitter. 158 labelled pairs, 31 positives and 127 negatives,
+exactly the campaign's own composition, fitting at objective 0.923 across
+five components. Both caveats fire: that the AUC is in-sample because the
+grid maximised it on the same pairs, and that the lysine term carries weight
+without validated discriminating power.
+
+Spec 1.3's MSA policy, which is upstream of every prediction and which I had
+not read. It is implemented exactly. Across all 2,360 YAMLs the receptor
+chains reference cached `.a3m` files, seven distinct ones from the seventeen
+on disk; the peptide chain carries `msa: empty`, which is Boltz's way of
+saying no MSA and is what the spec requires; ligand chains carry no `msa`
+key at all. One MSA per construct, not one per peptide.
+
+The design lift path scores 15 of 15 positions with nothing refused. The
+publish path serves refined poses from a scratch-built atlas, all ten URLs
+at 200.
+
+One thing worth recording rather than fixing. `weights._features` reads
+`lysine_reach` as a mapping, and my first fixture gave it a float, which
+crashed the whole fit with an `AttributeError`. Every one of the twenty
+scored rows on disk carries a mapping, and the scorer is the only writer, so
+a float cannot arrive without a code change: the crash is unreachable and
+the fixture was wrong, not the code. Recorded because the next person to
+write a fixture for this will make the same mistake, and because
+`lysine_reach` having had two shapes before is what F106 was about.
