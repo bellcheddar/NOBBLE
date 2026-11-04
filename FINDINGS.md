@@ -3409,3 +3409,47 @@ The arm and the labels are now named once, in the layer, and imported by the
 test. The scoping check is executable rather than textual, because the first
 version grepped its own source for the literal it forbids and matched the
 assertion doing the grepping.
+
+## F74. A NaN in the headline curve would have biased it, not broken it
+
+Reviewing `matched_control_roc` for correctness rather than for a symptom.
+The estimator itself is right: Mann-Whitney U, which credits a tie with half
+a win, and a bootstrap interval with a fixed seed so the published figure is
+reproducible. The seed-balance reasoning beside it is the kind of care this
+number deserves.
+
+The selection was not. Both groups were chosen with
+`isinstance(row.get(statistic), (int, float))`, and NaN is a float.
+
+What a NaN does there is the interesting part. It does not raise and it does
+not propagate: NaN is neither greater than nor equal to anything, so the
+estimator scores it as having lost every comparison. It is counted as a
+unanimous loss rather than as missing data. One NaN among three positives
+takes the AUC from 1.0 to 0.667, and at the configured floor of three pairs
+a side that is the difference between a result and nothing.
+
+The route in is real rather than theoretical. Python's `json` writes NaN as
+a bare `NaN` literal and reads it back, so a non-finite value round-trips
+through `scores.jsonl` with nothing in the chain objecting. A boolean would
+have passed the same check too, since `isinstance(True, int)` is true, and
+been compared as 1 against real deltas.
+
+No scored record carries a non-finite delta today, which is how F25, F32
+and F43 all looked before they fired. The project's own standard is that a
+guard for a condition that has not yet arisen is still worth having when the
+failure is silent, and this one is silent in the direction that matters: it
+moves the headline AUC down, towards the null result, which is the direction
+a sceptical reader would not question.
+
+Three changes. `_finite` is the filter, and it rejects NaN, both infinities
+and booleans. `_auc` refuses non-finite input rather than returning a
+number, as the floor under the filter. And the layer reports
+`non_finite_dropped`, because excluding a scored pair changes the
+denominator and a reader comparing the positive count against the campaign
+has to be able to see why; `None` is counted separately, since a pair that
+was never scored is a different thing from one whose score came back as NaN.
+
+One of my four tests had the wrong expected value, worked out by hand:
+0.2 beats both negatives, 0.0 ties one and loses to the other, so the AUC is
+2.5 of 4 rather than 3 of 4. The test caught my arithmetic rather than the
+code's.
