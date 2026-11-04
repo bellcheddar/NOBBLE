@@ -938,3 +938,51 @@ pending check rather than claimed as settled.
 **Reversal.** `requires_structural_zinc` in `nobble/curate/peptides.py`;
 return `{"required": False}` to go back. `tests/test_zinc.py` fails first,
 including the both-arms case.
+
+## D-NOB-035: the Sievers zinc fingers get no MSA, and the reason is the ROC rather than the cost
+
+**Date:** 2026-11-04
+
+D-NOB-029 established that a substrate submitted as a whole folded domain
+carries its own MSA, following spec 1.3's reasoning rather than its literal
+wording. A zinc finger is a folding unit, submitted whole for that reason,
+so the rule appears to apply and 120 MSAs would be needed.
+
+**Decided.** It does not apply here. The Sievers fingers carry
+`msa: empty`, as spec 1.3 says peptide chains should.
+
+**Reason, and it is not the cost.** The 120 MSAs are network-bound against
+the ColabFold server and would run perfectly happily alongside the GPU
+queue. The reason is that alignment depth would not be distributed evenly
+across the two classes the ROC separates. The arm is 24 degraded fingers
+drawn from 24 distinct genes against 96 controls drawn from 86, and the
+matching that built it matched on length and amino-acid composition, which
+is what makes a control a control here, and not on how well studied the
+parent protein is. If the degraded set systematically came from
+better-characterised proteins with deeper alignments, MSA depth would
+become a variable that correlates with the label, and the headline ROC
+would be partly measuring how much homology each chain was given rather
+than whether the glue changed the interface.
+
+Giving none to any of them removes that by construction. It costs some
+absolute fold quality in exchange for a comparison that measures one thing,
+which is the right trade in the arm that carries the result.
+
+**The other half of the answer is D-NOB-034.** What a C2H2 finger needs to
+fold is its zinc, not its homologues, and it now has one. The two decisions
+were taken together and should be read together: an MSA was refused in the
+same pass that added the structural support the chain actually depends on.
+
+**Contrast with D-NOB-029, so the boundary is explicit.** That case was a
+294-residue kinase domain submitted as a single arm's construct, where no
+comparison between classes rode on the MSA and the chain genuinely could
+not fold without evolutionary signal. The criterion is therefore not "does
+it fold" alone: it is whether the MSA could correlate with the label of a
+matched comparison.
+
+**Reversal.** `build_yaml` in `nobble/execute/yaml_gen.py` sets the peptide
+chain's `msa` to `msa_module.EMPTY`. Pointing it at a cached a3m for
+zinc-finger peptides restores the other behaviour. If that is ever done,
+measure alignment depth for the degraded and non-degraded sets first and
+report the two distributions: the confounder above is testable, and it was
+asserted here rather than measured.
