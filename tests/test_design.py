@@ -396,3 +396,44 @@ def test_a_saturation_scan_assembles_into_a_real_manifest():
         differences = sum(1 for a, b in zip(parent["sequence"], pair["peptide_sequence"])
                           if a != b)
         assert differences == 1, pair["substitution"]
+
+
+def test_a_zinc_finger_scan_keeps_the_ion_on_every_variant_through_assembly():
+    """D-NOB-038 end to end on a real library parent, not a synthetic one.
+
+    The chain re-selects the scan's parent after the main campaign, and 24
+    of the 31 candidates are Sievers fingers, so a zinc-bearing scan is the
+    likely case rather than an exotic one. Assembling it is where the
+    inherited cofactor either survives or silently does not: a variant that
+    mutates a coordinating cysteine is exactly the one that would lose the
+    ion if the cofactor were re-derived per variant.
+    """
+    from nobble.design import assemble as A
+    from nobble.design import report as R
+
+    fingers = [p for p in R.candidate_parents() if p["source"] == "sievers_zf"]
+    if not fingers:
+        pytest.skip("no Sievers parent in the library")
+
+    manifest = A.build_manifest(fingers[0]["peptide_id"])
+    if manifest.get("status"):
+        pytest.skip(manifest["status"])
+
+    parent = next(p for p in manifest["pairs"] if p["role"] == "parent")
+    variants = [p for p in manifest["pairs"] if p["role"] == "variant"]
+
+    assert parent["cofactor"]["required"] is True
+    assert parent["cofactor"]["ccd"] == "ZN"
+    assert variants
+    missing = [p["substitution"] for p in variants
+               if not p["cofactor"].get("required")]
+    assert not missing, f"variants lost the parent's ion: {missing}"
+    assert manifest["errors"] == 0
+
+    # The coordinating residues are the ones that would have dropped it.
+    coordinating = [p["substitution"] for p in variants
+                    if p["substitution"][0] in "CH"]
+    assert coordinating, "this parent has no C or H to mutate"
+    for substitution in coordinating:
+        pair = next(p for p in variants if p["substitution"] == substitution)
+        assert pair["cofactor"]["required"] is True, substitution

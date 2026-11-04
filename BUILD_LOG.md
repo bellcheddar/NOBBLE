@@ -517,3 +517,12 @@
   before; reading it is how the second attempt used the state builder
   instead. Verified by reading the component's representation back out of the
   live plugin, not from the screenshot. 119 tests, QC 14 captures clean.
+- 2026-11-04T15:20Z Exercised the zinc-finger design scan, which the chain
+  will likely produce: 24 of the 31 scannable parents are Sievers fingers, so
+  a zinc-bearing scan is the normal case rather than an exotic one. ARID2,
+  26 residues: parent carries the ion, all 26 variants inherit it, none lost
+  it including the coordinating-cysteine mutants that would have dropped it
+  under per-variant inference. Assembled fully (27 pairs, 405 jobs, 270 in
+  the A P Z L layout) and preflighted clean with 0 asymmetric cofactors, then
+  removed so the chain's target stays the IKZF1 campaign. Pinned as a test
+  against a real library parent rather than a synthetic one. 123 tests pass.
