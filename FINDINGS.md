@@ -3287,3 +3287,49 @@ two files would differ by design.
 Three copies of a timestamp format, two theme colours, two binning rules and
 two queue files, all found in the last two days by looking for the same
 shape. This is the sweep for it at the level of whole files.
+
+## F72. The published atlas reported that it had withheld nothing
+
+Spec 2.1 is unambiguous: PROTAC-DB stays internal-use-only and is never
+redistributed. `deploy/build_atlas.py` enforces it by nulling the `smiles`
+field of any ligand record whose `source` is `protacdb`, replacing it with a
+note, and `ATLAS.json` reports how many it withheld.
+
+It reported 0. The key was initialised to zero at the top of `main()` and
+incremented nowhere, so it was a literal dressed as a count, published on
+every build since the first. The atlas it described contained a
+`smiles_withheld` field: one record had been withheld while the summary said
+none had.
+
+Zero is the worst value it could have held. On a licensing guarantee it does
+not read as "this number is not computed", it reads as "no PROTAC-DB
+chemistry was present in this campaign", which is a stronger and different
+claim than the truth. The real figure is 1, and the record is dBET57, the
+one benchmark ligand with no CCD entry.
+
+A count alone would still not be enough, so the ligands are named beside it.
+A zero cannot distinguish "nothing needed withholding" from "the detection
+stopped firing", and those need opposite responses: the first is fine and
+the second is a licence breach waiting for the next campaign.
+
+**Found by sweeping for a defect class rather than by reading the code.**
+Two vacuous tests of mine in one day, F65's clustering control and F67's
+emptied loop, made "a test whose every assertion sits inside a loop that may
+be empty" worth checking mechanically. 515 test functions, none without an
+assertion and none asserting only literals, but 17 with every assertion
+inside a loop. Most are guarded inside a helper the sweep cannot see. The
+one worth opening was `test_published_atlas_withholds_protacdb_chemistry`,
+because an empty bundle would have satisfied it by examining nothing, and it
+is the test standing behind a licensing constraint. Reading it is what
+turned up the counter beside it.
+
+It now counts the files it read and refuses zero, and two controls hold the
+check itself: an empty bundle must report nothing examined, and a bundle
+with the chemistry planted in it must be reported. Weakening the guard to
+`>= 0` passed before those existed, because the real atlas has files either
+way.
+
+The published atlas has been rebuilt and now says `redactions: 1,
+redacted_ligands: ["dBET57"]`. The rebuild went to a scratch directory first
+and the real one was rewritten deliberately rather than by a test, which is
+D-NOB-051 being applied rather than restated.
