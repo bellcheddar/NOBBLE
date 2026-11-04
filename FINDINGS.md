@@ -410,3 +410,77 @@ fingerprints, the time-split blind number and composite weight fitting. The
 seed-collapse rate across the whole panel is itself a reportable number: if a
 run in five commonly fails to dock, the five-seed budget of spec 1.2 is too
 small for a minimum-based statistic, and that is a finding about the method.
+
+## F10. The zinc finger arm does not need its zinc, which is the opposite of what the chemistry says
+
+D-NOB-034 added a `ZN` ion to all 120 whole C2H2 zinc fingers in the Sievers
+arm, reasoning from the chemistry: the fold is held together by a Zn(2+)
+coordinated by two cysteines and two histidines, so a finger without one is a
+disordered 23-mer rather than a domain. That reasoning is standard and it was
+written down firmly.
+
+It is wrong about what Boltz-2 actually predicts. Twelve peptide-only folds,
+six degraded fingers and six matched controls, each with and without the ion:
+
+| class | mean pLDDT without zinc | mean gain from adding it |
+|---|---|---|
+| degraded (n=6) | 95.22 | **-0.07** |
+| not degraded (n=6) | 92.38 | **+1.40** |
+
+A chain predicted at 95.22 is not disordered. Boltz-2 reproduces the
+canonical fold from sequence alone, as AlphaFold2 does, having learned it
+from structures that did contain the ion. **The ion is cheap insurance, not a
+fix**, and the claim that the arm "would have measured noise without it" is
+withdrawn.
+
+The apparent class asymmetry (+1.40 against -0.07) is not one. Gain
+correlates with the starting score at **r = -0.704**: the lower a finger
+scores without zinc, the more the ion helps, and the controls simply begin
+lower. As a group comparison it is +1.47 with a standard error of 0.90,
+t = 1.64 at n = 12, against within-class scatter of 1.74 and 1.34. The zinc
+tracks headroom, not label, so it cannot bias the ROC toward either class.
+
+**Noted and not acted on.** The degraded fingers fold better than their
+matched controls before any zinc is added, 95.22 against 92.38. That largely
+cancels in a difference-of-arms statistic, but "the positives were easier to
+fold" would look identical to a real result from the AUC alone. It is the
+first thing to check if the ROC comes out strong.
+
+## F11. Three ways the design arm would have produced a confident wrong answer
+
+The design arm was built before any of it ran. Three defects were found by
+constructing the failure deliberately rather than by waiting for it, and all
+three share a shape: they do not crash, they produce a plausible number, and
+in two cases the number agrees with what a structural biologist expects.
+
+**1. The scan would have dropped the zinc it was measuring.**
+`requires_structural_zinc` infers the cofactor from the sequence, and an
+alanine scan mutates residues one at a time. Measured on ZEP2: a 25-position
+scan drops the ion at **C3A and C6A**. Those are the coordinating cysteines,
+the positions a scan of a finger exists to interrogate. Parent with zinc,
+variant without, so the lift subtracts two differently-constituted systems
+and reports the missing ion as the substitution's effect. It would have come
+out large and negative, read as "this position is critical", and that is
+exactly the expected answer, so it would have been believed. Variants now
+inherit the parent's cofactor (D-NOB-038).
+
+**2. A substitution of a residue for itself ranked as the most sensitive
+position.** Found while building a synthetic fixture, which emitted `A9A`.
+Its two runs differ only by seed, so its lift is the noise floor, and nothing
+downstream distinguishes that from an effect: it sorts into the ranking like
+any other number and came out on top. The real generator never emits one
+because a position already alanine is scanned to glycine, but `lift.compute`
+now refuses it rather than relying on every future generator remembering.
+
+**3. The chart would not have drawn at all.** The scan profile's script sat
+in the template's `content` block, which renders before the page loads
+Plotly, so it threw `Plotly is not defined`. Routine QC passed throughout:
+with no profile the script returns early and never reaches Plotly, so the
+failure was reachable only once a scan had produced data. It was found by
+rendering the tab against a synthetic profile rather than waiting 4.9 hours
+for a real one.
+
+The general lesson is the one this project keeps relearning. A failure that
+stops the pipeline is cheap, because it announces itself. The expensive ones
+complete, return a number in the right range, and point the way the prior
+already pointed.

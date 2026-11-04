@@ -122,6 +122,22 @@ def design():
     if not document.get("parents"):
         from nobble.design import report as design_report
         document = design_report.build()
+
+    # Switching parent reads the precomputed previews rather than generating
+    # on request: the droplet has no curation stack, and a route that works
+    # locally and 500s in production has already happened twice here.
+    wanted = request.args.get("parent")
+    if wanted:
+        chosen = (document.get("previews") or {}).get(wanted)
+        if chosen:
+            document = dict(document)
+            document["preview"] = chosen
+            # The scan profile belongs to whichever parent was actually
+            # scored. Showing it beside a different parent's variants would
+            # caption one degron's result with another's sequence.
+            scored_parent = (document.get("lifts") or {}).get("parent")
+            if scored_parent != wanted:
+                document["profile"] = {}
     return render_template(
         "design.html", page_title="Design", active="design",
         design=document,

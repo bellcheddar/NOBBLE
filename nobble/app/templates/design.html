@@ -98,7 +98,7 @@
   <h3>Scannable parents</h3>
   <p class="panel__hint">
     {{ design.parents | length }} degrons carry an experimental label and can
-    anchor a scan. A scan of an unlabelled sequence would produce lifts against
+    anchor a scan. Pick one to see the scan it would generate. A scan of an unlabelled sequence would produce lifts against
     a parent whose own delta-ipTM means nothing, which is a chart with no zero.
   </p>
   <table class="ntable">
@@ -106,7 +106,7 @@
     <tbody>
       {% for parent in design.parents %}
         <tr>
-          <td>{{ parent.gene }}</td>
+          <td><a href="{{ url_for('nobble.design', parent=parent.peptide_id) }}">{{ parent.gene }}</a></td>
           <td>{{ parent.source }}</td>
           <td>{{ parent.e3_hint }}</td>
           <td class="mono">{{ parent.length }}</td>

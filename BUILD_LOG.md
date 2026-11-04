@@ -313,3 +313,20 @@
   two-state boolean over a three-state fact, but every consumer
   disambiguates: benchmark.html renders held / not yet run / MOVED, and the
   conclusion text has a separate branch for the control having no number.
+- 2026-11-04T09:10Z FINDINGS F10 and F11 written. F10 records that the zinc
+  finger arm does not need its zinc: 12 peptide-only folds show Boltz
+  reproduces the C2H2 fold from sequence alone, the ion is cheap insurance
+  rather than a fix, and the apparent class asymmetry is headroom
+  (r = -0.704 against baseline) not label. F11 records the three ways the
+  design arm would have produced a confident wrong answer, all found by
+  constructing the failure rather than waiting for it.
+- 2026-11-04T09:10Z Design tab: all 31 parents selectable. Previews for
+  every scannable parent are precomputed into the atlas (377K, 669 variants)
+  because the droplet has no curation stack and cannot generate a scan on
+  request. A bogus parent falls back to the default rather than erroring,
+  and switching parent clears the scan profile unless the profile belongs to
+  that parent: showing one degron's result beside another's variants would
+  caption a measurement with the wrong sequence.
+- 2026-11-04T09:10Z Verified the LM executes design queries end to end, not
+  just that its schema validates them: filter on tier, sort on delta_iptm,
+  select substitution, correct rows back.

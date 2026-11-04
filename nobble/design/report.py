@@ -144,8 +144,23 @@ def build(parent_id: str | None = None) -> dict:
         except Exception:                                  # noqa: BLE001
             validation = {}
 
+    # Previews for every scannable parent, precomputed. The droplet has no
+    # curation stack, so it cannot generate a scan on request: without this
+    # the tab is locked to whichever parent the atlas was built for. 31
+    # parents at about 20 variants each is small enough to ship whole.
+    all_previews = {}
+    for candidate in parents:
+        generated = variant_module.generate(candidate["peptide_id"],
+                                            candidate["sequence"])
+        all_previews[candidate["peptide_id"]] = {
+            "parent": candidate,
+            "variants": generated["variants"],
+            "cost": cost_of(generated["count"]),
+        }
+
     return {
         "parents": parents,
+        "previews": all_previews,
         "preview": preview,
         "lifts": lifts,
         "profile": profile,
