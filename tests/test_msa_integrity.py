@@ -101,10 +101,22 @@ def test_every_cached_alignment_is_the_alignment_of_its_own_key():
 
 def test_no_cached_alignment_is_empty():
     """is_cached requires a non-zero size, so a truncated file passes it.
-    A header with no alignment behind it is the realistic truncation."""
-    for path in sorted(msa.CACHE.glob("*.a3m")):
+    A header with no alignment behind it is the realistic truncation.
+
+    The count of files read is asserted as well. Every assertion here used
+    to sit inside the loop, so an empty cache satisfied the test by
+    examining nothing, and an empty MSA cache is not a harmless state: F39
+    showed that losing the receptor's alignment degrades every prediction
+    rather than failing them (F72).
+    """
+    cached = sorted(msa.CACHE.glob("*.a3m"))
+    for path in cached:
         lines = [l for l in path.read_text(errors="replace").splitlines() if l.strip()]
         assert len(lines) >= 2, f"{path.name} has {len(lines)} non-blank line(s)"
+    assert cached, (
+        "no alignment was examined, so this says nothing about whether the "
+        "cached ones are intact. Phase 1 caches one per receptor chain"
+    )
 
 
 def test_preflight_rejects_an_alignment_belonging_to_another_protein(tmp_path):

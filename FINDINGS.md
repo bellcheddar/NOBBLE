@@ -3333,3 +3333,24 @@ The published atlas has been rebuilt and now says `redactions: 1,
 redacted_ligands: ["dBET57"]`. The rebuild went to a scratch directory first
 and the real one was rewritten deliberately rather than by a test, which is
 D-NOB-051 being applied rather than restated.
+
+**The rest of the audit, and why it is not a permanent test.** All 17
+flagged tests were read. Two were genuine: the PROTAC-DB leak check above,
+and `test_no_cached_alignment_is_empty`, which examined every cached
+alignment and would have passed on an empty cache. That one now asserts it
+read something, because an empty MSA cache is not harmless: F39 showed a
+missing receptor alignment degrades every prediction rather than failing
+them. Both are fixed.
+
+The other fifteen are false positives of the static check, in three shapes.
+Some guard the collection inside a helper, as `_library()` does with its own
+assertion. Some count what they examined and skip on zero, as
+`test_the_real_campaigns_have_no_pair_level_disagreement` does. Some iterate
+a non-empty literal bound to a name one line earlier, as the construct
+boundary table does.
+
+So the sweep is recorded here as a method rather than kept as a test.
+Keeping it would mean fifteen allowlist entries carrying no information,
+and an allowlist that large is the thing F67 and F71 both had to guard
+against: it outlives what it allows, and the next genuine case arrives
+looking exactly like the fifteen nobody reads.
