@@ -112,7 +112,7 @@ if ! curl -s -o /dev/null --max-time 10 "${PUBLIC_HOST}/healthz"; then
   echo "    (no TLS yet: verifying over http)"
 fi
 FAILED=0
-for path in /healthz / /campaign /pose /interactions /delta /benchmark /about; do
+for path in /healthz / /campaign /pose /interactions /delta /benchmark /design /about; do
   code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "${PUBLIC_HOST}${path}") || code=000
   printf '    %-16s %s\n' "$path" "$code"
   [[ "$code" == "200" ]] || FAILED=1

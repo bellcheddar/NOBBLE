@@ -8,6 +8,7 @@
     "results.jsonl": 100,
     "benchmark.json": 7,
     "about.json": 16,
+    "design.json": 31,
     "recovery_vs_bridge.json": 7,
     "comparison.json": 7
   },
@@ -16,5 +17,5 @@
   "jobs_total": 100,
   "pairs_total": 7,
   "structures": 100,
-  "bytes": 25350557
+  "bytes": 25365859
 }

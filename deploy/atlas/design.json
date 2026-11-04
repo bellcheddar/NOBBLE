@@ -1,0 +1,553 @@
+{
+  "parents": [
+    {
+      "peptide_id": "benchmark_6e0551f38f",
+      "gene": "BRD4",
+      "sequence": "PVDVEALGLHDYCDI",
+      "length": 15,
+      "source": "benchmark",
+      "e3_hint": "VHL",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "benchmark_c9b55ab831",
+      "gene": "BRD4",
+      "sequence": "YKIIKTPMDMGTIKK",
+      "length": 15,
+      "source": "benchmark",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "benchmark_e7d7a575d5",
+      "gene": "CDK12",
+      "sequence": "FYLVFEYMDHDLMGL",
+      "length": 15,
+      "source": "benchmark",
+      "e3_hint": "DDB1",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "benchmark_b14fa633af",
+      "gene": "CSNK1A1",
+      "sequence": "LAINITNGEEVAVKL",
+      "length": 15,
+      "source": "benchmark",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "benchmark_83c557c3dc",
+      "gene": "GSPT1",
+      "sequence": "CLVDKKSGEKSKTRP",
+      "length": 15,
+      "source": "benchmark",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "benchmark_888fd2c63e",
+      "gene": "IKZF1",
+      "sequence": "PFQCNQCGASFTQKG",
+      "length": 15,
+      "source": "benchmark",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "benchmark_8be125d899",
+      "gene": "RBM39",
+      "sequence": "ITEDMLRGIFEPFGR",
+      "length": 15,
+      "source": "benchmark",
+      "e3_hint": "DCAF15",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "sievers_e797a11de7",
+      "gene": "ARID2",
+      "sequence": "FMCLWQSCKKWFQTPSQVFYHAATEH",
+      "length": 26,
+      "source": "sievers_zf",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "sievers_8076e7901a",
+      "gene": "E4F1",
+      "sequence": "HECKLCGASFRTKGSLIRHHRRH",
+      "length": 23,
+      "source": "sievers_zf",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "sievers_5b1a0c4109",
+      "gene": "IKZF3",
+      "sequence": "FQCNQCGASFTQKGNLLRHIKLH",
+      "length": 23,
+      "source": "sievers_zf",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "sievers_d0dbe9051c",
+      "gene": "PATZ1",
+      "sequence": "YSCPVCGLRFKRKDRMSYHVRSH",
+      "length": 23,
+      "source": "sievers_zf",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "sievers_b20821e7bc",
+      "gene": "RLF",
+      "sequence": "YPCPGTDCSRVFKQFKYLSVHLKAEH",
+      "length": 26,
+      "source": "sievers_zf",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "sievers_f9ffe042fc",
+      "gene": "SALL2",
+      "sequence": "FTCVFCRQGFLERATLKKHMLLAHH",
+      "length": 25,
+      "source": "sievers_zf",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "sievers_0af57d5047",
+      "gene": "ZEP2",
+      "sequence": "YPCIPCGFSFKTKSNLYKHRKSHAH",
+      "length": 25,
+      "source": "sievers_zf",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "sievers_9309419fbe",
+      "gene": "ZFP91",
+      "sequence": "LQCEICGFTCRQKASLNWHMKKH",
+      "length": 23,
+      "source": "sievers_zf",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "sievers_6884d17767",
+      "gene": "ZN184",
+      "sequence": "YECKECGKAFIRSSSLAKHERIH",
+      "length": 23,
+      "source": "sievers_zf",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "sievers_dfec9147fa",
+      "gene": "ZN276",
+      "sequence": "LQCEVCGFQCRQRASLKYHMTKH",
+      "length": 23,
+      "source": "sievers_zf",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "sievers_d49b438204",
+      "gene": "ZN451",
+      "sequence": "GYCPDCNQVFVDETSTQNHKQNSGH",
+      "length": 25,
+      "source": "sievers_zf",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "sievers_730371dd60",
+      "gene": "ZN479",
+      "sequence": "YKCEECGKAFSVSSTLTDHKRIH",
+      "length": 23,
+      "source": "sievers_zf",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "sievers_dec864eee0",
+      "gene": "ZN501",
+      "sequence": "YKCNECEKAFQTKAILVQHLRIH",
+      "length": 23,
+      "source": "sievers_zf",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "sievers_2dd8849030",
+      "gene": "ZN517",
+      "sequence": "YRCRACGRACSRLSTLIQHQKVH",
+      "length": 23,
+      "source": "sievers_zf",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "sievers_dc66fdefdc",
+      "gene": "ZN565",
+      "sequence": "YECKDCGKAFSRSSYLIQHQRIH",
+      "length": 23,
+      "source": "sievers_zf",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "sievers_9d25ba3680",
+      "gene": "ZN582",
+      "sequence": "YQCKVCGRAFKRVSHLTVHYRIH",
+      "length": 23,
+      "source": "sievers_zf",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "sievers_d1c496c42b",
+      "gene": "ZN594",
+      "sequence": "YECHRCGKTFSGRTAFLKHQRLH",
+      "length": 23,
+      "source": "sievers_zf",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "sievers_84b150f6a7",
+      "gene": "ZN653",
+      "sequence": "LQCEICGYQCRQRASLNWHMKKH",
+      "length": 23,
+      "source": "sievers_zf",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "sievers_2bac03e3e2",
+      "gene": "ZN654",
+      "sequence": "FACVICGRKFRNRGLMQKHLKNH",
+      "length": 23,
+      "source": "sievers_zf",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "sievers_daf84100fa",
+      "gene": "ZN668",
+      "sequence": "FLCPRCGRMFSDPSSFRRHQRAH",
+      "length": 23,
+      "source": "sievers_zf",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "sievers_58aca9048e",
+      "gene": "ZN680",
+      "sequence": "YKCEECGKAFNRSSHLTRHKKIH",
+      "length": 23,
+      "source": "sievers_zf",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "sievers_ca8e3d0ecc",
+      "gene": "ZN692",
+      "sequence": "LQCEICGFTCRQKASLNWHQRKH",
+      "length": 23,
+      "source": "sievers_zf",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "sievers_b843c1de28",
+      "gene": "ZN787",
+      "sequence": "FVCPRCGRGFSQPKSLARHLRLH",
+      "length": 23,
+      "source": "sievers_zf",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    },
+    {
+      "peptide_id": "sievers_a4e431a394",
+      "gene": "ZN827",
+      "sequence": "FQCPICGLVIKRKSYWKRHMVIH",
+      "length": 23,
+      "source": "sievers_zf",
+      "e3_hint": "CRBN",
+      "label": "degraded"
+    }
+  ],
+  "preview": {
+    "parent": {
+      "peptide_id": "benchmark_6e0551f38f",
+      "gene": "BRD4",
+      "sequence": "PVDVEALGLHDYCDI",
+      "length": 15,
+      "source": "benchmark",
+      "e3_hint": "VHL",
+      "label": "degraded",
+      "chosen_because": "nothing is scored yet, so the shortest benchmark degron stands in: the cheapest complete scan"
+    },
+    "generator": "alanine_scan",
+    "variants": [
+      {
+        "variant_id": "design_b437a9773d",
+        "sequence": "AVDVEALGLHDYCDI",
+        "parent_peptide_id": "benchmark_6e0551f38f",
+        "parent_sequence": "PVDVEALGLHDYCDI",
+        "generator": "alanine_scan",
+        "position": 1,
+        "wild_type": "P",
+        "mutant": "A",
+        "substitution": "P1A",
+        "crosses_group": true,
+        "from_group": "special",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      },
+      {
+        "variant_id": "design_8d1c0b0831",
+        "sequence": "PADVEALGLHDYCDI",
+        "parent_peptide_id": "benchmark_6e0551f38f",
+        "parent_sequence": "PVDVEALGLHDYCDI",
+        "generator": "alanine_scan",
+        "position": 2,
+        "wild_type": "V",
+        "mutant": "A",
+        "substitution": "V2A",
+        "crosses_group": false,
+        "from_group": "hydrophobic",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      },
+      {
+        "variant_id": "design_04ceef5bc8",
+        "sequence": "PVAVEALGLHDYCDI",
+        "parent_peptide_id": "benchmark_6e0551f38f",
+        "parent_sequence": "PVDVEALGLHDYCDI",
+        "generator": "alanine_scan",
+        "position": 3,
+        "wild_type": "D",
+        "mutant": "A",
+        "substitution": "D3A",
+        "crosses_group": true,
+        "from_group": "negative",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      },
+      {
+        "variant_id": "design_66e7c3ca02",
+        "sequence": "PVDAEALGLHDYCDI",
+        "parent_peptide_id": "benchmark_6e0551f38f",
+        "parent_sequence": "PVDVEALGLHDYCDI",
+        "generator": "alanine_scan",
+        "position": 4,
+        "wild_type": "V",
+        "mutant": "A",
+        "substitution": "V4A",
+        "crosses_group": false,
+        "from_group": "hydrophobic",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      },
+      {
+        "variant_id": "design_c633356b60",
+        "sequence": "PVDVAALGLHDYCDI",
+        "parent_peptide_id": "benchmark_6e0551f38f",
+        "parent_sequence": "PVDVEALGLHDYCDI",
+        "generator": "alanine_scan",
+        "position": 5,
+        "wild_type": "E",
+        "mutant": "A",
+        "substitution": "E5A",
+        "crosses_group": true,
+        "from_group": "negative",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      },
+      {
+        "variant_id": "design_5a35188580",
+        "sequence": "PVDVEGLGLHDYCDI",
+        "parent_peptide_id": "benchmark_6e0551f38f",
+        "parent_sequence": "PVDVEALGLHDYCDI",
+        "generator": "alanine_scan",
+        "position": 6,
+        "wild_type": "A",
+        "mutant": "G",
+        "substitution": "A6G",
+        "crosses_group": true,
+        "from_group": "hydrophobic",
+        "to_group": "special",
+        "notes": [
+          "position was already alanine: scanned to glycine, which removes the remaining side chain rather than reporting an untested position as unchanged"
+        ],
+        "length": 15
+      },
+      {
+        "variant_id": "design_f464bae84f",
+        "sequence": "PVDVEAAGLHDYCDI",
+        "parent_peptide_id": "benchmark_6e0551f38f",
+        "parent_sequence": "PVDVEALGLHDYCDI",
+        "generator": "alanine_scan",
+        "position": 7,
+        "wild_type": "L",
+        "mutant": "A",
+        "substitution": "L7A",
+        "crosses_group": false,
+        "from_group": "hydrophobic",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      },
+      {
+        "variant_id": "design_bbef375b0d",
+        "sequence": "PVDVEALALHDYCDI",
+        "parent_peptide_id": "benchmark_6e0551f38f",
+        "parent_sequence": "PVDVEALGLHDYCDI",
+        "generator": "alanine_scan",
+        "position": 8,
+        "wild_type": "G",
+        "mutant": "A",
+        "substitution": "G8A",
+        "crosses_group": true,
+        "from_group": "special",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      },
+      {
+        "variant_id": "design_d2c5240d17",
+        "sequence": "PVDVEALGAHDYCDI",
+        "parent_peptide_id": "benchmark_6e0551f38f",
+        "parent_sequence": "PVDVEALGLHDYCDI",
+        "generator": "alanine_scan",
+        "position": 9,
+        "wild_type": "L",
+        "mutant": "A",
+        "substitution": "L9A",
+        "crosses_group": false,
+        "from_group": "hydrophobic",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      },
+      {
+        "variant_id": "design_2d1c686ce2",
+        "sequence": "PVDVEALGLADYCDI",
+        "parent_peptide_id": "benchmark_6e0551f38f",
+        "parent_sequence": "PVDVEALGLHDYCDI",
+        "generator": "alanine_scan",
+        "position": 10,
+        "wild_type": "H",
+        "mutant": "A",
+        "substitution": "H10A",
+        "crosses_group": true,
+        "from_group": "positive",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      },
+      {
+        "variant_id": "design_8bb4c8c275",
+        "sequence": "PVDVEALGLHAYCDI",
+        "parent_peptide_id": "benchmark_6e0551f38f",
+        "parent_sequence": "PVDVEALGLHDYCDI",
+        "generator": "alanine_scan",
+        "position": 11,
+        "wild_type": "D",
+        "mutant": "A",
+        "substitution": "D11A",
+        "crosses_group": true,
+        "from_group": "negative",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      },
+      {
+        "variant_id": "design_5c0d800e45",
+        "sequence": "PVDVEALGLHDACDI",
+        "parent_peptide_id": "benchmark_6e0551f38f",
+        "parent_sequence": "PVDVEALGLHDYCDI",
+        "generator": "alanine_scan",
+        "position": 12,
+        "wild_type": "Y",
+        "mutant": "A",
+        "substitution": "Y12A",
+        "crosses_group": true,
+        "from_group": "aromatic",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      },
+      {
+        "variant_id": "design_78610016dd",
+        "sequence": "PVDVEALGLHDYADI",
+        "parent_peptide_id": "benchmark_6e0551f38f",
+        "parent_sequence": "PVDVEALGLHDYCDI",
+        "generator": "alanine_scan",
+        "position": 13,
+        "wild_type": "C",
+        "mutant": "A",
+        "substitution": "C13A",
+        "crosses_group": false,
+        "from_group": "hydrophobic",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      },
+      {
+        "variant_id": "design_5742d594d4",
+        "sequence": "PVDVEALGLHDYCAI",
+        "parent_peptide_id": "benchmark_6e0551f38f",
+        "parent_sequence": "PVDVEALGLHDYCDI",
+        "generator": "alanine_scan",
+        "position": 14,
+        "wild_type": "D",
+        "mutant": "A",
+        "substitution": "D14A",
+        "crosses_group": true,
+        "from_group": "negative",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      },
+      {
+        "variant_id": "design_d415c71135",
+        "sequence": "PVDVEALGLHDYCDA",
+        "parent_peptide_id": "benchmark_6e0551f38f",
+        "parent_sequence": "PVDVEALGLHDYCDI",
+        "generator": "alanine_scan",
+        "position": 15,
+        "wild_type": "I",
+        "mutant": "A",
+        "substitution": "I15A",
+        "crosses_group": false,
+        "from_group": "hydrophobic",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      }
+    ],
+    "cost": {
+      "variants": 15,
+      "jobs": 225,
+      "projected_hours": 4.9,
+      "status": "within_max_compute"
+    }
+  },
+  "lifts": {
+    "status": "no design campaign has run yet",
+    "lifts": []
+  },
+  "profile": {},
+  "score_validation": {},
+  "caveat": "The composite score this arm would rank by is not validated: the matched-control ROC reports not_computed until the Sievers arm runs. Until it does, the durable claim from a scan is the ordering of positions, not the absolute lift and not a prediction that any variant will be degraded."
+}

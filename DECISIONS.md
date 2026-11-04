@@ -1071,3 +1071,61 @@ control; it is a composition control, which is a different claim.
 **Reversal.** The `arm = [...]` filter in `matched_control_roc`.
 `tests/test_roc_scope.py` fails first, and its contamination case is built
 so the benchmark pairs would drag a below-chance arm above chance.
+
+## D-NOB-037: the design arm ships before the score that would rank it is validated
+
+**Date:** 2026-11-04
+
+A seventh tab, scoped in `DESIGN_ARM.md`. `BUILD_SPEC.md` contains no design
+phase: it names "designed peptides" twice, both in section 3.5 as an input
+class ESMFold would handle if such sequences existed. None of those
+generators were built, so this is an addition rather than an unbuilt part of
+the spec, and the spec is left as written.
+
+**The constraint that shaped it.** The composite is not validated: the
+matched-control ROC reports `not_computed` until the Sievers arm runs. A tab
+that ranked invented peptides by it would be the failure this project exists
+to avoid, because a ranked list reads as a recommendation whatever the
+caption says.
+
+**Decided.** Build it so it is useful before the score is trusted.
+
+1. Every variant is anchored to a parent carrying an experimental label.
+   Nothing is scored in the abstract.
+2. The headline number is design lift, `delta_iptm(variant) -
+   delta_iptm(parent)`: a difference of differences, cancelling whatever the
+   receptor, the glue and the parent degron each contribute.
+3. The claim the tab makes is the **ordering** of positions, which survives a
+   monotone miscalibration of the scale. "Position 7 matters more than
+   position 3" is robust in a way "this peptide will be degraded" is not, and
+   the tab says so next to the figure rather than in a footnote.
+
+**Lift refuses rather than approximates.** If the variant and its parent
+differ in construct, E3, ligand or modality, or either has fewer than three
+seeds, no lift is returned. The subtraction would otherwise report the
+conditions instead of the substitution, in a plausible number nothing else
+flags. Same rule as D-NOB-032 and D-NOB-034, one level up.
+
+**Alanine first, saturation second.** A scan of a 15-mer is 15 variants and
+225 jobs, about 4.9 hours. Saturating every position is 285 variants and
+4,275 jobs, which no budget absorbs, so `saturate()` requires explicit
+positions and raises without them. The scan is what chooses where to look.
+
+**A position already alanine is scanned to glycine**, not emitted unchanged.
+An unchanged variant costs 15 jobs to learn nothing and would read on the
+chart as "this position does not matter" when it was never tested.
+
+**The default parent is chosen from the measurement.** Every benchmark degron
+is a 15-mer, so "the shortest" was an arbitrary tiebreak and it landed on
+BRD4/VHL: a PROTAC pair, in an arm about glue dependence. It now ranks by
+measured Delta-ipTM and picks IKZF1/CRBN at +0.316, the canonical IMiD
+neosubstrate and the largest signal in the panel. A scan of a parent with no
+glue dependence measures the noise floor.
+
+**ESM-2 is deliberately not used to propose substitutions**, although it is
+already in the stack for diversity reduction. It would introduce a second
+opinion about which designs are good, and the arm exists to test NOBBLE's.
+
+**Reversal.** `nobble/design/`, the `/design` route, and the `design.json`
+block in `deploy/build_atlas.py`. `tests/test_design.py` (13 tests) covers
+the generators and every refusal path in lift.

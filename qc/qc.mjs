@@ -5,7 +5,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 
 const BASE = process.env.NOBBLE_BASE || 'http://127.0.0.1:5055';
-const PAGES = ['/', '/pose', '/interactions', '/delta', '/benchmark', '/about'];
+const PAGES = ['/', '/pose', '/interactions', '/delta', '/benchmark', '/design', '/about'];
 const VIEWPORTS = [
   { name: 'desktop', width: 1440, height: 900 },
   { name: 'mobile', width: 390, height: 844 }

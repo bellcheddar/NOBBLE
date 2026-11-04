@@ -1,0 +1,176 @@
+"""Design lift: how much a variant moved its parent's Delta-ipTM.
+
+    lift = delta_iptm(variant) - delta_iptm(parent)
+
+A difference of differences. Delta-ipTM already cancels whatever the
+receptor and the peptide contribute on their own; subtracting the parent's
+Delta-ipTM cancels whatever the parent degron contributes, leaving the
+effect of the single substitution.
+
+That only holds if the parent and the variant were run the same way. If the
+variant was co-folded with a different glue, a different receptor
+construct, a different number of seeds or a different sampling tier, the
+lift reports that difference instead of the substitution, and it reports it
+in a plausible-looking number that nothing else flags. So the conditions are
+compared explicitly and a mismatched pair returns no lift rather than a
+wrong one.
+
+This is the same rule as D-NOB-032 (sampling tiers) and D-NOB-034 (the
+structural cofactor), applied one level up: a quantity defined as a
+difference is interpretable only when its two terms differ in one thing.
+"""
+from __future__ import annotations
+
+import json
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+
+# The fields that must match between a variant and its parent for the
+# subtraction to mean anything.
+MATCHED_CONDITIONS = ("construct", "e3_gene", "ligand_key", "modality")
+
+# Below this many seeds on either side, the minima the Delta-ipTMs are built
+# from are not comparable: a minimum over two samples and a minimum over five
+# are different statistics.
+MINIMUM_SEEDS = 3
+
+
+@dataclass
+class Lift:
+    variant_id: str
+    parent_peptide_id: str
+    substitution: str | None = None
+    variant_delta_iptm: float | None = None
+    parent_delta_iptm: float | None = None
+    lift: float | None = None
+    status: str = "not_computed"
+    mismatches: list = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+def _conditions(row: dict) -> dict:
+    return {key: row.get(key) for key in MATCHED_CONDITIONS}
+
+
+def compute(variant_row: dict, parent_row: dict) -> Lift:
+    """Lift for one variant against its parent, or a refusal with the reason."""
+    result = Lift(
+        variant_id=variant_row.get("pair_id") or variant_row.get("variant_id", "?"),
+        parent_peptide_id=parent_row.get("peptide_id", "?"),
+        substitution=variant_row.get("substitution"),
+    )
+
+    variant_delta = variant_row.get("delta_iptm")
+    parent_delta = parent_row.get("delta_iptm")
+    result.variant_delta_iptm = variant_delta
+    result.parent_delta_iptm = parent_delta
+
+    if not isinstance(variant_delta, (int, float)):
+        result.status = "not_computed: the variant has no delta_iptm"
+        return result
+    if not isinstance(parent_delta, (int, float)):
+        result.status = (
+            "not_computed: the parent has no delta_iptm. A variant without its "
+            "parent scored is not a design result, it is one number"
+        )
+        return result
+
+    variant_conditions = _conditions(variant_row)
+    parent_conditions = _conditions(parent_row)
+    mismatches = [
+        {"field": key, "variant": variant_conditions[key], "parent": parent_conditions[key]}
+        for key in MATCHED_CONDITIONS
+        if variant_conditions[key] != parent_conditions[key]
+    ]
+
+    for side, row in (("variant", variant_row), ("parent", parent_row)):
+        for arm in ("seeds_binary", "seeds_ternary"):
+            count = row.get(arm)
+            if isinstance(count, int) and count < MINIMUM_SEEDS:
+                mismatches.append({
+                    "field": f"{side}.{arm}",
+                    "variant": count, "parent": MINIMUM_SEEDS,
+                })
+
+    if mismatches:
+        result.mismatches = mismatches
+        result.status = (
+            "not_computed: the variant and its parent were not run the same way, "
+            "so the difference between them would report the conditions rather "
+            "than the substitution"
+        )
+        return result
+
+    result.lift = round(variant_delta - parent_delta, 4)
+    result.status = "computed"
+    return result
+
+
+def scan_profile(lifts: list[Lift], parent_sequence: str) -> dict:
+    """Per-position summary of an alanine scan.
+
+    The arm's one claim that survives an uncalibrated score. "Position 7
+    matters more than position 3" is a statement about the ordering of
+    lifts, and an ordering is robust to a monotone miscalibration of the
+    scale in a way "this peptide will be degraded" is not. The absolute
+    numbers are reported alongside and are not the point.
+    """
+    by_position: dict[int, Lift] = {}
+    for item in lifts:
+        if item.status != "computed" or item.substitution is None:
+            continue
+        position = int("".join(c for c in item.substitution[1:-1] if c.isdigit()))
+        by_position[position] = item
+
+    rows = []
+    for position, residue in enumerate(parent_sequence, start=1):
+        item = by_position.get(position)
+        rows.append({
+            "position": position,
+            "wild_type": residue,
+            "substitution": item.substitution if item else None,
+            "lift": item.lift if item else None,
+            "status": item.status if item else "not_scored",
+        })
+
+    scored = [row for row in rows if row["lift"] is not None]
+    ranked = sorted(scored, key=lambda row: row["lift"])
+    return {
+        "parent_sequence": parent_sequence,
+        "positions": rows,
+        "scored": len(scored),
+        "of": len(rows),
+        # Most negative lift: replacing this residue hurt the interface most,
+        # which is the operational meaning of "this position matters".
+        "most_sensitive": ranked[0] if ranked else None,
+        "least_sensitive": ranked[-1] if ranked else None,
+        "note": (
+            "Lift is delta_iptm(variant) minus delta_iptm(parent). Negative "
+            "means the substitution reduced glue dependence. The ordering of "
+            "positions is the durable claim here; the absolute values inherit "
+            "whatever calibration delta_iptm has, which is not yet established."
+        ),
+    }
+
+
+def from_scores(scores_path: Path, parent_peptide_id: str) -> dict:
+    """Load a campaign's scores and compute lifts for one parent's variants."""
+    if not scores_path.exists():
+        return {"status": "no scores", "lifts": []}
+    rows = [json.loads(line) for line in scores_path.read_text().splitlines() if line.strip()]
+    parent = next((row for row in rows if row.get("peptide_id") == parent_peptide_id), None)
+    if parent is None:
+        return {"status": f"parent {parent_peptide_id} not scored", "lifts": []}
+
+    variants = [row for row in rows if row.get("parent_peptide_id") == parent_peptide_id
+                and row.get("tier") == "design"]
+    lifts = [compute(row, parent) for row in variants]
+    return {
+        "parent": parent_peptide_id,
+        "parent_sequence": parent.get("peptide_sequence"),
+        "lifts": [item.to_dict() for item in lifts],
+        "computed": sum(1 for item in lifts if item.status == "computed"),
+        "refused": sum(1 for item in lifts if item.status != "computed"),
+    }

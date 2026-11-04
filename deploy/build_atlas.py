@@ -155,6 +155,15 @@ def main() -> int:
     (OUT / "about.json").write_text(json.dumps(about, indent=2, default=str))
     summary["files"]["about.json"] = len(about["sources"])
 
+    # The design arm (DESIGN_ARM.md). Built here rather than at request time
+    # like everything else: the generator imports the curation stack, and the
+    # droplet has no gemmi.
+    from nobble.design import report as design_report
+
+    design = design_report.build()
+    (OUT / "design.json").write_text(json.dumps(design, indent=2, default=str))
+    summary["files"]["design.json"] = len(design.get("parents", []))
+
     # Bridge rate against pose recovery (FINDINGS.md F9). Computed here, with
     # the correlation, so the application renders a static result and does no
     # statistics at request time.

@@ -111,6 +111,23 @@ def benchmark():
     )
 
 
+@bp.route("/design")
+def design():
+    # Read the precomputed document, exactly as /benchmark does. The fallback
+    # imports the generator, which pulls in the curation stack, so it is
+    # guarded: the droplet always has the atlas and never reaches it, while
+    # locally the atlas may be absent. Two routes have already returned 500
+    # in production by importing that stack unconditionally.
+    document = data.precomputed("design.json")
+    if not document.get("parents"):
+        from nobble.design import report as design_report
+        document = design_report.build()
+    return render_template(
+        "design.html", page_title="Design", active="design",
+        design=document,
+    )
+
+
 @bp.route("/about")
 def about():
     # As for /benchmark: precomputed first, live computation only as a local

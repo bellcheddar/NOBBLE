@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="panel">
+  <h2>Design arm</h2>
+  <p class="panel__hint">
+    Everything else in NOBBLE measures whether a predicted interface tells you
+    something true. This is the part that proposes something new: variants of
+    degrons with a known experimental outcome, scored by the same pipeline, to
+    ask which positions a degron depends on and whether any change improves it.
+  </p>
+  <p class="panel__hint">
+    Every variant is anchored to a parent. The headline number is
+    <b>design lift</b>, <span class="mono">delta-ipTM(variant) minus
+    delta-ipTM(parent)</span>: a difference of differences, which cancels
+    whatever the receptor, the glue and the parent degron each contribute, and
+    leaves the effect of the one substitution.
+  </p>
+</section>
+
+{% if design.get('caveat') %}
+<section class="panel">
+  <h3>What this arm cannot tell you yet</h3>
+  <p class="caveat">{{ design.caveat }}</p>
+  {% if design.get('score_validation') %}
+    <p class="mono">
+      matched-control ROC:
+      {{ design.score_validation.get('matched_control_roc', 'unknown') }}
+    </p>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if design.get('preview') %}
+<section class="panel">
+  <h3>Planned scan</h3>
+  {% set preview = design.preview %}
+  {% set parent = preview.parent %}
+  <p class="panel__hint">
+    Parent <b>{{ parent.gene }}</b>
+    (<span class="mono">{{ parent.peptide_id }}</span>, {{ parent.source }},
+    experimentally {{ parent.label }}, {{ parent.length }} residues against
+    {{ parent.e3_hint }}). Alanine scan: every position replaced in turn, each
+    variant differing from the parent by exactly one residue.
+  </p>
+  <p class="mono">{{ parent.sequence }}</p>
+  {% if parent.get('chosen_because') %}
+    <p class="panel__hint">Chosen because: {{ parent.chosen_because }}.</p>
+  {% endif %}
+
+  <table class="ntable">
+    <thead>
+      <tr><th>Substitution</th><th>Sequence</th><th>From</th><th>To</th>
+          <th>Crosses group</th><th>Lift</th></tr>
+    </thead>
+    <tbody>
+      {% for variant in preview.variants %}
+        <tr>
+          <td class="mono">{{ variant.substitution }}</td>
+          <td class="mono">{{ variant.sequence }}</td>
+          <td>{{ variant.from_group }}</td>
+          <td>{{ variant.to_group }}</td>
+          <td>{% if variant.crosses_group %}yes{% else %}no{% endif %}</td>
+          <td class="mono">not run</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if preview.get('cost') %}
+    <p class="panel__hint">
+      Cost, from the measured throughput rather than an estimate:
+      <b>{{ preview.cost.variants }}</b> variants,
+      <b>{{ preview.cost.jobs }}</b> jobs,
+      about <b>{{ preview.cost.projected_hours }}</b> hours. A saturation scan
+      of every position would be 285 variants and 4,275 jobs, which is why
+      saturation follows the alanine scan rather than replacing it.
+    </p>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if design.get('profile') and design.profile.get('positions') %}
+<section class="panel">
+  <h3>Scan profile</h3>
+  <p class="panel__hint">
+    Negative lift means the substitution reduced glue dependence, so the
+    original residue was doing something. The ordering of positions is the
+    durable claim; the absolute values inherit whatever calibration
+    delta-ipTM has.
+  </p>
+  <div class="chart chart--short" id="scan"></div>
+</section>
+{% endif %}
+
+{% if design.get('parents') %}
+<section class="panel">
+  <h3>Scannable parents</h3>
+  <p class="panel__hint">
+    {{ design.parents | length }} degrons carry an experimental label and can
+    anchor a scan. A scan of an unlabelled sequence would produce lifts against
+    a parent whose own delta-ipTM means nothing, which is a chart with no zero.
+  </p>
+  <table class="ntable">
+    <thead><tr><th>Gene</th><th>Source</th><th>E3</th><th>Length</th><th>Sequence</th></tr></thead>
+    <tbody>
+      {% for parent in design.parents %}
+        <tr>
+          <td>{{ parent.gene }}</td>
+          <td>{{ parent.source }}</td>
+          <td>{{ parent.e3_hint }}</td>
+          <td class="mono">{{ parent.length }}</td>
+          <td class="mono">{{ parent.sequence }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+<script>
+(function () {
+  const PROFILE = {{ (design.get('profile') or {}) | tojson }};
+  if (!PROFILE.positions || !document.getElementById('scan')) { return; }
+  const scored = PROFILE.positions.filter(p => p.lift !== null);
+  if (!scored.length) { return; }
+  Plotly.newPlot('scan', [{
+    x: scored.map(p => p.position + ' ' + p.wild_type),
+    y: scored.map(p => p.lift),
+    type: 'bar',
+    marker: { color: scored.map(p => p.lift < 0 ? '#A64708' : '#2F6F4F') },
+    hovertemplate: '%{x}<br>lift %{y:.4f}<extra></extra>'
+  }], {
+    margin: { l: 50, r: 16, t: 10, b: 50 },
+    xaxis: { title: { text: 'position and wild-type residue', font: { size: 12 } } },
+    yaxis: { title: { text: 'design lift', font: { size: 12 } }, zeroline: true },
+    height: 300
+  }, { displayModeBar: false, responsive: true });
+}());
+</script>
+{% endblock %}

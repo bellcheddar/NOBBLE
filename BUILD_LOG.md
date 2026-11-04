@@ -201,3 +201,18 @@
   ipTM lookup in the Sievers arm would have read receptor-to-zinc instead of
   receptor-to-peptide, in range and without raising. Now tested, and the test
   verified to fail when the cofactor is moved. 72 tests pass.
+- 2026-11-04T06:00Z Design arm built and deployed as a seventh tab
+  (DESIGN_ARM.md, D-NOB-037). nobble/design/ holds the variant generators
+  (alanine scan, saturation, chemistry grouping) and design lift,
+  delta_iptm(variant) minus delta_iptm(parent), which refuses rather than
+  approximates when parent and variant were not run identically. The tab
+  reports the validation state of the score beside the figures and states
+  that the durable claim is the ordering of positions, not the absolute lift.
+  31 scannable parents, a 15-variant scan costing 225 jobs and 4.9 hours.
+  Default parent now chosen on measured Delta-ipTM (IKZF1/CRBN, +0.316)
+  rather than an arbitrary length tiebreak that had landed on a PROTAC pair.
+  QC 14 captures, 0 non-200, 0 console errors, 0 serious axe. 85 tests pass.
+- 2026-11-04T06:00Z Two process gaps closed while shipping it: the QC page
+  list and deploy.sh's route verification both had hardcoded six-tab lists,
+  so a broken seventh tab would have passed QC and deployed as "verified".
+  Both now include /design.

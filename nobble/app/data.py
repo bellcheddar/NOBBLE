@@ -294,3 +294,14 @@ COMPONENTS = {
                 "inverted. Reported as a measurement only.",
     },
 }
+
+
+def design() -> dict:
+    """The design arm's state (DESIGN_ARM.md).
+
+    Precomputed like everything else the droplet serves: this reads the
+    atlas rather than the curation stack, because importing the generator
+    at request time would put the scientific stack behind a route again and
+    that has already caused two 500s in production.
+    """
+    return precomputed("design.json")

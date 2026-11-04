@@ -32,6 +32,7 @@ def create_app(campaign: str | None = None) -> Flask:
                 ("interactions", "Interactions", "PLIP contact map"),
                 ("delta", "Delta", "Glue dependence and the ROC"),
                 ("benchmark", "Benchmark", "The seven panel members"),
+                ("design", "Design", "Degron variants and their lift"),
                 ("about", "About", "Pipeline, references and caveats"),
             ],
         }
