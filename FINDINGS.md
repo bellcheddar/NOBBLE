@@ -6807,3 +6807,45 @@ value is the shape this project keeps finding, and after this fix both take
 the parent and the sequence from the same `campaign.json`, so they agree by
 construction rather than by coincidence. The file is kept and labelled rather
 than deleted, since it is the only per-campaign copy.
+
+## F148. Verifying the publish path for refined poses, and the one thing holding it together
+
+The atlas rebuild with tier 2 and the design scan included is the last stage
+of the chain that has never run. F137 made the app read the tier-2 slice, and
+that was checked against a local campaign; whether it works through the
+published bundle was still an assumption.
+
+Run rather than assumed. `build_atlas.py` takes `NOBBLE_ATLAS_OUT`, so the
+build can go to a scratch directory instead of over the published one, which
+is what F131 wishes had been true of the test that rebuilt the live atlas
+from a campaign with 54 of 2,360 jobs scored.
+
+Built from a campaign carrying tier-2 results and scores: 110 structures
+where tier 1 alone is 100, 28.5 MB, the PROTAC-DB redaction verified, and
+both tier-2 files present with all ten of their structures published under
+flattened names. Serving that bundle through `create_app`, the pose
+catalogue offers 25 structures of which 10 are refined, every one of the ten
+URLs returns 200, and the refinement comparison renders. So the path works
+and there is no defect to fix.
+
+What the exercise did surface is how little holds it together. A structure
+reaches the browser through three independent constructions of one filename:
+the builder copies it to `f"{row['job_id']}.cif"` and rewrites the row to
+`structures/<that>`; the API offers `f"/structure/{row['job_id']}.cif"`; the
+route serves `/structure/<path:job_id>.cif` by looking the job up again.
+Nothing tied the three together.
+
+They agree today. If the published name ever gained a prefix, a tier suffix
+or a different extension on one side only, every pose URL would 404 while the
+atlas, the API and the page each looked correct in isolation: the catalogue
+would list structures and the viewer would show its empty state. That is the
+same shape as F135's `TIER2_SUFFIX`, where a job id is built in one module
+and parsed in another.
+
+Pinned without rebuilding an atlas: the three spellings, the `path`
+converter that makes a job id's punctuation a non-question, and a check over
+the published bundle that every structure on disk is named by a row and
+every row's structure is on disk. Both directions, because a file nothing
+points at is dead weight on the droplet and a row pointing at nothing is a
+404 in the viewer. The current atlas holds 100 of each and they match
+exactly.
