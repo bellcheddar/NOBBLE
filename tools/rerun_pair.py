@@ -32,6 +32,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from nobble import paths  # noqa: E402
+
 
 def _known_good(yaml_name: str, exclude: Path) -> Path | None:
     """The same job's YAML from another campaign, if exactly one has it.
@@ -100,7 +102,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"no queue at {queue}", file=sys.stderr)
         return 2
 
-    rows = [json.loads(line) for line in queue.read_text().splitlines() if line.strip()]
+    rows = paths.read_jsonl(queue)
     jobs = [row for row in rows if row.get("pair_id") == args.pair_id]
     if not jobs:
         print(f"{args.pair_id} is not in {queue.name}", file=sys.stderr)

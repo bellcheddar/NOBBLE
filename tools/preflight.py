@@ -82,7 +82,7 @@ def preflight(campaign: Path) -> dict:
         return {"status": f"no queue at {queue_path}", "ok": False,
                 "errors": [{"job": campaign.name, "problem": "no queue.jsonl"}]}
 
-    jobs = [json.loads(line) for line in queue_path.read_text().splitlines() if line.strip()]
+    jobs = paths.read_jsonl(queue_path)
     cap = int(paths.thresholds()["manifest"]["token_cap_tier1"])
     # Constructs that declared themselves over the cap are not violations:
     # DCAF15_DDB1_DDA1 is 1,223 tokens by construction. Mirror the manifest's

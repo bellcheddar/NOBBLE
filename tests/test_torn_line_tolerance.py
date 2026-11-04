@@ -100,13 +100,45 @@ def test_every_reader_of_an_append_only_file_tolerates_a_tear():
 
 def test_the_queue_readers_stay_strict():
     """A damaged queue must be loud. Running 2,359 of 2,360 jobs because one
-    line would not parse is worse than stopping."""
+    line would not parse is worse than stopping.
+
+    The count at the end is not decoration. The first version of this
+    inspected only lines containing `read_jsonl(`, and at the time the queue
+    readers were still bare comprehensions, so nothing matched and the test
+    passed without asserting anything. That is the second vacuous test I
+    wrote today, and this is what stops a third.
+    """
+    checked = []
     for relative in ("nobble/execute/runner.py", "tools/preflight.py",
-                     "nobble/execute/tier2.py", "tools/rerun_pair.py"):
+                     "nobble/execute/tier2.py", "tools/rerun_pair.py",
+                     "nobble/curate/library.py"):
         source = (ROOT / relative).read_text()
         for line in source.splitlines():
-            if "read_jsonl(" in line and ("queue" in line or "source_queue" in line):
-                assert "tolerate_torn=True" not in line, (relative, line.strip())
+            stripped = line.strip()
+            if stripped.startswith("#") or "read_jsonl(" not in stripped:
+                continue
+            if not any(word in stripped for word in
+                       ("queue", "source_queue", "MANIFEST")):
+                continue
+            assert "tolerate_torn" not in stripped, (relative, stripped)
+            checked.append(f"{relative}: {stripped}")
+    assert len(checked) >= 5, checked
+
+
+def test_a_damaged_queue_actually_raises(tmp_path):
+    """The behaviour, not the source text. A queue reader that silently
+    dropped a job would emit a campaign one job short and say nothing."""
+    from nobble.execute.runner import run_campaign
+
+    campaign = tmp_path / "campaign_bad_queue"
+    campaign.mkdir()
+    (campaign / "queue.jsonl").write_text(
+        json.dumps({"job_id": "a", "pair_id": "p", "tokens": 10, "seed": 1,
+                    "yaml": "a.yaml"}) + "\n"
+        + '{"job_id": "b", "pair_i')
+
+    with pytest.raises(json.JSONDecodeError):
+        run_campaign(campaign)
 
 
 def test_scoring_survives_a_torn_results_file(tmp_path):

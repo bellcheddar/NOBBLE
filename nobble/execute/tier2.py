@@ -268,9 +268,7 @@ def build_tier2_queue(campaign: Path, selection: Selection) -> dict:
         return {"status": "no tier-1 queue to refine"}
 
     chosen = {item["pair_id"] for item in selection.selected}
-    jobs = [
-        json.loads(line) for line in source_queue.read_text().splitlines() if line.strip()
-    ]
+    jobs = paths.read_jsonl(source_queue)
     refine = [
         job for job in jobs
         if job["pair_id"] in chosen and job.get("complex_type") == "ternary"

@@ -40,9 +40,10 @@ def load() -> dict | None:
     """Return the persisted library, or None if it has not been built."""
     if not MANIFEST.exists() or not SUMMARY.exists():
         return None
-    peptides = [
-        json.loads(line) for line in MANIFEST.read_text().splitlines() if line.strip()
-    ]
+    # Strict: the manifest is written in one pass by `build` and nothing
+    # appends to it, so an unparseable line is damage rather than a torn
+    # tail (F111).
+    peptides = paths.read_jsonl(MANIFEST)
     return {"peptides": peptides, "summary": json.loads(SUMMARY.read_text())}
 
 

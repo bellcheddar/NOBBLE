@@ -5191,6 +5191,16 @@ the flag, because the tempting fix is to apply it everywhere and be done.
 how many it skipped rather than skipping in silence, which is the failure
 F99 and F103 were both instances of.
 
+The six strict readers were converted too, to `read_jsonl(path)` with no
+flag, and the reason is a test of mine that was vacuous. It inspected lines
+containing `read_jsonl(` and asserted none of them carried `tolerate_torn`
+on a queue, and at that point the queue readers were still bare
+comprehensions, so nothing matched and the loop body never ran. Found by
+asking what a mutation would have to hit rather than by the test failing.
+It now counts what it inspected and requires at least five, and a second
+test drops a torn line into a real queue and confirms `run_campaign` raises.
+That is the second vacuous test I wrote today, after the two in F107.
+
 The end-to-end test builds its fixture from real rows rather than inventing
 one. My first attempt invented a results row and died on `e3_gene`, which is
 the ninth field name I have guessed wrong in this build, and the fixture now

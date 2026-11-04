@@ -438,7 +438,11 @@ def run_campaign(campaign: Path, limit: int | None = None, tier: int = 1) -> dic
                 "status": f"no queue at {queue_path.name}"}
     settings = settings_from_config(tier)
 
-    jobs = [json.loads(line) for line in queue_path.read_text().splitlines() if line.strip()]
+    # Strict: the queue is written once, before anything runs, and nothing
+    # appends to it. A line that will not parse is a damaged input, not a
+    # torn tail, and skipping it would run 2,359 of 2,360 jobs in silence
+    # (F111).
+    jobs = paths.read_jsonl(queue_path)
     done = completed(state_path)
     pending = [job for job in jobs if job["job_id"] not in done]
     if limit:
