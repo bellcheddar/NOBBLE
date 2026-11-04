@@ -212,7 +212,11 @@ def structure(job_id: str):
     """
     from flask import Response
 
-    for row in data.results():
+    # Both tiers. The catalogue offers refined poses, so serving tier 1
+    # alone would hand the viewer a URL that 404s for every structure tier
+    # 2 produced: the refinement would be listed and unopenable, which is
+    # worse than not listing it.
+    for row in [*data.results(), *data.results_tier2()]:
         if row.get("job_id") != job_id:
             continue
         path = row.get("structure")

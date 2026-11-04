@@ -590,3 +590,10 @@
   structures every time. A test that depends on accumulated global state
   measures the suite rather than the code, so they now run in a subprocess.
   Stable across three consecutive full runs. 130 tests pass.
+- 2026-11-04T17:25Z The refined-pose URLs I added in the previous commit all
+  404ed. The catalogue offered them; /structure/<job_id>.cif searched
+  results.jsonl only, so no tier-2 job could be found and the viewer would
+  have listed every refined structure and failed to open any of them. Worse
+  than not listing them. Fixed to search both tiers, with a test that
+  fetches every URL the catalogue advertises rather than asserting on the
+  implementation. 131 tests pass.

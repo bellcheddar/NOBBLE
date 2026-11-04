@@ -60,6 +60,48 @@ def test_refined_poses_reach_the_structure_catalogue(tmp_path):
     assert labels[1] == "tier 1"
 
 
+def test_every_url_the_catalogue_offers_actually_serves(tmp_path):
+    """The catalogue lists refined poses; the structure route searched
+    tier 1 only, so every refined URL it advertised returned 404. A listed
+    structure that cannot be opened is worse than one that is not listed,
+    because the viewer offers it and then fails.
+
+    Checks the contract rather than the implementation: every URL in the
+    catalogue is fetched."""
+    import json as _json
+    import subprocess as _sp
+    import textwrap as _tw
+
+    cif = tmp_path / "pose.cif"
+    cif.write_text("data_x\n_entry.id x\n")
+    base = {"job_id": "p1__ternary__unconstrained__seed1", "pair_id": "p1",
+            "complex_type": "ternary", "conditioning": "unconstrained",
+            "seed": 1, "structure": str(cif)}
+    refined = dict(base, job_id=base["job_id"] + "__tier2", tier_setting=2)
+    (tmp_path / "results.jsonl").write_text(_json.dumps(base) + "\n")
+    (tmp_path / "results_tier2.jsonl").write_text(_json.dumps(refined) + "\n")
+    (tmp_path / "scores.jsonl").write_text("")
+
+    script = _tw.dedent(f"""
+        import json, sys
+        sys.path.insert(0, {str(ROOT)!r})
+        from nobble.app import create_app
+        client = create_app({str(tmp_path)!r}).test_client()
+        payload = client.get("/api/pair/p1/structures").get_json()
+        out = [(s["url"], client.get(s["url"]).status_code)
+               for s in payload["structures"]]
+        print(json.dumps(out))
+    """)
+    result = _sp.run([sys.executable, "-c", script], capture_output=True,
+                     text=True, cwd=ROOT)
+    assert result.returncode == 0, result.stderr
+    served = _json.loads(result.stdout.strip().splitlines()[-1])
+
+    assert len(served) == 2, served
+    for url, status in served:
+        assert status == 200, f"{url} returned {status}"
+
+
 def test_a_campaign_without_tier_two_is_unaffected(tmp_path):
     """The normal state. An absent results_tier2.jsonl must not error or
     add anything."""
