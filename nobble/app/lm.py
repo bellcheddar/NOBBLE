@@ -260,9 +260,29 @@ def execute(query: dict, rows: list[dict]) -> list[dict]:
     limit = query.get("limit") or 25
     out = out[:limit]
 
+    # A query that names no fields used to return the whole score row, and
+    # the answer panel renders ten pair ids from it. On the benchmark atlas
+    # that was invisible; at campaign scale a 25-row answer was 550 KB of
+    # JSON, nine tenths of it `seed_records`, `plip`, `contact_map` and
+    # `convergence`, which the panel cannot show and the model cannot ask
+    # about (F176).
+    #
+    # So the default is the published schema rather than everything. The
+    # schema is what the model is given and the only vocabulary a question
+    # can be asked in, so an answer carrying those fields is complete with
+    # respect to anything askable, and `/api/pair/<pair_id>` still serves
+    # the whole row.
+    #
+    # Intersected with the keys the row actually has, rather than taken as
+    # a fixed list. Projecting onto the schema outright would invent a null
+    # for every field a row does not carry, and "not computed" and "absent"
+    # are distinctions this project keeps (F130).
     select = query.get("select")
     if select:
         out = [{name: row.get(name) for name in select} for row in out]
+    else:
+        out = [{name: row[name] for name in QUERY_SCHEMA["fields"] if name in row}
+               for row in out]
     return out
 
 

@@ -238,6 +238,15 @@ def about():
 
 @bp.route("/api/pairs")
 def api_pairs():
+    """Every scored pair, whole. Deliberately unbounded (F176).
+
+    The two consumers that render a few fields from a record set are
+    bounded: the campaign and Delta pages drop the per-seed detail they
+    never read, and an `/api/ask` answer defaults to the published schema.
+    This one is the full-fidelity export, 3.1 MB at campaign scale, and it
+    stays that way. The client never calls it, and a bulk route that
+    quietly truncated would be worse than a large one.
+    """
     return jsonify(data.scores())
 
 

@@ -8031,3 +8031,52 @@ source, which hit the `/ 1024` byte conversions. The other anchored an
 ordering test on the first mention of `tools/space_check.py` in the script,
 which is the comment above the call, so it compared the rsync against the
 comment rather than against the command. Both now anchor on the invocation.
+
+## F176. The same mistake one layer down: the LM answer shipped the whole row
+
+F174 was a page embedding fields it never reads. Having found it there, the
+question is where else the same shape occurs, and `/api/ask` is the answer.
+
+`lm.execute` applies a `select` clause when the model supplies one, and when
+it does not it returned the whole score row. The answer panel on the campaign
+page renders one field from it, `pair_id`, for at most ten rows. So a default
+25-row answer was 514 KB of JSON and a 100-row one, the schema's own maximum,
+was 2,056 KB, to print ten strings.
+
+The default is now the published schema rather than everything, which takes
+those to 12 KB and 49 KB. The schema is the right default and not just a
+convenient one: it is the vocabulary the model is given and the only one a
+question can be asked in, so an answer carrying its twenty fields is
+complete with respect to anything askable. `seed_records`, `plip`,
+`contact_map` and `convergence` are not in it, cannot be queried, and cannot
+be displayed, and `/api/pair/<pair_id>` still serves the whole row.
+
+One detail that is not a detail. The projection is intersected with the keys
+the row actually carries rather than taken as a fixed list of twenty.
+Projecting onto the schema outright invents a null for every field a row does
+not have, which reports "not computed" as a measured null, and that
+distinction is one this project has already paid for twice: F130, where a NaN
+passed a truthiness test, and the abstention path, which exists to say what
+is missing rather than to return a zero. A test holds that case with a
+two-field row.
+
+Three of the seven tests were checked against the old behaviour rather than
+assumed to bite: the schema-only assertion, the heavy-key assertion and the
+size bound all fail when the previous `execute` is put back, the last at
+2,056 KB against a 200 KB bound.
+
+This is the second instance of one pattern in one session, which is worth
+stating plainly: the project's read-only atlas design hands whole records to
+consumers that render a few fields, and it was invisible for as long as the
+only atlas was 7 pairs.
+
+I first wrote that the two places returning record sets are now both
+bounded. That was wrong, and checking it before committing the sentence is
+the only reason it is not in the repository. There are three.
+`/api/pairs` returns every scored pair whole, 3.1 MB at campaign scale, and
+is left unbounded deliberately: it is the full-fidelity export, the client
+never calls it, and a bulk route that silently truncated would be worse than
+a large one. The two that feed a renderer are bounded, one by a per-pair
+byte budget and one by the schema; the one that exists to hand over
+everything still does. Naming it here rather than leaving it to be
+rediscovered, which is what F172 asked for.

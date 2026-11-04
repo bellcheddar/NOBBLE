@@ -891,6 +891,15 @@ refuses while that is true. The decision is to let it finish and then rerun
 and deploys (D-NOB-069). Every stage is resumable, so the second run's queue
 pass costs minutes.
 
+**Both halves of G1 are closed, checked rather than assumed.** Tier 1
+projects to 52.6 hours against a 96-hour budget, with 28.32 hours spent over
+861 jobs across all campaigns. Tier 2 has never run, so its cost is bounded
+rather than measured: 29.24 to 219.29 hours for 140 jobs over a decile-sized
+15 pairs, judged on the upper bound against 67.68 hours remaining, and
+automatic scope reduction takes it to the 5 pairs that fit. That is G1
+behaving as specified rather than a gate to raise, which is the answer I
+wanted before the chain reaches stage 3.
+
 **The post-compute pipeline is about ten minutes, measured.** A full rescore
 of the benchmark campaign is 25.6 s for 7 pairs over 100 jobs, which puts
 158 pairs over 2,360 jobs at roughly ten minutes. The rescore was also

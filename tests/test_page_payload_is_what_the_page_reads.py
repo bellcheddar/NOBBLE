@@ -47,13 +47,30 @@ ACCESS = re.compile(
 )
 
 
+# `url_for('static', filename='js/nobble.js')`, either quote style. The
+# single-quoted form is what the templates use today, and matching only that
+# is how this test would quietly stop covering the client script: a template
+# reformatted to double quotes would find no scripts, read no JS, and pass
+# because it was looking at nothing. `_scripts` asserts it found some.
+SCRIPT = re.compile(r"""filename=['"]js/([A-Za-z0-9_.-]+)['"]""")
+
+
+def _scripts(text: str) -> list[Path]:
+    found = [JS / name for name in SCRIPT.findall(text)]
+    present = [path for path in found if path.exists()]
+    assert present, (
+        "no client scripts were found in the template, so the key-access "
+        "checks below would be reading the template alone. Either the pages "
+        "stopped loading JavaScript or SCRIPT no longer matches how they do."
+    )
+    return present
+
+
 def _page_text(name: str) -> str:
     """The template, the base it extends, and every script either loads."""
     parts = [(TEMPLATES / name).read_text(), (TEMPLATES / "base.html").read_text()]
-    for script in re.findall(r"filename='js/([A-Za-z0-9_.-]+)'", "".join(parts)):
-        candidate = JS / script
-        if candidate.exists():
-            parts.append(candidate.read_text())
+    for script in _scripts("".join(parts)):
+        parts.append(script.read_text())
     return "\n".join(parts)
 
 
