@@ -7666,6 +7666,17 @@ the check passed, which is what made the narrowness invisible, and in each
 case the thing that found it was running the check against a state nobody
 had put it in before.
 
+**What the widened sweep then found: nothing.** 2,183 assertions, 2,170
+executed, 13 unreached, and not one of the 33 helper assertions among them.
+They all run. The 13 are the same honest set as before, skips for state this
+checkout lacks and untaken branches of conditionals whose other branch
+asserts, plus two from a test added since.
+
+So the fix changed no verdict, and that is worth recording rather than
+quietly dropping. The tool was blind to 33 assertions and all 33 were fine;
+had I stopped at the first result I would have been right by luck, and I
+would not have known it.
+
 ## F167. The handover's figures were typed, so they were already wrong
 
 PROGRESS.md's "Waiting on Marc" table said "G4 Publish: 160 commits
@@ -7694,3 +7705,40 @@ The third row, `bash deploy/enable_gzip.sh`, carries no figure and is
 unchanged. The script still passes a syntax check and references nothing
 altered since it was written, which I checked rather than assumed, because
 twenty-odd findings have landed between writing it and now.
+
+## F168. The figures I pinned were figures nobody can state
+
+F167 found two stale numbers in the handover, replaced them with measured
+ones, and pinned them with a test. The commit that did it incremented the
+unpushed commit count, so the test failed on its own commit: 202 written,
+203 by the time anything could read it.
+
+I then replaced the stale suite size the same way, tying "1,048 passing, 4
+skipped" to the 1,052 tests pytest collects. Adding that one test moved the
+collected count to 1,053. Twice in two attempts, the fix broke its own
+check, for the same reason each time.
+
+The distinction that settles it, and which F167 missed:
+
+A figure that is a property of the **data** can be written down and checked.
+It changes only when the data does, and a reader wants the number itself:
+25,519 library candidates, 2,360 jobs, 285,996 bridges, 7 pairs compared.
+Those are pinned and should stay pinned.
+
+A figure that is a property of the **work** changes as a consequence of doing
+the work. Writing one down is a race against oneself, and pinning it with a
+test makes the race a failure rather than a staleness. Commits, tests and
+findings are all of that kind. The handover gives the command now:
+`git rev-list --count origin/main..HEAD`, `git grep -c /Users/dellboy
+origin/main -- deploy/atlas`, `pytest tests/ -q --collect-only | tail -1`.
+
+F167 stated the rule as "a number also available from a command should be
+checked against the command". That is half right and the half it misses is
+the expensive half: some numbers should not be in the document at all, and
+the test's job is to check that the command is there instead.
+
+A third thing in the same test, smaller: the collect-only subprocess ran
+`"python"` with a PATH of `/usr/bin:/bin`, and the interpreter this project
+uses is in neither, so it failed with `FileNotFoundError` rather than a
+verdict. `sys.executable` now. That is the second time today I have had a
+check fail with an exception instead of an answer, after F162.

@@ -56,7 +56,7 @@ other phase continue.
 | Item | What is needed |
 |---|---|
 | **G1 Compute**: Tier B has no pairs | A decision: Tier B as a separate campaign, a larger `max_compute_hours`, or a GPU. Measured cost above |
-| **G4 Publish**: 202 commits unpushed | `git push origin main` was declined by the permission classifier. `origin/main` also still carries 107 of the absolute project paths F128 removed, which a push does not clear from history. Both figures are measured by `tests/test_pending_items_are_current.py`, because a count typed into a handover is stale the next time anyone commits (F167) |
+| **G4 Publish**: the branch is ahead of `origin/main` | `git push origin main` was declined by the permission classifier. Run `git rev-list --count origin/main..HEAD` for the figure: it changes with every commit, so a number written here is wrong by the time it is committed, which is how F167's own fix failed its own test (F168). `origin/main` also still carries absolute project paths F128 removed, which a push does not clear from history; `git grep -c /Users/dellboy origin/main -- deploy/atlas` counts them |
 | **F132**: static assets uncompressed | `bash deploy/enable_gzip.sh`. A direct ssh to the live vhost is declined to me, so the script is written to be read first. 10.1 MB to a first visitor, of which molstar is 5.1 and plotly 4.45 |
 
 ## Phase 1 gates: all passing
@@ -805,8 +805,8 @@ validation layers, compare, the design report, tier-2 selection, the atlas
 build, drift, provenance and the prediction scorer. All clean, and
 `check_prediction` now accounts for all three of its testable verdicts.
 
-**This session, F132 to F148.** Seventeen findings, written up in
-FINDINGS.md. Four themes.
+**This session, F132 to F167.** Thirty-six findings, written up in
+FINDINGS.md. Five themes.
 
 *Specified and never run.* Tier B is selected, frozen and gate-passed and has
 no pairs in any campaign, though spec 3.3 says not to defer it: Gate G1 is
@@ -851,7 +851,9 @@ referencing cached `.a3m` files and the peptide chain `msa: empty`; the
 design lift path scores 15 of 15 positions; the publish path serves refined
 poses from a scratch-built atlas, all ten URLs at 200.
 
-**Suite 1,003 passing, 3 skipped.** Browser QC clean on a named build:
+**Suite green**, which is what `pytest tests/ -q` says; its size is
+`pytest tests/ -q --collect-only | tail -1` and changes whenever a test
+is added, so it is not written here (F168). Browser QC clean on a named build:
 fourteen pages, 0 non-200, copy budget within, 0 console errors, 0 serious
 axe violations.
 
