@@ -10,7 +10,7 @@ Rewritten after every phase and at least every 30 minutes during long compute.
 | 1 Curation and manifest | **complete** | All gates pass. Tier A 17, Tier B 15 (frozen), 25,567-peptide library reduced to 220, 11 MSAs cached, manifest emitted with 0 errors |
 | 2 Execution | **benchmark complete, campaign queued** | Benchmark queue finished 99/99, exit 0, zero failures across the whole run. The corrected-construct campaign started automatically in tmux `nobble-corrected`. The main campaign is assembled and waiting: `campaigns/campaign_20261104T004632Z`, 158 pairs, 2,360 jobs, 2,360 YAMLs |
 | 3 Scoring and validation | **complete** | Every component, the three validation layers and the composite weight fitter are built and running. The fitter and two of the three layers correctly report `not_computed` with their reasons until the Sievers arm supplies matched negatives |
-| 4 Application | **complete** | Six tabs on the Depot system, Mol* wired, BINMAN-LM query head with a deterministic executor. Playwright: 12 captures at two viewports, 0 non-200, 0 console errors, 0 serious axe violations |
+| 4 Application | **complete** | Seven tabs on the Depot system (the seventh is the design arm, DESIGN_ARM.md, which is an addition rather than part of the spec), Mol* wired, BINMAN-LM query head with a deterministic executor. Playwright: 14 captures at two viewports, 0 non-200, 0 console errors, 0 serious axe violations |
 
 ## Phase 1 gates: all passing
 

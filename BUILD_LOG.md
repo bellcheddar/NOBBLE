@@ -241,3 +241,16 @@
   finish, preflights, runs, scores and computes the scan profile. Preflight
   runs before the queue rather than after, because the failure worth catching
   is the silent one.
+- 2026-11-04T07:05Z Consistency sweep after the seventh tab. The LM query
+  head was blind to the design arm: its schema declared tier as "benchmark,
+  A or B" (stale, and conflating the pair's arm with the Tier A/B curation
+  tier) and had no design fields, so validate() would correctly but
+  unhelpfully reject any question mentioning a substitution. Schema now
+  covers tier's real values plus peptide_sequence, parent_peptide_id,
+  substitution and role. Six-tab references updated in PROGRESS.md,
+  README.md and two module docstrings; README.html and README.preview.html
+  regenerated with readme_forge rather than hand-edited. BUILD_SPEC.md left
+  alone: it says six tabs and is correct about what it specifies, the design
+  arm being an addition to it. README now documents the arm, including the
+  two details that exist because the obvious implementation is wrong.
+  90 tests pass, QC 14 captures clean, deployed.

@@ -42,8 +42,23 @@ QUERY_SCHEMA: dict[str, Any] = {
         "peptide_gene": "string, the substrate the peptide was drawn from",
         "ligand_key": "string, the glue or degrader, as a CCD code or a name",
         "modality": "string, glue or protac",
-        "tier": "string, benchmark, A or B",
-        "peptide_label": "string, degraded, not_degraded, negative_control or unknown",
+        "tier": (
+            "string: benchmark, sievers_zf, scramble or design. This is the "
+            "arm the pair belongs to, not the Tier A/Tier B curation tier"
+        ),
+        "peptide_label": (
+            "string: degraded, not_degraded, negative_control, or null for a "
+            "design variant, which carries no experimental label by design"
+        ),
+        "peptide_sequence": "string, the peptide chain as submitted",
+        "parent_peptide_id": (
+            "string or null, the peptide a design variant or scramble was "
+            "derived from"
+        ),
+        "substitution": (
+            "string or null, a design variant's single change, for example K7A"
+        ),
+        "role": "string or null, parent or variant, within a design scan",
         "bridge_percentile": "number 0 to 100, against 285,996 observed bridges",
         "bridge_formation_rate": "number 0 to 1, fraction of seeds that bridged",
         "delta_iptm": "number, ternary minus binary interface confidence",

@@ -1,6 +1,6 @@
 """Phase 4: the NOBBLE Flask application.
 
-Six tabs over one campaign, sharing a single pinned selection, built on the
+Seven tabs over one campaign, sharing a single pinned selection, built on the
 Depot design system inherited from BINMAN (spec Phase 4). NOBBLE is served as a
 fifth BINMAN module, so the stylesheet and the vendored Mol*, Plotly, D3 and
 Tabulator builds are BINMAN's, pinned, not a second set of choices.

@@ -60,7 +60,8 @@ while the degron fails to dock would raise it.
 | `nobble/execute/` | 2 | MSA precomputation, Boltz YAML generation, a resumable job queue with per-job checkpointing |
 | `nobble/score/` | 3 | Bridge percentile, Delta-ipTM, pose convergence, docking checks, lysine geometry, PLIP fingerprints |
 | `nobble/validate/` | 3 | Pose recovery, time-split blind evaluation, matched-control ROC |
-| `nobble/app/` | 4 | Flask application, six tabs, Mol\* and Plotly throughout |
+| `nobble/app/` | 4 | Flask application, seven tabs, Mol\* and Plotly throughout |
+| `nobble/design/` | addition | Degron variants (alanine scan, saturation) and design lift. See `DESIGN_ARM.md`: not part of the build specification |
 
 NOBBLE is not a standalone stack. It is a campaign preset on
 [BoltzMaker](https://github.com/bellcheddar/BoltzMaker) plus a fifth module on
@@ -123,6 +124,38 @@ From the benchmark panel, at tier-1 triage settings, written up in `FINDINGS.md`
 
 These are interim, single-pair, triage-tier numbers. They are published here
 because a pipeline that only reports its successes is not a benchmark.
+
+## 🧪 The design arm
+
+A seventh tab, scoped in [`DESIGN_ARM.md`](DESIGN_ARM.md) and deliberately not
+part of the build specification. Everything else in NOBBLE measures whether a
+predicted interface tells you something true; this is the part that proposes
+something new.
+
+It ships **before the score that would rank it is validated**, and that shaped
+it. The matched-control ROC reports `not_computed` until the Sievers arm runs,
+so a tab that ranked invented peptides by the composite would be the failure
+the rest of the project exists to avoid: a ranked list reads as a
+recommendation whatever the caption says.
+
+| Property | How it works |
+|---|---|
+| Anchoring | Every variant descends from a parent carrying an experimental label. Nothing is scored in the abstract |
+| Headline number | **Design lift**, `delta_iptm(variant) - delta_iptm(parent)`: a difference of differences, cancelling the receptor, the glue and the parent degron |
+| What it claims | The **ordering** of positions, which survives a monotone miscalibration. "Position 7 matters more than position 3" is durable in a way "this peptide will be degraded" is not |
+| When it refuses | Different construct, E3, ligand or modality, or fewer than three seeds on either side, and no lift is returned at all |
+| Cost | An alanine scan of a 15-mer is 15 variants and 225 jobs, about 4.9 hours. Saturating every position is 285 variants and 4,275 jobs, so saturation requires explicit positions |
+
+Two details that exist because the obvious implementation is wrong:
+
+- A **variant inherits its parent's cofactor** rather than re-deriving it. An
+  alanine scan of a zinc finger mutates the coordinating cysteines, so
+  inferring per variant drops the zinc at exactly the positions the scan
+  exists to interrogate. The lift there would be large, would read as "this
+  position is critical", and would be reporting the missing ion.
+- A **position already alanine is scanned to glycine**, not emitted unchanged.
+  An unchanged variant costs 15 jobs to learn nothing and would read on the
+  chart as "does not matter" when it was never tested.
 
 ## 📋 Requirements
 

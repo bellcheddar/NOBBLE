@@ -1,4 +1,4 @@
-"""Routes for the six tabs, plus the JSON endpoints the pages read.
+"""Routes for the seven tabs, plus the JSON endpoints the pages read.
 
 Every page renders from `nobble.app.data`, which reads the campaign's scored
 output. Nothing is computed here: spec 4.8 fits the composite weights in Phase 3
