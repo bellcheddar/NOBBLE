@@ -266,7 +266,7 @@ def from_scores(scores_path: Path, parent_peptide_id: str) -> dict:
     """Load a campaign's scores and compute lifts for one parent's variants."""
     if not scores_path.exists():
         return {"status": "no scores", "lifts": []}
-    rows = [json.loads(line) for line in scores_path.read_text().splitlines() if line.strip()]
+    rows = paths.read_jsonl(scores_path, tolerate_torn=True)
     parent = next((row for row in rows if row.get("peptide_id") == parent_peptide_id), None)
     if parent is None:
         return {"status": f"parent {parent_peptide_id} not scored", "lifts": []}

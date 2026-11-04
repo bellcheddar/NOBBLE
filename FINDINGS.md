@@ -5151,3 +5151,47 @@ an interrupted write would otherwise leave no trace anyone looks at.
 A fourth test holds the rule rather than the three instances: no bare
 `write_text` in any of those modules. A cache added later is the same defect
 again, and that is the form this has taken four times now.
+
+## F111. Seven readers that a kill mid-append would have stopped
+
+The runner appends to `results.jsonl` one row at a time and may be killed at
+any moment, which the project states as a rule rather than a hope. Its own
+reader of `state.jsonl` has always known what that means:
+
+> A torn final line from a kill mid-write: ignore it and re-run that job.
+
+Seven other readers of the same append-only files built their rows in a list
+comprehension with no guard. A kill at the wrong moment leaves a fragment on
+the last line, and the next stage raises `JSONDecodeError` instead of
+processing the complete records before it. The seven are `metrics.aggregate`,
+`score/run`, `write_throughput`, the pose-recovery and ROC layers,
+`design/lift` and the tier-2 selection: scoring, validation, the weight fit,
+the refinement selection and the cost projection, which between them are
+every stage that runs after the compute.
+
+With 180 jobs done that is an hour lost to a restart. The stages it blocks
+run at the end, against 2,360.
+
+`scores.jsonl` is in the same position by a different route: it is written in
+one pass rather than appended to, so a kill truncates it, and the last line
+can be a fragment just the same. Four of the seven read it.
+
+One shared reader now, `paths.read_jsonl`, with the behaviour named at each
+call site rather than chosen globally. `tolerate_torn=True` for the
+append-only and single-pass files.
+
+The other six sites stay strict, and that is the more interesting half.
+`queue.jsonl` and the library manifest are written once, before anything
+runs, and nothing appends to them. A line that will not parse there is a
+damaged input rather than a torn tail, and tolerating it would run 2,359 of
+2,360 jobs without saying so. A test holds that those readers do not acquire
+the flag, because the tempting fix is to apply it everywhere and be done.
+
+`paths.torn_lines` counts them, so a stage that tolerates a tear can report
+how many it skipped rather than skipping in silence, which is the failure
+F99 and F103 were both instances of.
+
+The end-to-end test builds its fixture from real rows rather than inventing
+one. My first attempt invented a results row and died on `e3_gene`, which is
+the ninth field name I have guessed wrong in this build, and the fixture now
+takes a real pair's rows and cuts the last line.

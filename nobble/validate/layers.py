@@ -99,10 +99,7 @@ class LayerResult:
 
 
 def _results(campaign: Path) -> list[dict]:
-    path = campaign / "results.jsonl"
-    if not path.exists():
-        return []
-    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+    return paths.read_jsonl(campaign / "results.jsonl", tolerate_torn=True)
 
 
 # --------------------------------------------------------------------------- #
@@ -400,7 +397,7 @@ def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerR
     if not scores_path.exists():
         return layer
 
-    rows = [json.loads(line) for line in scores_path.read_text().splitlines() if line.strip()]
+    rows = paths.read_jsonl(scores_path, tolerate_torn=True)
 
     # The Sievers arm only. The benchmark panel also carries the label
     # "degraded", and on label alone its seven pairs would join the positive

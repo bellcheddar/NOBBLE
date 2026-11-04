@@ -165,7 +165,7 @@ def fit(campaign: Path) -> FitResult:
     if not scores_path.exists():
         return FitResult(status="not_fitted: no scores")
 
-    rows = [json.loads(line) for line in scores_path.read_text().splitlines() if line.strip()]
+    rows = paths.read_jsonl(scores_path, tolerate_torn=True)
     labelled = [(row, _label(row)) for row in rows if _label(row)]
     positives = [row for row, side in labelled if side == "positive"]
     negatives = [row for row, side in labelled if side == "negative"]

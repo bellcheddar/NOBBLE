@@ -4,6 +4,7 @@ Nothing else in the codebase builds a path to BINMAN or BoltzMaker by hand.
 """
 from __future__ import annotations
 
+import json
 import os
 import tomllib
 from pathlib import Path
@@ -123,3 +124,62 @@ def write_atomic(path: Path, text: str) -> Path:
     temporary.write_text(text)
     os.replace(temporary, path)
     return path
+
+
+def read_jsonl(path: Path, *, tolerate_torn: bool = False) -> list[dict]:
+    """Rows from a JSON-lines file.
+
+    `tolerate_torn` says what an unparseable line means, and the answer
+    differs by file rather than by taste.
+
+    `results.jsonl` and `state.jsonl` are appended to one row at a time by a
+    runner that may be killed at any moment, so a torn final line is an
+    expected state and the rows before it are good. `scores.jsonl` is written
+    in one pass and a kill truncates it, with the same consequence. For those,
+    `tolerate_torn=True`: skip the line and keep the rest. The runner's own
+    `completed()` has always done this, with the comment "a torn final line
+    from a kill mid-write: ignore it and re-run that job", and seven other
+    readers of the same files did not, so a kill at the wrong moment made the
+    next stage raise instead of processing the 2,359 complete records (F111).
+
+    `queue.jsonl` and the library manifest are written once, before anything
+    runs, and nothing appends to them. A line that will not parse there is not
+    a torn tail, it is a damaged input, and skipping it would run 2,359 of
+    2,360 jobs without saying so. Those stay strict, which is the default.
+    """
+    path = Path(path)
+    if not path.exists():
+        return []
+    rows: list[dict] = []
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError:
+            if tolerate_torn:
+                continue
+            raise
+    return rows
+
+
+def torn_lines(path: Path) -> int:
+    """How many lines of a JSON-lines file will not parse.
+
+    So a stage that tolerates a torn tail can say how many it skipped rather
+    than skipping in silence, which is the failure F99 and F103 were both
+    instances of.
+    """
+    path = Path(path)
+    if not path.exists():
+        return 0
+    count = 0
+    for line in path.read_text().splitlines():
+        if not line.strip():
+            continue
+        try:
+            json.loads(line)
+        except json.JSONDecodeError:
+            count += 1
+    return count

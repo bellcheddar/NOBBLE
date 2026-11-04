@@ -84,7 +84,7 @@ def select_top_decile(campaign: Path, fraction: float | None = None) -> Selectio
         selection.status = "not_selected: no scores"
         return selection
 
-    rows = [json.loads(line) for line in scores_path.read_text().splitlines() if line.strip()]
+    rows = paths.read_jsonl(scores_path, tolerate_torn=True)
     selection.pairs_considered = len(rows)
 
     key, notes = choose_ranking_key(rows)

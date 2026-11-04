@@ -536,7 +536,7 @@ def write_throughput(campaign: Path) -> dict:
     if not results_path.exists():
         return {"status": "no results yet"}
 
-    records = [json.loads(line) for line in results_path.read_text().splitlines() if line.strip()]
+    records = paths.read_jsonl(results_path, tolerate_torn=True)
     timed = [item for item in records if item.get("seconds") and item.get("tokens")]
     if not timed:
         return {"status": "no timed results"}

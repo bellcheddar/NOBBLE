@@ -325,9 +325,7 @@ def aggregate(results_path: Path, sampling_tier: int = 1) -> list[PairMetrics]:
     if not results_path.exists():
         return []
 
-    jobs = [
-        json.loads(line) for line in results_path.read_text().splitlines() if line.strip()
-    ]
+    jobs = paths.read_jsonl(results_path, tolerate_torn=True)
     jobs = [job for job in jobs if int(job.get("tier_setting", 1)) == sampling_tier]
     if not jobs:
         return []

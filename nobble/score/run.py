@@ -53,9 +53,7 @@ def score_campaign(campaign: Path, with_plip: bool = True, limit: int | None = N
         return {"status": "no results yet", "campaign": str(campaign),
                 "sampling_tier": sampling_tier}
 
-    jobs = [
-        json.loads(line) for line in results_path.read_text().splitlines() if line.strip()
-    ]
+    jobs = paths.read_jsonl(results_path, tolerate_torn=True)
     jobs = [job for job in jobs if int(job.get("tier_setting", 1)) == sampling_tier]
     if not jobs:
         return {"status": f"no tier-{sampling_tier} results yet",
