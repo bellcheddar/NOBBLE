@@ -758,3 +758,4 @@
   160 pairs, six tabs, 285,000 bridges, 230 jobs) and all four failed,
   then restored. A documentation test that cannot fail is decoration.
   156 tests pass.
+- 2026-11-04T06:12:16Z  correction: no stall occurred. `stat` local time was compared against `date -u`, turning a healthy 13-minute job into an imagined 5h13m hang; I killed it at 80% done, costing one attempt. The unbounded post-kill wait in subprocess.run found while investigating is real and is fixed anyway; added nobble/execute/watchdog.py so elapsed time is computed, not eyeballed (F20, D-NOB-043). 165 tests.

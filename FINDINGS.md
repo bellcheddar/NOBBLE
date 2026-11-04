@@ -783,3 +783,56 @@ chart outlines bridge-breaking positions rather than recolouring them, and
 This is the same lesson as F16 one level down. There, an absent bridge
 percentile hid the difference between a weak interface and no interface.
 Here, a healthy-looking lift hides it.
+
+## F20. I read a local timestamp as UTC and killed a healthy job
+
+Worth recording as written, because the reasoning was confident the whole
+way down and every step after the first was sound.
+
+`stat -f %Sm` prints local time. `date -u` prints UTC. This machine is on
+EST. Comparing one against the other turned a job that had been running
+for 13 minutes into one that had been running for 5 hours 13 minutes, and
+from there everything followed: 76 seconds of CPU looked like a wedged
+process rather than a normal GPU-bound one, `ps` STAT `U` looked like an
+uninterruptible Metal deadlock rather than an ordinary moment blocked in a
+syscall, and the five sibling jobs at 1,064 seconds each looked like proof
+rather than the thing that should have stopped it. The job was 13 minutes
+into a 17.7 minute job. I killed it at about 80% done.
+
+The cost was small: one attempt, roughly 14 minutes, no data loss, the
+retry picked it straight back up. The reasoning error is the finding.
+
+Two things made it possible. The first is that the elapsed time was
+computed by hand, by eye, across two commands with different timezone
+conventions, when the campaign already records `started_at` as a Unix
+timestamp in `state.jsonl` and could simply have been asked. The second is
+that the corroborating evidence was all ambiguous: low CPU, STAT `U` and a
+quiet log are equally consistent with a healthy MPS job and a dead one.
+Ambiguous evidence agreeing with a hypothesis is not support for it, and
+three ambiguous signals are not three pieces of evidence.
+
+The fix is not to be more careful. It is `nobble/execute/watchdog.py`,
+which answers "how long has this been running, and is that too long"
+from the job's own recorded timestamp, against a bound derived from the
+runner's own configuration. A number computed by the machine, in the same
+frame, every time.
+
+This is the house rule from CLAUDE.md turned back on the build itself:
+BINMAN-LM never computes a number, because a number computed by reading
+is a number that can be read wrongly. The rule applies to the person
+reading `stat` output at one in the morning too.
+
+### The defect found underneath it
+
+The investigation was wrong and still turned up something real.
+`subprocess.run(timeout=...)` handles its own `TimeoutExpired` by sending
+SIGKILL and then calling `wait()` with no bound. That is fine for a child
+that dies and fatal for one that cannot be reaped: the call never returns,
+and a stalled queue is indistinguishable from a working one.
+
+This is not hypothetical and does not need an uninterruptible process to
+trigger. A child that leaves a grandchild holding the stdout pipe is
+enough, because the cleanup still has to drain it. Boltz spawns worker
+processes. The test for it hangs pytest past 45 seconds on the old code
+and passes in 7 on the new, so the gap was real even though the stall that
+sent me looking for it was not.

@@ -114,6 +114,56 @@ def _read_outputs(output_dir: Path, stem: str) -> tuple[dict | None, dict | None
     return confidence, affinity, structure
 
 
+# How long to keep trying to reap a child that has already been SIGKILLed,
+# and how many separate kills to send inside that window.
+KILL_GRACE_SECONDS = 120
+KILL_ATTEMPTS = 4
+
+
+def _run_boltz(command: list[str], env: dict, timeout: float):
+    """Run one Boltz job and always return within timeout + KILL_GRACE_SECONDS.
+
+    subprocess.run(timeout=...) is not safe for this. When it times out it
+    sends SIGKILL and then calls wait() with no bound of its own. A Boltz job
+    wedged in an uninterruptible Metal wait (ps STAT "U") cannot be reaped, so
+    that wait() never returns and the whole campaign stalls with no log line
+    and no failed job: the queue simply stops. Observed on
+    corr06_RBM39_DCAF15__ternary__unconstrained__seed1, which held the
+    corrected campaign for 3h45m *after* its own 5400s timeout had already
+    fired. A second SIGKILL from outside the process cleared it (F20).
+
+    Returns (status, returncode, stdout, stderr) with status one of:
+      "ok"          the process exited on its own, returncode is meaningful
+      "timeout"     it overran and was killed and reaped; worth retrying
+      "unkillable"  it overran and survived SIGKILL for the whole grace
+                    window, so it is abandoned rather than waited on. It may
+                    still hold GPU memory, which is why this one is not
+                    retried.
+    """
+    process = subprocess.Popen(
+        command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True, env=env,
+    )
+    try:
+        stdout, stderr = process.communicate(timeout=timeout)
+        return "ok", process.returncode, stdout, stderr
+    except subprocess.TimeoutExpired:
+        pass
+
+    # Kill repeatedly rather than once: the signal that finally landed on the
+    # observed hang was a later one, not the first.
+    for _ in range(KILL_ATTEMPTS):
+        process.kill()
+        try:
+            stdout, stderr = process.communicate(
+                timeout=KILL_GRACE_SECONDS / KILL_ATTEMPTS
+            )
+            return "timeout", process.returncode, stdout, stderr
+        except subprocess.TimeoutExpired:
+            continue
+    return "unkillable", None, "", ""
+
+
 def run_job(job: dict, campaign: Path, settings: dict) -> JobOutcome:
     """Run one Boltz inference, with one retry on failure."""
     job_id = job["job_id"]
@@ -142,15 +192,20 @@ def run_job(job: dict, campaign: Path, settings: dict) -> JobOutcome:
     started = time.monotonic()
     while attempts <= RETRIES:
         attempts += 1
-        try:
-            result = subprocess.run(
-                command, capture_output=True, text=True,
-                env=boltz_environment(), timeout=settings["job_timeout_seconds"],
-            )
-        except subprocess.TimeoutExpired:
+        status, returncode, stdout, stderr = _run_boltz(
+            command, boltz_environment(), settings["job_timeout_seconds"],
+        )
+        if status == "timeout":
             detail = f"timeout after {settings['job_timeout_seconds']}s"
             continue
-        if result.returncode == 0:
+        if status == "unkillable":
+            detail = (
+                f"timeout after {settings['job_timeout_seconds']}s, then survived "
+                f"SIGKILL for {KILL_GRACE_SECONDS}s: abandoned so the queue can "
+                "continue. The orphan may still hold GPU memory"
+            )
+            break
+        if returncode == 0:
             seconds = time.monotonic() - started
             confidence, affinity, structure = _read_outputs(output_dir, job_id)
             if confidence is None:
@@ -161,8 +216,8 @@ def run_job(job: dict, campaign: Path, settings: dict) -> JobOutcome:
                 output_dir=str(output_dir), confidence=confidence, affinity=affinity,
                 structure=structure, attempts=attempts,
             )
-        tail = (result.stderr or result.stdout or "").strip().splitlines()
-        detail = " | ".join(tail[-3:])[:400] if tail else f"exit {result.returncode}"
+        tail = (stderr or stdout or "").strip().splitlines()
+        detail = " | ".join(tail[-3:])[:400] if tail else f"exit {returncode}"
 
     return JobOutcome(
         job_id=job_id, status=f"failed: {detail[:200]}",

@@ -1311,3 +1311,43 @@ is where everything stands rather than the tail of a deploy.
 **Reversal.** The two blocks at the end of `tools/run_chain.sh`. Removing
 the deploy leaves the atlas built and unpublished, which is the previous
 behaviour.
+
+## D-NOB-043. Bound every wait after a kill; measure elapsed time in code
+
+**Decision.** Two changes. `nobble/execute/runner.py` no longer uses
+`subprocess.run(timeout=...)`: it drives `Popen` through `_run_boltz`,
+which returns `ok`, `timeout` or `unkillable`, sends SIGKILL up to
+`KILL_ATTEMPTS` times across `KILL_GRACE_SECONDS`, and bounds every wait
+it performs. A job that survives the window is abandoned, recorded as
+failed, and not retried. Separately, `nobble/execute/watchdog.py` reports
+how long each running job has been going, from `started_at` in
+`state.jsonl`, against a bound derived from the runner's own timeout,
+retry count and kill grace.
+
+**Why, honestly.** The runner change was made while chasing a stall that
+had not happened: a local timestamp read as UTC (F20). The defect it
+fixes is real regardless and is demonstrated by a test that hangs the
+old code, so it stays. But it is hardening against a latent fault, not a
+post-mortem, and the record should not imply otherwise.
+
+The watchdog is the change that addresses what actually went wrong. The
+failure was a hand-computed elapsed time across two timezone
+conventions. The campaign already stores the timestamp; nothing was
+reading it.
+
+**Alternatives.** Leaving `subprocess.run` and raising the timeout
+addresses neither problem: the hang is after the timeout, and the
+misreading had nothing to do with its value. Stopping the queue on an
+unkillable job is wrong for an unattended 2,360-job run, where it turns
+one bad job into a dead night. Retrying an unkillable job was rejected
+because the orphan may still hold the device.
+
+**Cost.** An abandoned orphan can hold GPU memory, so later jobs may slow
+or fail. That is visible in the manifest as failed jobs rather than
+invisible as a stall, which is the trade. The watchdog's `overdue` signal
+is advisory and will sometimes fire on a merely slow job; the `stalled`
+signal needs no tuning because its bound comes from the runner.
+
+**Reversal.** `_run_boltz` in `nobble/execute/runner.py`, and deleting
+`nobble/execute/watchdog.py` with its `[watchdog]` block in
+`config/thresholds.toml`.

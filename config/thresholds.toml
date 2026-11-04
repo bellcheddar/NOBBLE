@@ -55,3 +55,13 @@ seeds = 5
 
 [gates]
 min_free_disk_gb = 50
+
+[watchdog]
+# A running job is "overdue" past this multiple of the slowest comparable job
+# the same campaign has already completed, scaled by token count.
+# Informational only: Boltz timings vary and a slow job is not a stalled one.
+overdue_multiple = 3.0
+# Margin on the hard stall bound. The bound itself is derived from the
+# runner's own timeout, retry count and kill grace rather than set here, so
+# it cannot drift away from the behaviour it describes.
+stall_margin_minutes = 10

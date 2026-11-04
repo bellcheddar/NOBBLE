@@ -49,6 +49,13 @@ for d in sorted(glob.glob("campaigns/*")):
 PY
 echo
 
+echo "-- running jobs"
+# Elapsed time is computed from started_at in state.jsonl, never read off a
+# formatted clock: `stat` prints local time and `date -u` prints UTC, and
+# comparing the two cost a healthy job once already (F20).
+"$SCI" -m nobble.execute.watchdog || true
+echo
+
 echo "-- gates"
 "$SCI" - <<'PY'
 import json
