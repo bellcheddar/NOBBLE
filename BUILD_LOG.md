@@ -280,3 +280,17 @@
   that from an effect. The real alanine scan never emits one (it scans an
   alanine to glycine) but lift.compute now refuses it rather than relying on
   every future generator remembering. 92 tests pass.
+- 2026-11-04T08:15Z Header status was overclaiming. It read COMPLETE,
+  "campaign finished", while the corrected campaign was running and the main
+  and design campaigns were assembled and waiting: accurate about the
+  published slice, misleading about the project, and a visitor would
+  reasonably conclude the science was done. The droplet cannot see the
+  Studio's queues, so build_atlas now records what was outstanding at build
+  time and the panel says "published campaign finished; 3 more queued when
+  this slice was built". Scoped as a build-time fact rather than a live
+  feed, because that is what it is.
+- 2026-11-04T08:15Z Fixed a legibility bug in the same panel: pairs rendered
+  as "7/6 br" between "jobs 100/100" and "valid 1/3", so it read as a
+  fraction, "7 of 6", which is impossible. They are two counts, scored and
+  bridged, now separated by a middot. tests/test_status.py (3 tests).
+  95 tests pass.

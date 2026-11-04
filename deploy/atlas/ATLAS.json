@@ -13,9 +13,26 @@
     "comparison.json": 7
   },
   "redactions": 0,
+  "outstanding": [
+    {
+      "campaign": "campaign_20261104T004632Z",
+      "jobs_done": 0,
+      "jobs_total": 2360
+    },
+    {
+      "campaign": "corrected_20261103T214331Z",
+      "jobs_done": 35,
+      "jobs_total": 100
+    },
+    {
+      "campaign": "design_20261104T012406Z",
+      "jobs_done": 0,
+      "jobs_total": 240
+    }
+  ],
   "comparison_conclusion": "not concluded: the IKZF1 control has no number in both campaigns, so a difference in the other pairs cannot yet be attributed to the construct",
   "jobs_total": 100,
   "pairs_total": 7,
   "structures": 100,
-  "bytes": 25365859
+  "bytes": 25366573
 }

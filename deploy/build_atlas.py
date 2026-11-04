@@ -25,6 +25,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from nobble import paths  # noqa: E402
 from nobble.execute.campaign import latest  # noqa: E402
 
 OUT = ROOT / "deploy" / "atlas"
@@ -66,6 +67,34 @@ def main() -> int:
     (OUT / "structures").mkdir(parents=True)
 
     summary = {"campaign": campaign.name, "files": {}, "redactions": 0}
+
+    # What else was assembled or running when this slice was built. The
+    # droplet cannot see the Studio's queues, so without this the header
+    # says COMPLETE while the main campaign is still to run and a visitor
+    # concludes the science is finished. Recorded as a fact about build
+    # time, not a live feed: it is only as fresh as the last deploy, and
+    # the note on the panel says so.
+    outstanding = []
+    for other in sorted(paths.CAMPAIGNS.glob("*")):
+        if not other.is_dir() or other.name == campaign.name:
+            continue
+        queue = other / "queue.jsonl"
+        if not queue.exists():
+            continue
+        total = sum(1 for line in queue.read_text().splitlines() if line.strip())
+        state = other / "state.jsonl"
+        done = 0
+        if state.exists():
+            import json as _json
+            done = len({
+                _json.loads(line)["job_id"]
+                for line in state.read_text().splitlines()
+                if line.strip() and _json.loads(line).get("status") == "done"
+            })
+        if done < total:
+            outstanding.append({"campaign": other.name, "jobs_done": done,
+                                "jobs_total": total})
+    summary["outstanding"] = outstanding
 
     # Flat JSON documents.
     for name in ("campaign.json", "validation.json", "weights.json"):

@@ -132,11 +132,22 @@ def site_status() -> dict:
     elif state["running"]:
         health, note = "running", f"{state['jobs_done']} of {state['jobs_total']} jobs complete"
     else:
-        health, note = "complete", "campaign finished"
+        health, note = "complete", "published campaign finished"
+
+    # "complete" describes the campaign that was published, not the project.
+    # The droplet cannot see the Studio's queues, so build_atlas records what
+    # was outstanding when the slice was built. Without this the header reads
+    # COMPLETE while three campaigns are still to run, and a visitor
+    # reasonably concludes the science is finished.
+    outstanding = atlas.get("outstanding") or []
+    if health == "complete" and outstanding:
+        note = (f"published campaign finished; {len(outstanding)} more "
+                f"queued when this slice was built")
 
     return {
         "health": health,
         "note": note,
+        "outstanding": outstanding,
         "pairs_scored": len(scored),
         "pairs_bridged": bridged,
         "jobs_done": state["jobs_done"],
