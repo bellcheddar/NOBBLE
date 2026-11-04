@@ -2195,3 +2195,78 @@ whatever that resolved to.
 All fourteen routes render today's schema against today's records, which
 was the thing worth knowing: the chain rebuilds the atlas from this
 scoring code in about thirty-seven hours.
+
+## F47. Every BRD4/VHL job was submitted with a hydroxyproline it does not have
+
+The reproducibility canary added an hour earlier found this on its first
+real use, which is the best argument for it.
+
+`bench02_BRD4_VHL__binary__unconstrained__seed1` scored 0.8855 in the
+benchmark campaign and 0.8807 in the main one. Same job id, same seed,
+same model. Diffing the two YAMLs gave one difference, three lines:
+
+    modifications:
+    - position: 1
+      ccd: HYP
+
+Position 1 is BRD4 Pro379. HYP is hydroxyproline.
+
+Spec 2.3 keys its table on the degron class, and says so: "Any peptide
+whose **degron class** requires a modification and which is submitted
+without one is a manifest error." The class in the table is "VHL /
+HIF-1alpha". `annotate_required_modifications` keyed on the E3 instead,
+matching any peptide whose `e3_hint` contained VHL, BTRC or FBXW7.
+
+That is a different rule and a wrong one. VHL reads HIF-1alpha through a
+prolyl hydroxyl installed by the PHD enzymes, and a PROTAC supplies that
+hydroxyproline from its own ligand: bench02's degrader is MZ1, whose VHL
+end is VH032, which carries a (2S,4R)-4-hydroxyproline that occupies the
+pocket. The substrate contributes none. BRD4 Pro379 is not a hydroxylation
+site, and nothing in an MZ1 ternary would read it if it were.
+
+So every BRD4/VHL job in the main campaign went to Boltz with a residue
+that does not exist in biology. And the rule has never once fired on the
+class it was written for: the library contains no HIF-like, DSGxxS or CPD
+degron at all, so its only effect in this project has been the
+misapplication.
+
+### Fixing the rule was not enough
+
+`yaml_gen` reads `required_modification` off the peptide record, and the
+record comes from the frozen library manifest. The rule writes the
+manifest and the manifest writes the YAML, so a corrected rule with a
+stale manifest regenerates the same wrong YAML. The field was re-derived
+with the fixed rule: one peptide changed, from HYP to none, with the
+reason recorded on the row. 158 rows, selection untouched, since
+`required_modification` does not enter the diversity reduction.
+
+### Why the campaign was left alone
+
+Four of the pair's fifteen jobs had already run when this was found, and
+eleven had not. Correcting the YAMLs in place would have given the eleven
+the corrected input and left the four with the old result, so one pair
+would hold two different inputs and its two arms would be measured against
+different molecules. Uniformly wrong is recoverable; half-and-half is not.
+
+So `tools/rerun_pair.py` corrects and clears a pair as a separate step, to
+run when the GPU is free and before the final atlas rebuild. It takes the
+corrected YAML from a campaign that already holds a known-good copy of the
+same job rather than re-deriving, because re-deriving means calling
+`assemble_campaign`, which writes a new `campaigns/campaign_<stamp>`
+directory, and both the chain and `status.sh` pick their campaign with
+`ls -d campaigns/campaign_* | tail -1`. A scratch assembly would silently
+become the campaign the rest of the chain targets. It requires exactly one
+known-good source, because two that disagree cannot both be the reference
+and taking the first is how F41 and F42 happened.
+
+All fifteen resolve to the benchmark campaign's copies, and the diff is
+the three lines above and nothing else.
+
+### The canary now carries a named expected failure
+
+A permanently red suite trains you to ignore it, which is F42's lesson
+about always-on caveats. The fifteen job ids are listed with the reason
+and the command that clears them, so the canary still catches new drift,
+and a second test fails once they agree again: an allowlist that outlives
+what it allows is a hole, and that test is the only reminder that the
+rerun is done.

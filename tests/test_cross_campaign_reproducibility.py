@@ -57,6 +57,27 @@ def _campaign_pairs():
                 yield first, second, campaigns[first], campaigns[second], sorted(shared)
 
 
+# Job ids known to differ between campaigns, with the reason and what has to
+# happen before the entry goes. An expected failure that is named is a record;
+# an unnamed one is a red suite that trains you to ignore it.
+#
+# These fifteen were emitted with a hydroxyproline on BRD4 Pro379, because the
+# modification rule keyed on the E3 rather than on the degron class (F47). The
+# rule and the library are fixed; the YAMLs already on disk are not, and
+# correcting them mid-run would leave one pair holding two different inputs.
+# `tools/rerun_pair.py bench02_BRD4_VHL --apply` corrects and clears them, to
+# be run when the GPU is free and before the final atlas rebuild. This entry
+# goes with it.
+KNOWN_DRIFT = {
+    f"bench02_BRD4_VHL__{arm}__{conditioning}__seed{seed}":
+        "F47: emitted with HYP on BRD4 Pro379, pending tools/rerun_pair.py"
+    for arm, conditioning in (("binary", "unconstrained"),
+                              ("ternary", "conditioned"),
+                              ("ternary", "unconstrained"))
+    for seed in range(1, 6)
+}
+
+
 def test_a_shared_job_predicts_the_same_interface_in_both_campaigns():
     from nobble.score import metrics
 
@@ -77,9 +98,44 @@ def test_a_shared_job_predicts_the_same_interface_in_both_campaigns():
                 drifted.append((job_id, first, round(a, 4), second, round(b, 4)))
 
     assert checked, "no shared job carried a comparable number"
-    assert not drifted, (
+    unexplained = [row for row in drifted if row[0] not in KNOWN_DRIFT]
+    assert not unexplained, (
         "the same job id predicts different interfaces in two campaigns, so "
-        f"something upstream of Boltz changed: {drifted[:5]}"
+        f"something upstream of Boltz changed: {unexplained[:5]}"
+    )
+
+
+def test_the_known_drift_is_still_drifting():
+    """An allowlist that outlives what it allows is a hole.
+
+    When `tools/rerun_pair.py` has corrected those fifteen jobs they will
+    agree again, and this fails until the entry is removed, which is the
+    only reminder that the correction is done.
+    """
+    from nobble.score import metrics
+
+    comparisons = list(_campaign_pairs())
+    if not comparisons:
+        pytest.skip("no two campaigns share a scored job id")
+
+    still_drifting, present = set(), set()
+    for _first, _second, left, right, shared in comparisons:
+        for job_id in shared:
+            if job_id not in KNOWN_DRIFT:
+                continue
+            present.add(job_id)
+            a = metrics.seed_record(left[job_id]).iptm_receptor_peptide
+            b = metrics.seed_record(right[job_id]).iptm_receptor_peptide
+            if a is not None and b is not None and abs(a - b) > 1e-6:
+                still_drifting.add(job_id)
+
+    if not present:
+        pytest.skip("none of the known-drifted jobs has been scored in two "
+                    "campaigns yet")
+    agreed = present - still_drifting
+    assert not agreed, (
+        f"{len(agreed)} job(s) in KNOWN_DRIFT now agree between campaigns, so "
+        f"the correction has landed and the entries should go: {sorted(agreed)[:5]}"
     )
 
 

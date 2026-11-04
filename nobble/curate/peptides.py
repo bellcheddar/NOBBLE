@@ -363,22 +363,61 @@ def composition_matched_scramble(peptide: Peptide, seed: int) -> Peptide:
     )
 
 
+# Which degron class each requirement belongs to. Spec 2.3 keys its table on
+# the degron class, not on the E3, and the distinction is the whole of F47:
+# the modification is part of how a *native degron* is read, so a substrate
+# recruited by a PROTAC has none regardless of which ligase it is taken to.
+MODIFICATION_CLASSES = (
+    ("hif", "vhl_hif1a"),
+    ("dsg", "btrcp_dsgxxs"),
+    ("cpd", "fbxw7_cpd"),
+)
+
+
 def annotate_required_modifications(peptides: list[Peptide]) -> list[Peptide]:
-    """Attach the modification a degron class cannot be submitted without (spec 2.3)."""
+    """Attach the modification a degron class cannot be submitted without.
+
+    Spec 2.3: "Any peptide whose **degron class** requires a modification and
+    which is submitted without one is a manifest error." Keyed on the class,
+    which is what the spec's table is keyed on.
+
+    It used to key on the E3 as well, matching any peptide whose `e3_hint`
+    contained VHL, BTRC or FBXW7. That is a different rule and a wrong one.
+    VHL reads HIF-1alpha through a hydroxylated proline, and a PROTAC supplies
+    that hydroxyproline from its own VHL ligand: MZ1 carries VH032, whose
+    (2S,4R)-4-hydroxyproline occupies the pocket. The substrate contributes
+    none, and BRD4 Pro379 is not a hydroxylation site.
+
+    So the old rule put HYP on BRD4 Pro379 in every BRD4/VHL job, a residue
+    that does not exist in biology, and never once fired on the HIF-like
+    class it was written for, because this library contains none (F47).
+    """
     for peptide in peptides:
-        hint = (peptide.e3_hint or "").upper()
         degron_class = (peptide.degron_class or "").lower()
-        requirement = None
-        if "VHL" in hint or "hif" in degron_class:
-            requirement = REQUIRED_MODIFICATIONS["vhl_hif1a"]
-        elif "BTRC" in hint or "dsg" in degron_class:
-            requirement = REQUIRED_MODIFICATIONS["btrcp_dsgxxs"]
-        elif "FBXW7" in hint or "cpd" in degron_class:
-            requirement = REQUIRED_MODIFICATIONS["fbxw7_cpd"]
+        requirement = next(
+            (REQUIRED_MODIFICATIONS[key] for pattern, key in MODIFICATION_CLASSES
+             if pattern in degron_class),
+            None,
+        )
         if requirement and any(
             residue in peptide.sequence for residue in requirement["residue"]
         ):
             peptide.required_modification = dict(requirement)
+            continue
+
+        # A peptide whose ligase would once have earned a modification, and
+        # whose class does not require one, records why rather than silently
+        # carrying none: spec 2.3 treats a missing modification as a manifest
+        # error, so "deliberately none" has to be distinguishable from
+        # "forgotten".
+        hint = (peptide.e3_hint or "").upper()
+        if any(ligase in hint for ligase in ("VHL", "BTRC", "FBXW7")):
+            peptide.notes.append(
+                f"no required modification: {hint} reads a modified native "
+                f"degron, and this peptide's class is {peptide.degron_class!r}, "
+                "which is not one. A substrate recruited by a degrader takes "
+                "its modification from the ligand, not from itself (F47)"
+            )
     return peptides
 
 
