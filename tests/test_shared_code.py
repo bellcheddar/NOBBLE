@@ -132,3 +132,60 @@ def test_every_allowance_gives_a_reason():
 def test_the_decision_is_recorded():
     decisions = (ROOT / "DECISIONS.md").read_text()
     assert "D-NOB-007" in decisions
+
+
+def test_the_polished_readme_is_in_step_with_the_readme():
+    """`README.polished.md` is generated from `README.md` by
+    `tools/readme_forge.py`, and the two are byte-identical today because
+    the polish step is idempotent once the badges are in place: it checks
+    `already_branded` and leaves a branded document alone.
+
+    Identical is not the same as in step. The next edit to `README.md`
+    makes the generated copy stale, and nothing would say so, which is the
+    pattern that produced three copies of a timestamp format and two theme
+    colours. This regenerates in memory and compares (F71).
+    """
+    readme = ROOT / "README.md"
+    polished = ROOT / "README.polished.md"
+    if not polished.exists():
+        pytest.skip("no polished README on this checkout")
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    import json
+
+    import readme_forge
+
+    meta_all = {}
+    meta_file = ROOT / "tools" / readme_forge.META_FILE
+    if not meta_file.exists():
+        meta_file = ROOT / readme_forge.META_FILE
+    if meta_file.exists():
+        meta_all = json.loads(meta_file.read_text())
+
+    crude = readme.read_text()
+    expected = readme_forge.polish(crude, str(readme),
+                                   meta_all.get("README.md", {}))
+    if not expected.endswith("\n"):
+        expected += "\n"
+    assert polished.read_text() == expected, (
+        "README.polished.md is not what the forge would produce from "
+        "README.md: regenerate it with tools/readme_forge.py README.md"
+    )
+
+
+def test_polishing_a_branded_readme_changes_nothing():
+    """The property that makes the check above meaningful. If polish() were
+    not idempotent the two files would differ by design and the comparison
+    would have to be against a stored copy instead."""
+    polished = ROOT / "README.polished.md"
+    if not polished.exists():
+        pytest.skip("no polished README on this checkout")
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    import readme_forge
+
+    once = polished.read_text()
+    twice = readme_forge.polish(once, str(polished), {})
+    if not twice.endswith("\n"):
+        twice += "\n"
+    assert twice == once, "polish() is not idempotent on its own output"

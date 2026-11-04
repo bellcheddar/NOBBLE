@@ -3247,3 +3247,43 @@ after. Without `BINMAN_LM_URL` the answer is False either way, so this is
 the same verdict reached without the side effect, and it saves the droplet
 importing a package it does not have. The variable name is checked against
 BINMAN's own source, because NOBBLE now knows it in a second place.
+
+## F71. D-NOB-007 was stated and checked by nothing
+
+    Shared code is widened in place in BINMAN or BoltzMaker, never forked
+    (D-NOB-007).
+
+A rule about the thing most likely to go wrong quietly, and nothing
+enforced it. A local edit to a shared file produces a working project and a
+divergence nobody sees until the two copies are compared, which until now
+nothing did.
+
+Enumerating every file NOBBLE holds at the same relative path as BINMAN or
+BoltzMaker gives four: `elementor-widget-markdown.css` and
+`tools/readme_forge.py` are byte-identical to their peers, and `wsgi.py` and
+`tools/hwprobe.py` differ.
+
+Neither difference is a fork, and both are now recorded as decisions rather
+than left as unexplained divergence. `wsgi.py` is each project's own entry
+point and the shared name is a convention. `tools/hwprobe.py` is 388 diff
+lines from BINMAN's, which is too many to be a fork: they are independent
+implementations. NOBBLE's writes the campaign tuning this project needs,
+token caps and recycle counts and diffusion samples, which BINMAN has no
+concept of, so widening BINMAN's would move NOBBLE's vocabulary into it.
+The hardware half, cores and memory and device, is genuinely duplicated and
+is recorded here as duplication rather than repaired, because replacing a
+working Phase 0 probe mid-build to deduplicate a dozen lines is the wrong
+trade.
+
+The same sweep covers the generated README. `README.polished.md` is produced
+from `README.md` by the forge and the two are byte-identical today, because
+`polish()` checks `already_branded` and leaves a branded document alone. But
+identical is not in step: the next edit to `README.md` would make the
+generated copy stale and nothing would say so. The check regenerates in
+memory and compares, and a second test holds the idempotency that makes
+that comparison the right one, because if `polish()` were not idempotent the
+two files would differ by design.
+
+Three copies of a timestamp format, two theme colours, two binning rules and
+two queue files, all found in the last two days by looking for the same
+shape. This is the sweep for it at the level of whole files.

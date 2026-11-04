@@ -1670,3 +1670,23 @@ figures, and the panel says whose it is.
 
 **Reversal.** Drop the `answer.query` branch from `askPanel`. One test
 fails, and it is the one asserting the label is present.
+
+## D-NOB-059. The two files that may differ from their peers, and why
+
+**Decision.** `wsgi.py` and `tools/hwprobe.py` are allowed to differ from
+BINMAN's copies. Every other file shared at the same relative path must be
+byte-identical, which a sweep now enforces.
+
+**Alternatives.** Replace NOBBLE's `hwprobe.py` with BINMAN's, widened to
+write the campaign tuning. Rejected: that moves token caps, recycle counts
+and diffusion samples, which are NOBBLE's vocabulary, into BINMAN, and
+replaces a working Phase 0 probe mid-build. Also considered leaving the rule
+unchecked on the grounds that the divergences are benign: rejected because
+benign today is the state every fork starts in.
+
+**Cost.** The hardware half of the probe is duplicated between the two
+projects, so a fix to core-count or memory detection has to be made twice.
+Recorded rather than hidden, and the sweep names it every time it runs.
+
+**Reversal.** Remove an entry from `ALLOWED_TO_DIFFER`. The sweep then
+reports that file as forked, which is the signal to decide again.
