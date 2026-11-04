@@ -57,7 +57,7 @@ Rewritten after every phase and at least every 30 minutes during long compute.
   2,360 jobs, and started it. Tier 2, the design scan, the atlas rebuild and
   the deploy follow (D-NOB-039). Each stage is resumable, so a kill anywhere
   is recovered by rerunning the script
-- **Main campaign: running**, 220 of 2,360 at 17:40 UTC on 4 November. The
+- **Main campaign: running**, 271 of 2,360 at 19:05 UTC on 4 November. The
   benchmark block is behind it and the Sievers arm began at job 100 as
   planned, so the first zinc-bearing jobs have now run: the paths they take
   were verified ahead of them in F82, F83 and F86, and F102 confirmed on a
@@ -559,3 +559,42 @@ tier-2 selection, the atlas build, the drift check, provenance and
 check_prediction. The GPU stages are being exercised by the campaign itself.
 
 Suite 825 passing.
+
+## Review F119 to F123
+
+One question produced four of these: what does this code do with the case it
+does not mention.
+
+**F119, fixed.** `significance_alpha` was in config and in four other places,
+agreeing by coincidence: the ROC bootstrap's percentile literals, the layer's
+prose, `about.html`, and a caveat I wrote this morning. Turning alpha down
+restyled one chart and left the headline interval at 95 per cent. All four
+derive from it now, recorded as D-NOB-062 because it widens what alpha
+governs. The cutoff sweep had examined that function and allowed its `rounds`
+default by name, one line above two literals it cannot see.
+
+**F120, fixed.** The ROC's verdict had two branches for three outcomes. An
+interval entirely below 0.5 is an inverted result, not an absent one, and
+spec 4.3 asks for that case by name.
+
+**F121, fixed.** The prediction scorer counted two of its three testable
+verdicts, so `tested` could exceed supported plus wrong with nothing naming
+the gap.
+
+**F122, fixed.** `/api/pair/<id>` 404ed an unknown pair and
+`/api/pair/<id>/structures` returned 200 with an empty list. My first fix
+used the scores-based check and would have 404ed every pair for the length of
+a campaign; the existing tier-2 tests caught it in a minute.
+
+**F123, fixed.** The composite is computed in Python and in the browser. They
+agree, verified by running both under node rather than reading them. What
+they did not share is coverage: the page marks a score built from three
+components and the stored record did not, and two of the seven benchmark
+pairs are incomplete.
+
+Also audited clean: spec 4.7's forced veto is marked with a badge,
+filterable, and excluded from the tier-2 ranking; `compare.py` and the
+seed-balance verdict are complete; the app returns no 5xx on unknown ids,
+encoded traversal, over-long parameters or a GET on a POST route.
+
+Suite 880 passing. Ten of today's fixes are mutation-verified.
