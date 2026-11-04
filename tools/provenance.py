@@ -73,7 +73,16 @@ try:
     data.configure(str(campaign) if campaign else None)
     chosen = report._default_parent(report.candidate_parents())
     published = {}
-    atlas_design = Path("deploy/atlas/design.json")
+    # Through atlas_drift.PUBLISHED, which honours NOBBLE_ATLAS_PUBLISHED.
+    # This was a second, hardcoded spelling of the published atlas path,
+    # `Path("deploy/atlas/design.json")`, sitting a few lines from the drift
+    # check that reads the same bundle through its own constant. One thing
+    # spelled twice: the override took effect for the drift line and not for
+    # this one, so a test pointed at a copy still read the live site here
+    # (F154).
+    import atlas_drift as _drift
+
+    atlas_design = _drift.PUBLISHED / "design.json"
     if atlas_design.exists():
         published = ((json.loads(atlas_design.read_text()).get("preview")
                       or {}).get("parent") or {})

@@ -165,3 +165,53 @@ def test_the_correlation_publishes_finite_numbers_or_nothing():
             if value is None:
                 continue
             assert math.isfinite(value), (point.get("pair_id"), field, value)
+
+
+def test_the_suite_leaves_the_published_bundle_alone():
+    """No test may write `deploy/atlas` (F154).
+
+    Two negative controls used to perturb a published file and restore it in
+    a `finally`, which is correct until a run is killed in between. Both work
+    on a copy now, through `NOBBLE_ATLAS_PUBLISHED`.
+
+    Checked by source rather than by running the suite inside itself: a test
+    that writes the bundle names it, and the two tools that read it do so
+    through an overridable constant.
+    """
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    offenders = []
+    for path in sorted((root / "tests").glob("test_*.py")):
+        text = path.read_text()
+        for line in text.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                continue
+            if "deploy/atlas" not in stripped and 'PUBLISHED /' not in stripped:
+                continue
+            if any(write in stripped for write in
+                   ("write_text(", "shutil.copy(", "unlink(", "open(")):
+                offenders.append(f"{path.name}: {stripped[:70]}")
+    assert not offenders, (
+        "these write into the published atlas; point them at a copy with "
+        f"NOBBLE_ATLAS_PUBLISHED instead: {offenders}"
+    )
+
+
+def test_the_published_root_has_one_spelling():
+    """`provenance.py` held `Path("deploy/atlas/design.json")` a few lines
+    from the drift check that reads the same bundle through its own
+    constant, so an override took effect for one line and not the other
+    (F154)."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    for name in ("tools/provenance.py", "tools/atlas_drift.py"):
+        source = (root / name).read_text()
+        hardcoded = [line.strip() for line in source.splitlines()
+                     if '"deploy/atlas' in line
+                     and not line.strip().startswith("#")
+                     and "environ" not in line
+                     and "PUBLISHED =" not in line]
+        assert not hardcoded, f"{name} spells the published root again: {hardcoded}"

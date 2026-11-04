@@ -37,6 +37,34 @@ def _requires_atlas():
     if not (PUBLISHED / "ATLAS.json").exists():
         pytest.skip("no published atlas")
 
+@pytest.fixture
+def published_copy(tmp_path, monkeypatch):
+    """A copy of the published atlas, with the drift tool pointed at it.
+
+    Two tests here perturb a published file, run the drift check and restore
+    it in a `finally`. The intent is right and the window is real: a run
+    killed between the write and the restore leaves `deploy/atlas` holding a
+    truncated conclusion, which is F45's lesson about a sweep that left a
+    mutation in the tree.
+
+    Two things already contain that. The file is tracked, so `git checkout`
+    restores it, and the deploy's own drift check refuses to publish while it
+    disagrees with the code. Neither is a reason to keep writing a published
+    file from a test, and the mutation sweep's protected-file list flags it
+    every run (F154).
+
+    `drift()` reads `atlas_drift.PUBLISHED`, so the copy is enough: the
+    rebuild it compares against already goes to a temporary directory.
+    """
+    import shutil
+
+    target = tmp_path / "atlas"
+    shutil.copytree(PUBLISHED, target, ignore=shutil.ignore_patterns("structures"))
+    (target / "structures").mkdir(exist_ok=True)
+    monkeypatch.setattr(atlas_drift, "PUBLISHED", target)
+    return target
+
+
 
 def test_the_published_atlas_is_in_step():
     """The state that should hold after every deploy. A failure here means
@@ -47,11 +75,11 @@ def test_the_published_atlas_is_in_step():
     assert report["compared"] > 1000, report["compared"]
 
 
-def test_it_detects_the_drift_that_f96_was():
+def test_it_detects_the_drift_that_f96_was(published_copy):
     """The negative control, and the exact case: a caveat present in the
     code's output and absent from the published conclusion."""
     _requires_atlas()
-    comparison = PUBLISHED / "comparison.json"
+    comparison = published_copy / "comparison.json"
     if not comparison.exists():
         pytest.skip("no comparison in the published atlas")
 
@@ -165,13 +193,13 @@ def test_the_science_is_not_recomputed_either():
         assert not any(field in pattern for pattern in atlas_drift.RECOMPUTED), field
 
 
-def test_a_real_drift_is_not_buried_behind_cost_churn():
+def test_a_real_drift_is_not_buried_behind_cost_churn(published_copy):
     """The control, and the reason the split exists rather than a wider
     exclusion. With sixty-odd costs legitimately moving, a stripped
     conclusion must still be the thing the check reports and the thing it
     fails on."""
     _requires_atlas()
-    published = atlas_drift.PUBLISHED / "comparison.json"
+    published = published_copy / "comparison.json"
     original = published.read_text()
     data = json.loads(original)
     conclusion = data.get("conclusion")

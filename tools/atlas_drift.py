@@ -37,7 +37,13 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PUBLISHED = ROOT / "deploy" / "atlas"
+# Overridable for the same reason `build_atlas.py` takes NOBBLE_ATLAS_OUT:
+# a reporting tool should be pointable at a bundle other than the live one.
+# Two negative-control tests perturb a published file, run this, and restore
+# it in a `finally`, which leaves a window where a killed run publishes a
+# truncated conclusion. With this they work on a copy (F154).
+PUBLISHED = Path(os.environ.get("NOBBLE_ATLAS_PUBLISHED")
+                 or ROOT / "deploy" / "atlas")
 
 # Facts about the build rather than about the science.
 VOLATILE = ("built_at", "measured_at", "bytes", "atlas_bytes", "jobs_done",

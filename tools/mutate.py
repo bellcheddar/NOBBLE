@@ -246,15 +246,29 @@ def _grew_by_appending(path: Path, before_size: int, before_hash: str) -> bool:
 
     Exact rather than heuristic: the bytes that were there are re-read and
     compared against what is there now. A pure append leaves the prefix
-    identical. Only `before_size` bytes are read, so this costs the same
-    whether the file is a kilobyte or a gigabyte.
+    identical and the file strictly larger. Only `before_size` bytes are
+    read, so this costs the same whether the file is a kilobyte or a
+    gigabyte.
+
+    Both conditions, because the prefix alone is not enough. A file rewritten
+    with identical content has the same prefix and the same size, and the
+    first version of this accepted it: an identical rewrite was reported as
+    the runner appending (F154). Nothing is lost by that particular rewrite,
+    but the report was a false statement about which process had touched a
+    protected file, which is the one thing this check exists to say.
     """
     try:
         stat = path.stat()
     except OSError:
         return False
-    if stat.st_size < before_size:
-        return False            # truncated: a rewrite, not an append
+    if stat.st_size <= before_size:
+        # Strictly larger, or it is not an append. `<` let an identical
+        # rewrite through: same size, same prefix, so it was reported as
+        # the runner appending when nothing had been appended and something
+        # had rewritten the file. The whole sweep then said "the campaign
+        # runner, not the mutation" about two published atlas files that the
+        # runner does not write (F154).
+        return False
     with path.open("rb") as handle:
         prefix = handle.read(before_size)
     return hashlib.sha256(prefix).hexdigest() == before_hash

@@ -258,6 +258,26 @@ def test_an_append_by_the_running_campaign_is_not_a_sweep_touching_live_state(tm
         "a rewrite that happens to be longer is tolerated"
     )
 
+    # Identical content, rewritten. Same size, same prefix, and the first
+    # version of this accepted it as an append: the sweep then reported two
+    # published atlas files as the campaign runner appending, and the runner
+    # does not write them (F154).
+    target.write_text('{"a":1}\n{"a":2}\n')
+    before, hashes = baseline()
+    target.write_text('{"a":1}\n{"a":2}\n')
+    assert mutate._live_state_changes(before, hashes), (
+        "an identical rewrite is reported as the runner appending"
+    )
+
+    # And a rewrite of the same length with different bytes, which the
+    # prefix check catches and the size check alone would not.
+    target.write_text('{"a":1}\n{"a":2}\n')
+    before, hashes = baseline()
+    target.write_text('{"a":9}\n{"a":8}\n')
+    assert mutate._live_state_changes(before, hashes), (
+        "a same-size rewrite is tolerated"
+    )
+
     target.write_text('{"a":1}\n{"a":2}\n')
     before, hashes = baseline()
     target.write_text('{"a":1}\n')

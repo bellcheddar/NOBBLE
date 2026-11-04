@@ -7033,3 +7033,85 @@ each other.
 
 What the sweep cannot do is tell whether an assertion that did run is *about*
 anything: F122's ran and asserted the wrong thing. It narrows where to look.
+
+## F153. The project's own mutation sweep covered almost nothing
+
+`tools/mutate.py` carries a default list of mutations, and the list held
+five, all in `curate/`. Its docstring says five sweeps with it found eleven
+real gaps, which is true and is about sweeps someone wrote anchors for by
+hand. With no arguments it said nothing at all about scoring, validation,
+the design arm or the budget: every check of those modules this build has
+been an ad-hoc run, and that method covers what someone remembered to type.
+
+Eight added, each reversing a decision the project argued for in a docstring
+or a decision record, so "not caught" would mean the argument is unguarded
+rather than that the mutation is exotic:
+
+- the receptor-to-peptide ipTM taking the best segment instead of the worst,
+  and the asymmetric pair-ipTM matrix read optimistically, which are the two
+  halves of the conservative-minimum choice spec 4.3 rests on
+- convergence no longer falling with RMSD
+- scrambles and non-degraded peptides no longer counting as negatives in the
+  composite fit
+- the ROC drawing a curve with too few pairs on a side
+- lift no longer subtracting the parent
+- the refinement gate judged on the optimistic end
+- the glue recall set no longer requiring a ligase on one side
+
+Twelve of thirteen caught, and all eight of the new ones. The suite is
+genuinely holding those decisions.
+
+The one not caught is a pre-existing entry: in `curate/plddt.py`, CA atoms
+stop being preferred for the pLDDT profile. Recorded rather than fixed here,
+because the profile's values move and nothing currently asserts which atom
+they came from; the honest statement is that the preference is a documented
+choice with no test behind it.
+
+## F154. A sweep that excused the thing it exists to flag
+
+Running F153's sweep printed four lines saying a protected file "grew by
+appending while the sweep ran: the campaign runner, not the mutation". Two
+were the campaign's `results.jsonl` and `state.jsonl`, which is what F142
+added that message for. The other two were `deploy/atlas/comparison.json`
+and `deploy/atlas/design.json`, which the campaign runner does not write.
+
+Three defects behind it, each a consequence of the last.
+
+Mine first. F142's `_grew_by_appending` accepted `st_size >= before_size`
+with a matching prefix. A file rewritten with identical content has the same
+size and the same prefix, so it was reported as an append when nothing had
+been appended and something had rewritten a published file. Requiring
+strictly more bytes fixes it, and the four cases are pinned: append
+tolerated, identical rewrite flagged, same-size rewrite flagged, truncation
+flagged. Nothing was lost by that particular rewrite; the report was a false
+statement about which process had touched a protected file, which is the one
+thing the check exists to say.
+
+Then what the rewrite was. Two negative controls perturb a published file,
+run a check against it, and restore it in a `finally`:
+`test_atlas_drift.py` truncates `comparison.json`'s conclusion to prove the
+drift check sees it, and `test_provenance_report.py` renames the published
+design parent to prove the provenance line marks a disagreement. Both are
+right to need a perturbation and both restore it, which is why the content is
+identical and `git diff` is empty. The window is real: a run killed between
+the write and the restore leaves the live bundle holding a truncated
+conclusion or naming a parent that is not the ranked one. Two things already
+contain that, the file being tracked and the deploy's own drift check
+refusing to publish while it disagrees with the code, and neither is a
+reason to keep writing a published file from a test.
+
+Both now work on a copy. `atlas_drift.PUBLISHED` takes
+`NOBBLE_ATLAS_PUBLISHED`, for the same reason `build_atlas.py` takes
+`NOBBLE_ATLAS_OUT`: a reporting tool should be pointable at a bundle other
+than the live one.
+
+And the third, which the first attempt at that fix exposed. The drift line
+honoured the override and the design-target line did not, because
+`provenance.py` held a second, hardcoded spelling of the published path,
+`Path("deploy/atlas/design.json")`, a few lines from the drift check that
+reads the same bundle through its own constant. So a test pointed at a copy
+still read the live site, and said so by reporting the real parent. One
+thing spelled twice, which is this project's most common defect and the
+reason the first version of the fix looked like it worked.
+
+The suite now leaves both published files untouched.

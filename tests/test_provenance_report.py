@@ -76,26 +76,34 @@ def test_the_disagreement_is_marked_when_they_differ(tmp_path):
     import json
     import shutil
 
-    atlas = ROOT / "deploy" / "atlas"
-    design = atlas / "design.json"
-    if not design.exists():
+    source = ROOT / "deploy" / "atlas"
+    if not (source / "design.json").exists():
         pytest.skip("no published atlas")
 
-    backup = tmp_path / "design.json"
-    shutil.copy(design, backup)
-    try:
-        payload = json.loads(design.read_text())
-        preview = payload.setdefault("preview", {})
-        parent = preview.setdefault("parent", {})
-        parent["peptide_id"] = "benchmark_not_the_ranked_one"
-        design.write_text(json.dumps(payload))
-        out = _provenance()
-        assert "the site and the ranking disagree" in out, out
-    finally:
-        shutil.copy(backup, design)
+    # A copy, pointed at through NOBBLE_ATLAS_PUBLISHED. This used to
+    # perturb the published design.json and restore it in a `finally`,
+    # which works until a run is killed in between and leaves the live
+    # bundle naming a parent that is not the ranked one (F154).
+    atlas = tmp_path / "atlas"
+    shutil.copytree(source, atlas,
+                    ignore=shutil.ignore_patterns("structures"))
+    (atlas / "structures").mkdir(exist_ok=True)
+    env = {"NOBBLE_ATLAS_PUBLISHED": str(atlas)}
+    design = atlas / "design.json"
 
-    # Restored, and the marker gone again.
-    assert "the site and the ranking disagree" not in _provenance()
+    payload = json.loads(design.read_text())
+    preview = payload.setdefault("preview", {})
+    parent = preview.setdefault("parent", {})
+    parent["peptide_id"] = "benchmark_not_the_ranked_one"
+    design.write_text(json.dumps(payload))
+    out = _provenance(env)
+    assert "the site and the ranking disagree" in out, out
+
+    # And the marker is gone once the copy agrees again, which is what makes
+    # the line above a statement about the disagreement rather than about
+    # this test having run at all.
+    shutil.copy(source / "design.json", design)
+    assert "the site and the ranking disagree" not in _provenance(env)
 
 
 def test_the_status_script_calls_it():
