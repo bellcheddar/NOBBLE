@@ -111,6 +111,22 @@ def compute(variant_row: dict, parent_row: dict) -> Lift:
                     "variant": count, "parent": MINIMUM_SEEDS,
                 })
 
+    # Equal depth, not merely sufficient depth. delta_iptm is a difference of
+    # minima over seeds, and a minimum is not robust to sample count, so a
+    # variant scored over four seeds against a parent scored over five has a
+    # systematically lower minimum before any substitution is considered.
+    # Both pairs come from the same campaign with the same seed tuple, so
+    # they normally match: they stop matching when a job fails, which is
+    # exactly when nobody is looking at seed counts.
+    for arm in ("seeds_binary", "seeds_ternary"):
+        variant_count = variant_row.get(arm)
+        parent_count = parent_row.get(arm)
+        if (isinstance(variant_count, int) and isinstance(parent_count, int)
+                and variant_count != parent_count):
+            mismatches.append({
+                "field": arm, "variant": variant_count, "parent": parent_count,
+            })
+
     if mismatches:
         result.mismatches = mismatches
         result.status = (

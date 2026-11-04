@@ -342,3 +342,16 @@
   lines underneath a running instance can resume it mid-sentence. It was
   still in its wait loop, so nothing was lost; noting it because the hazard
   is easy to create and silent when it bites.
+- 2026-11-04T09:40Z Exercised the chain's never-run stages against
+  synthetic data rather than waiting 60 hours to find out. Design scoring
+  and the chain's lift block both handle the no-results case cleanly, and
+  with a synthetic design scores file in the real campaign's shape the full
+  path works: 15 variants computed, 0 refused, all 15 positions profiled.
+- 2026-11-04T09:40Z That test exposed a gap. lift.compute checked each side
+  had at least three seeds but never checked the two sides had the *same*
+  count. delta_iptm is a difference of minima over seeds, so a variant
+  scored over four seeds against a parent scored over five has a lower
+  minimum before any substitution is considered. They normally match,
+  coming from one campaign with one seed tuple: they stop matching when a
+  job fails, which is exactly when nobody is checking seed counts. Now
+  refused. 96 tests pass.

@@ -282,3 +282,29 @@ def test_the_alanine_scan_never_emits_a_no_op():
     for sequence in ("AAAA", "PFQCNQCGASFTQKG", "ACDEFGHIKLMNPQRSTVWY"):
         for variant in V.generate("p", sequence)["variants"]:
             assert variant["wild_type"] != variant["mutant"], variant["substitution"]
+
+
+def test_unequal_seed_counts_between_variant_and_parent_block_the_lift():
+    """Equal depth, not merely sufficient depth.
+
+    delta_iptm is a difference of minima over seeds, and a minimum is not
+    robust to sample count. A variant scored over four seeds against a
+    parent scored over five has a lower minimum before any substitution is
+    considered. Both normally match, because they come from one campaign
+    with one seed tuple: they stop matching when a job fails, which is
+    exactly when nobody is checking seed counts.
+    """
+    base = dict(construct="CRBN_CULT", e3_gene="CRBN", ligand_key="Y70",
+                modality="glue", delta_iptm=0.3)
+    result = Lmod.compute(
+        {**base, "seeds_binary": 5, "seeds_ternary": 4, "substitution": "K7A"},
+        {**base, "seeds_binary": 5, "seeds_ternary": 5},
+    )
+    assert result.lift is None
+    assert any(m["field"] == "seeds_ternary" for m in result.mismatches)
+
+    matched = Lmod.compute(
+        {**base, "seeds_binary": 5, "seeds_ternary": 5, "substitution": "K7A"},
+        {**base, "seeds_binary": 5, "seeds_ternary": 5},
+    )
+    assert matched.status == "computed"
