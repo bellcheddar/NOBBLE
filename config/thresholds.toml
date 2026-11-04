@@ -39,6 +39,10 @@ exposed_rel_sasa = 0.25
 [numbering]
 # Fraction of residues allowed to disagree before a numbering frame is rejected.
 max_mismatch_fraction = 0.1
+# How far the anchor may slide looking for canonical sequence before giving up.
+# 6H0F's IKZF1 chain starts GGR where Q13422 has SHT, so anchoring only at the
+# N-terminus fails on an ordinary structure.
+max_anchor_slide = 40
 
 [substrate]
 # Domain coverage above which a degron window is treated as self-sufficient.
@@ -78,3 +82,27 @@ stall_margin_minutes = 10
 # conditioned pose is treated as forced by the pocket constraint rather than
 # found. Published per pair as `forced`.
 forced_disagreement = 0.2
+
+[design]
+# Fewest seeds a variant or its parent may be scored over before a lift is
+# refused outright. Was MINIMUM_SEEDS in nobble/design/lift.py.
+minimum_seeds = 3
+# Fraction of the parent's bridging rate a variant must retain before its
+# bridge is called weakened. Outright loss was already flagged; a parent at
+# 10/10 against a variant at 1/10 was not, and reads as a clean improvement
+# when the lift happens to be positive.
+bridge_rate_retained_min = 0.5
+
+[plddt]
+# Width of the contiguous window whose mean pLDDT stands in for the model's.
+# A whole-model mean punishes a protein with one tight domain and long
+# disordered linkers, which is exactly the shape Tier B is looking for.
+domain_window = 200
+
+[tier2]
+# Fewest ranked pairs before a tier-2 refinement is attempted at all.
+minimum_ranked = 3
+
+[weights]
+# Fewest labelled pairs before any weight fit is attempted.
+minimum_labelled = 8

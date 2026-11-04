@@ -1083,3 +1083,58 @@ version missed.
 This is the whole theme of this file turned on the tests themselves. F21's
 stale tuple, F22's hand-written sentinel and this regex all shared one
 property: they passed, and that told nobody anything.
+
+## F27. A weakened bridge read as a clean improvement
+
+F19 recorded that a healthy-looking design lift can hide a broken
+ternary: the substitution pushes the peptide away, the model stays
+confident about whatever contact remains, and the lift comes out
+positive. The fix then flagged outright loss, where the parent bridged in
+some seed and the variant bridged in none.
+
+It left the case in between, which is most of the interesting ones. A
+parent at 10/10 against a variant at 1/10 is not an outright loss and is
+barely different from one, and it carried no flag at all. `bridge_lost`
+was `False`, so the scan chart, which outlines only lost bridges, drew it
+as an ordinary point. With a positive lift it would be picked as
+`least_sensitive`: the arm's headline claim that a position tolerates
+substitution, made about a substitution that had taken the ternary apart.
+
+The bridging string was in the table, so the number was on screen. It was
+not in the chart anyone reads or in the headline pick, which is the same
+shape as F25: computed correctly, carried nowhere useful.
+
+Now reported as a rate change rather than a flag, with `bridge_weakened`
+when the variant keeps under half the parent's bridging rate, and a
+`bridge_weakening` list kept separate from `bridge_breaking`. Three claims
+of decreasing strength rather than two: lost, weakened, held. The chart
+outlines weakened points thinly against a lost bridge's heavy outline, so
+the lift's own sign stays readable, and the hover says which of the three
+it is with the rate change beside it.
+
+The design arm already had the discipline this needed elsewhere. Its
+`compute` refuses a lift outright when the variant and parent were scored
+over different seed counts, with a comment explaining that a minimum is
+not robust to sample count. That is precisely the care F24 found missing
+from the headline ROC. The same file had it and the curve did not.
+
+### My own guard had the same blind spot it was written to close
+
+F26 added an AST guard for hard-coded cutoffs. It inspected comparisons
+against float literals, and `MINIMUM_SEEDS = 3` sat four lines from the
+top of `lift.py` untouched: an integer, bound to a name, never compared
+against a literal. A cutoff with a name is the easiest kind to keep in
+config and the easiest to forget, because it looks like configuration
+already.
+
+Extending the guard to module-level numeric constants turned up four more
+genuine cutoffs: how far a numbering anchor may slide, the pLDDT window
+width that decides Tier B membership, the fewest ranked pairs before tier
+2 runs, and the fewest labelled pairs before a weight fit is attempted.
+All four now read from `config/thresholds.toml`.
+
+Five constants are allowed with reasons: a reproducibility seed, lysine's
+reference accessible surface area, and the three runtime values governing
+retries and how long to wait for a child to die. None is a threshold
+applied to data, and the allowlist is itself checked for naming code that
+still exists.

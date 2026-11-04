@@ -21,7 +21,7 @@ AFDB_CACHE = paths.BINMAN_CACHE / "afdb"
 # on a whole-model mean while having exactly the well-ordered pocket the tier is
 # looking for. The best contiguous window of this width is the closest honest
 # proxy, and the window is reported alongside the value so the choice is visible.
-DOMAIN_WINDOW = 200
+DOMAIN_WINDOW = int(paths.thresholds()["plddt"]["domain_window"])
 
 
 def model_path(accession: str):

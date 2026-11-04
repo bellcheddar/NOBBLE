@@ -60,6 +60,65 @@ def _cutoff_comparisons() -> dict[str, list[str]]:
     return found
 
 
+# Module-level numeric constants that are not cutoffs. The first guard here
+# only inspected comparisons against float literals, which is how
+# MINIMUM_SEEDS = 3 in nobble/design/lift.py sat untouched: it is a cutoff
+# bound to a name, and a name is where the rule is easiest to keep and
+# easiest to forget. Anything not on this list must read from
+# config/thresholds.toml.
+ALLOWED_CONSTANTS = {
+    "SEED": "a fixed random seed for reproducibility, not a cutoff applied to data",
+    "LYSINE_MAX_ASA": "the reference accessible surface area of a free lysine "
+                      "side chain, a physical constant rather than a choice",
+    "RETRIES": "runtime control flow, not a threshold applied to data",
+    "KILL_GRACE_SECONDS": "runtime control flow: how long to wait for a child "
+                          "to die before abandoning it",
+    "KILL_ATTEMPTS": "runtime control flow: how many kills to send inside that "
+                     "window",
+}
+
+
+def _module_level_numeric_constants() -> dict[str, list[str]]:
+    """ALL_CAPS module constants assigned a bare numeric literal."""
+    found: dict[str, list[str]] = {}
+    for path in sorted((ROOT / "nobble").rglob("*.py")):
+        tree = ast.parse(path.read_text())
+        for node in tree.body:                  # module level only
+            if not isinstance(node, (ast.Assign, ast.AnnAssign)):
+                continue
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            for target in targets:
+                if not isinstance(target, ast.Name) or not target.id.isupper():
+                    continue
+                value = node.value
+                if isinstance(value, ast.UnaryOp) and isinstance(value.op, ast.USub):
+                    value = value.operand
+                if (isinstance(value, ast.Constant)
+                        and isinstance(value.value, (int, float))
+                        and not isinstance(value.value, bool)):
+                    found.setdefault(target.id, []).append(
+                        f"{path.relative_to(ROOT)}:{node.lineno}"
+                    )
+    return found
+
+
+def test_no_cutoff_hides_in_a_module_level_constant():
+    found = _module_level_numeric_constants()
+    unexplained = {
+        name: where for name, where in found.items() if name not in ALLOWED_CONSTANTS
+    }
+    assert not unexplained, (
+        "numeric constant(s) that should read from config/thresholds.toml: "
+        f"{unexplained}"
+    )
+
+
+def test_the_constant_allowances_are_all_still_real():
+    found = _module_level_numeric_constants()
+    stale = [name for name in ALLOWED_CONSTANTS if name not in found]
+    assert not stale, f"ALLOWED_CONSTANTS lists names that no longer exist: {stale}"
+
+
 def test_no_threshold_is_hard_coded_in_python():
     found = _cutoff_comparisons()
     unexplained = {text: where for text, where in found.items() if text not in ALLOWED}

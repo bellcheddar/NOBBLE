@@ -25,7 +25,7 @@ from nobble import paths
 # Ranking keys in order of preference. The first one with values on enough
 # pairs wins.
 RANKING_PREFERENCE = ("nobble_score", "bridge_percentile", "delta_iptm_median")
-MINIMUM_RANKED = 3
+MINIMUM_RANKED = int(paths.thresholds()["tier2"]["minimum_ranked"])
 
 
 @dataclass

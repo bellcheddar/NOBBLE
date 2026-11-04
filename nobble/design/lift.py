@@ -25,6 +25,8 @@ import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+from nobble import paths
+
 # The fields that must match between a variant and its parent for the
 # subtraction to mean anything.
 MATCHED_CONDITIONS = ("construct", "e3_gene", "ligand_key", "modality")
@@ -32,7 +34,12 @@ MATCHED_CONDITIONS = ("construct", "e3_gene", "ligand_key", "modality")
 # Below this many seeds on either side, the minima the Delta-ipTMs are built
 # from are not comparable: a minimum over two samples and a minimum over five
 # are different statistics.
-MINIMUM_SEEDS = 3
+MINIMUM_SEEDS = int(paths.thresholds()["design"]["minimum_seeds"])
+# How much of the parent's bridging rate a variant must keep before the
+# bridge counts as weakened rather than merely noisier.
+BRIDGE_RATE_RETAINED_MIN = float(
+    paths.thresholds()["design"]["bridge_rate_retained_min"]
+)
 
 
 @dataclass
@@ -52,6 +59,8 @@ class Lift:
     variant_bridged: str | None = None
     parent_bridged: str | None = None
     bridge_lost: bool | None = None
+    bridge_rate_change: float | None = None
+    bridge_weakened: bool | None = None
     status: str = "not_computed"
     mismatches: list = field(default_factory=list)
 
@@ -161,6 +170,25 @@ def compute(variant_row: dict, parent_row: dict) -> Lift:
         # variant did not, in any seed.
         result.bridge_lost = bool((p_with or 0) > 0 and (v_with or 0) == 0)
 
+        # And the case between the two. F19 recorded that a healthy-looking
+        # lift can hide a broken ternary, and the fix then covered outright
+        # loss. A parent at 10/10 against a variant at 1/10 is not outright
+        # loss and is barely different from it, yet it carried no flag at
+        # all: with a positive lift it reads as an improvement, and the
+        # chart, which outlines only lost bridges, drew it as a clean point.
+        variant_rate = (v_with or 0) / v_total
+        parent_rate = (p_with or 0) / p_total
+        result.bridge_rate_change = round(variant_rate - parent_rate, 4)
+        if parent_rate > 0:
+            result.bridge_weakened = bool(
+                variant_rate < parent_rate * BRIDGE_RATE_RETAINED_MIN
+            )
+        else:
+            # Nothing to lose. A parent that never bridged cannot have its
+            # bridge weakened, and saying otherwise would put every variant
+            # of a failed parent under suspicion.
+            result.bridge_weakened = False
+
     result.status = "computed"
     return result
 
@@ -200,6 +228,8 @@ def scan_profile(lifts: list[Lift], parent_sequence: str) -> dict:
             "lift": item.lift if item else None,
             "bridged": item.variant_bridged if item else None,
             "bridge_lost": item.bridge_lost if item else None,
+            "bridge_rate_change": item.bridge_rate_change if item else None,
+            "bridge_weakened": item.bridge_weakened if item else None,
             "status": item.status if item else "not_scored",
         })
 
@@ -216,6 +246,10 @@ def scan_profile(lifts: list[Lift], parent_sequence: str) -> dict:
         # interface but removed the bridge entirely. A different and
         # stronger claim than a large negative lift.
         "bridge_breaking": [r["substitution"] for r in rows if r.get("bridge_lost")],
+        # Weakened but not lost, kept separate because it is a weaker claim
+        # than bridge_breaking and a stronger one than a poor lift.
+        "bridge_weakening": [r["substitution"] for r in rows
+                             if r.get("bridge_weakened") and not r.get("bridge_lost")],
         "most_sensitive": ranked[0] if ranked else None,
         "least_sensitive": ranked[-1] if ranked else None,
         "note": (

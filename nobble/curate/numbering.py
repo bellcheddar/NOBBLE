@@ -41,7 +41,7 @@ ANCHOR_LENGTHS = (30, 25, 20, 15, 12)
 # anchoring only at the N-terminus therefore fails on a perfectly ordinary
 # structure. The anchor slides until it finds canonical sequence, and the
 # smallest slide that anchors uniquely wins.
-MAX_ANCHOR_SLIDE = 40
+MAX_ANCHOR_SLIDE = int(paths.thresholds()["numbering"]["max_anchor_slide"])
 
 # Residues allowed to disagree between the deposited chain and the canonical
 # sequence at the resolved offset, as a fraction of the aligned length. A

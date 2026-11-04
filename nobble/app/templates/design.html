@@ -83,6 +83,14 @@
   <h3>Scan profile</h3>
 
   <div class="chart chart--short" id="scan"></div>
+  {% if design.profile.get('bridge_weakening') %}
+    <p class="panel__hint">
+      Bridge weakened at
+      <span class="mono">{{ design.profile.bridge_weakening | join(', ') }}</span>:
+      kept under half the parent's bridging rate, so read any positive lift
+      there with care.
+    </p>
+  {% endif %}
   {% if design.profile.get('bridge_breaking') %}
     <p class="panel__hint">
       Bridge lost at
@@ -130,20 +138,31 @@
      than leaving a worse interface. Outlined rather than recoloured, so
      the lift's own sign stays readable. */
   const broke = p => p.bridge_lost === true;
+  /* And the case in between. A parent at 10/10 against a variant at 1/10 is
+     not an outright loss and is barely different from one, and with a
+     positive lift it was drawn as a clean point. Thinner outline than a lost
+     bridge, because it is a weaker claim. */
+  const weakened = p => p.bridge_weakened === true && p.bridge_lost !== true;
   Plotly.newPlot('scan', [{
     x: scored.map(p => p.position + ' ' + p.wild_type),
     y: scored.map(p => p.lift),
     type: 'bar',
-    customdata: scored.map(p => [p.bridged || 'n/a', broke(p) ? 'yes' : 'no']),
+    customdata: scored.map(p => [
+      p.bridged || 'n/a',
+      broke(p) ? 'lost' : (weakened(p) ? 'weakened' : 'held'),
+      p.bridge_rate_change === null || p.bridge_rate_change === undefined
+        ? 'n/a' : p.bridge_rate_change.toFixed(2)
+    ]),
     marker: {
       color: scored.map(p => p.lift < 0 ? '#A64708' : '#2F6F4F'),
       line: {
-        color: scored.map(p => broke(p) ? '#0c183c' : 'rgba(0,0,0,0)'),
-        width: scored.map(p => broke(p) ? 3 : 0)
+        color: scored.map(p => (broke(p) || weakened(p))
+          ? '#0c183c' : 'rgba(0,0,0,0)'),
+        width: scored.map(p => broke(p) ? 3 : (weakened(p) ? 1.5 : 0))
       }
     },
     hovertemplate: '%{x}<br>lift %{y:.4f}<br>bridged %{customdata[0]}'
-      + '<br>bridge lost: %{customdata[1]}<extra></extra>'
+      + '<br>bridge: %{customdata[1]} (%{customdata[2]})<extra></extra>'
   }], {
     margin: { l: 55, r: 16, t: 12, b: 56 },
     xaxis: { title: { text: 'position and wild-type residue', font: { size: 12 } } },

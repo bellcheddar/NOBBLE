@@ -18,6 +18,8 @@ import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+from nobble import paths
+
 # The components the composite may weight. Lysine geometry is a candidate so
 # the fit can speak for itself, but it carries its own warning: BINMAN measured
 # it at or below chance (D-NOB-024).
@@ -32,7 +34,7 @@ CANDIDATES = (
 NOT_VALIDATED = {"lysine_reach_exposed_fraction"}
 
 # Fewer labelled pairs than this and no fit is attempted at all.
-MINIMUM_LABELLED = 8
+MINIMUM_LABELLED = int(paths.thresholds()["weights"]["minimum_labelled"])
 # Weights are searched on this grid rather than optimised continuously: with a
 # handful of pairs, a continuous optimum is a fiction to three decimal places.
 GRID = (0.0, 0.25, 0.5, 0.75, 1.0)
