@@ -7331,3 +7331,46 @@ specifically so an inverted result would say so, and nothing put it next to
 the figure. It is there now, as `AUC, 95 per cent CI, interpretation`, absent
 rather than empty when the ROC has not computed, and marked as the machine
 output it is.
+
+## F160. The design tab named one peptide and plotted another
+
+The remaining state the UI had never been rendered in: a design tab with a
+scan profile. The design campaign has never run, so every QC pass has seen an
+empty panel. Rendered with a scored scan, two things were wrong and both were
+mine from earlier today.
+
+**The copy budget again held only while the panel was empty.** With a profile
+present `/design` read 44 words against a budget of 40, from two sentences
+the scan generates: the positions where the bridge weakened and the position
+where it was lost, each a hand-written frame around a
+`<span class="mono">` of substitutions computed from the data.
+
+That is a third shape the budget tool had not handled. F139 excluded a
+paragraph whose own class marks it as machine output; this is a paragraph
+whose class is prose and part of whose text is not. The rule excludes
+pipeline-generated status text, and the markup already distinguishes it at
+span level, so the measurement now counts a paragraph's own words and
+subtracts its `mono` descendants. The panel reads 36, and both sentences
+stay: each is the one-sentence disclaimer the budget explicitly permits,
+because a positive lift at a position whose bridge weakened is exactly a
+figure that would be read the wrong way without it.
+
+**And the page named the wrong peptide.** F147 attached the profile to the
+parent the campaign scanned rather than the one the report ranks first, and
+computed a note for when those differ. Nothing rendered the note, and the
+panel above the chart still names the ranked parent. So the page showed
+"Parent GSPT1" above the per-position profile of a different peptide, with
+every substitution label belonging to the second and the heading to the
+first.
+
+That is worse than what F147 replaced. Before it, the profile did not appear
+at all: unhelpful, and not misleading. Half a fix moved the failure from
+silence to a confident mislabel, which is the direction that costs a reader
+something. The two campaigns are already apart on this checkout, so the
+mislabel is what the design tab would have shown the first time the scan
+landed.
+
+The scan panel now states which peptide the profile is of and which campaign
+it came from, and shows the mismatch note when the ranking disagrees, both
+marked as the pipeline output they are. Pinned, including that the note
+element is absent rather than empty when the two agree.

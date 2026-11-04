@@ -53,8 +53,22 @@ for (const path of PAGES) {
         if (cs.display === 'none' || cs.visibility === 'hidden') return false;
         return el.offsetParent !== null || cs.position === 'fixed';
       });
-      const words = prose.reduce((n, el) => n + count(el.textContent), 0);
-      return { words, worst: prose.map((el) => count(el.textContent)).sort((a, b) => b - a)[0] || 0 };
+      /* Pipeline-generated specifics are excluded wherever they sit, not
+       * only when they are the whole paragraph. The design tab's bridge
+       * sentences are hand-written framing around a <span class="mono"> of
+       * substitutions the scan computed, so the paragraph's own class is
+       * prose and part of its text is not. Counting the whole paragraph put
+       * that panel at 44 words the moment a scan had anything to report,
+       * which is the state the arm exists to reach (F160). */
+      const own = (el) => {
+        let total = count(el.textContent);
+        el.querySelectorAll('.mono').forEach((span) => {
+          total -= count(span.textContent);
+        });
+        return Math.max(0, total);
+      };
+      const words = prose.reduce((n, el) => n + own(el), 0);
+      return { words, worst: prose.map(own).sort((a, b) => b - a)[0] || 0 };
     });
     return { panels: rows.length, perPanel: rows.map((r) => r.words),
              pageWords: rows.reduce((n, r) => n + r.words, 0) };

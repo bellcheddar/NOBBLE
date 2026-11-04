@@ -85,6 +85,24 @@
 <section class="panel">
   <h3>Scan profile</h3>
 
+  {# Which peptide this profile is of, and the note when that is not the
+     peptide the panel above names.
+
+     F147 attached the profile to the parent the campaign scanned instead of
+     the one the report ranks first, and computed a note saying so. Nothing
+     rendered the note, and the panel above still names the ranked parent,
+     so the page showed "Parent GSPT1" over the per-position profile of a
+     different peptide. Getting the data right and leaving the label wrong
+     is worse than the silence it replaced (F160). #}
+  {% if design.lifts.get('scan_parent') %}
+    <p class="mono" id="scan-parent">
+      Scanned: {{ design.lifts.scan_parent }}{% if design.lifts.get('scan_campaign') %}, from {{ design.lifts.scan_campaign }}{% endif %}
+    </p>
+  {% endif %}
+  {% if design.lifts.get('note') %}
+    <p class="mono" id="scan-parent-note">{{ design.lifts.note }}</p>
+  {% endif %}
+
   <div class="chart chart--short" id="scan"></div>
   {% if design.profile.get('bridge_weakening') %}
     <p class="panel__hint">
