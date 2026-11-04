@@ -106,6 +106,32 @@ server {
 
     client_max_body_size 8m;
 
+    # Compression. nginx's http-level default is \`gzip_types text/html\`, so
+    # the proxied pages were compressed and nothing served from /static/ was:
+    # measured on the live site, a first visitor pulled 10.1 MB of JavaScript
+    # and CSS, of which molstar is 5.1 MB and plotly 4.45 MB, both at full
+    # size. They are vendored and pinned, so they are served exactly once per
+    # cache lifetime and then never change, which is the best case for
+    # compressing them (F132).
+    #
+    # Level 5 rather than 9: the last levels cost noticeably more CPU on a
+    # 3.8 GB droplet for a percent or two of size, and this box also runs
+    # gunicorn. min_length skips the small files where the header costs more
+    # than the saving.
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 5;
+    gzip_min_length 1024;
+    gzip_types
+        text/plain
+        text/css
+        text/javascript
+        application/javascript
+        application/json
+        application/manifest+json
+        image/svg+xml;
+
     location /static/js/ {
         alias ${REMOTE_DIR}/nobble/app/static/js/;
         add_header Cache-Control "no-cache" always;

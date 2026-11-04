@@ -6103,3 +6103,54 @@ That last one is worth saying plainly. I wrote a test that corrupted the
 state the application serves, in the same commit as a finding about a NaN
 reaching a measurement, and what caught it was not the suite but a list
 someone else had written down of files that must not change.
+
+## F132. The live site compresses the HTML and not the 10 MB of JavaScript
+
+Measured against nobble.mdeller.com rather than reasoned about. Page loads
+are fast, 0.09 to 0.24 s for 24 to 164 KB of HTML, so there was no symptom
+to chase. The assets are a different matter:
+
+| Asset | Served |
+|---|---|
+| `static/vendor/molstar/molstar.js` | 5105.3 KB |
+| `static/vendor/plotly/plotly.min.js` | 4451.9 KB |
+| `static/vendor/tabulator/tabulator.min.js` | 432.4 KB |
+| `static/vendor/d3/d3.min.js` | 273.2 KB |
+| `static/vendor/molstar/molstar.css` | 71.1 KB |
+| `static/css/depot.css` | 33.7 KB |
+| Total to a first visitor | 10367.5 KB |
+
+None of those shrink under `Accept-Encoding: gzip`. The HTML does: the
+campaign page goes from 163.7 KB to 36.4 KB, a factor of 4.5.
+
+That split is not arbitrary and it is not a half-configured vhost. nginx's
+http-level default is `gzip_types text/html`, so the one content type that is
+compressed is the one Flask serves through the proxy, and the assets, which
+nginx serves itself by `alias`, are the ones it was never told to compress.
+The vhost in `deploy/provision.sh` has no `gzip` directives at all, which
+explains the observation exactly.
+
+Worth stating what this is not. It is not a measured page-load problem: the
+site is fast, and a vendored, pinned asset is fetched once per cache lifetime
+and then served from the browser. It is a first visit on a slow connection,
+and the honest size of that first visit is 10.1 MB where about 2.5 MB would
+do.
+
+The fix is six directives. Getting them onto the live box is the part that
+needed care. `provision.sh` writes the vhost from scratch and certbot then
+edits that same file in place to add the TLS lines, so regenerating it to
+pick up a gzip block would take HTTPS off the site. So the block went into
+`provision.sh` for the next clean provision, and `deploy/enable_gzip.sh`
+exists to put it into the file that is already there: back the vhost up,
+splice the block in after `client_max_body_size` with `sed`'s `r` command,
+run `nginx -t`, and reload only if nginx says the result is valid, restoring
+the backup if it does not. Running it twice is a no-op, and the worst case is
+the configuration it started with.
+
+`gzip_comp_level 5` rather than 9. The last levels cost noticeably more CPU
+for a percent or two of size, and the droplet has 3.8 GB of RAM and also runs
+gunicorn.
+
+I could not apply it myself: a direct `ssh` to read the live vhost was
+declined, which is the right default for a production box. The script is
+written to be read before it is run.
