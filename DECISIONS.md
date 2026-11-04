@@ -834,3 +834,52 @@ scope the spec does not contain.
 both tiers at one results file to return to the pooled behaviour.
 `tests/test_tiers.py` fails first if that happens: the contamination case is
 constructed deliberately, because it is not visible by inspection.
+
+## D-NOB-033: the Sievers arm is co-folded with the IMiD that actually degraded each zinc finger
+
+**Date:** 2026-11-04
+
+The Sievers screen tests five IMiDs (CC-122, CC-220, lenalidomide,
+pomalidomide, thalidomide) and reports which were significant per zinc
+finger. The arm was about to be built as "160 peptides against CRBN", with
+the drug left implicit. Counting first rather than assuming showed why that
+would not work: of the 32 degraded zinc fingers, pomalidomide is significant
+for 23 and lenalidomide for only 8.
+
+Running the whole arm under one IMiD would co-fold most positives with a drug
+the same screen says does not degrade them, while still labelling them
+degraded. That is not a noisy label, it is an inverted one, and it inverts
+exactly the label the headline ROC is computed on.
+
+**Decided.** The drug is assigned per peptide, pomalidomide (`Y70`) preferred
+over lenalidomide (`LVY`) because it covers far more of the set. Each matched
+control inherits its positive's drug, so the comparison the ROC makes is
+within-drug: a control co-folded with a different IMiD than its positive
+would differ from it in two things at once and would measure neither.
+
+**Eight positives are dropped**, not substituted: INSM1, PLAL1, ZKSC5, ZN285,
+ZN292, ZN526, ZN644 and ZN860 are significant only for CC-122 or CC-220,
+which have no CCD code in BINMAN's ligand table. Spec 4.18 scopes its
+falsifiable prediction to "lenalidomide or pomalidomide", so these fall
+outside the arm. The drop happens *before* matching, so a dropped positive
+cannot consume controls a kept positive would otherwise be matched against.
+The arm is therefore 24 positives and 96 controls, 120 peptides rather than
+160, and the matched structure is intact.
+
+**Thalidomide is excluded although it has a CCD (`EF2`).** Every
+thalidomide-significant row in the screen is also pomalidomide-significant,
+so including it would change no assignment while widening the claim past what
+the spec predicts.
+
+**Consequence.** The arm shrinking to 120 brings the mandatory set to 127
+against a measured budget of 156, so the over-budget condition of D-NOB-021
+resolves itself and there is headroom for discovery again.
+
+**Also fixed.** `screen_drugs` is now a structured field on `Peptide`. The
+first version of the assignment parsed the drug list back out of the prose in
+`notes`, which made the arm's composition depend on the wording of a sentence.
+
+**Reversal.** `IMID_PREFERENCE` and `sievers_drug_for` in
+`nobble/curate/peptides.py`. Widen the preference list to use more IMiDs, or
+return `IMID_CCD["POM"]` unconditionally to go back to one drug for the arm.
+`tests/test_sievers_drugs.py` fails first in either case.

@@ -67,3 +67,14 @@
   InterPro rather than compute-bound. That is the argument for persisting it,
   and for the half-written case being treated as unbuilt rather than reloaded.
   tests/test_library.py (4 tests). 52 tests pass.
+- 2026-11-04T02:00Z Sievers arm drug-routed. The arm was about to be built
+  with the IMiD left implicit. Counting first: of 32 degraded zinc fingers,
+  pomalidomide is significant for 23 and lenalidomide for 8, so a single-drug
+  arm would co-fold most positives with a drug the screen says does not
+  degrade them while still labelling them degraded. Drug is now assigned per
+  peptide and each control inherits its positive's. Eight positives dropped
+  (significant only for CC-122/CC-220, no CCD in the ligand table), before
+  matching so they cannot consume a kept positive's controls. Arm is 24
+  positives + 96 controls = 120 peptides, down from 160, which brings the
+  mandatory set to 127 against a budget of 156 and resolves the D-NOB-021
+  over-budget condition. D-NOB-033. 58 tests pass.

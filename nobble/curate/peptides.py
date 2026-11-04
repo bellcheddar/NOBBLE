@@ -86,6 +86,11 @@ class Peptide:
     # Whether this window is a linear epitope or a slice of a folded domain.
     # See domain_context and D-NOB-027.
     domain_context: dict | None = None
+    # Which IMiDs the Sievers screen tested and which were significant for
+    # this zinc finger, kept structured rather than only prose in `notes`:
+    # the arm's drug assignment reads it, and parsing it back out of a
+    # sentence would be a silent dependency on the sentence's wording.
+    screen_drugs: dict | None = None
     notes: list[str] = field(default_factory=list)
 
     @property
@@ -245,6 +250,14 @@ def sievers_peptides() -> list[Peptide]:
                 end_res=int(row["zf_stop"]) if row["zf_stop"] else None,
                 degron_class="zinc_finger",
                 e3_hint="CRBN",
+                screen_drugs={
+                    "tested": [d.strip() for d in
+                               str(row.get("drugs_tested", "")).split(";") if d.strip()],
+                    "significant": [d.strip() for d in
+                                    str(row.get("drugs_significant", "")).split(";")
+                                    if d.strip()],
+                    "min_fdr": row.get("min_fdr"),
+                },
                 notes=[
                     f"IMiD screen: drugs tested {row.get('drugs_tested', '')}; "
                     f"significant {row.get('drugs_significant', '') or 'none'}; "
@@ -417,6 +430,54 @@ def _composition_distance(left: str, right: str) -> float:
     return sum(abs(first.get(residue, 0.0) - second.get(residue, 0.0)) for residue in residues)
 
 
+# The three IMiDs BINMAN's ligand table carries a CCD code for. CC-122
+# (avadomide) and CC-220 (iberdomide) appear in the Sievers screen but have no
+# CCD, and no SMILES for them is curated here.
+IMID_CCD = {"POM": "Y70", "LEN": "LVY", "THAL": "EF2"}
+
+# Spec 4.18 states the falsifiable prediction over "lenalidomide or
+# pomalidomide", so the arm is scoped to those two. Pomalidomide is tried
+# first because it is significant for 23 of the 32 degraded zinc fingers
+# against lenalidomide's 8. Thalidomide has a CCD (EF2) and is deliberately
+# not in this list: every thalidomide-significant row in the screen is also
+# pomalidomide-significant, so including it would change no assignment while
+# widening the claim past what the spec predicts.
+IMID_PREFERENCE = ("POM", "LEN")
+
+
+def sievers_drug_for(peptide: "Peptide") -> dict:
+    """Which IMiD a degraded zinc finger should be co-folded with.
+
+    The screen tests five IMiDs and reports which were significant per zinc
+    finger, and the answer differs between them: running the whole arm under
+    one drug would label a zinc finger "degraded" in a complex containing a
+    drug the screen says does not degrade it. That inverts the very label the
+    ROC is built on, so the drug is chosen per peptide and each matched
+    control inherits its positive's drug, keeping the comparison within-drug.
+    """
+    significant = list((peptide.screen_drugs or {}).get("significant", []))
+    chosen = next((drug for drug in IMID_PREFERENCE if drug in significant), None)
+    if chosen is None:
+        return {
+            "drug": None,
+            "ccd": None,
+            "significant": significant,
+            "status": (
+                "unroutable: significant only for IMiDs with no CCD code "
+                "(CC-122, CC-220). Spec 4.18 scopes the prediction to "
+                "lenalidomide or pomalidomide, so this zinc finger falls "
+                "outside the arm rather than being run under a drug the "
+                "screen says does not degrade it."
+            ),
+        }
+    return {"drug": chosen, "ccd": IMID_CCD[chosen], "significant": significant,
+            "status": "routed"}
+
+
+def _significant_drugs(row: dict) -> list[str]:
+    return [d.strip() for d in str(row.get("drugs_significant", "")).split(";") if d.strip()]
+
+
 def sievers_matched_set(negatives_per_positive: int = 4) -> dict:
     """The Sievers arm, sized for the campaign while keeping its matching.
 
@@ -434,8 +495,25 @@ def sievers_matched_set(negatives_per_positive: int = 4) -> dict:
     diversity reduction still applies to the rest of the library.
     """
     everything = sievers_peptides()
-    positives = [peptide for peptide in everything if peptide.label == "degraded"]
+    all_positives = [peptide for peptide in everything if peptide.label == "degraded"]
     pool = [peptide for peptide in everything if peptide.label == "not_degraded"]
+
+    # Drop the positives whose only significant IMiD has no CCD code, before
+    # matching rather than after: a dropped positive must not consume the
+    # controls that a kept positive would otherwise be matched against.
+    positives = []
+    dropped = []
+    for peptide in all_positives:
+        routing = sievers_drug_for(peptide)
+        if routing["ccd"] is None:
+            dropped.append({"peptide_id": peptide.peptide_id, "gene": peptide.gene,
+                            "significant": routing["significant"],
+                            "reason": routing["status"]})
+            continue
+        peptide.screen_drugs = dict(peptide.screen_drugs or {})
+        peptide.screen_drugs["assigned_drug"] = routing["drug"]
+        peptide.screen_drugs["assigned_ccd"] = routing["ccd"]
+        positives.append(peptide)
 
     chosen: dict[str, Peptide] = {}
     pairings = []
@@ -454,6 +532,13 @@ def sievers_matched_set(negatives_per_positive: int = 4) -> dict:
             chosen[candidate.peptide_id] = candidate
             candidate.notes.append(f"matched control for {positive.gene} ({positive.peptide_id})")
             candidate.parent_peptide_id = positive.peptide_id
+            # The control inherits its positive's drug, so the comparison the
+            # ROC makes is within-drug. A control co-folded with a different
+            # IMiD than its positive would differ in two things at once.
+            candidate.screen_drugs = dict(candidate.screen_drugs or {})
+            candidate.screen_drugs["assigned_drug"] = positive.screen_drugs["assigned_drug"]
+            candidate.screen_drugs["assigned_ccd"] = positive.screen_drugs["assigned_ccd"]
+            candidate.screen_drugs["inherited_from"] = positive.peptide_id
             partners.append(candidate.peptide_id)
             if len(partners) >= negatives_per_positive:
                 break
@@ -467,6 +552,11 @@ def sievers_matched_set(negatives_per_positive: int = 4) -> dict:
         )
 
     selected = positives + list(chosen.values())
+    drug_counts: dict[str, int] = {}
+    for peptide in selected:
+        ccd = (peptide.screen_drugs or {}).get("assigned_ccd")
+        if ccd:
+            drug_counts[ccd] = drug_counts.get(ccd, 0) + 1
     return {
         "peptides": selected,
         "positives": len(positives),
@@ -474,6 +564,17 @@ def sievers_matched_set(negatives_per_positive: int = 4) -> dict:
         "pool_size": len(pool),
         "negatives_per_positive": negatives_per_positive,
         "pairings": pairings,
+        "dropped_positives": dropped,
+        "drug_assignment": drug_counts,
+        "note": (
+            f"{len(all_positives)} degraded zinc fingers in the screen, "
+            f"{len(positives)} kept. The {len(dropped)} dropped are significant "
+            "only for CC-122 or CC-220, which have no CCD code in BINMAN's "
+            "ligand table. Spec 4.18 scopes the prediction to lenalidomide or "
+            "pomalidomide, so running them under pomalidomide regardless would "
+            "put a zinc finger the screen calls undegraded by that drug on the "
+            "positive side of the ROC."
+        ),
     }
 
 
