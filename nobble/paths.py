@@ -94,3 +94,32 @@ def tool_env(*environments) -> dict:
             environment.setdefault("LIBCIFPP_DATA_DIR", str(share))
             break
     return environment
+
+
+def write_atomic(path: Path, text: str) -> Path:
+    """Write `text` to `path` so a reader never sees it half-written.
+
+    `Path.write_text` truncates the file and then writes into it, so a kill
+    inside that window leaves whatever had been flushed. For a file something
+    reads later, that is a corruption with no self-healing: a cached InterPro
+    response is kept because it `exists()`, never re-fetched, and swallowed by
+    `domain_context`'s `except Exception` into "interpro_unavailable", which
+    silently drops a substrate from its folded domain to the 15-mer. A cached
+    UniProt sequence is worse, because it is plain text: a truncation is still
+    a valid-looking protein and has no parse step to fail at, so every domain
+    slice taken from it would be quietly short.
+
+    Written to a sibling and renamed instead. `os.replace` is atomic within a
+    directory, so a reader sees the old contents or the new ones and nothing
+    between. The project's own rule is to assume the process can be killed at
+    any moment (F110).
+
+    Not a general-purpose utility: use it for anything a later run reads back,
+    which is every cache and every manifest.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + ".writing")
+    temporary.write_text(text)
+    os.replace(temporary, path)
+    return path

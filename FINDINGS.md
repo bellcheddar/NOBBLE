@@ -5083,3 +5083,59 @@ Nine other tests cover the matching rule, the prefix case, a row matched by
 `job_id` alone because `state.jsonl` carries a "running" row before the
 result and those have no `pair_id`, the torn line, the no-match case taking
 no backup, and the dry run changing nothing.
+
+## F110. Three caches that a kill would have corrupted permanently
+
+F109 made one rewrite atomic. The sweep that followed it, for everything
+that writes a file a later run reads back, found three more, and they are the
+caches.
+
+`Path.write_text` truncates and then writes, so a kill inside that window
+leaves whatever had been flushed. For a stage output that is recoverable: the
+stage is idempotent and a re-run overwrites it. For a cache it is not, and the
+three differ in how loudly they would fail.
+
+**The InterPro cache** is JSON, so damage fails to parse. That sounds like
+the safe case and is the subtle one. `_fetch` returns the file because it
+`exists()` and never re-fetches it, so the corruption is permanent, and
+`domain_context` catches `Exception` and reports `interpro_unavailable`,
+which makes `inside_folded_domain` falsy and drops the substrate from its
+folded domain to the 15-mer. Fragment against domain is the independent
+variable of the F6 experiment. It would have been changed silently, by a
+kill, for one protein, permanently.
+
+**The UniProt sequence cache** is plain text, which is worse. A truncated
+protein sequence is still a valid-looking protein. There is no parse step to
+fail at, nothing raises, and every domain slice taken from it is quietly
+short: the receptor construct, the substrate window, the frame that pose
+recovery anchors in. F107 and F108 were both about a domain boundary arriving
+wrong; this is the same boundary arriving wrong by a third route, and the only
+one of the three with no detection at all.
+
+**The MSA index and the a3m writer** are the third. Spec 1.3's point is that
+no campaign contacts an MSA server, so the cache is load-bearing, and
+preflight already checks that a receptor chain's a3m query matches the chain
+it is attached to, which would catch a damaged alignment.
+
+All four writes now go through `paths.write_atomic`, which writes a sibling
+and renames. `os.replace` is atomic within a directory, so a reader sees the
+old contents or the new ones. The temporary is deliberately beside the
+target, because the guarantee does not cross filesystems, and a test asserts
+that rather than trusting it.
+
+The sequence cache also gets a check on read, because plain text has no parse
+step: empty is refused, and anything outside the residue alphabet is refused,
+with the path named so the fix is to delete that file. A clean truncation is
+still valid residues and this cannot catch it. That is why the write is
+atomic rather than merely validated, and it is worth saying plainly instead
+of implying the check is complete.
+
+Measured rather than assumed: the live caches are intact, 1,201 InterPro
+responses all parsing and 16 sequences all plausible between 102 and 1,490
+residues. The fix removes the cause, not damage already on disk, and a test
+checks both, along with one that fails on a leftover `.writing` file, since
+an interrupted write would otherwise leave no trace anyone looks at.
+
+A fourth test holds the rule rather than the three instances: no bare
+`write_text` in any of those modules. A cache added later is the same defect
+again, and that is the form this has taken four times now.

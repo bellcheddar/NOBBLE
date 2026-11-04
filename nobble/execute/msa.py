@@ -54,7 +54,7 @@ def load_index() -> dict:
 
 
 def save_index(index: dict) -> None:
-    INDEX.write_text(json.dumps(index, indent=2, sort_keys=True))
+    paths.write_atomic(INDEX, json.dumps(index, indent=2, sort_keys=True))
 
 
 def required_sequences() -> list[dict]:
@@ -121,7 +121,7 @@ def fetch(sequence: str, label: str = "") -> dict:
         return {"key": key, "status": "failed: empty alignment returned",
                 "path": None, "label": label}
 
-    path.write_text(lines[0])
+    paths.write_atomic(path, lines[0])
     depth = sum(1 for row in lines[0].splitlines() if row.startswith(">"))
     return {"key": key, "status": "generated", "path": str(path),
             "bytes": path.stat().st_size, "depth": depth, "label": label}

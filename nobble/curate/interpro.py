@@ -30,7 +30,7 @@ def _fetch(accession: str) -> dict:
     )
     with urllib.request.urlopen(request, timeout=120) as response:
         payload = json.load(response)
-    cached.write_text(json.dumps(payload))
+    paths.write_atomic(cached, json.dumps(payload))
     return payload
 
 

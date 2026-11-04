@@ -101,14 +101,33 @@ def canonical_sequence(accession: str) -> str:
     """Canonical UniProt sequence, cached to disk so a campaign needs no network."""
     cached = CACHE / f"{accession}.seq"
     if cached.exists():
-        return cached.read_text().strip()
+        sequence = cached.read_text().strip()
+        # Checked because this cache is plain text. A JSON cache fails to
+        # parse when it is damaged; a protein sequence does not, so an empty
+        # or non-residue file would be returned as a sequence and every
+        # domain slice taken from it would be wrong. A clean truncation is
+        # still valid residues and this cannot catch that, which is why the
+        # write is atomic (F110).
+        if not sequence:
+            raise RuntimeError(
+                f"the cached sequence for {accession} is empty: delete "
+                f"{cached} and let it be fetched again"
+            )
+        stray = set(sequence) - set("ACDEFGHIKLMNPQRSTVWYBXZUO")
+        if stray:
+            raise RuntimeError(
+                f"the cached sequence for {accession} contains "
+                f"{sorted(stray)[:4]}, which are not residues: delete "
+                f"{cached} and let it be fetched again"
+            )
+        return sequence
     request = urllib.request.Request(
         UNIPROT_URL.format(acc=accession), headers={"Accept": "application/json"}
     )
     with urllib.request.urlopen(request, timeout=60) as response:
         payload = json.load(response)
     sequence = payload["sequence"]["value"]
-    cached.write_text(sequence)
+    paths.write_atomic(cached, sequence)
     return sequence
 
 
