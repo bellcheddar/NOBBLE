@@ -2546,3 +2546,42 @@ fingerprint and F43's absent-versus-null key.
 The filter predicate is lifted from the template and run under node, per
 F50, against a plain pair, a forced one, one over the cap, one with
 nothing recorded, and one that is both.
+
+## F54. A divergence I created while removing hard-coded cutoffs
+
+Phase 4's Delta tab asks for four things beyond the scatter: marginal
+distributions on both axes, lasso selection pushing to the Campaign tab, a
+ROC panel, and a draggable threshold that live-updates precision and
+recall. All four are there and working.
+
+Reading the ROC panel turned up something else, and it is mine.
+
+Its comment states the requirement plainly: "This filter and the Python one
+have to agree, because the figure here and the number in the validation
+report are supposed to be the same curve." Both refuse to draw below three
+scored pairs a side, which is spec 5's rule that a matched-control curve
+without its matched negatives must not be reported at all.
+
+They agreed by both being written as a literal 3. Then F28 moved the Python
+side into `thresholds.toml` as `roc_minimum_per_side` and left the
+template's literal where it stood. Nothing broke, because the two numbers
+are still equal. But the config became the source of truth for one of them
+and not the other, so a single edit would have made the chart draw a curve
+the validation report refused, or refuse one the report drew, with nothing
+failing either way.
+
+That is a worse state than before the change. Two literals are visibly
+two literals; one literal and one configured value looks handled.
+
+The floor is now passed into the template from the same config the layer
+reads. The test that matters is not the one asserting they are equal,
+because two literals were equal too: it changes the configured value and
+requires both sides to follow.
+
+Worth recording as its own finding rather than folding into F28, because
+the lesson is specific. Moving a constant into configuration is only half
+a fix if something else was reading the constant. F28 swept Python for
+cutoffs and the template is not Python, so the sweep could not have seen
+it, and I did not think to look. Three sweeps found cutoffs in
+comparisons, in module constants and in default arguments; the fourth place
+was another language.

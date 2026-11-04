@@ -73,9 +73,20 @@ def interactions():
 
 @bp.route("/delta")
 def delta():
+    # The ROC panel refuses below the same floor the Python layer refuses
+    # below, and the floor is passed in rather than written twice. Its own
+    # comment says "this filter and the Python one have to agree, because the
+    # figure here and the number in the validation report are supposed to be
+    # the same curve", and F28 moved the Python side to thresholds.toml
+    # without noticing the literal in the template (F54).
+    from nobble import paths
+
     return render_template(
         "delta.html", page_title="Delta", active="delta",
         pairs=data.scores(), components=data.COMPONENTS,
+        roc_minimum_per_side=int(
+            paths.thresholds()["validation"]["roc_minimum_per_side"]
+        ),
     )
 
 

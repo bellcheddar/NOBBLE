@@ -49,6 +49,12 @@
 <script>
 (function () {
   const PAIRS = {{ pairs | tojson }};
+  /* Spec 5 forbids reporting a matched-control curve without its matched
+     negatives, so both this panel and matched_control_roc refuse below the
+     same floor. Passed in from thresholds.toml rather than written here,
+     because the two diverging is how the chart and the validation report
+     stop being the same curve (F54). */
+  const ROC_MINIMUM_PER_SIDE = {{ roc_minimum_per_side | tojson }};
   if (!PAIRS.length) { return; }
 
   const LABEL_COLOUR = {
@@ -280,7 +286,8 @@
       ' matched negative(s) scored so far' +
       (excluded ? ' (' + excluded + ' pair(s) outside the Sievers arm excluded)' : '');
 
-    if (positives.length < 3 || negatives.length < 3) { return; }
+    if (positives.length < ROC_MINIMUM_PER_SIDE
+        || negatives.length < ROC_MINIMUM_PER_SIDE) { return; }
 
     const all = positives.concat(negatives)
       .map(p => p.delta_iptm).sort((a, b) => a - b);
