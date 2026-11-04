@@ -202,18 +202,159 @@ def benchmark_ligands() -> dict[int, Ligand | None]:
     return resolved
 
 
-def glue_recall_set(limit: int | None = None) -> list[Ligand]:
-    """Glues with a resolvable CCD, for the Tier B recall arm (spec 3.3).
+def _recall_rows() -> list[dict]:
+    """CCDs observed bridging a triaged E3 ligase, most-deposited first.
 
-    Tier B is run against known glue chemotypes rather than bespoke chemistry:
-    the question is whether any established chemotype shows a Delta-ipTM signal
-    against an unexploited ligase. Restricted to the glue-candidate class and to
-    ligands with a known heavy-atom count, so token budgeting is exact.
+    Three conditions, each from a different table, and all three are needed:
+
+    - `edge.edge_type = 'bridged_by'` with a triaged ligase on one side: the
+      compound was seen between this ligase and another chain in a deposited
+      structure. This is what makes it a glue *against a ligase* rather than
+      a glue in general.
+    - a bridge of the same CCD classed `molecular_glue` or `protac` by
+      BINMAN, not symmetry-mediated: the bridge is the kind of contact the
+      campaign is about, rather than a native cofactor sitting in a cleft or
+      a lattice contact.
+    - `ligand.is_furniture = 0`: citrate and tetraethylene glycol both appear
+      between a ligase and its partner, and both are the crystallographer's
+      doing.
+
+    Dropping any one of them lets furniture in. Without the furniture flag the
+    set gains citrate, PEG and N-heptanoyl-N-hydroxy-beta-alanine; without the
+    evidence class it gains inositol hexaphosphate, which bridges KBTBD4 and
+    RNF113A as a native cofactor.
     """
-    rows = store.atlas_rows(
-        "select ccd_id from ligand where status = 'ok' and ccd_class = 'glue_candidate' "
-        "and heavy_atoms is not null and is_furniture = 0 "
-        "order by heavy_atoms asc"
+    return store.atlas_rows(
+        "select e.ccd_id, count(distinct e.pdb_id) deposited_in, "
+        "       group_concat(distinct coalesce(l1.gene, l2.gene)) ligases "
+        "from edge e "
+        "left join ligase l1 on l1.uniprot_acc = e.source_acc "
+        "left join ligase l2 on l2.uniprot_acc = e.target_acc "
+        "join ligand g on g.ccd_id = e.ccd_id and g.status = 'ok' "
+        "     and g.is_furniture = 0 "
+        "where e.status = 'ok' and e.edge_type = 'bridged_by' "
+        "  and e.ccd_id is not null "
+        "  and (l1.gene is not null or l2.gene is not null) "
+        "  and exists (select 1 from bridge b where b.ccd_id = e.ccd_id "
+        "              and b.status = 'ok' and b.symmetry_mediated = 0 "
+        "              and b.evidence_class in ('molecular_glue', 'protac')) "
+        "group by 1 order by deposited_in desc, e.ccd_id"
     )
-    ligands = [by_ccd(row["ccd_id"], source="glue_recall_set") for row in rows]
-    return ligands[:limit] if limit else ligands
+
+
+# The glues and degraders this campaign already runs. They are the positive
+# controls of the recall set: a definition of "known glue chemotype" that
+# excludes pomalidomide or MZ1 is wrong whatever else it contains. Used to
+# choose which CCD represents a scaffold, not to add anything: each of these
+# earns its place in `_recall_rows` on the same evidence as the rest.
+CURATED_GLUES = frozenset(
+    code for code, _ in BENCHMARK_LIGANDS.values() if code is not None
+)
+
+
+def _recall_order() -> list[dict]:
+    """The recall rows, in the order scaffold representatives are chosen.
+
+    A curated glue first, then the most-deposited, then the code. The last of
+    those three is arbitrary and is there only so the set does not depend on
+    the order the database returns rows in.
+    """
+    return sorted(
+        _recall_rows(),
+        key=lambda row: (
+            row["ccd_id"] not in CURATED_GLUES,
+            -(row["deposited_in"] or 0),
+            row["ccd_id"],
+        ),
+    )
+
+
+def _chemotype(smiles: str | None) -> str | None:
+    """Bemis-Murcko scaffold, or None if it cannot be derived.
+
+    RDKit is present in the curation environment and absent from the droplet,
+    so this degrades to None rather than raising: a caller that cannot
+    deduplicate gets every CCD and is told so, which is a longer list rather
+    than a wrong one.
+    """
+    if not smiles:
+        return None
+    try:
+        from rdkit import Chem, RDLogger
+        from rdkit.Chem.Scaffolds import MurckoScaffold
+    except ImportError:
+        return None
+    RDLogger.DisableLog("rdApp.*")
+    molecule = Chem.MolFromSmiles(smiles)
+    if molecule is None:
+        return None
+    try:
+        scaffold = MurckoScaffold.GetScaffoldForMol(molecule)
+    except Exception:                                       # noqa: BLE001
+        return None
+    # An acyclic compound has an empty Murcko scaffold. Keyed by its own
+    # code rather than by "", so a dozen unrelated acyclic compounds do not
+    # collapse into one chemotype.
+    return Chem.MolToSmiles(scaffold) or None
+
+
+def glue_recall_set(limit: int | None = None) -> list[Ligand]:
+    """Known glue chemotypes, for the Tier B recall arm (spec 3.3).
+
+    Spec 3.3 runs Tier B against "the glue recall sets" and asks whether any
+    known glue chemotype shows a Delta-ipTM signal against an unexploited
+    ligase. That question needs compounds that are known to glue. It names
+    MGDB, MolGlueDB and MGTbind, none of which BINMAN's atlas holds, so the
+    set is derived from the evidence the rest of this project already runs
+    on: a compound observed bridging a triaged E3 ligase in a deposited
+    structure, classed as a glue or a degrader rather than as a cofactor or a
+    lattice contact. 130 CCDs across CRBN, VHL, KBTBD4, DCAF16 and RNF113A.
+    All five of the benchmark panel's curated glues are in it, which is the
+    check that the definition is not merely plausible.
+
+    What this replaced was wrong in a way worth recording (F133). It selected
+    `ccd_class = 'glue_candidate'`, whose rule is
+    `size_and_no_furniture_signal`: a negative definition meaning "big enough
+    not to be furniture, and nothing says it is furniture". 7,676 CCDs
+    qualify, among them 3-nitrotoluene and adipic acid, and the ordering was
+    `heavy_atoms asc`, so any limit took the smallest and least glue-like
+    end of a bucket that was never glue-specific. `glue_recall_set(15)`
+    returned fifteen benzene derivatives of ten heavy atoms each.
+
+    `limit` counts chemotypes, not molecules, because the spec's question is
+    about chemotypes: pomalidomide, EF2 and F4U share one phthalimide-
+    glutarimide scaffold and answer the question once between them. Without
+    RDKit no scaffold can be derived, and then every CCD is its own chemotype
+    and says so.
+
+    Which CCD represents a scaffold is decided by `_recall_order`, and it has
+    to be, because deposited counts tie and the tie-break then picks by code.
+    Lenalidomide shares its scaffold with A1IWG at one deposition each, A1IWG
+    sorts first alphabetically, and the first version of this dropped
+    lenalidomide out of a set of known glue chemotypes. A positive control
+    leaving the set quietly is the defect; the deduplication is correct.
+    """
+    index = _ccd_index()
+    seen: set[str] = set()
+    ligands: list[Ligand] = []
+    for row in _recall_order():
+        code = row["ccd_id"]
+        chemotype = _chemotype((index.get(code) or {}).get("smiles"))
+        if chemotype is not None:
+            if chemotype in seen:
+                continue
+            seen.add(chemotype)
+        ligand = by_ccd(code, source="glue_recall_set")
+        ligand.notes.append(
+            f"observed bridging {row['ligases']} in "
+            f"{row['deposited_in']} deposited structure(s)"
+        )
+        if chemotype is None:
+            ligand.notes.append(
+                "no Murcko scaffold available, so this CCD was not "
+                "deduplicated against the rest of the set"
+            )
+        ligands.append(ligand)
+        if limit is not None and len(ligands) >= limit:
+            break
+    return ligands
