@@ -7233,3 +7233,44 @@ README leaves the published version saying the old thing. Regenerated, and
 worth noting as the shape rather than the slip: a document with two
 representations has the same problem as a value with two spellings, and this
 project's answer in both cases is to derive one from the other and check it.
+
+## F158. The progress report answered its own question two ways
+
+PROGRESS.md is the document that says whether the build needs a decision.
+F134 opened Gate G1 on Tier B and recorded it in a section of its own, under
+a heading saying so. The "Gates open" section, further down, still read "No
+gate is currently open. All six are closed."
+
+Both sentences were written deliberately, neither was wrong when written, and
+nothing compared them. So the file answered the one question it exists to
+answer in two different ways, and which answer a reader got depended on where
+they stopped reading. The one that says no decision is needed is the one a
+reader is hoping for, which is the wrong half to leave standing.
+
+The handover was stale in a second way, and this one would have cost the
+user work. "Next action, once the chain exits" credits
+`tools/rerun_pair.py` as "tested for the first time", which was true of its
+atomic write and not of its correction: F145 found that the correction
+returned nothing on every invocation the chain has ever made, and F146 that
+it cleared the state rows regardless, so the fifteen jobs would have re-run
+on the same hydroxyproline YAML and the atlas would have gone on refusing.
+Someone following those instructions would have rerun the chain, watched the
+correction report fifteen jobs "left alone", and had no reason to think the
+publish was still blocked for the same reason as before.
+
+Both corrected, and the list now carries what the rerun actually gains from
+this session: a correction that corrects, tier 2 priced against the gate
+before it runs, refined poses that are readable, a design profile attached to
+the parent that was scanned, and a deploy that refuses a droplet serving
+something other than what was shipped.
+
+The consistency check is a test, because the next gate to open will be
+recorded the same way: in a new section, by someone who does not scroll. It
+blanks quoted spans first, since the cell that used to carry the wrong
+sentence now records that it did, and the first version of the test fired on
+that record. That is the third time in this session a check has forbidden its
+own explanation, after F150's docstring and F152's conftest comment, so it is
+the rule and not the exception.
+
+Verified by restoring the contradiction and watching the test fail, then
+restoring the file and checking it byte for byte.

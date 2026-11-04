@@ -371,17 +371,59 @@ changes already.
 - Every stage that runs after the compute tolerating a torn final line
   (F111), so a kill mid-append costs the last job rather than the stage.
 
+**And what the rerun gains from the work after that.** The list above was
+written when `rerun_pair.py` had been "tested for the first time", which was
+true of its atomic write and not of its correction. The correction did not
+work (F145): `_known_good` compared an absolute glob result against the
+relative campaign path the chain passes, so the campaign was never excluded
+from its own search, "exactly one" was never true, and it returned nothing
+for every job on every invocation the chain has made. It then cleared the
+state rows anyway, so the fifteen jobs would have re-run on the same
+hydroxyproline YAML and the atlas would have gone on refusing (F146).
+
+- **The F47 correction now corrects.** All three spellings of the campaign
+  path resolve to one reference, the correction is verified end to end on a
+  redirected-root fixture, and it refuses rather than clearing results for a
+  job whose input it could not verify. It also refuses a queue whose YAML
+  paths point outside the campaign named on the command line (F144).
+- **Tier 2 is priced against Gate G1 before it runs** (F135). The decile
+  costs 29 to 219 hours against what is left of the budget, so
+  `tier2.run` reduces it to the affordable prefix of the ranking, and
+  `tools/tier2.sh` stops on exit 3 rather than refining nothing. Five of
+  fifteen pairs fit at the time of writing.
+- **The refined poses are readable** (F137). Tier 2's scores were published
+  and read by nothing; the pose tab now shows the quantities whose shape
+  survives a change of sample count and names the ones it withholds.
+- **The design scan's profile follows the parent it scanned** (F147), not
+  the one the report ranks first. Those are already apart, so the scan would
+  have run its 240 jobs and shown no profile at all.
+- **The deploy refuses a droplet that is not serving what was shipped**
+  (F140). Every route answering 200 says the app works, not that it is this
+  version.
+
 **What to check when it finishes.** `bash tools/status.sh` covers most of
-it; the four lines worth reading are the stale-input count reaching zero,
+it; the five lines worth reading are the stale-input count reaching zero,
 the atlas reporting in step, the matched-control ROC moving from
-`not_computed` to a verdict, and `tools/check_prediction.py` accounting for
-all three of its testable outcomes. The ROC's verdict now has three branches
+`not_computed` to a verdict, `tools/check_prediction.py` accounting for all
+three of its testable outcomes, and the `G1 refine` line, which is new: it
+reports what refinement costs against what is left of the budget and how
+many pairs survive automatic reduction (F143). The ROC's verdict now has three branches
 rather than two (F120), so an inverted result will say so rather than
 reading as indistinguishable from chance.
 
 ## Gates open
 
-- **No gate is currently open.** All six are closed.
+- **G1 Compute is open, on Tier B.** Spec 3.3 says Tier B is in the first
+  campaign and not to defer it. It is selected, frozen and gate-passed, and
+  no Tier B pair exists in any campaign. After automatic scope reduction the
+  smallest design that can answer a question about "any known glue
+  chemotype" costs 16.5 hours against 96 `max_compute_hours` with 22.9 spent
+  and the main campaign still running. See the section above and F134. The
+  other five gates are closed.
+
+  This cell used to say "No gate is currently open. All six are closed",
+  which stayed true until F134 and then contradicted the section above it
+  for as long as nobody read both (F158).
 - **G1 compute: closed, and was briefly reported open in error.** When the
   chain remeasured throughput on the corrected campaign, `projected_hours`
   applied that campaign's 397-token representative job to the main campaign's
