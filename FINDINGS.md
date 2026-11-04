@@ -2454,3 +2454,50 @@ costs rather than carrying a bare label.
 Both the helper and its test follow F50: `ligandCell` is named so the test
 can run it under node rather than grep the template, and it is run against
 a CCD pair, a SMILES pair, and a pair with no ligand at all.
+
+## F52. The headline validation layer satisfied half its specification
+
+Spec section 5 read against the code. Two of three layers clean, and the
+third missing a test nobody had recorded as missing.
+
+**5.1, pose recovery.** Clean, including the clause easiest to let slip:
+"the seven benchmark pairs are reported individually, by name, on the
+About page". All of them are, with their own recovery numbers, and the
+success-rate curve uses the 1, 2, 3 and 5 angstrom breakpoints the spec
+names, read from `thresholds.toml`.
+
+**5.2, the time split.** Clean, and already the subject of F25: it
+computes correctly, refuses when there is no blind set, and now says so on
+the page carrying the numbers.
+
+**5.3, the matched-control ROC.** The spec asks for two tests:
+"Delta-ipTM on the Sievers degraded versus non-degraded split, with the
+Slabicki graded labels as a secondary continuous test". The binary split
+is computed, carefully, with a bootstrap interval and a scope that keeps
+the benchmark panel out of it. The graded test is absent, and nothing
+anywhere said it had been asked for.
+
+It is absent because the data does not exist. BINMAN's validation store
+holds seventeen parsed datasets and the raw downloads behind them, and
+none is Slabicki's. The name appears three times in `references.json`, as
+bibliography, one of those being the Sievers paper he co-authored. NOBBLE
+consumes BINMAN's stores rather than acquiring its own, so there is no
+continuous label to correlate against.
+
+That is the same situation as Degronopedia and ProtCID, which D-NOB-010
+records plainly and which makes the furniture veto report `not_computed`
+rather than `false`. The difference was the record. The ROC reported the
+half it could compute and looked complete.
+
+So the layer now names the missing test with its reason, and D-NOB-046
+records the decision and what it costs: a continuous label would separate
+a weak degrader from a strong one, and degraded against not-degraded
+cannot, so the headline curve is coarser than the specification intended
+and now says so.
+
+The test for it checks the premise rather than restating it: if the
+Slabicki data is ever acquired into BINMAN, the test fails, which is the
+reminder to implement the secondary curve rather than leave the note
+standing. That is the same guard as the F47 drift allowlist and the F26
+cutoff allowances, and it is the third time today that an "it cannot be
+done" note needed a test to stop it outliving the reason.

@@ -1400,3 +1400,43 @@ either way, so nothing needs republishing.
 **Reversal.** `_receptor_peptide_iptm` in `nobble/score/metrics.py`. Every
 record also carries `iptm_receptor_peptide_first_chain_only`, so the old
 series can be recovered without rerunning anything.
+
+## D-NOB-046: the Slabicki graded labels were never acquired, so the ROC's secondary test is reported as not computed
+
+**Date:** 2026-11-04
+
+**Finding.** Spec 5.3 asks for two tests in the matched-control layer:
+"Delta-ipTM on the Sievers degraded versus non-degraded split, with the
+Slabicki graded labels as a secondary continuous test". Spec 2.1 lists
+"Slabicki 2025 (Mol Cell), per-compound, graded degradation labels,
+alanine scan, 29-analog panel" among the sources, with the rationale that
+it "converts a binary readout into a dose-like one".
+
+That dataset does not exist in BINMAN. Its validation store holds
+seventeen parsed datasets and the raw downloads behind them; none is
+Slabicki's. The name appears only in `references.json`, as three
+bibliography entries, one of which is the Sievers paper he co-authored.
+NOBBLE consumes BINMAN's stores rather than acquiring its own (spec 2.1),
+so there is no continuous label to correlate against.
+
+**Decision.** `matched_control_roc` reports
+`secondary_graded_test: "not_computed:
+slabicki_graded_labels_unavailable"` with the reason, beside the binary
+curve it can compute.
+
+**Why.** The same principle as D-NOB-010, where Degronopedia and ProtCID
+were unavailable and the furniture veto reports `not_computed` rather
+than `false`. A reader comparing this output against the specification
+should find the missing half named. The alternative, which is what was
+happening, is an output that satisfies half a requirement and looks
+complete, and nothing anywhere recording that the other half was ever
+asked for.
+
+**Cost.** The binary split is a coarser test than a graded one. A
+continuous label would separate a weak degrader from a strong one;
+degraded against not-degraded cannot. The headline ROC is therefore less
+sensitive than the specification intended, and says so.
+
+**Reversal.** Acquire the Slabicki per-compound data into BINMAN, then
+correlate Delta-ipTM against the graded labels in `matched_control_roc`
+beside the binary curve. The field is where the result would go.

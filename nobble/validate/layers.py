@@ -392,6 +392,23 @@ def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerR
         "source": "Sievers zinc-finger screen: negatives assayed in the same screen",
         "seed_counts": balance["counts"],
         "seed_balance": balance["verdict"],
+        # Spec 5.3 asks for two tests here, not one: "Delta-ipTM on the
+        # Sievers degraded versus non-degraded split, with the Slabicki
+        # graded labels as a secondary continuous test". The binary split is
+        # below. The graded one cannot be run: BINMAN cites Slabicki 2025 in
+        # its bibliography and never acquired the per-compound degradation
+        # data, so there is no continuous label to correlate against.
+        #
+        # Said here rather than left out, on the same principle as the
+        # furniture veto (D-NOB-010): a reader comparing this output with
+        # the specification should find the missing half named, not absent
+        # (F52).
+        "secondary_graded_test": (
+            "not_computed: slabicki_graded_labels_unavailable. Spec 5.3 "
+            "specifies a secondary continuous test against Slabicki's graded "
+            "degradation labels. BINMAN cites the paper and did not acquire "
+            "the per-compound data, so the split below is binary only"
+        ),
     }
 
     # Spec 5 is explicit that reporting a curve without the matched negatives is
