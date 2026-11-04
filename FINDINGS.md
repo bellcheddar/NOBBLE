@@ -6890,3 +6890,50 @@ a float cannot arrive without a code change: the crash is unreachable and
 the fixture was wrong, not the code. Recorded because the next person to
 write a fixture for this will make the same mistake, and because
 `lysine_reach` having had two shapes before is what F106 was about.
+
+## F150. What the primary signal is a percentile of
+
+`reference_distribution` builds the population `bridge_percentile` is
+measured against, and its docstring said "only `status = 'ok'` rows, and only
+genuine two-chain bridges, so the percentile compares like with like". The
+query filters on `status` and a non-null value. There is no exclusion of
+symmetry-mediated contacts, of the `crystallisation_artefact` evidence class,
+or of furniture ligands, and there never was.
+
+So the reference population includes 1,890 bridges BINMAN classes as
+crystallisation artefacts and 38,748 symmetry-mediated ones: PEG and citrate
+wedged between lattice neighbours, counted alongside pomalidomide in CRBN.
+For the project's primary signal, that is worth being sure about.
+
+It is correct, and the spec settles it rather than my judgement. Spec 4.1
+names the population by its size, "a percentile against the distribution of
+285,996 experimentally observed bridges already in the BINMAN atlas", and
+285,996 is the unfiltered count. Filtering would produce a different number
+from the one the spec specifies.
+
+Whether it matters is a separate question from whether it is correct, and
+that one is measurable. Against four populations, all bridges, symmetry
+excluded, artefacts excluded, and the glue and protac classes alone, the
+median dSASA runs from 767.9 to 805.0 square angstroms and a given
+prediction's percentile moves by one to six points:
+
+| dSASA | all | no symmetry | no artefacts | glue and protac only |
+|---|---|---|---|---|
+| 300 | 5.87 | 4.17 | 5.88 | 5.94 |
+| 500 | 23.51 | 18.99 | 23.43 | 18.37 |
+| 800 | 52.88 | 49.47 | 52.71 | 53.13 |
+| 1200 | 86.34 | 85.06 | 86.28 | 92.65 |
+| 1800 | 99.01 | 98.88 | 99.00 | 99.36 |
+
+The glue-class population is 11,467 bridges and its median is 769.8 against
+the full population's 767.9. Molecular glue interfaces are, by this measure,
+indistinguishable in size from bridges in general, which is why the choice
+of reference barely moves the answer. A concern retired with numbers rather
+than argument.
+
+The docstring is corrected, because it mattered in one respect the
+measurement does not settle: a high percentile means "a larger interface
+than most bridges the atlas has observed", incidental ones included, and not
+"larger than most molecular glue interfaces". Here those are nearly the same
+claim. They are not the same claim, and the stronger one is the one a reader
+would assume from the word "genuine".

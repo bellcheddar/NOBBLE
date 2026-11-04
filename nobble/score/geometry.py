@@ -75,9 +75,30 @@ class BridgeScore:
 def reference_distribution() -> dict[str, tuple[float, ...]]:
     """Sorted dSASA-total and buried-fraction values from the atlas.
 
-    Only `status = 'ok'` rows, and only genuine two-chain bridges, so the
-    percentile compares like with like. Held sorted so a percentile is a
-    bisection rather than a scan.
+    Every `status = 'ok'` bridge, which is the 285,996 spec 4.1 names. The
+    filter is `status` and a non-null value and nothing else: no exclusion
+    of symmetry-mediated contacts, of the `crystallisation_artefact`
+    evidence class, or of furniture ligands. This said "only genuine
+    two-chain bridges, so the percentile compares like with like", which
+    described a filter that is not here and never was (F150).
+
+    Leaving it unfiltered is right, because the spec names the population by
+    its size and that size is the unfiltered one. It also barely matters,
+    which was worth measuring rather than assuming. Against four populations,
+    all bridges, non-symmetry only, artefacts excluded, and the glue and
+    protac classes alone, the median dSASA runs from 767.9 to 805.0 and a
+    predicted bridge's percentile moves by one to six points: 1,200 square
+    angstroms scores 86.3 against all bridges and 92.7 against glue
+    interfaces alone. So the primary signal is not an artefact of which
+    bridges are counted.
+
+    What it does change is the sentence a reader should attach to a high
+    percentile. It means "a larger interface than most bridges the atlas has
+    observed", incidental ones included, not "larger than most molecular
+    glue interfaces". Those happen to be nearly the same claim here, and
+    they are not the same claim.
+
+    Held sorted so a percentile is a bisection rather than a scan.
     """
     rows = store.atlas_rows(
         "select dsasa_total, buried_fraction, bridging_balance from bridge "

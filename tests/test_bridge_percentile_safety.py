@@ -119,3 +119,52 @@ def test_an_empty_reference_is_a_refusal_rather_than_a_zero():
         assert math.isnan(geometry.percentile_of(100.0, "dsasa_total"))
     finally:
         geometry.reference_distribution = original
+
+
+def test_the_reference_population_is_the_one_spec_4_1_names(monkeypatch):
+    """285,996, which is the unfiltered count (F150).
+
+    The docstring claimed "only genuine two-chain bridges", which describes
+    a filter that is not there. Filtering would give a different number from
+    the one the spec specifies, so the check is that the query stays
+    unfiltered and that the count still matches the spec's figure.
+    """
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    source = (root / "nobble" / "score" / "geometry.py").read_text()
+    query = source[source.index("def reference_distribution"):]
+    query = query[query.index("select dsasa_total"):query.index('")')]
+    for excluded in ("symmetry_mediated", "evidence_class", "is_furniture"):
+        assert excluded not in query, (
+            f"the reference population now filters on {excluded}, so it is no "
+            "longer the 285,996 spec 4.1 names"
+        )
+
+    spec = (root / "BUILD_SPEC.md").read_text()
+    stated = re.search(r"([\d,]+) experimentally observed bridges", spec)
+    assert stated, "spec 4.1 no longer states the population's size"
+    expected = int(stated.group(1).replace(",", ""))
+
+    from nobble.curate import binman_store as store
+    actual = store.atlas_rows(
+        "select count(*) n from bridge where status = 'ok'")[0]["n"]
+    assert actual == expected, (
+        f"the atlas holds {actual} ok bridges and spec 4.1 says {expected}"
+    )
+
+
+def test_the_docstring_does_not_claim_a_filter_it_does_not_apply():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    source = (root / "nobble" / "score" / "geometry.py").read_text()
+    doc = source[source.index("def reference_distribution"):]
+    doc = doc[:doc.index('"""', doc.index('"""') + 3)]
+    assert "only genuine two-chain bridges" not in doc, (
+        "the docstring claims a filter the query does not apply"
+    )
+    assert "285,996" in doc, (
+        "nothing connects the population to the figure the spec names"
+    )
