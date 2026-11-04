@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from nobble import paths
 
@@ -41,6 +41,10 @@ class Reduction:
     candidate_count: int
     reduction_ratio: float
     parameters: dict
+    budget: int = 0
+    over_budget_by: int = 0
+    status: str = "within_budget"
+    notes: list = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
@@ -50,6 +54,10 @@ class Reduction:
             "scrambles": len(self.scramble_ids),
             "candidates": self.candidate_count,
             "reduction_ratio": round(self.reduction_ratio, 4),
+            "budget": self.budget,
+            "over_budget_by": self.over_budget_by,
+            "status": self.status,
+            "notes": self.notes,
             "parameters": self.parameters,
             "selected_ids": self.selected_ids,
         }
@@ -190,6 +198,35 @@ def reduce_library(
         return (priority.get(peptide.source, 9), peptide.peptide_id)
 
     selected = sorted(set(selected_positives) | set(scramble_ids), key=rank)
+
+    # The mandatory set is never trimmed to fit. Dropping Sievers members to
+    # reach a number would silently shrink the matched split the headline ROC
+    # is computed on, and a ROC over a quietly truncated control set is worse
+    # than no ROC. So the overrun is reported instead of absorbed, and the
+    # priority ordering above is what makes that safe: a run cut short by the
+    # wall clock yields the benchmark panel, then the Sievers split, and loses
+    # discovery from the tail rather than losing a control from the middle.
+    notes: list[str] = []
+    over = max(0, len(selected) - budget)
+    status = "within_budget"
+    if over:
+        status = "over_budget: mandatory members alone exceed the measured budget"
+        notes.append(
+            f"{len(selected)} peptides selected against a budget of {budget}, "
+            f"over by {over}. The mandatory sources ({', '.join(mandatory_sources)}) "
+            f"contribute {len(mandatory_ids)} peptides and are not trimmed: the "
+            "Sievers matched split is the headline ROC's control set, and "
+            "truncating it to hit a number would quietly weaken the measurement "
+            "it exists to support. The queue is priority-ordered, so a run cut "
+            "short loses discovery from the tail, not a control from the middle."
+        )
+    if headroom < 0:
+        notes.append(
+            f"no headroom for diverse discovery peptides: the mandatory members "
+            f"and their scrambles cost {len(mandatory_ids) + mandatory_scrambles} "
+            f"against a budget of {budget}. This campaign is calibration only."
+        )
+
     return Reduction(
         selected_ids=selected,
         mandatory_ids=mandatory_ids,
@@ -198,6 +235,10 @@ def reduce_library(
         candidate_count=len(peptides),
         reduction_ratio=len(selected) / len(peptides) if peptides else 0.0,
         parameters=parameters,
+        budget=budget,
+        over_budget_by=over,
+        status=status,
+        notes=notes,
     )
 
 
@@ -215,3 +256,52 @@ def campaign_budget(default_pairs: int = 220) -> int:
         if pairs:
             return int(pairs)
     return default_pairs
+
+
+def projected_hours(pairs: int) -> dict:
+    """Wall-clock hours a selection of `pairs` would take at measured rate.
+
+    Two budgets exist and they are not the same thing, which matters because
+    only one of them is a Gate. `wall_clock_budget_hours` (48) is the target
+    for a single unattended run and is what `affordable_pairs` is sized
+    against. `max_compute_hours` (96) is the Gate G1 threshold. A selection
+    that overruns the first is a scheduling fact the priority ordering already
+    handles; a selection that overruns the second has to stop and ask.
+
+    Evaluating that in code rather than by eye, because the two numbers are
+    close enough to talk yourself across.
+    """
+    tuning = paths.tuning()["campaign"]
+    budget_hours = float(tuning["wall_clock_budget_hours"])
+    max_hours = float(tuning["max_compute_hours"])
+
+    if not paths.THROUGHPUT.exists():
+        return {"status": "not_computed: no measured throughput yet",
+                "pairs": pairs}
+
+    measured = json.loads(paths.THROUGHPUT.read_text())
+    seconds_per_job = measured.get("seconds_per_representative_job")
+    per_pair = measured.get("jobs_per_pair")
+    if not seconds_per_job or not per_pair:
+        return {"status": "not_computed: throughput file is incomplete",
+                "pairs": pairs}
+
+    hours = (pairs * per_pair * seconds_per_job) / 3600.0
+    gate_open = hours > max_hours
+    return {
+        "status": "gate_g1_open" if gate_open else "within_max_compute",
+        "pairs": pairs,
+        "jobs": pairs * per_pair,
+        "projected_hours": round(hours, 1),
+        "wall_clock_budget_hours": budget_hours,
+        "max_compute_hours": max_hours,
+        "over_wall_clock_target": round(max(0.0, hours - budget_hours), 1),
+        "gate_g1_open": gate_open,
+        "note": (
+            "Gate G1 is defined against max_compute_hours, not the 48-hour "
+            "per-run target. Overrunning the target is a scheduling fact the "
+            "priority ordering absorbs: the run yields the benchmark panel, "
+            "then the Sievers split, and loses discovery off the tail. "
+            "Overrunning max_compute_hours is what opens the gate."
+        ),
+    }

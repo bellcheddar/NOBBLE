@@ -40,3 +40,21 @@
   the top of the tier-1 ranking by construction, not a sample, so fitting on
   it would be fitting on the selection. tools/tier2.sh now runs select,
   refine and score. 42 tests pass.
+- 2026-11-04T01:15Z Budget honesty. Measured throughput (median 0.4738 s/token,
+  up from the optimistic 0.343) cut affordable pairs from 271 to 156, but the
+  Sievers matched set is 160 peptides on its own, so the mandatory members now
+  exceed the entire budget. `reduce_library` documented itself as "Select
+  `budget` peptides" and never trimmed the mandatory set, so it overran and
+  said nothing. Trimming is the wrong fix: the Sievers split is the control set
+  the headline ROC is computed on. The overrun is now reported
+  (`status`, `over_budget_by`, `notes`) and the priority ordering is what makes
+  it safe. Added `projected_hours()` so Gate G1 is evaluated mechanically:
+  167 pairs = 2,505 jobs = 51.1 h, over the 48 h per-run target by 3.1 but far
+  under the 96 h G1 threshold, so **G1 does not open** and the build continues.
+  tests/test_budget.py (6 tests). 48 tests pass.
+- 2026-11-04T01:15Z Noted while there: `reduce_library` and `campaign_budget`
+  have no callers anywhere in the tree, and no library manifest exists. Phase
+  1's "25,567 reduced to 220" was computed in a run that persisted nothing, so
+  the reduction is not reproducible from a committed entry point and violates
+  the CLAUDE.md rule that every stage writes a manifest. Assembly takes over
+  20 minutes, which is the argument for persisting it. Entry point next.
