@@ -719,3 +719,12 @@
   relying on it would move a construct boundary silently if it changed.
   Now min and max by position. Verified no construct moved, and preflight
   on the assembled campaign is still clean. 144 tests pass.
+- 2026-11-04T21:20Z Closed the last three untested modules. curate.plddt's
+  best-window search decides Tier B membership and is a rolling sum with
+  1-based inclusive reporting, the shape that goes wrong by one and still
+  returns a plausible number. Tested at both edges and on a domain buried
+  in disorder: correct, no bug. curate.freeze guards a frozen scientific
+  commitment, so a test now pins that a plain call cannot reselect, that
+  the real file's mtime does not move, and that it still holds the 15 rows
+  PROGRESS claims. Every module in nobble/ now has a test referencing it.
+  148 tests pass.
