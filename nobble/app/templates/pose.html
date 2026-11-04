@@ -123,6 +123,57 @@
    * worse than no copy. BINMAN would benefit from the same change on any
    * model carrying that category, which is worth raising there rather than
    * fixing here. */
+  /* A structural zinc is a single atom inside a translucent surface, so the
+     default ball-and-stick draws it as a dot that is effectively invisible.
+     For a zinc finger that ion is the reason the domain has a shape at all,
+     so it is given spacefill. Scoped here rather than in molstar-bridge.js:
+     BINMAN's structures carry no ions, so there is no shared behaviour to
+     preserve and nothing to widen (D-NOB-031). */
+  /* A structural zinc is a single atom inside a translucent surface, so the
+     default ball-and-stick draws it as a dot that is effectively invisible.
+     For a zinc finger that ion is the reason the domain has a shape at all,
+     so it is given spacefill. Scoped here rather than in molstar-bridge.js:
+     BINMAN's structures carry no ions, so there is no shared behaviour to
+     preserve and nothing to widen (D-NOB-031).
+
+     Via the state builder, not updateRepresentations(components, {type}).
+     That method takes (components, pivot, params), so the type object
+     arrives as the pivot, nothing changes, and nothing says so. The bridge
+     carries the same warning in its own comments, which is where this came
+     from after the first attempt silently did nothing. */
+  function showStructuralIons() {
+    try {
+      const plugin = viewer.plugin && (viewer.plugin.plugin || viewer.plugin);
+      if (!plugin || !plugin.build || !plugin.managers) { return; }
+      const ions = plugin.managers.structure.hierarchy.current.structures
+        .flatMap(function (s) { return s.components || []; })
+        .filter(function (c) {
+          const key = String(c.key || '');
+          let label = '';
+          try { label = String(c.cell.obj.label || ''); } catch (e) { /* key is enough */ }
+          return /-ion$/i.test(key) || /^ion$/i.test(label);
+        });
+      if (!ions.length) { return; }
+      const update = plugin.build();
+      let touched = 0;
+      ions.forEach(function (component) {
+        (component.representations || []).forEach(function (rep) {
+          if (!rep.cell) { return; }
+          touched += 1;
+          update.to(rep.cell).update(function (old) {
+            old.type = { name: 'spacefill', params: {} };
+          });
+        });
+      });
+      if (!touched) { return; }
+      return Promise.resolve(update.commit()).catch(function (error) {
+        console.warn('ion presentation not applied', error);
+      });
+    } catch (e) {
+      console.warn('ion presentation unavailable', e);
+    }
+  }
+
   function colourByConfidence() {
     try {
       const plugin = viewer.plugin && (viewer.plugin.plugin || viewer.plugin);
@@ -181,7 +232,7 @@
          * inverts pLDDT. colourByConfidence applies the right one after. */
         plddt: false,
         identifier: pick.complex_type + ' \u00b7 ' + pick.conditioning + ' \u00b7 seed ' + pick.seed
-      }).then(colourByConfidence);
+      }).then(colourByConfidence).then(showStructuralIons);
     });
   }
 
@@ -196,7 +247,7 @@
         return viewer.load({
           url: seeds[0].url, format: 'mmcif', role: 'glue', plddt: false,
           identifier: seeds.length + ' unconstrained ternary seeds available'
-        }).then(colourByConfidence);
+        }).then(colourByConfidence).then(showStructuralIons);
       });
     },
     crystal: function (on) {

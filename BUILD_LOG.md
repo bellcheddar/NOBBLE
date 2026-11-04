@@ -501,3 +501,19 @@
   jobs, 0 errors, wild type excluded, every variant one residue from the
   parent. It had only been unit-tested at the generator, and it is the
   follow-up the alanine scan is meant to lead to.
+- 2026-11-04T14:55Z Rendered a zinc-bearing Sievers pose before the main
+  campaign produces 120 of them. Mol* builds a separate Ion component, so the
+  zinc did draw, but as a default ball-and-stick dot inside a translucent
+  gaussian surface: effectively invisible, which is the wrong reading for the
+  ion the finger's fold depends on. Given spacefill, scoped to pose.html
+  rather than molstar-bridge.js because BINMAN's structures carry no ions and
+  there is no shared behaviour to widen (D-NOB-031). The glue keeps its
+  sticks, its emissive shell and its pinned carbons, and the pLDDT theme
+  still applies to polymer only.
+- 2026-11-04T14:55Z The first attempt used
+  updateRepresentations(components, {type}) and silently did nothing. That
+  method takes (components, pivot, params), so the type arrived as the pivot.
+  molstar-bridge.js carries a comment about having made exactly this mistake
+  before; reading it is how the second attempt used the state builder
+  instead. Verified by reading the component's representation back out of the
+  live plugin, not from the screenshot. 119 tests, QC 14 captures clean.
