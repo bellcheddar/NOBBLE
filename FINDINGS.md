@@ -6937,3 +6937,44 @@ than most bridges the atlas has observed", incidental ones included, and not
 "larger than most molecular glue interfaces". Here those are nearly the same
 claim. They are not the same claim, and the stronger one is the one a reader
 would assume from the word "genuine".
+
+## F151. The design arm's cofactor guarantee was resting on a comment
+
+`lift` is `delta_iptm(variant) - delta_iptm(parent)`, and its docstring is
+explicit that a difference is interpretable only when its two terms differ in
+one thing. `MATCHED_CONDITIONS` enumerates those things: construct, e3_gene,
+ligand_key, modality. The structural cofactor is not among them, and a score
+row carries no cofactor field at all, so `lift.compute` could not compare
+them if it tried.
+
+D-NOB-038 is about exactly this hazard, and `run_design.sh`'s header
+attributed the protection to preflight: "the failure worth catching is the
+silent one: a variant whose cofactor differs from its parent's completes
+perfectly well and reports the missing ion as the substitution's effect".
+
+Preflight does not check that. It builds `cofactor_by_pair[pair][arm]` and
+requires a pair's binary and ternary arms to agree, which is D-NOB-034 and a
+different claim: it stops Delta-ipTM being a difference across the ion, not
+the lift.
+
+The guarantee is real and it lives somewhere else. `build_manifest` calls
+`requires_structural_zinc` once, on the parent, and every variant inherits
+the result, with a comment saying why inferring per variant would be actively
+wrong: an alanine scan mutates the coordinating cysteines, so a
+per-variant inference would drop the ion at exactly the positions the scan
+exists to measure. Verified on the assembled campaign: 16 pairs, none with
+zinc, nothing mixed within a pair, and `campaign.json` recording the decision
+once with its reason, "incomplete coordination site (2 Cys, 0 His): no zinc
+added rather than a zinc with nothing to hold it".
+
+So there is no defect in the behaviour, and two things worth fixing about its
+standing. The guarantee was structural and unpinned, resting on one comment
+in one function; it is now a test that the call happens once in the manifest
+builder and once in the module, that no assembled scan mixes cofactors across
+its pairs, and that the decision is recorded with a reason. And the comment
+that sent a reader to preflight for it now says which half preflight owns
+and where the other half comes from.
+
+A guarantee by construction is better than a guarantee by check. It is worse
+than either when the documentation points at the wrong one, because the next
+person to change the assembler reads that documentation.

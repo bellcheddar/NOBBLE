@@ -6,9 +6,18 @@
 # jobs. Same reason run_corrected.sh waits for the benchmark queue.
 #
 # Preflight runs before the queue, not after. A scan is 240 jobs, and the
-# failure worth catching is the silent one: a variant whose cofactor differs
-# from its parent's completes perfectly well and reports the missing ion as
-# the substitution's effect (D-NOB-038).
+# failure worth catching is the silent one: a cofactor asymmetry completes
+# perfectly well and reports the missing ion as an effect of something else
+# (D-NOB-034, D-NOB-038).
+#
+# Preflight checks the half it can see from a campaign's own YAMLs: that a
+# pair's binary and ternary arms agree about the ion, so Delta-ipTM is not a
+# difference across it. The other half, that a variant agrees with its
+# parent, is not checked here and does not need to be: the assembler takes
+# one cofactor decision from the parent and gives it to every variant, since
+# a scan mutates coordinating residues and inferring per variant would drop
+# the ion at exactly the positions the scan exists to measure. This comment
+# used to credit preflight with both (F151).
 set -uo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$(pwd)"
