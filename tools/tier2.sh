@@ -12,6 +12,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+ROOT="$(pwd)"
+# shellcheck source=tools/wait_for_gpu.sh
+source "$ROOT/tools/wait_for_gpu.sh"
+nobble_wait_for_gpu
+
 PY_SCI="../BINMAN/.pixi/envs/default/bin/python"
 PY_BOLTZ="../BoltzMaker/.pixi/envs/default/bin/python"
 CAMPAIGN="${1:-}"

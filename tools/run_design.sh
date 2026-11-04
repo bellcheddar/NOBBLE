@@ -16,12 +16,9 @@ SENV="$ROOT/../BINMAN/.pixi/envs/default"
 BENV="$ROOT/../BoltzMaker/.pixi/envs/default"
 export KMP_DUPLICATE_LIB_OK=TRUE PYTORCH_ENABLE_MPS_FALLBACK=1 PYTHONPATH="$ROOT"
 
-for session in nobble-bench nobble-corrected nobble-campaign; do
-  if tmux has-session -t "$session" 2>/dev/null; then
-    echo "=== waiting for $session to finish $(date -u +%H:%M:%SZ) ==="
-    while tmux has-session -t "$session" 2>/dev/null; do sleep 60; done
-  fi
-done
+# shellcheck source=tools/wait_for_gpu.sh
+source "$ROOT/tools/wait_for_gpu.sh"
+nobble_wait_for_gpu
 
 CAMPAIGN="${1:-$(ls -d campaigns/design_* 2>/dev/null | tail -1)}"
 if [[ -z "$CAMPAIGN" ]]; then

@@ -27,12 +27,9 @@ export PYTHONPATH="$ROOT"
 
 say() { echo "=== $* $(date -u +%Y-%m-%dT%H:%M:%SZ) ==="; }
 
-for session in nobble-bench nobble-corrected; do
-  if tmux has-session -t "$session" 2>/dev/null; then
-    say "waiting for $session"
-    while tmux has-session -t "$session" 2>/dev/null; do sleep 60; done
-  fi
-done
+# shellcheck source=tools/wait_for_gpu.sh
+source "$ROOT/tools/wait_for_gpu.sh"
+nobble_wait_for_gpu
 
 # --- 1. the corrected-construct comparison -------------------------------
 CORRECTED="$(ls -d campaigns/corrected_* 2>/dev/null | tail -1)"

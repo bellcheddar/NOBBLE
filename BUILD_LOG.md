@@ -330,3 +330,15 @@
 - 2026-11-04T09:10Z Verified the LM executes design queries end to end, not
   just that its schema validates them: filter on tier, sort on delta_iptm,
   select substitution, correct rows back.
+- 2026-11-04T09:25Z Centralised the GPU wait into tools/wait_for_gpu.sh. It
+  had been a copied loop in two scripts, absent from a third, and the lists
+  had already drifted: run_design.sh waited on a session named
+  nobble-campaign that nothing creates, while the chain runs in nobble-chain,
+  so a standalone design run would not have waited for it. tier2.sh had no
+  wait at all. One list now, and it skips the session the caller is itself
+  running inside so a script cannot wait for itself.
+- 2026-11-04T09:25Z Restarted tmux nobble-chain after editing run_chain.sh
+  while it was executing. Bash reads a script by byte offset, so replacing
+  lines underneath a running instance can resume it mid-sentence. It was
+  still in its wait loop, so nothing was lost; noting it because the hazard
+  is easy to create and silent when it bites.
