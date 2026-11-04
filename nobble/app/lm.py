@@ -81,6 +81,44 @@ QUERY_SCHEMA: dict[str, Any] = {
     ),
 }
 
+# What each field actually holds. The descriptions above open with the type in
+# prose, for the model's benefit, and prose is not something a validator should
+# be parsing: "the number of seeds" would read as a number. So the types are
+# declared once, here, and the assertion below makes a new field without one a
+# failure at import rather than a 500 on the first question that filters on it.
+FIELD_TYPES: dict[str, str] = {
+    "pair_id": "string",
+    "e3_gene": "string",
+    "peptide_gene": "string",
+    "ligand_key": "string",
+    "modality": "string",
+    "tier": "string",
+    "peptide_label": "string",
+    "peptide_sequence": "string",
+    "parent_peptide_id": "string",
+    "substitution": "string",
+    "role": "string",
+    "bridge_percentile": "number",
+    "bridge_formation_rate": "number",
+    "delta_iptm": "number",
+    "delta_iptm_median": "number",
+    "convergence_score": "number",
+    "plip_fingerprint_match": "number",
+    "seeds_docked": "number",
+    "seeds_total": "number",
+    "nobble_score": "number",
+}
+assert set(FIELD_TYPES) == set(QUERY_SCHEMA["fields"]), (
+    "FIELD_TYPES and QUERY_SCHEMA['fields'] disagree: "
+    f"{set(FIELD_TYPES) ^ set(QUERY_SCHEMA['fields'])}"
+)
+QUERY_SCHEMA["types"] = FIELD_TYPES
+
+# Operators that put the two values in an order, and so require them to be of
+# one kind. eq and ne are safe across types: comparing a float to a string is
+# simply False.
+ORDERED_OPERATORS = ("gt", "gte", "lt", "lte")
+
 OPERATORS = {
     "eq": lambda a, b: a == b,
     "ne": lambda a, b: a != b,
@@ -129,6 +167,26 @@ def validate(query: dict) -> tuple[bool, str]:
             return False, f"unknown field in filter: {field_name!r}"
         if operator not in OPERATORS:
             return False, f"unsupported operator: {operator!r}"
+
+        # The value was never checked. A model asked "which pairs have a high
+        # delta-ipTM" can reasonably answer ["delta_iptm", "gt", "high"], and
+        # Python then raises comparing a float to a string: the endpoint
+        # returned 500 rather than saying what was wrong with the query.
+        expected = FIELD_TYPES[field_name]
+        if operator in ORDERED_OPERATORS:
+            if expected == "number":
+                if isinstance(_value, bool) or not isinstance(_value, (int, float)):
+                    return False, (
+                        f"{field_name} holds a number, so {operator} needs a "
+                        f"number, not {_value!r}"
+                    )
+            elif not isinstance(_value, str):
+                return False, (
+                    f"{field_name} holds a string, so {operator} needs a "
+                    f"string, not {_value!r}"
+                )
+        elif operator == "in" and not isinstance(_value, (list, tuple, set)):
+            return False, f"in needs a list of values, not {_value!r}"
 
     sort = query.get("sort")
     if sort is not None:
@@ -243,7 +301,23 @@ def ask(question: str, rows: list[dict]) -> Answer:
         )
         return answer
 
-    matched = execute(query, rows)
+    try:
+        matched = execute(query, rows)
+    except Exception as problem:            # noqa: BLE001
+        # validate() should have caught anything that can fail here, and this
+        # is the floor under that claim. The query comes from a model, so a
+        # shape nobody anticipated is a question to answer badly, not a
+        # stack trace to return to the browser.
+        answer.status = "rejected"
+        answer.query = query
+        answer.error = f"{type(problem).__name__}: {problem}"
+        answer.explanation = (
+            "The query validated but could not be run. Reporting that is the "
+            "answer; a partial result from a query that failed halfway would "
+            "be worse than none."
+        )
+        return answer
+
     answer.query = query
     answer.rows = matched
     answer.row_count = len(matched)

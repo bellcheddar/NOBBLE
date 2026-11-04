@@ -1184,3 +1184,49 @@ would have had to reconstruct.
 The pattern across F26, F27 and F28 is one guard needing three passes
 because each pass only looked where the last failure had been. A sweep
 built from a single example checks for that example.
+
+## F29. The model's query was trusted even though the model is not
+
+CLAUDE.md: BINMAN-LM never computes, estimates or reports a number. The
+design honours that precisely, and it is the better half of the module.
+The model's only output is a query object. The executor runs it in Python
+over the scored records. Every sentence the user reads is an f-string
+built in `ask`, so the model cannot state a figure even when a figure is
+what was asked for. There is a test for that now, by AST, because it is
+the kind of property that holds until someone assigns `answer.explanation`
+from something the model returned.
+
+The missing half is that a query from a model is untrusted input, and
+`validate` treated it as a schema problem rather than a data one. It
+checked field names, operators, sort direction and the limit, and never
+looked at a filter's value.
+
+A model asked "which pairs have a high delta-ipTM" can reasonably answer
+`["delta_iptm", "gt", "high"]`. Every name in that is valid. Python then
+raises comparing a float to a string, nothing catches it, and `/api/ask`
+returns 500. The same for `None`, a list, a dict, or `True`, and for a
+number against a string field. Five shapes, all passing validation, all
+reaching the browser as a stack trace rather than as an answer.
+
+The fix is in two layers, because one would have been a claim rather than
+a guarantee. `validate` now checks the value against the field's declared
+type and says what was wrong in the rejection, which is useful to a model
+that will be asked again. And `execute` is wrapped, so a shape nobody
+anticipated comes back as a rejection with its reason instead of a 500.
+The second layer exists precisely because the first is a list of cases I
+thought of.
+
+The types are declared rather than parsed. The field descriptions open
+with the type in prose for the model's benefit, and a validator reading
+prose would take "the number of seeds" for a number. So `FIELD_TYPES` is
+explicit, published through `/api/schema` so the model is told rather than
+left to infer, and an assertion at import makes a field added without a
+type a failure then and there rather than a 500 on the first question that
+filters on it.
+
+Equality is deliberately left alone. `eq` and `ne` cannot raise, since a
+float simply is not equal to a string, and rejecting those would turn a
+harmless query into an error for no gain.
+
+Same shape as F24: a component that was careful about its own stated
+contract and silent about what arrived from outside it.
