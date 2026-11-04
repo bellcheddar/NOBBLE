@@ -44,9 +44,16 @@ def redact(value):
     """Strip PROTAC-DB chemistry anywhere it appears in a nested record."""
     if isinstance(value, dict):
         source = str(value.get("source", ""))
-        encoding = str(value.get("encoding", ""))
         out = {key: redact(item) for key, item in value.items()}
-        if source in REDACT_WHEN_SOURCE or (encoding == "smiles" and source in REDACT_WHEN_SOURCE):
+        # The encoding is deliberately not part of this test. What makes a
+        # record unpublishable is where the chemistry came from, not how it
+        # happens to be written: a CCD-sourced SMILES is wwPDB's and travels
+        # freely, and a PROTAC-DB record would still be theirs if it arrived
+        # with a CCD code attached. This used to read
+        # `source in REDACT_WHEN_SOURCE or (encoding == "smiles" and source in
+        # REDACT_WHEN_SOURCE)`, whose second clause is a subset of the first
+        # and so never decided anything, while implying the encoding mattered.
+        if source in REDACT_WHEN_SOURCE:
             if "smiles" in out:
                 out["smiles"] = None
                 out["smiles_withheld"] = REDACTION

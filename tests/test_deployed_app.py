@@ -9,6 +9,7 @@ compute at request time; this test is that sentence made executable.
 """
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -139,3 +140,117 @@ def test_comparison_refuses_to_conclude_when_the_control_moves(tmp_path, monkeyp
     # reported as one while the control has moved by 6.6 A.
     assert not report["control_held"]
     assert "NOT TRUSTWORTHY" in report["conclusion"]
+
+
+def _atlas_string_values():
+    """Every string value in the published atlas, with the file it came from."""
+    def walk(node, path):
+        if isinstance(node, str):
+            yield path, node
+        elif isinstance(node, dict):
+            for key, value in node.items():
+                yield from walk(value, f"{path}.{key}")
+        elif isinstance(node, list):
+            for index, value in enumerate(node):
+                yield from walk(value, f"{path}[{index}]")
+
+    for path in sorted(ATLAS.rglob("*")):
+        if not path.is_file() or path.suffix not in (".json", ".jsonl"):
+            continue
+        text = path.read_text(errors="replace")
+        documents = []
+        if path.suffix == ".jsonl":
+            for line in text.splitlines():
+                if line.strip():
+                    try:
+                        documents.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        continue
+        else:
+            try:
+                documents.append(json.loads(text))
+            except json.JSONDecodeError:
+                continue
+        for document in documents:
+            yield from walk(document, path.name)
+
+
+@pytest.mark.skipif(not ATLAS.exists(), reason="no published atlas")
+def test_no_protacdb_structure_reaches_the_published_atlas():
+    """Derived from the licensed dataset, not from a marker kept by hand.
+
+    The check above looks for one 15-character fragment of one compound,
+    written down when that compound was the only PROTAC in the panel. A
+    sentinel maintained by hand stops covering what it was meant to cover
+    the moment the panel changes, and says nothing when it does (F21).
+
+    This asks the opposite question: does any string the atlas publishes
+    appear in PROTAC-DB at all. It covers every one of the 15,502 curated
+    structures rather than the one that happened to be noticed, and needs
+    no updating when the panel grows.
+
+    Compound *names* are deliberately not covered. dBET57 is published
+    literature; what PROTAC-DB licenses is the curated structure.
+    """
+    from nobble.curate import binman_store as store
+
+    try:
+        forbidden = {
+            row["smiles"].strip()
+            for row in store.dataset("protacdb_protacs")
+            if (row.get("smiles") or "").strip()
+        }
+    except Exception:  # noqa: BLE001
+        pytest.skip("BINMAN store not readable here")
+
+    assert len(forbidden) > 1000, "the PROTAC-DB table came back suspiciously small"
+
+    leaked = [
+        (where, value[:40])
+        for where, value in _atlas_string_values()
+        if value.strip() in forbidden
+    ]
+    assert not leaked, f"PROTAC-DB structures published at: {leaked[:5]}"
+
+
+@pytest.mark.skipif(not ATLAS.exists(), reason="no published atlas")
+def test_every_protacdb_sourced_record_is_redacted_and_says_so():
+    """The mechanism's own invariant, not just its outcome.
+
+    dBET57's published `smiles` is null, and it would also be null if the
+    field had simply never been populated. Those two are not the same
+    protection: one survives the field being filled in, the other does not.
+    So this asserts the redaction actually ran, by requiring the note it
+    leaves behind, for every record sourced from PROTAC-DB.
+    """
+    redacted = 0
+    for path in sorted(ATLAS.rglob("*")):
+        if not path.is_file() or path.suffix not in (".json", ".jsonl"):
+            continue
+        text = path.read_text(errors="replace")
+        documents = []
+        if path.suffix == ".jsonl":
+            documents = [json.loads(line) for line in text.splitlines() if line.strip()]
+        else:
+            documents = [json.loads(text)]
+
+        def check(node, trail):
+            nonlocal redacted
+            if isinstance(node, dict):
+                if str(node.get("source", "")) == "protacdb":
+                    assert node.get("smiles") is None, \
+                        f"{path.name}{trail} publishes PROTAC-DB chemistry"
+                    assert "smiles_withheld" in node, \
+                        (f"{path.name}{trail} has no smiles, but the redaction "
+                         "never ran: the field was merely absent")
+                    redacted += 1
+                for key, value in node.items():
+                    check(value, f"{trail}.{key}")
+            elif isinstance(node, list):
+                for index, value in enumerate(node):
+                    check(value, f"{trail}[{index}]")
+
+        for document in documents:
+            check(document, "")
+
+    assert redacted, "no PROTAC-DB-sourced record in the atlas: nothing was checked"

@@ -865,3 +865,40 @@ Same shape as F20 one layer up. There, a number maintained by hand was
 read wrongly. Here, a list maintained by hand went quietly out of date.
 Neither announced itself, because neither had anything comparing it to
 the thing it described.
+
+## F22. The licensing guard was one hand-written fragment
+
+PROTAC-DB is licensed for internal use and must never be redistributed
+(spec 2.1). The guard on that was a 15-character substring of one
+compound's SMILES, written into `build_atlas.py` and the deployment test
+when dBET57 was the only PROTAC in the panel.
+
+The mechanism itself is sound and was verified end to end. dBET57's
+record carries `source: protacdb`, its published `smiles` is null, and
+`smiles_withheld` records why, so the redaction demonstrably ran rather
+than the field happening to be empty. The live site serves the name
+`dBET57` and no structure, which is the right line: the name is published
+literature, the curated structure is what PROTAC-DB licenses. Every other
+ligand's SMILES comes from the wwPDB Chemical Component Dictionary and
+travels freely.
+
+Two weaknesses, both of the F21 kind rather than real leaks.
+
+The guard only knew one compound. It is now derived from the licensed
+table itself, so a published string is checked against all 15,502 curated
+structures. That matters because the redaction keys on provenance: a
+PROTAC that *is* in the CCD, but whose SMILES BINMAN took from PROTAC-DB,
+would be recorded as `encoding: ccd` and published. Byte-identity is the
+right test for redistribution, since an independently canonicalised
+SMILES of the same molecule is wwPDB's string and not theirs.
+
+And a null `smiles` proved nothing on its own, because an absent field
+looks identical to a redacted one. The test now requires the note the
+redaction leaves behind, so the protection has to have run.
+
+Also removed: the redaction condition read `source in REDACT_WHEN_SOURCE
+or (encoding == "smiles" and source in REDACT_WHEN_SOURCE)`, whose second
+clause is a subset of the first. It never decided anything while implying
+the encoding mattered, which is the opposite of the rule: what makes a
+record unpublishable is where the chemistry came from, not how it is
+written.
