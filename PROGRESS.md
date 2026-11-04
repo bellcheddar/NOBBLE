@@ -317,6 +317,35 @@ and the design scan if they have not run, rebuilds the atlas and deploys.
 blocks rather than competing, but waiting for the old chain to exit avoids
 two chains interleaving their later stages.
 
+**What the rerun gains from today, which the running chain does not have.**
+The script it executes is the file on disk, so the rerun picks all of this
+up; the stages the running chain spawns as fresh processes pick up the Python
+changes already.
+
+- A watchdog armed for the length of the chain, every ten minutes, printing
+  only on a non-zero exit (F112). The running chain consults it once, on its
+  last line, which is after a stall could matter.
+- Tier 2 sized per pair from its own measured tier-1 cost, so the DCAF15
+  assembly is not abandoned at six hours on a bound of 7.2 (F100), and its
+  confidence read from the structure it scored rather than from directory
+  order (F99), which at twenty-five diffusion samples was giving rank 0's
+  structure with rank 14's confidence.
+- `tools/rerun_pair.py` tested for the first time and writing `state.jsonl`
+  by atomic rename, so a kill during the correction cannot leave a partial
+  record of which jobs have run (F109).
+- The substrate plan deterministic (F107), so the re-assembly cannot pick a
+  different CSNK1A1 domain from the one the campaign already used.
+- Every stage that runs after the compute tolerating a torn final line
+  (F111), so a kill mid-append costs the last job rather than the stage.
+
+**What to check when it finishes.** `bash tools/status.sh` covers most of
+it; the four lines worth reading are the stale-input count reaching zero,
+the atlas reporting in step, the matched-control ROC moving from
+`not_computed` to a verdict, and `tools/check_prediction.py` accounting for
+all three of its testable outcomes. The ROC's verdict now has three branches
+rather than two (F120), so an inverted result will say so rather than
+reading as indistinguishable from chance.
+
 ## Gates open
 
 - **No gate is currently open.** All six are closed.
