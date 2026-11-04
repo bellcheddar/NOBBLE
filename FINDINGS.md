@@ -1768,3 +1768,47 @@ against the library manifest the pipeline actually wrote rather than by
 calling `reduce_library`, which loads an ESM checkpoint: a unit test
 should not need a language model to verify a sort order. My first version
 did, and took ten seconds to tell me so.
+
+## F39. Three spec requirements with nothing behind them
+
+A fourth mutation sweep, over `execute/yaml_gen.py`, which builds the YAML
+Boltz actually runs. Two mutations were caught, both by `test_zinc.py`:
+the structural cofactor disappearing, and the ligand leaking into the
+binary arm. Three were not, and they are the most consequential gaps any
+of the four sweeps has found.
+
+**The receptor's cached MSA.** Replacing the cached-path lookup with
+`empty` for every receptor chain left the whole suite passing. Spec 1.3 is
+the reason the MSAs exist: one per trimmed construct, generated offline
+before the campaign, referenced in every YAML, never fetched during a run.
+Dropping them would fold every receptor without an alignment. Nothing
+would raise, no manifest would record it, and the only symptom would be
+2,360 predictions quietly worse than the ones the spec describes. This is
+the single worst thing the sweeps could have found, and it was found by
+asking rather than by anything going wrong.
+
+**The peptide's MSA.** Spec 1.3 states the opposite requirement for
+peptide chains: they get none. Giving the peptide an alignment changes
+every prediction in the other direction, and again silently.
+
+So the same file held both halves of one policy and neither was tested:
+the receptor must have its MSA, the peptide must not.
+
+**The affinity cap.** Boltz-2 caps the affinity head at 128 heavy atoms,
+and spec 4.7 with D-NOB-005 says affinity is recorded for the
+small-molecule chain only and never for a ligand over the cap. Requesting
+it regardless went unnoticed. `ligands.by_ccd` computes
+`affinity_available` against the configured cap correctly; nothing
+checked that `build_yaml` honours the flag it is given.
+
+All three are now pinned, including that an uncached receptor falls back
+to `empty` rather than to a path that does not resolve, since Boltz would
+fail the job rather than fold without, and that the affinity property
+names the ligand chain and never the peptide.
+
+The pattern across all four sweeps is consistent enough to state plainly.
+What goes untested is not the complicated code. It is the code whose
+correct and incorrect behaviours produce the same observable result on the
+data at hand: a count that is zero either way, a minimum that equals the
+median, a guard for a condition that has not yet arisen, an MSA whose
+absence makes predictions worse rather than absent.
