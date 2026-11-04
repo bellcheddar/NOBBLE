@@ -4706,3 +4706,72 @@ Measured while there, the corrected campaign's first-seed recoveries:
 GSPT1 1.118, BRD4/VHL 1.46, BRD4/CRBN 16.152, IKZF1 5.357, CSNK1A1 6.122,
 RBM39 0.659, CDK12 2.367. Three pairs under 1.5 angstrom against a 15-mer
 panel where nothing came within 5.
+
+## F104. Two labels that described the wrong data, and a measured bound
+
+Two small things in published fields, found by reading what the pipeline says
+about itself while the campaign ran.
+
+**The throughput note named an arm it was no longer measuring.** It read
+"Measured on the benchmark panel", unconditionally, as a literal. That was
+true for the first hundred jobs of the main campaign and false from job 100,
+where the Sievers arm begins. At 120 timed jobs the measurement spanned two
+arms whose per-job cost differs by a factor of twenty six, a Sievers binary
+being 136 tokens in 35 seconds against a DCAF15 ternary at 1,223 tokens in
+915, and the note still named one of them.
+
+It matters because which jobs a rate came from is the whole of F45: a rate
+measured on one job-size mix and applied to another projected a 37-hour
+campaign at 104 hours and opened Gate G1 on a run that was inside budget.
+The note is published in the atlas, where `throughput` is excluded from the
+drift check, so nothing would have caught the label going stale. It now
+counts the arms it measured: "Measured on 100 benchmark job(s), 21
+sievers_zf job(s)", with a `measured_on` field carrying the counts, and a
+job with no arm counted as unlabelled rather than folded into one.
+
+**The weight fit was silent about a comparability it inherits.**
+`delta_iptm` is `iptm_min_ternary - iptm_min_binary`, and D-NOB-023 states
+the principle exactly: a minimum is not robust to sample count, and drawing
+more can push it down and never up. That decision applied it to diffusion
+samples and partitioned tier 1 from tier 2 to stop the two mixing.
+
+The same argument applies within tier 1, and there it had not been looked at.
+Every regular pair submits 5 binary unconstrained jobs and 10 ternary ones,
+5 conditioned and 5 unconstrained, so `iptm_min_ternary` is a minimum over
+ten draws and `iptm_min_binary` over five, for every pair in the campaign.
+
+Two separate questions, and they have different answers.
+
+Does it bias the headline ROC? No, and for two reasons. The shape is
+identical across all 120 Sievers pairs, so any order-statistic offset is a
+constant applied to both classes, and an AUC is rank-based and invariant to
+that. Beyond which, `matched_control_roc` already refuses on uneven seed
+counts, in both directions: "uneven within a group: some pairs contributed
+fewer seeds than others, so their minima are not comparable", and "uneven
+between groups". The check I was converging on was already built.
+
+How large is the effect anyway? Measurable now, on the first Sievers pair to
+complete all fifteen jobs. Its conditioned ternary minimum is 0.9425 and its
+unconstrained one 0.9411, so folding both into a single minimum moves the
+ternary term by 0.0014, against a `delta_iptm` of 0.179. The two
+conditionings agree closely, which is the condition spec 4.7 already checks
+for its own reasons, and that agreement is what makes the count asymmetry
+negligible rather than merely constant.
+
+What was missing is that the weight fit, which spec 4.8 deliberately does not
+scope to the Sievers arm, inherits the panel's irregular pairs and said
+nothing about them. Two of 158 have 5 ternary rather than 10, one benchmark
+and one scramble, because their conditioned arm was dropped for having no
+pocket: the same ten jobs `campaign.json` records as
+`conditioned_jobs_dropped_no_pocket`. The fit now reports its seed-shape
+composition and caveats a non-modal shape, computed before the
+minimum-labelled floor can return early so it is readable while a campaign
+is still filling. Reported rather than refused, because two pairs out of 158
+do not move a weight searched on a five-point grid, and narrowing the fit
+would use less data than the spec asks for.
+
+Verified on real output while there, now that the arm is running: the
+four-chain path produces what it should. The first completed Sievers ternary
+carries chain A at 109 residues, P at 26, Z holding one ZN and L holding one
+Y70, with a four by four pair matrix. The path was checked ahead of itself in
+F82, F83 and F86; this is it running.

@@ -557,6 +557,17 @@ def write_throughput(campaign: Path) -> dict:
     affordable_jobs = int((budget_hours * 3600) / seconds_per_job) if seconds_per_job else 0
     affordable_pairs = affordable_jobs // per_pair
 
+    # Which arms the timed jobs came from. A job carrying no tier is counted
+    # as unlabelled rather than silently folded into one of the arms.
+    measured_on: dict[str, int] = {}
+    for item in timed:
+        measured_on[str(item.get("tier") or "unlabelled")] = (
+            measured_on.get(str(item.get("tier") or "unlabelled"), 0) + 1
+        )
+    measured_on = dict(sorted(measured_on.items(), key=lambda kv: (-kv[1], kv[0])))
+    described = ", ".join(f"{count} {arm} job(s)"
+                          for arm, count in measured_on.items())
+
     payload = {
         "measured_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "campaign": campaign.name,
@@ -573,8 +584,17 @@ def write_throughput(campaign: Path) -> dict:
         "affordable_jobs": affordable_jobs,
         "affordable_pairs": affordable_pairs,
         "device": paths.tuning()["compute"]["model_device"],
+        # What was actually measured, counted rather than asserted. This read
+        # "Measured on the benchmark panel" unconditionally, which was true
+        # for the first hundred jobs of this campaign and false from job 100,
+        # where the Sievers arm begins: at 120 timed jobs the measurement
+        # spanned two arms whose per-job cost differs by a factor of twenty
+        # six, and the note still named one of them. It is published in the
+        # atlas, and a label that describes the wrong data is the failure
+        # F102 and F101 were both instances of (F104).
+        "measured_on": measured_on,
         "note": (
-            "Measured on the benchmark panel. affordable_pairs is what the "
+            f"Measured on {described}. affordable_pairs is what the "
             "manifest generator sizes itself from (spec 1.2), replacing the "
             "spec's 200-250 estimate."
         ),

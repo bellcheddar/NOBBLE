@@ -59,6 +59,28 @@ class FitResult:
     components_used: list = field(default_factory=list)
     caveats: list = field(default_factory=list)
     per_component_auc: dict = field(default_factory=dict)
+    # How many ternary and binary seeds each fitted pair contributed, counted
+    # as shapes. `delta_iptm` is a difference of two minima, and a minimum
+    # over ten draws sits below a minimum over five whatever the underlying
+    # distribution, so two pairs with different shapes do not have comparable
+    # deltas.
+    #
+    # `matched_control_roc` already refuses on this, and it can, because the
+    # ROC is scoped to the Sievers arm where all 120 pairs contributed 5
+    # binary and 10 ternary. The fit is deliberately not scoped that way
+    # (spec 4.8 fits on the panel and the Sievers set, see `_label`), so it
+    # inherits the panel's irregular pairs: on the main campaign two of 158,
+    # one benchmark and one scramble, have 5 ternary rather than 10, because
+    # their conditioned arm was dropped for having no pocket. That is the
+    # same ten jobs `campaign.json` records as
+    # `conditioned_jobs_dropped_no_pocket`.
+    #
+    # Two pairs out of 158 do not move a weight searched on a five-point
+    # grid, so this is reported rather than refused. Reported, though, and
+    # not left to be rediscovered: a panel with more irregular pairs, or a
+    # grid with finer steps, would make it matter, and the number is here to
+    # be looked at (F104).
+    seed_shapes: dict = field(default_factory=dict)
 
     @property
     def fitted(self) -> bool:
@@ -155,6 +177,33 @@ def fit(campaign: Path) -> FitResult:
         negatives=len(negatives),
     )
 
+    # Counted before the floor below can return early: the composition of
+    # what is available is worth reporting on a refused fit as well as a
+    # successful one.
+    shapes: dict[str, int] = {}
+    for row, _side in labelled:
+        binary_seeds = row.get("seeds_binary")
+        ternary_seeds = row.get("seeds_ternary")
+        key = (f"{binary_seeds} binary, {ternary_seeds} ternary"
+               if binary_seeds is not None and ternary_seeds is not None
+               else "seed counts not recorded")
+        shapes[key] = shapes.get(key, 0) + 1
+    result.seed_shapes = dict(
+        sorted(shapes.items(), key=lambda item: (-item[1], item[0]))
+    )
+    if len(result.seed_shapes) > 1:
+        modal = next(iter(result.seed_shapes))
+        odd = sum(count for shape, count in result.seed_shapes.items()
+                  if shape != modal)
+        result.caveats.append(
+            f"{odd} of {len(labelled)} labelled pair(s) contributed a "
+            f"different number of seeds from the modal {modal}, so their "
+            "delta_iptm is a difference of differently sized minima. "
+            "Reported rather than refused: the ROC refuses on this and is "
+            "scoped to the Sievers arm, where every pair matches, while the "
+            "fit spans the panel too (spec 4.8)"
+        )
+
     if len(labelled) < MINIMUM_LABELLED or not positives or not negatives:
         result.status = (
             f"not_fitted: {len(positives)} positive(s) and {len(negatives)} "
@@ -174,6 +223,7 @@ def fit(campaign: Path) -> FitResult:
         if present >= len(labelled) * 0.6:
             usable.append(name)
     result.components_used = usable
+
     if not usable:
         result.status = "not_fitted: no component has values on enough labelled pairs"
         return result
