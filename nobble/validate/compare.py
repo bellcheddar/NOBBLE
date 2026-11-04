@@ -180,9 +180,25 @@ def compare(baseline: Path, corrected: Path) -> dict:
             f"{'held' if control_ok else 'moved'}"
         )
 
+    # A verdict over a partially run campaign is a verdict about whichever
+    # pairs happen to have finished. Saying so is the difference between a
+    # result and a progress report, and the conclusion is the line that gets
+    # quoted: the per-pair table already marks the gaps, but nobody reads a
+    # table to check whether the sentence above it was qualified.
+    incomplete = [c for c in comparisons if c.verdict.startswith("incomplete")]
+    if incomplete and not conclusion.startswith("not concluded"):
+        missing = ", ".join(sorted(c.gene for c in incomplete))
+        conclusion += (
+            f". Provisional: {len(incomplete)} of {len(comparisons)} pair(s) "
+            f"have not finished in both campaigns ({missing})"
+        )
+
     return {
         "baseline": baseline.name,
         "corrected": corrected.name,
+        "pairs_compared": len(comparisons) - len(incomplete),
+        "pairs_incomplete": len(incomplete),
+        "provisional": bool(incomplete),
         "control": control.to_dict() if control else None,
         "control_held": control_ok,
         "comparisons": [c.to_dict() for c in comparisons],

@@ -133,3 +133,49 @@ def test_recovery_resolves_a_target_across_campaign_prefixes():
     assert recovery_target("sv_pos_ZN346_abcdef") is None
     assert recovery_target(None) is None
     assert recovery_target("nopartshere") is None
+
+
+def test_a_verdict_over_a_partial_campaign_says_it_is_provisional():
+    """"F6 supported" over five of seven pairs is a verdict about whichever
+    pairs finished. The per-pair table marks the gaps, but the conclusion is
+    the line that gets quoted and nobody checks a table to see whether the
+    sentence above it was qualified."""
+    from nobble.validate import compare as cmp
+
+    class _Item:
+        def __init__(self, gene, verdict, delta=None, control=False):
+            self.gene, self.verdict, self.delta_rmsd = gene, verdict, delta
+            self.is_control, self.e3 = control, "CRBN"
+        def to_dict(self):
+            return {"gene": self.gene, "verdict": self.verdict}
+
+    comparisons = [
+        _Item("IKZF1", "control held", 0.0, control=True),
+        _Item("GSPT1", "improved", -28.0),
+        _Item("CDK12", "incomplete: one campaign has no recovery number yet"),
+    ]
+    control = comparisons[0]
+    improved = [comparisons[1]]
+    incomplete = [c for c in comparisons if c.verdict.startswith("incomplete")]
+
+    conclusion = "F6 supported: 1 pair(s) improved"
+    missing = ", ".join(sorted(c.gene for c in incomplete))
+    conclusion += (f". Provisional: {len(incomplete)} of {len(comparisons)} "
+                   f"pair(s) have not finished in both campaigns ({missing})")
+
+    assert "Provisional" in conclusion
+    assert "CDK12" in conclusion
+    assert control.delta_rmsd == 0.0 and improved
+
+
+def test_a_complete_campaign_gets_no_provisional_qualifier():
+    """The qualifier must appear only when something is actually missing."""
+    from pathlib import Path
+    from nobble.validate import compare as cmp
+
+    report = cmp.compare(Path("campaigns/benchmark_20261103T192126Z"),
+                         Path("campaigns/corrected_20261103T214331Z"))
+    if report["pairs_incomplete"] == 0:
+        assert "Provisional" not in report["conclusion"]
+    else:
+        assert "Provisional" in report["conclusion"]

@@ -442,3 +442,11 @@
   then said "not concluded" and would have said that after all 100 jobs.
   Every refusal was honest and none pointed at the pair id. Targets now
   resolve on (gene, E3) as well as the literal id. F12. 109 tests pass.
+- 2026-11-04T12:45Z The F6 conclusion was published without saying it was
+  provisional. "F6 supported: 4 pairs improved" over a campaign at 69 of 100
+  is a verdict about whichever pairs happened to finish, and the per-pair
+  table marked the gaps while the headline sentence did not. The conclusion
+  now appends how many pairs are unfinished and names them, and the report
+  carries pairs_compared, pairs_incomplete and provisional. Applied to every
+  branch that draws a verdict, not just the supported one: "not supported"
+  over a partial campaign overclaims in the same way. Live and verified.

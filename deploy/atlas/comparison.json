@@ -1,6 +1,9 @@
 {
   "baseline": "benchmark_20261103T192126Z",
   "corrected": "corrected_20261103T214331Z",
+  "pairs_compared": 5,
+  "pairs_incomplete": 2,
+  "provisional": true,
   "control": {
     "gene": "IKZF1",
     "e3": "CRBN",
@@ -139,5 +142,5 @@
     "GSPT1"
   ],
   "worse": [],
-  "conclusion": "F6 supported: 4 pair(s) improved by more than 2 A with the whole domain, the control held, and none got worse"
+  "conclusion": "F6 supported: 4 pair(s) improved by more than 2 A with the whole domain, the control held, and none got worse. Provisional: 2 of 7 pair(s) have not finished in both campaigns (CDK12, RBM39)"
 }

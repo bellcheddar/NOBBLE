@@ -30,9 +30,9 @@
       "jobs_total": 240
     }
   ],
-  "comparison_conclusion": "F6 supported: 4 pair(s) improved by more than 2 A with the whole domain, the control held, and none got worse",
+  "comparison_conclusion": "F6 supported: 4 pair(s) improved by more than 2 A with the whole domain, the control held, and none got worse. Provisional: 2 of 7 pair(s) have not finished in both campaigns (CDK12, RBM39)",
   "jobs_total": 100,
   "pairs_total": 7,
   "structures": 100,
-  "bytes": 25739397
+  "bytes": 25739548
 }

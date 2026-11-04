@@ -493,8 +493,11 @@ than from the model being unable to dock. The corrected campaign tests that
 by giving the same substrates their whole domain, with IKZF1 held at its
 15-mer as the control (D-NOB-029).
 
-**F6 is supported.** Five of seven pairs scored, with the corrected campaign
-at 69 of 100 jobs:
+**F6 is supported, provisionally.** Five of seven pairs scored, with the
+corrected campaign at 69 of 100 jobs. The conclusion now carries that
+qualifier itself rather than leaving it to the table: a verdict over a
+partially run campaign is a verdict about whichever pairs happened to
+finish, and the conclusion is the line that gets quoted.
 
 | pair | 15-mer | whole domain | change | verdict |
 |---|---|---|---|---|
