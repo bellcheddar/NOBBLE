@@ -3453,3 +3453,38 @@ One of my four tests had the wrong expected value, worked out by hand:
 0.2 beats both negatives, 0.0 ties one and loses to the other, so the AUC is
 2.5 of 4 rather than 3 of 4. The test caught my arithmetic rather than the
 code's.
+
+## F75. Conditioning does not cost anything, which is worth writing down
+
+While confirming the campaign was healthy rather than hung, the last six
+jobs showed a conditioned job at 0.7375 s/token beside five unconstrained
+ones at 0.6630. An 11% premium on a third of the queue would mean F61's
+banding, which prices jobs by token count alone, understates the campaign by
+about four hours.
+
+It is a size confound. The conditioned job was 1223 tokens and the
+unconstrained ones 1199. Controlling for token count across 276 timed jobs
+in three campaigns, the two conditionings agree to the fourth decimal at
+every size where both exist: 0.5075 against 0.5049 at 143 tokens, 0.3655
+against 0.3639 at 454, 0.7313 against 0.7324 at 1223. Binary jobs look
+cheaper per token for the same reason, being smaller rather than
+structurally faster.
+
+So the model is right and nothing changes. Recorded anyway, in
+`projected_hours`'s own docstring where someone would go to add the factor,
+because the measurement that makes the current model correct is more useful
+there than the conclusion is here. A negative result that is not written
+down gets rediscovered as a hypothesis.
+
+Deliberately not a test. Asserting a tolerance between two medians of live
+measurements fails for reasons unrelated to what it protects, and this
+project has enough of those. The projection's own banding will absorb a real
+change if conditioning ever does start to cost something, because the bands
+are measured per campaign rather than fixed.
+
+Also checked in passing, since the review began as a health check: the last
+seven jobs' recorded durations match the wall-clock gaps between their
+outputs to within six seconds, and the job running now is at 864s against
+the previous conditioned job's 902s. On schedule rather than hung, which is
+the question F20 answered wrongly by comparing a local timestamp against a
+UTC one and killing a healthy job at 80% completion.

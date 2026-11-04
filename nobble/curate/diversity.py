@@ -313,6 +313,21 @@ def projected_hours(pairs: int, total_tokens: int | None = None,
     Given `job_tokens` each job is priced in its own band. A band with no
     measurement is priced at the slowest rate observed, which is the
     pessimistic choice, and `unmeasured_jobs` says how many were.
+
+    Token count is the only factor, and that was tested rather than
+    assumed. Pocket conditioning looked like a second one: a conditioned
+    job measured 0.7375 s/token beside unconstrained jobs at 0.6630. It was
+    a size confound, the conditioned job being 1223 tokens and the others
+    1199. Controlling for token count across 276 timed jobs, the two
+    conditionings agree to the fourth decimal at every size where both
+    exist, 0.5075 against 0.5049 at 143 tokens and 0.7313 against 0.7324 at
+    1223. Binary jobs look cheaper per token for the same reason: they are
+    smaller, not structurally faster.
+
+    Recorded so the projection is not "refined" later by a factor the data
+    does not support. Not a test, because asserting a tolerance between two
+    medians of live measurements is the kind of check that fails for
+    reasons unrelated to the thing it protects (F75).
     """
     tuning = paths.tuning()["campaign"]
     budget_hours = float(tuning["wall_clock_budget_hours"])
