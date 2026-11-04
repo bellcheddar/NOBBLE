@@ -7374,3 +7374,50 @@ The scan panel now states which peptide the profile is of and which campaign
 it came from, and shows the mismatch note when the ranking disagrees, both
 marked as the pipeline output they are. Pinned, including that the note
 element is absent rather than empty when the two agree.
+
+## F161. The gate I added priced an unmeasured campaign at zero
+
+A review pass over this session's own code, prompted by its own record:
+F142's fix needed F154, F138's needed F159, F147's needed F160, and F139's
+needed both. Fixes written quickly have a defect rate, and the honest
+response is to read them again rather than look for new ground.
+
+`budget.tier2_projection`, which decides Gate G1 for refinement, charges an
+unpriced job the mean of the priced ones, because a projection that gets
+cheaper the less of the campaign has run would pass the gate at the start of
+every campaign. That is the right rule and it has a hole: with *no* completed
+ternary job there is nothing to take a mean of, the guard does not fire, the
+sum is zero, and the projection came back 0.0 hours with `fits: True`.
+
+`test_an_unpriced_job_is_not_a_free_job` exists for exactly this and
+exercised only the partial case, three of four unpriced. It passed while the
+all-unpriced case charged nothing, which is F152's lesson arriving from the
+other direction: that sweep finds assertions that never run, and this is an
+assertion that runs and does not reach the case it names.
+
+Reachable, and not only in theory. `status.sh` prices whatever campaign is
+newest, including one that started a minute ago, and the line read "G1
+refine closed, 0.0 h" which is the most reassuring thing a status page could
+say about a cost nobody knows.
+
+Nothing priced is not nothing to pay, and it is not a gate either. A gate is
+a cost that exceeds the budget; this is a cost nobody knows. So the
+projection carries `priceable`, `gate_g1` returns `fits: False` with
+`judged_on: "nothing measured"` and a verdict that calls itself a refusal to
+guess, `tier2.run` refuses with its own status rather than declaring G1, and
+the status page reads "not priced" rather than "closed".
+
+Keeping those apart matters because of what G1 does. In unattended mode an
+open gate stops the build and asks for a decision, and the first version of
+this fix did open G1 on a campaign that had simply not finished a job: a
+decision nobody could make from the evidence, about a number that did not
+exist yet.
+
+Two more mistakes inside the fix, both found by running it rather than
+reading it. `affordable_pairs` took `priceable` from the last affordable
+prefix, and the first of those is the empty prefix, which has no jobs and so
+is trivially priceable: the flag came back False for a campaign that cannot
+be priced at all. It asks the requested set now. And the test above is split
+in two, so the refusal cannot quietly become permanent: one case asserts
+that nothing measured refuses, the other that a single measurement is enough
+to price the rest.

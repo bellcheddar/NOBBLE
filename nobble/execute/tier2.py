@@ -338,6 +338,15 @@ def run(campaign: Path, fraction: float | None = None) -> dict:
         ranked = [item["pair_id"] for item in selection.selected]
         affordable = budget.affordable_pairs(campaign, ranked)
         report["budget"] = affordable
+        if affordable.get("unpriceable"):
+            # Not a gate: a refusal to spend an unknown amount. Distinct
+            # from G1, which is a cost that exceeds the budget (F161).
+            selection.status = "refused: refinement cannot be priced"
+            selection.notes.append(affordable["report"]["verdict"])
+            report["selection"] = selection.to_dict()
+            (campaign / "tier2.json").write_text(
+                json.dumps(report, indent=2, default=str))
+            return report
         if affordable["gate_g1_open"]:
             selection.status = "refused: gate G1"
             selection.notes.append(

@@ -126,6 +126,52 @@ def test_reduction_drops_pairs_from_the_bottom_of_the_ranking(tmp_path):
     assert outcome["dropped"] == ranked[len(outcome["affordable"]):]
 
 
+def test_nothing_measured_is_not_nothing_to_pay(tmp_path):
+    """The case the test below was written for and did not cover (F161).
+
+    With no completed ternary job the priced list is empty, the mean-charging
+    guard does not fire because there is nothing to take a mean of, and the
+    projection came back 0.0 hours with `fits: True`. Reachable from
+    `status.sh`, which prices any campaign including one that started a
+    minute ago.
+
+    The answer is neither a fit nor a gate: a gate is a cost that exceeds the
+    budget and this is a cost nobody knows. Conflating them opened Gate G1 on
+    a campaign that had simply not finished a job, which in unattended mode
+    stops the build to ask for a decision the evidence cannot support.
+    """
+    directory = _campaign(tmp_path, pairs=4)
+    (directory / "results.jsonl").write_text("")        # nothing finished
+
+    projection = budget.tier2_projection(directory)
+    assert projection["jobs"] == 4
+    assert projection["priceable"] is False
+    report = budget.gate_g1(directory)
+    assert report["fits"] is False, "an unpriceable queue reported as fitting"
+    assert report["gate_g1_open"] is False, (
+        "an unmeasured cost reported as a gate, which stops the build"
+    )
+    assert report["judged_on"] == "nothing measured"
+
+    outcome = budget.affordable_pairs(directory, ["p00", "p01"])
+    assert outcome["unpriceable"] is True
+    assert outcome["gate_g1_open"] is False
+    assert outcome["affordable"] == []
+
+
+def test_one_measurement_is_enough_to_price_the_rest(tmp_path):
+    """The other side, so the refusal above cannot become permanent."""
+    directory = _campaign(tmp_path, pairs=4)
+    rows = [json.loads(line) for line
+            in (directory / "results.jsonl").read_text().splitlines() if line]
+    kept = [r for r in rows if r["complex_type"] == "binary"
+            or r["pair_id"] == "p00"]
+    (directory / "results.jsonl").write_text(
+        "".join(json.dumps(r) + "\n" for r in kept))
+    assert budget.tier2_projection(directory)["priceable"] is True
+    assert budget.gate_g1(directory)["judged_on"] == "upper bound"
+
+
 def test_an_unpriced_job_is_not_a_free_job(tmp_path):
     """A projection that gets cheaper the less of the campaign has run would
     pass the gate at the start of every campaign."""

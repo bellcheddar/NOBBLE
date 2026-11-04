@@ -106,6 +106,15 @@ if camps:
 
     report = budget.gate_g1(campaign, ranked)
     t2 = report["tier2"]
+    if not t2["priceable"]:
+        # Not priced is not closed. The line used to read "closed, 0.0 h"
+        # for a campaign with nothing finished, which is the most
+        # reassuring thing it could say about a cost nobody knows (F161).
+        print(f"   G1 refine    not priced  {t2['jobs']} job(s) over "
+              f"{len(ranked)} pair(s), no tier-1 ternary job of this "
+              f"campaign has completed")
+        print(f"   spent        {spent['hours']} h over {spent['jobs']} job(s)")
+        raise SystemExit(0)
     print(f"   G1 refine    {'OPEN' if report['gate_g1_open'] else 'closed'}  "
           f"{t2['hours_low']} to {t2['hours_high']} h for {t2['jobs']} job(s) "
           f"over {len(ranked)} pair(s), {report['hours_remaining']} h left, "

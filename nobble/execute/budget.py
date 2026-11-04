@@ -213,11 +213,22 @@ def tier2_projection(campaign: Path, pair_ids: list[str] | None = None,
     # projection that gets cheaper the less of the campaign has run.
     if priced and unpriced:
         tier1_seconds += unpriced * (sum(priced) / len(priced))
+    # And when there is nothing to take a mean of, the answer is not zero.
+    #
+    # With no completed ternary job the sum above is 0, the guard above does
+    # not fire because `priced` is empty, and this returned 0.0 hours and a
+    # gate that fits. `test_an_unpriced_job_is_not_a_free_job` was written
+    # for exactly this and exercised only the partial case, three of four
+    # unpriced, so it passed while the all-unpriced case charged nothing
+    # (F161). Reachable from `status.sh`, which prices any campaign
+    # including one that started a minute ago.
+    priceable = bool(priced) or not refine
 
     return {
         "jobs": len(refine),
         "priced_jobs": len(priced),
         "unpriced_jobs": unpriced,
+        "priceable": priceable,
         "tier1_hours_for_those_jobs": round(tier1_seconds / 3600.0, 2),
         "scaling_low": round(low, 2),
         "scaling_high": round(high, 2),
@@ -256,6 +267,28 @@ def gate_g1(campaign: Path, pair_ids: list[str] | None = None) -> dict:
     # Once a refinement has run the two ends are the same number.
     fits = projection["hours_high"] <= remaining
     collapsed = projection["measured_scaling"]["factor"] is not None
+
+    # Nothing priced is not the same as nothing to pay. A queue with jobs in
+    # it and no measurement behind any of them cannot be said to fit, and
+    # saying so is different from saying the gate is open: the gate is about
+    # a cost that exceeds the budget, and this is a cost nobody knows.
+    if not projection["priceable"]:
+        return {
+            "max_compute_hours": max_hours,
+            "hours_spent": spent["hours"],
+            "hours_remaining": round(remaining, 2),
+            "tier2": projection,
+            "fits": False,
+            "gate_g1_open": False,
+            "judged_on": "nothing measured",
+            "verdict": (
+                f"cannot price {projection['jobs']} refinement job(s): no "
+                "tier-1 ternary job of this campaign has completed, so there "
+                "is no measured cost to scale. This is not a gate and not a "
+                "fit; it is a refusal to guess"
+            ),
+            "spent_by_campaign": spent["by_campaign"],
+        }
     return {
         "max_compute_hours": max_hours,
         "hours_spent": spent["hours"],
@@ -291,6 +324,13 @@ def affordable_pairs(campaign: Path, ranked: list[str]) -> dict:
     so a pair refined with fewer seeds than its own tier-1 arm is not a
     cheaper measurement of the same thing.
     """
+    # Whether the requested set can be priced at all, asked of the requested
+    # set. Taking it from `last` below asks it of whatever prefix proved
+    # affordable, and the first of those is the empty prefix, which has no
+    # jobs and so is trivially priceable: the flag came back False for a
+    # campaign that cannot be priced at all (F161).
+    requested = tier2_projection(campaign, list(ranked))
+
     affordable: list[str] = []
     last = gate_g1(campaign, [])
     for pair in ranked:
@@ -299,12 +339,22 @@ def affordable_pairs(campaign: Path, ranked: list[str]) -> dict:
         if not report["fits"]:
             break
         affordable, last = trial, report
+
+    # "Costs too much" and "cost unknown" are different answers and only the
+    # first is a gate. Treating them alike opened Gate G1 on a campaign that
+    # had simply not finished a job yet, which in unattended mode stops the
+    # build and asks for a decision nobody can make from the evidence
+    # (F161).
+    unpriceable = bool(ranked) and not requested["priceable"]
     return {
         "requested": list(ranked),
         "affordable": affordable,
         "dropped": [p for p in ranked if p not in affordable],
         "report": last,
+        "unpriceable": unpriceable,
         # Nothing affordable is the gate. One pair refined is a result; zero
-        # is a question for whoever owns the budget.
-        "gate_g1_open": not affordable and bool(ranked),
+        # is a question for whoever owns the budget. Unless the reason
+        # nothing is affordable is that nothing has been measured, which is
+        # a question for the clock.
+        "gate_g1_open": not affordable and bool(ranked) and not unpriceable,
     }

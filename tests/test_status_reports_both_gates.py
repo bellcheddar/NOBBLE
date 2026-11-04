@@ -93,3 +93,19 @@ def test_the_chain_s_note_on_deploy_is_current():
     assert "fingerprint" in deploy_note, (
         "the chain still describes the deploy check as routes only"
     )
+
+
+def test_an_unpriced_refinement_is_not_reported_as_closed():
+    """A cost nobody knows must not read as a gate that is closed (F161).
+
+    The line took `gate_g1_open` and printed OPEN or closed, and an
+    unpriceable projection is neither: it came out as "closed, 0.0 h", which
+    is the most reassuring thing the page could say about a campaign that
+    has not finished a job.
+    """
+    section = STATUS[STATUS.index("-- gates"):]
+    assert "priceable" in section, (
+        "the status line does not distinguish an unpriced refinement from a "
+        "closed gate"
+    )
+    assert "not priced" in section
