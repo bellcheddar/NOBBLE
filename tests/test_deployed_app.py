@@ -101,11 +101,36 @@ def test_structures_serve_from_the_atlas(droplet_like):
 
 @pytest.mark.skipif(not ATLAS.exists(), reason="no published atlas")
 def test_published_atlas_withholds_protacdb_chemistry():
-    """Publishing to a public site is redistribution, exactly as a repo is."""
+    """Publishing to a public site is redistribution, exactly as a repo is.
+
+    The loop used to be the whole test, and every assertion was inside it,
+    so an absent or empty atlas passed by examining nothing. The count of
+    files actually read is asserted first: a licensing guarantee that holds
+    vacuously is not a guarantee (F72).
+    """
     marker = "CC1=C(C)C2=C(S1)"          # the dBET57 SMILES from PROTAC-DB
+    examined = 0
     for path in ATLAS.rglob("*"):
         if path.is_file() and path.suffix in (".json", ".jsonl"):
+            examined += 1
             assert marker not in path.read_text(errors="replace"), path
+    assert examined > 0, (
+        "no published record was examined, so this test proves nothing about "
+        "whether PROTAC-DB chemistry travels"
+    )
+
+
+def test_the_published_atlas_says_what_it_withheld():
+    """And the positive half: the record whose chemistry was withheld is
+    named, so an atlas that withheld nothing is distinguishable from one
+    whose detection stopped firing."""
+    import json
+
+    summary = json.loads((ATLAS / "ATLAS.json").read_text())
+    assert summary["redactions"] >= 1, (
+        "the benchmark panel includes dBET57, whose chemistry is PROTAC-DB's"
+    )
+    assert "dBET57" in summary.get("redacted_ligands", [])
 
 
 def test_comparison_refuses_to_conclude_when_the_control_moves(tmp_path, monkeypatch):

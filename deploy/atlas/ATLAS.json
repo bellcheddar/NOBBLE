@@ -12,27 +12,30 @@
     "recovery_vs_bridge.json": 7,
     "comparison.json": 7
   },
-  "redactions": 0,
+  "redactions": 1,
   "outstanding": [
     {
       "campaign": "campaign_20261104T004632Z",
-      "jobs_done": 0,
+      "jobs_done": 75,
       "jobs_total": 2360
-    },
-    {
-      "campaign": "corrected_20261103T214331Z",
-      "jobs_done": 81,
-      "jobs_total": 100
     },
     {
       "campaign": "design_20261104T024349Z",
       "jobs_done": 0,
       "jobs_total": 240
+    },
+    {
+      "campaign": "design_20261104T094939Z",
+      "jobs_done": 0,
+      "jobs_total": 240
     }
   ],
-  "comparison_conclusion": "F6 supported: 5 pair(s) improved by more than 2 A with the whole domain, the control held, and none got worse. Bridge formation agrees and is independent of the crystal: 3 pair(s) bridged in more seeds and none in fewer. Provisional: 1 of 7 pair(s) have not finished in both campaigns (CDK12)",
+  "comparison_conclusion": "F6 supported: 6 pair(s) improved by more than 2 A with the whole domain, the control held, and none got worse. Bridge formation agrees and is independent of the crystal: 4 pair(s) bridged in more seeds and none in fewer",
   "jobs_total": 100,
   "pairs_total": 7,
   "structures": 100,
-  "bytes": 25740801
+  "bytes": 25745870,
+  "redacted_ligands": [
+    "dBET57"
+  ]
 }

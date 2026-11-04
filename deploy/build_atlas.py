@@ -47,6 +47,27 @@ REDACTION = (
 )
 
 
+# Every field this build withheld. A list rather than a counter so the
+# summary can say which records were affected, and reset per build rather
+# than accumulated across calls.
+#
+# `summary["redactions"]` was initialised to 0 and incremented nowhere, so
+# the published ATLAS.json reported "redactions: 0" while the atlas it
+# described contained a `smiles_withheld` field. A count that is zero
+# whatever happened is not a count, and on a licensing guarantee it reads
+# as "no PROTAC-DB chemistry was present" rather than "one record was
+# withheld" (F72).
+_WITHHELD: list[str] = []
+
+
+def reset_redactions() -> None:
+    _WITHHELD.clear()
+
+
+def redactions() -> list[str]:
+    return list(_WITHHELD)
+
+
 def redact(value):
     """Strip PROTAC-DB chemistry anywhere it appears in a nested record."""
     if isinstance(value, dict):
@@ -64,6 +85,8 @@ def redact(value):
             if "smiles" in out:
                 out["smiles"] = None
                 out["smiles_withheld"] = REDACTION
+                _WITHHELD.append(str(value.get("ccd") or value.get("key")
+                                     or value.get("ligand_key") or source))
         return out
     if isinstance(value, list):
         return [redact(item) for item in value]
@@ -113,6 +136,7 @@ def main() -> int:
         shutil.rmtree(OUT)
     (OUT / "structures").mkdir(parents=True)
 
+    reset_redactions()
     summary = {"campaign": campaign.name, "files": {}, "redactions": 0}
 
     # What else was assembled or running when this slice was built. The
@@ -326,6 +350,14 @@ def main() -> int:
     structures = list((OUT / "structures").glob("*.cif"))
     summary["structures"] = len(structures)
     summary["bytes"] = sum(p.stat().st_size for p in OUT.rglob("*") if p.is_file())
+
+    # Written at the end, from what redact() actually did, rather than left
+    # at the zero it was initialised to. Both the count and the ligands are
+    # recorded: a count alone cannot distinguish "nothing needed
+    # withholding" from "the detection stopped firing" (F72).
+    withheld = redactions()
+    summary["redactions"] = len(withheld)
+    summary["redacted_ligands"] = sorted(set(withheld))
     (OUT / "ATLAS.json").write_text(json.dumps(summary, indent=2))
 
     print(json.dumps(summary, indent=2))

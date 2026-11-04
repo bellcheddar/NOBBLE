@@ -1,9 +1,9 @@
 {
   "baseline": "benchmark_20261103T192126Z",
   "corrected": "corrected_20261103T214331Z",
-  "pairs_compared": 6,
-  "pairs_incomplete": 1,
-  "provisional": true,
+  "pairs_compared": 7,
+  "pairs_incomplete": 0,
+  "provisional": false,
   "control": {
     "gene": "IKZF1",
     "e3": "CRBN",
@@ -67,20 +67,20 @@
       "gene": "CDK12",
       "e3": "DDB1",
       "baseline_pair": "bench07_CDK12_DDB1",
-      "corrected_pair": null,
+      "corrected_pair": "corr07_CDK12_DDB1",
       "substrate_mode": "folded_domain",
       "baseline_median_rmsd": 44.921,
-      "corrected_median_rmsd": null,
-      "delta_rmsd": null,
+      "corrected_median_rmsd": 5.278,
+      "delta_rmsd": -39.643,
       "baseline_anchor_rmsd": 1.35,
-      "corrected_anchor_rmsd": null,
+      "corrected_anchor_rmsd": 1.305,
       "baseline_poses": 10,
-      "corrected_poses": 0,
+      "corrected_poses": 10,
       "baseline_bridged": "0/10",
-      "corrected_bridged": null,
-      "bridge_rate_change": null,
+      "corrected_bridged": "6/10",
+      "bridge_rate_change": 0.6,
       "is_control": false,
-      "verdict": "incomplete: one campaign has no recovery number yet"
+      "verdict": "improved"
     },
     {
       "gene": "CSNK1A1",
@@ -146,14 +146,14 @@
       "corrected_pair": "corr06_RBM39_DCAF15",
       "substrate_mode": "folded_domain",
       "baseline_median_rmsd": 6.085,
-      "corrected_median_rmsd": 0.731,
-      "delta_rmsd": -5.354,
+      "corrected_median_rmsd": 0.743,
+      "delta_rmsd": -5.342,
       "baseline_anchor_rmsd": 0.756,
-      "corrected_anchor_rmsd": 0.733,
+      "corrected_anchor_rmsd": 0.734,
       "baseline_poses": 10,
-      "corrected_poses": 6,
+      "corrected_poses": 10,
       "baseline_bridged": "10/10",
-      "corrected_bridged": "3/3",
+      "corrected_bridged": "10/10",
       "bridge_rate_change": 0.0,
       "is_control": false,
       "verdict": "improved"
@@ -162,10 +162,11 @@
   "improved": [
     "BRD4",
     "BRD4",
+    "CDK12",
     "CSNK1A1",
     "GSPT1",
     "RBM39"
   ],
   "worse": [],
-  "conclusion": "F6 supported: 5 pair(s) improved by more than 2 A with the whole domain, the control held, and none got worse. Bridge formation agrees and is independent of the crystal: 3 pair(s) bridged in more seeds and none in fewer. Provisional: 1 of 7 pair(s) have not finished in both campaigns (CDK12)"
+  "conclusion": "F6 supported: 6 pair(s) improved by more than 2 A with the whole domain, the control held, and none got worse. Bridge formation agrees and is independent of the crystal: 4 pair(s) bridged in more seeds and none in fewer"
 }

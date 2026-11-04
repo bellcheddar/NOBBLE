@@ -151,14 +151,14 @@
       "substrate": {
         "mode": "folded_domain",
         "accession": "P48729",
-        "interpro": "IPR000719",
+        "interpro": "PF00069",
         "start": 17,
-        "end": 285,
-        "length": 269,
-        "reason": "the 15-mer covers only 7% of IPR000719 and cannot fold alone"
+        "end": 235,
+        "length": 219,
+        "reason": "the 15-mer covers only 7% of PF00069 and cannot fold alone"
       },
       "ligand_heavy_atoms": 19,
-      "tokens": 397,
+      "tokens": 347,
       "cap": 400,
       "within_cap": true,
       "declared_exception": false,
