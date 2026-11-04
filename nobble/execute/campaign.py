@@ -14,6 +14,7 @@ re-run without reference to the code that produced it:
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -30,11 +31,21 @@ def campaign_id(prefix: str = "benchmark") -> str:
     return f"{prefix}_{stamp}"
 
 
+# campaign_id() stamps a UTC timestamp, so a real campaign directory always
+# ends in one. Matching the prefix alone let any sibling with the same prefix
+# shadow the real thing: a scratch directory named campaign_smoke sorts after
+# campaign_20261104T004632Z, because "s" sorts after "2", and silently became
+# "the latest campaign".
+TIMESTAMP = re.compile(r"^\d{8}T\d{6}Z$")
+
+
 def latest(prefix: str = "benchmark") -> Path | None:
-    """Most recent campaign directory with this prefix, or None."""
+    """Most recent timestamped campaign directory with this prefix, or None."""
     candidates = sorted(
         (item for item in paths.CAMPAIGNS.iterdir()
-         if item.is_dir() and item.name.startswith(f"{prefix}_")),
+         if item.is_dir()
+         and item.name.startswith(f"{prefix}_")
+         and TIMESTAMP.match(item.name[len(prefix) + 1:])),
         key=lambda item: item.name,
     )
     return candidates[-1] if candidates else None

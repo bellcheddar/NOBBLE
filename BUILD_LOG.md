@@ -172,3 +172,17 @@
   degraded fingers fold better than their controls before any zinc (95.22 vs
   92.38), which cancels in a difference-of-arms statistic but would be a
   duller explanation than the glue if the ROC comes out strong.
+- 2026-11-04T05:05Z Added tools/preflight.py and ran it on the assembled
+  campaign: 2,360 jobs, 158 pairs, 0 errors, 0 pairs with an asymmetric
+  cofactor. Every receptor chain has a cached MSA, so nothing will contact a
+  server mid-run, and every peptide chain correctly has none. The asymmetric
+  cofactor check is the reason this is a tool: the other failures announce
+  themselves by stopping the queue, while a zinc in one arm only completes
+  the run and quietly reports the cofactor instead of the glue.
+- 2026-11-04T05:05Z Two bugs found by writing it. `latest()` matched on
+  prefix alone, so a scratch directory named `campaign_smoke` sorted after
+  `campaign_20261104T004632Z` and silently became "the latest campaign". It
+  now requires a timestamp suffix. And preflight's own token-cap check
+  ignored declared exceptions, flagging the 1,223-token DCAF15 jobs the
+  manifest deliberately allows: a checker stricter than the rule it checks is
+  just a false alarm.
