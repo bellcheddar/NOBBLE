@@ -902,3 +902,48 @@ clause is a subset of the first. It never decided anything while implying
 the encoding mattered, which is the opposite of the rule: what makes a
 record unpublishable is where the chemistry came from, not how it is
 written.
+
+## F23. The prediction scorer returned a verdict on a number still moving
+
+`tools/check_prediction.py` exists so the F13 predictions are scored by
+their own thresholds instead of being read and judged, because that
+reading is where a prediction quietly becomes a description. It does that
+part correctly.
+
+What it did not do was say what the verdict rested on. Run while the
+corrected campaign was still going, it printed
+
+    RBM39   WRONG
+            measured: 6.085 -> 0.731 A (-5.354), bridged 10/10 -> 3/3
+
+on six of the ten poses the baseline has. The asymmetry was on the face
+of the output, 10/10 against 3/3, and carried no weight because nothing
+named it. `compare.py` already has a provisional mechanism, but it only
+fires when a campaign has no recovery number at all, so a pair at 6 of 10
+poses passes through as finished.
+
+Two things were missing, and the second is the one that matters.
+
+The pose counts, so a reader can see the verdict is not yet final. The
+rule needs no configuration: both campaigns were built with the same seed
+structure, so the complete baseline is the yardstick for whether the
+corrected side has filled in.
+
+And the distance to a different answer. "WRONG on 6 of 10 poses" says
+little by itself. "WRONG, and the corrected median would have to climb
+from 0.731 to 4.085 A to be supported, 3.354 A away" says the verdict is
+safe, because four further poses cannot move a median sitting at 0.731 by
+three and a half angstrom. The supporting interval is declared next to
+the thresholds it comes from, so the margin is computed from F13 rather
+than judged afterwards.
+
+F18's verdict is unaffected: that margin is why. It was recorded on
+partial data and happens to be robust, which is luck rather than method,
+and is exactly what the scorer should have been able to state at the
+time.
+
+In the chain this runs last, after the corrected campaign has finished,
+so its output there will read `final` rather than `PROVISIONAL`. The
+defect only showed because the scorer can be, and was, run by hand
+mid-campaign. A tool that is correct only when invoked at the right
+moment is a tool that will be invoked at the wrong one.
