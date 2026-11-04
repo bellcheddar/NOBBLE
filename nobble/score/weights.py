@@ -96,7 +96,16 @@ def _auc(positives: list[float], negatives: list[float]) -> float | None:
 
 
 def _label(row: dict) -> str | None:
-    """Positive when experimentally degraded, negative when not or a scramble."""
+    """Positive when experimentally degraded, negative when not or a scramble.
+
+    Deliberately not scoped to one arm, unlike `matched_control_roc`, which
+    reads the same field and must exclude everything but the Sievers split.
+    Spec 4.8 fits the weights "on the benchmark panel and the Sievers matched
+    set", so the panel belongs here; spec 5.3 scopes the ROC to the Sievers
+    split alone, so it does not belong there. The same label means different
+    things to the two consumers, and narrowing this one to match the other
+    would be fitting the composite on less than the spec asks for.
+    """
     label = row.get("peptide_label")
     if label == "degraded":
         return "positive"

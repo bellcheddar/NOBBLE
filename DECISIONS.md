@@ -1005,3 +1005,44 @@ zinc-finger peptides restores the other behaviour. If that is ever done,
 measure alignment depth for the degraded and non-degraded sets first and
 report the two distributions: the confounder above is testable, and it was
 asserted here rather than measured.
+
+## D-NOB-036: the matched-control ROC is scoped to the Sievers arm; the weight fit is not
+
+**Date:** 2026-11-04
+
+Assembling the main campaign put benchmark, Sievers and scramble pairs into
+one `scores.jsonl` for the first time. Cross-tabulating the labels against
+the tiers showed that the benchmark panel's seven pairs carry
+`peptide_label: "degraded"`, the same label the Sievers positives carry.
+
+`matched_control_roc` selected on that label alone, so the moment the
+campaign ran, those seven would have joined the positive side of the
+headline curve. They are a different experiment: other E3 ligases, PROTACs
+as well as glues, and no matched negative drawn from the same screen. They
+are also the panel chosen for having good co-crystals, so they would have
+raised the positive side and the AUC with it.
+
+The failure would have been silent and flattering. The curve still draws,
+the number still looks plausible, and it moves in the direction that makes
+the result look better. Nothing in the output would have said that seven of
+the thirty-one positives came from somewhere else.
+
+**Decided.** `matched_control_roc` filters to `tier == "sievers_zf"` and
+reports `pairs_outside_the_arm_excluded` so the exclusion is visible rather
+than implied. Spec 5.3 scopes the curve to "the Sievers degraded versus
+non-degraded split", and that is now enforced rather than assumed.
+
+**The weight fitter is deliberately left unscoped.** Spec 4.8 fits the
+weights "on the benchmark panel and the Sievers matched set", so the panel
+belongs in the fit and excluding it would fit on less than the spec asks
+for. The same field therefore means different things to the two consumers,
+which is exactly the kind of asymmetry someone later tidies away, so the
+contrast is written into `weights._label` rather than left to be inferred.
+
+**Scrambles count as negatives for the fit and not for the ROC.** A
+scramble never went through the Sievers screen, so it is not a matched
+control; it is a composition control, which is a different claim.
+
+**Reversal.** The `arm = [...]` filter in `matched_control_roc`.
+`tests/test_roc_scope.py` fails first, and its contamination case is built
+so the benchmark pairs would drag a below-chance arm above chance.

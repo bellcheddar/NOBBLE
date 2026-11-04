@@ -138,3 +138,16 @@
   for want of a pocket: bench03 and its scramble, whose dBET57 is
   SMILES-encoded because 6BNB assembly 1 carries no PROTAC. Positive and
   control lose the conditioned arm together, so they stay symmetric.
+- 2026-11-04T04:10Z Caught a silent contamination in the headline ROC before
+  it could run. The main campaign puts benchmark, Sievers and scramble pairs
+  in one scores.jsonl for the first time; cross-tabulating label against tier
+  showed the benchmark panel carries peptide_label "degraded", the same as
+  the Sievers positives. matched_control_roc selected on label alone, so its
+  seven pairs would have joined the positive side of the curve: a different
+  experiment, other E3s, PROTACs as well as glues, no matched negatives, and
+  chosen for having good co-crystals, so the AUC would have risen. Now scoped
+  to tier == sievers_zf and reports how many pairs it excluded. The weight
+  fitter is deliberately left unscoped because spec 4.8 fits on the panel and
+  the Sievers set both; the contrast is documented in weights._label so it is
+  not tidied away later. D-NOB-036. tests/test_roc_scope.py (3 tests), with
+  the contamination case verified to fail without the filter. 71 tests pass.

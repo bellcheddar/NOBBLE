@@ -262,10 +262,22 @@ def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerR
         return layer
 
     rows = [json.loads(line) for line in scores_path.read_text().splitlines() if line.strip()]
-    positives = [row[statistic] for row in rows
+
+    # The Sievers arm only. The benchmark panel also carries the label
+    # "degraded", and on label alone its seven pairs would join the positive
+    # side of this curve. They are a different experiment: other E3 ligases,
+    # PROTACs as well as glues, and no matched negative from the same screen.
+    # They are also the panel chosen for having good co-crystals, so they
+    # would raise the positive side and the AUC with it, which is the wrong
+    # direction for a number to move by accident. Spec 5.3 scopes this curve
+    # to the Sievers degraded against non-degraded split.
+    arm = [row for row in rows if row.get("tier") == "sievers_zf"]
+    excluded = len(rows) - len(arm)
+
+    positives = [row[statistic] for row in arm
                  if row.get("peptide_label") == "degraded"
                  and isinstance(row.get(statistic), (int, float))]
-    negatives = [row[statistic] for row in rows
+    negatives = [row[statistic] for row in arm
                  if row.get("peptide_label") == "not_degraded"
                  and isinstance(row.get(statistic), (int, float))]
 
@@ -273,6 +285,7 @@ def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerR
         "statistic": statistic,
         "positives": len(positives),
         "matched_negatives": len(negatives),
+        "pairs_outside_the_arm_excluded": excluded,
         "source": "Sievers zinc-finger screen: negatives assayed in the same screen",
     }
 
