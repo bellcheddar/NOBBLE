@@ -28,6 +28,7 @@ from pathlib import Path
 
 from nobble import paths
 from nobble.score import poses
+from nobble.numeric import finite, finite_values, median_of
 
 ROC_MINIMUM_PER_SIDE = int(paths.thresholds()["validation"]["roc_minimum_per_side"])
 
@@ -131,7 +132,7 @@ def pose_recovery(campaign: Path) -> LayerResult:
             continue
         record = outcome.to_dict()
         detail.append(record)
-        if outcome.rmsd is not None:
+        if finite(outcome.rmsd):
             per_pair.setdefault(job["pair_id"], []).append(outcome.rmsd)
 
     if not per_pair:
@@ -141,11 +142,16 @@ def pose_recovery(campaign: Path) -> LayerResult:
 
     by_pair = {}
     for pair_id, values in sorted(per_pair.items()):
-        ordered = sorted(values)
+        # sorted() on a list containing a NaN leaves the other elements
+        # unsorted too, so ordered[0] and ordered[-1] are not the best and
+        # worst of anything. Filtered before sorting rather than trusted.
+        ordered = sorted(finite_values(values))
+        if not ordered:
+            continue
         by_pair[pair_id] = {
             "n": len(ordered),
             "best_rmsd": round(ordered[0], 3),
-            "median_rmsd": round(ordered[len(ordered) // 2], 3),
+            "median_rmsd": round(median_of(ordered), 3),
             "worst_rmsd": round(ordered[-1], 3),
             "curve": poses.success_rate_curve(ordered),
         }
@@ -217,7 +223,7 @@ def time_split(campaign: Path) -> LayerResult:
             "label": "deposited before the cutoff: may be memorised",
             "n": len(before),
             "median_rmsd": round(
-                sorted(item["median_rmsd"] for item in before)[len(before) // 2], 3
+                median_of(item["median_rmsd"] for item in before), 3
             ) if before else None,
             "members": before,
         },
@@ -225,7 +231,7 @@ def time_split(campaign: Path) -> LayerResult:
             "label": "deposited after the cutoff: blind",
             "n": len(after),
             "median_rmsd": round(
-                sorted(item["median_rmsd"] for item in after)[len(after) // 2], 3
+                median_of(item["median_rmsd"] for item in after), 3
             ) if after else None,
             "members": after,
         },

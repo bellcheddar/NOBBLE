@@ -22,7 +22,7 @@ import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from nobble import paths
-from nobble.numeric import finite
+from nobble.numeric import finite, finite_values, median_of
 
 # The control: unchanged between campaigns by design.
 CONTROL_GENE = "IKZF1"
@@ -81,11 +81,11 @@ def _recovery_by_pair(campaign: Path) -> dict[str, dict]:
 
     out = {}
     for pair_id, stats in layer.summary["by_pair"].items():
-        anchor = sorted(anchors.get(pair_id, []))
+        anchor = sorted(finite_values(anchors.get(pair_id, [])))
         out[pair_id] = {
             "median_rmsd": stats["median_rmsd"],
             "poses": stats["n"],
-            "anchor_rmsd": anchor[len(anchor) // 2] if anchor else None,
+            "anchor_rmsd": median_of(anchor),
         }
     return out
 

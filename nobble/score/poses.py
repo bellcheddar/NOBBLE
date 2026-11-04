@@ -26,6 +26,7 @@ from functools import lru_cache
 from nobble import paths
 from nobble.curate import constructs as C
 from nobble.curate import numbering, structures
+from nobble.numeric import finite_values, median_of
 
 # Receptor anchor RMSD above which the frame is called poor, which
 # qualifies every peptide RMSD measured in it. Was a literal below.
@@ -116,6 +117,15 @@ def _superpose(moving_anchor: list, fixed_anchor: list):
 
 
 def _rmsd(moving: list, fixed: list, transform) -> float | None:
+    """Backbone RMSD, or None when it cannot be measured.
+
+    `gemmi.Position` accepts a NaN coordinate, and one NaN anywhere in the
+    sum makes the result NaN. That NaN then passed the `is not None`
+    filters downstream and reached `sorted`, where it corrupts not only the
+    median but the minimum and maximum, because every comparison against it
+    is false. A pair's best, median and worst recovery are all published on
+    the Benchmark tab (F78).
+    """
     import math
 
     if not moving or len(moving) != len(fixed):
@@ -128,7 +138,11 @@ def _rmsd(moving: list, fixed: list, transform) -> float | None:
             + (moved.y - target.y) ** 2
             + (moved.z - target.z) ** 2
         )
-    return math.sqrt(total / len(moving))
+    value = math.sqrt(total / len(moving))
+    # Unmeasurable rather than zero or infinite: a coordinate that is not a
+    # number cannot produce a distance, and returning None puts this on the
+    # same footing as a superposition with too few anchor atoms.
+    return value if math.isfinite(value) else None
 
 
 def peptide_rmsd_between(job_a: dict, job_b: dict) -> float | None:
@@ -363,7 +377,7 @@ def success_rate_curve(values: list[float], breakpoints=None) -> dict:
         breakpoints = tuple(
             paths.thresholds()["scoring"].get("rmsd_breakpoints", (1.0, 2.0, 3.0, 5.0))
         )
-    present = [value for value in values if value is not None]
+    present = finite_values(values)
     if not present:
         return {f"within_{point}A": None for point in breakpoints} | {"n": 0}
     curve = {
@@ -373,7 +387,7 @@ def success_rate_curve(values: list[float], breakpoints=None) -> dict:
         for point in breakpoints
     }
     curve["n"] = len(present)
-    curve["median_rmsd"] = round(sorted(present)[len(present) // 2], 3)
+    curve["median_rmsd"] = round(median_of(present), 3)
     return curve
 
 
