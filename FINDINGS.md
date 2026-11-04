@@ -5922,3 +5922,54 @@ yet, and all four boundaries were drawn with a tool one notch too blunt: a
 same-path comparison that a rename defeats, a walk of one directory in four,
 a suffix standing in for a path, and a numeric rule that stopped at the
 package while the published bytes are written outside it.
+
+## F128. The published bundle carried the build machine's paths, and my own test could not see them
+
+Checking the repository for anything that should not be public before
+considering a push, which found no credentials: the deploy takes
+`DROPLET_SSH`, `SSH_KEY`, `REMOTE_DIR` and `SERVICE` from the environment
+with `${VAR:?}` so it fails rather than defaults, no key or `.env` is
+tracked, and no PEM block, credential-shaped assignment or address appears
+in any tracked file.
+
+What it did find is `/Users/dellboy` in three tracked files. One is
+`config/hardware.toml`, the hwprobe output, which is local by nature. The
+other two are `deploy/atlas/results.jsonl` and `deploy/atlas/scores.jsonl`:
+the published bundle, rsynced to a public host.
+
+307 occurrences, in four fields. `results.jsonl` carried `yaml` and
+`output_dir`; `scores.jsonl` carried the nested
+`seed_records[].structure` and `plip.conect.pdb_path`.
+
+The build knew about exactly one of them. Its comment says so: "results.jsonl
+carries absolute structure paths from the build machine, which are
+meaningless on the droplet, so they are rewritten to the flattened names
+published beside them." It rewrites `row["structure"]`, the top-level field,
+and passes the other four through. The top-level `scores.jsonl` structure is
+`None` and its nested copy, one level down in `seed_records`, was absolute.
+
+Nothing functional was broken, and that is why it survived. The seed overlay
+builds its URLs from `job_id`, so nothing on the droplet reads those four
+fields; the live structure endpoint serves its 84 KB either way, verified
+before and after. The cost was a home directory on a public page, 307 times.
+
+**F105 added a test for precisely this and it could not see it.** It globs
+`PUBLISHED.glob("*.json")`. The bundle also holds `.jsonl`, which is where
+most of the paths were. `build_atlas`'s own PROTAC-DB leak check, forty lines
+below the rewrite, scans `(".json", ".jsonl")` because it had to. Mine
+scanned one extension, so the test written to catch a published home
+directory was blind to the two files holding nearly all of them.
+
+That is the fifth boundary this session drawn one notch too blunt, and the
+only one of the five that had already cost something.
+
+Every absolute project path in a published record is now rewritten at any
+depth, and made project-relative rather than dropped: which YAML produced a
+record and where Boltz wrote it is provenance a reader of the bundle can
+use, and the name of the directory it was built in is not. The published
+`structure` is preserved as the copy beside it, which a test asserts
+separately, since relativising that one would have broken the viewer.
+
+The leak test now walks every published text file by suffix set, and names
+`results.jsonl` and `scores.jsonl` explicitly, because the glob that missed
+them looked perfectly reasonable.

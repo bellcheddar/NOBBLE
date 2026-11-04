@@ -93,6 +93,39 @@ def redact(value):
     return value
 
 
+def _project_relative(value: str) -> str:
+    """An absolute path under the project root, made relative to it.
+
+    The bundle goes to a public host, so a build-machine path in it puts a
+    home directory on a public page. The top-level `structure` field was
+    already rewritten, to the flattened copy published beside it, and four
+    others were not: `results.jsonl`'s `yaml` and `output_dir`, and
+    `scores.jsonl`'s nested `seed_records[].structure` and
+    `plip.conect.pdb_path`, 307 occurrences between them.
+
+    Made relative rather than dropped. These are provenance, which YAML
+    produced a record and where Boltz wrote it, and a reader of the bundle
+    has a use for that; what they have no use for is the name of the
+    directory it was built in. Nothing reads them on the droplet either way:
+    the seed overlay builds its URLs from `job_id` (F128).
+    """
+    try:
+        return str(Path(value).resolve().relative_to(ROOT.resolve()))
+    except (ValueError, OSError):
+        return Path(value).name
+
+
+def _relocate(node):
+    """Rewrite every absolute project path in a record, at any depth."""
+    if isinstance(node, dict):
+        return {key: _relocate(item) for key, item in node.items()}
+    if isinstance(node, list):
+        return [_relocate(item) for item in node]
+    if isinstance(node, str) and node.startswith("/") and str(ROOT) in node:
+        return _project_relative(node)
+    return node
+
+
 def main() -> int:
     # Takes the campaign to publish. It used to hard-code latest("benchmark"),
     # which meant the main campaign could run for 52 hours and never reach the
@@ -213,6 +246,12 @@ def main() -> int:
                     row["structure"] = f"structures/{published}"
                 else:
                     row["structure"] = None
+            # Every other absolute path in the record, at any depth. The
+            # rewrite above reaches one field; these records carry four more
+            # (F128).
+            published_structure = row.get("structure")
+            row = _relocate(row)
+            row["structure"] = published_structure
             rows.append(row)
         (OUT / name).write_text("\n".join(json.dumps(r) for r in rows) + "\n")
         summary["files"][name] = len(rows)

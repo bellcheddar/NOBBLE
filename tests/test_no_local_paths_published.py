@@ -39,9 +39,22 @@ LOCAL = (
 
 
 def _files():
+    """Every published text file, not one extension of it.
+
+    This globbed `*.json` and the bundle also holds `results.jsonl` and
+    `scores.jsonl`, which carried 307 build-machine paths between them:
+    `yaml`, `output_dir`, the nested `seed_records[].structure` and
+    `plip.conect.pdb_path`. `build_atlas`'s own PROTAC-DB leak check already
+    scanned both extensions; this one did not, so the test written to catch a
+    published home directory could not see the files holding most of them
+    (F128).
+    """
     if not PUBLISHED.exists():
         pytest.skip("no published atlas")
-    return sorted(PUBLISHED.glob("*.json"))
+    return sorted(
+        path for path in PUBLISHED.rglob("*")
+        if path.is_file() and path.suffix in (".json", ".jsonl", ".txt", ".csv")
+    )
 
 
 def test_no_published_json_carries_an_absolute_local_path():
@@ -92,3 +105,52 @@ def test_the_diagnostic_that_caused_this_is_stable_under_both_invocations():
     assert one["searched"] == two["searched"]
     for pattern in LOCAL:
         assert not pattern.search(json.dumps(one)), (pattern.pattern, one)
+
+
+def test_the_scan_covers_the_jsonl_records():
+    """Non-vacuous on purpose. The glob that missed them looked right, and
+    the only thing that would have caught it is naming the files."""
+    names = {path.name for path in _files()}
+    assert "results.jsonl" in names, sorted(names)
+    assert "scores.jsonl" in names, sorted(names)
+    assert any(name.endswith(".json") for name in names), sorted(names)
+
+
+def test_the_published_structure_paths_still_point_inside_the_bundle():
+    """The fix must not relativise the one field that has a published copy.
+    `structure` names a file beside it in `structures/`; everything else is
+    provenance pointing back into the campaign."""
+    import json
+
+    results = PUBLISHED / "results.jsonl"
+    if not results.exists():
+        pytest.skip("no published results")
+    checked = 0
+    for line in results.read_text().splitlines():
+        if not line.strip():
+            continue
+        structure = json.loads(line).get("structure")
+        if not structure:
+            continue
+        assert structure.startswith("structures/"), structure
+        assert (PUBLISHED / structure).exists(), structure
+        checked += 1
+    assert checked > 50, checked
+
+
+def test_the_provenance_paths_are_project_relative():
+    """Kept rather than dropped, because which YAML produced a record is
+    worth having; what is not worth having is the name of the directory it
+    was built in."""
+    import json
+
+    results = PUBLISHED / "results.jsonl"
+    if not results.exists():
+        pytest.skip("no published results")
+    row = json.loads(results.read_text().splitlines()[0])
+    for field in ("yaml", "output_dir"):
+        value = row.get(field)
+        if not value:
+            continue
+        assert not value.startswith("/"), (field, value)
+        assert value.startswith("campaigns/"), (field, value)
