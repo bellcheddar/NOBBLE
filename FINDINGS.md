@@ -761,6 +761,19 @@ not: the distributions are disjoint by more than four angstrom.
 The CDK12 half of F13 is still open and is the half the prediction was
 confident about.
 
+**Closed, and supported.** The corrected campaign finished 100 of 100 jobs,
+and `tools/check_prediction.py` scores the CDK12 half as supported: the
+median pose recovery moves 44.921 to 5.278 angstrom, a 39.643 angstrom
+improvement, on all ten of the poses the baseline has, with bridge
+formation going from 0 of 10 seeds to 6 of 10. The supporting range the
+prediction was recorded against is 0 to 20 angstrom, so it lands inside by
+a wide margin rather than at the edge.
+
+The panel verdict is therefore one supported and one wrong, out of two
+testable predictions. Recorded here because a prediction machinery that
+only ever reports support is not a test, and the RBM39 half being wrong by
+3.342 angstrom is what makes the CDK12 half worth anything.
+
 ## F19. A variant can gain confidence while losing the interface
 
 Rendering the design scan with bridge formation marked produced a case
@@ -2852,6 +2865,13 @@ scorer. A stage that has never run is the largest remaining risk in an
 unattended build, so each was dry-run against the real campaign with the
 inference step left out, to find a crash now rather than in fifty hours.
 
+**Correction.** "Each was dry-run" overstated it when written. Scoring and
+tier 2 selection had run; the prediction scorer had not, and the design
+arm's lift path still had not, because it needs design results that do not
+exist. The prediction scorer has since been run and works, and the design
+lift is covered in F63. The claim was wider than the evidence by exactly
+the stages this finding exists to be careful about.
+
 They work. Scoring the partial campaign succeeded and the composite
 correctly refused to fit on six positives and no negatives. Tier 2 selected
 a decile, explained why it had ranked on bridge percentile rather than the
@@ -2896,3 +2916,31 @@ turned out to apply all of it to the inference subprocess, and the runner
 parent turned out not to import torch at all. Tier 2 is therefore not at
 risk of running without the MPS fallback, which was the concern worth
 chasing.
+
+## F63. The design arm's entry point had thirty tests around it and none on it
+
+`lift.from_scores` is what the Design tab and `tools/run_design.sh` both
+call. `test_design.py` has thirty tests covering the pieces it composes,
+`lift.compute` and `scan_profile`, and one that mentions `from_scores` in
+its docstring. Nothing called it.
+
+The composition is where the selection happens: which row is the parent,
+which rows are its variants, and what is reported when either is missing.
+That is the part that can be wrong while every piece is right. It filters
+on `tier == "design"` and on `parent_peptide_id`, and either filter failing
+open composes a difference of differences between unrelated pairs. The
+number would be a real subtraction of two real measurements and would be
+about two different peptides.
+
+Four mutations confirm it now fails: dropping either filter, dropping
+refused lifts from the reported list, and taking the first scored row as
+the parent instead of matching on the identifier. The last one is the
+quietest, because a campaign whose first row happens to be the parent would
+pass every other test in the file.
+
+Found by asking which code paths had still never executed, rather than by a
+sweep. Scoring, tier 2 selection and the prediction scorer had all run by
+then; this was the one left, and the reason it was left is that it cannot
+run until the design campaign produces results, which is queued behind
+fifty hours of main campaign. A path that cannot be exercised for two days
+is exactly the one worth covering with fixtures.
