@@ -5425,3 +5425,38 @@ asserts the hovertemplate reaches exactly that far, because a hovertemplate
 indexes positionally and a field inserted in the wrong place silently
 relabels every one after it. The first version of that test counted lines and
 found seven entries where there are nine, the first line holding three.
+
+## F117. The licensing check ran in one direction only
+
+Spec 2.1 and CLAUDE.md set three restrictions on what may be redistributed:
+PROTAC-DB is internal-use-only, UbiBrowser ships as derived counts, BioLiP2
+annotations do not ship. The bundle is rsynced to a public host, so a breach
+is published rather than merely committed.
+
+`build_atlas` checks one direction. It redacts any ligand record whose
+chemistry came from PROTAC-DB, prints "verified: no PROTAC-DB chemistry in
+the published bundle", and F72 fixed its count reporting zero while a
+withheld field sat in the file.
+
+Nothing checked the other direction: that every SMILES which *is* published
+has a source permitted to be. The absence of a forbidden source and the
+presence of a permitted one are different claims, and only the first was
+being made.
+
+Read record by record off the live bundle: seven ligand records. Six are
+`deposited_ternary`, chemistry taken from the PDB entries themselves, and
+published. One, dBET57, is `protacdb` and is withheld. UbiBrowser and BioLiP2
+appear only in `about.json` as availability booleans, which says which
+sources were reachable rather than shipping any of their rows.
+
+So the constraint holds, and now in both directions, with four tests: every
+published SMILES has a permitted source, a PROTAC-DB record carries no value
+and says why, the restricted names appear only against a boolean or a count,
+and no restricted name carries structured content, which is the shape a leak
+would take.
+
+My first assertion was wrong and the data corrected it. I asserted that a
+withheld record has no `smiles` key at all. It has one, set to null, beside
+`smiles_withheld`. That is the better shape: a reader learns the record has
+chemistry and that it was withheld, rather than that the field does not
+exist. The test asserts there is no value rather than no key.
