@@ -208,3 +208,46 @@ def test_the_gene_fallback_does_not_claim_crystals_it_should_not():
     assert all(p.startswith("bench") for p in resolved), resolved
     assert not [p for p in pairs if p.startswith("scr_") and recovery_target(p)]
     assert not [p for p in pairs if p.startswith("sv_") and recovery_target(p)]
+
+
+def test_the_conclusion_reports_bridge_agreement_without_changing_the_verdict():
+    """Two independent measurements agreeing is a much stronger claim than
+    either alone, so the conclusion says when bridge formation moved the
+    same way as the RMSD. The verdict itself stays RMSD-based: F6 is about
+    pose recovery and the 2 A thresholds are calibrated on it, so widening
+    the criterion would change what "F6 supported" means without saying so.
+    """
+    from pathlib import Path
+
+    import pytest
+
+    from nobble.validate import compare as cmp
+
+    baseline = Path("campaigns/benchmark_20261103T192126Z")
+    corrected = Path("campaigns/corrected_20261103T214331Z")
+    if not (baseline / "scores.jsonl").exists() or not (corrected / "scores.jsonl").exists():
+        pytest.skip("campaigns not scored")
+
+    report = cmp.compare(baseline, corrected)
+    conclusion = report["conclusion"]
+
+    # Every pair carries both measurements where both exist.
+    both = [c for c in report["comparisons"]
+            if c["delta_rmsd"] is not None and c["bridge_rate_change"] is not None]
+    assert both, "no pair has both measurements"
+
+    gained = [c for c in report["comparisons"]
+              if (c["bridge_rate_change"] or 0) > 0]
+    lost = [c for c in report["comparisons"]
+            if (c["bridge_rate_change"] or 0) < 0]
+    if gained and not lost:
+        assert "Bridge formation agrees" in conclusion, conclusion
+    elif lost:
+        assert "Bridge formation disagrees" in conclusion, conclusion
+
+    # The verdict per pair is still decided on RMSD alone.
+    for item in report["comparisons"]:
+        if item["delta_rmsd"] is not None and not item["is_control"]:
+            expected = ("improved" if item["delta_rmsd"] < -2.0
+                        else "worse" if item["delta_rmsd"] > 2.0 else "unchanged")
+            assert item["verdict"] == expected, item

@@ -146,12 +146,12 @@
       "corrected_pair": "corr06_RBM39_DCAF15",
       "substrate_mode": "folded_domain",
       "baseline_median_rmsd": 6.085,
-      "corrected_median_rmsd": 0.715,
-      "delta_rmsd": -5.37,
+      "corrected_median_rmsd": 0.763,
+      "delta_rmsd": -5.322,
       "baseline_anchor_rmsd": 0.756,
       "corrected_anchor_rmsd": 0.733,
       "baseline_poses": 10,
-      "corrected_poses": 3,
+      "corrected_poses": 4,
       "baseline_bridged": "10/10",
       "corrected_bridged": "3/3",
       "bridge_rate_change": 0.0,
@@ -167,5 +167,5 @@
     "RBM39"
   ],
   "worse": [],
-  "conclusion": "F6 supported: 5 pair(s) improved by more than 2 A with the whole domain, the control held, and none got worse. Provisional: 1 of 7 pair(s) have not finished in both campaigns (CDK12)"
+  "conclusion": "F6 supported: 5 pair(s) improved by more than 2 A with the whole domain, the control held, and none got worse. Bridge formation agrees and is independent of the crystal: 3 pair(s) bridged in more seeds and none in fewer. Provisional: 1 of 7 pair(s) have not finished in both campaigns (CDK12)"
 }

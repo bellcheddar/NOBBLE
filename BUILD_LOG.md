@@ -648,3 +648,13 @@
   comparison panel is absent. On the droplet NOBBLE_CAMPAIGN points at the
   atlas and it renders. Checking a published panel locally needs
   NOBBLE_CAMPAIGN=$(pwd)/deploy/atlas, not the default.
+- 2026-11-04T19:15Z The comparison's conclusion now reports bridge
+  agreement alongside the RMSD verdict, without folding it into the
+  verdict. F6 is about pose recovery and the 2 A thresholds are calibrated
+  on it, so widening the criterion would change what "F6 supported" means
+  without saying so. But a reader should see that an independent
+  measurement moved the same way, because two agreeing is a much stronger
+  claim than either alone. Live conclusion now reads: 5 pairs improved,
+  control held, none worse; bridge formation agrees with 3 pairs bridging
+  in more seeds and none in fewer; provisional with CDK12 outstanding.
+  132 tests pass.

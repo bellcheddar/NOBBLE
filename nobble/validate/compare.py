@@ -224,6 +224,28 @@ def compare(baseline: Path, corrected: Path) -> dict:
             f"{'held' if control_ok else 'moved'}"
         )
 
+    # Bridge formation, reported beside the verdict rather than folded into
+    # it. The verdict stays RMSD-based because that is what F6 is about and
+    # what the 2 A thresholds are calibrated on; silently widening the
+    # criterion would change what "F6 supported" means without saying so.
+    # But a reader of the conclusion should see that a second, independent
+    # measurement moved the same way (F17), because two measurements
+    # agreeing is a much stronger claim than either alone.
+    gained = [c for c in comparisons
+              if c.bridge_rate_change is not None and c.bridge_rate_change > 0]
+    lost = [c for c in comparisons
+            if c.bridge_rate_change is not None and c.bridge_rate_change < 0]
+    if gained and not lost:
+        conclusion += (
+            f". Bridge formation agrees and is independent of the crystal: "
+            f"{len(gained)} pair(s) bridged in more seeds and none in fewer"
+        )
+    elif lost:
+        conclusion += (
+            f". Bridge formation disagrees: {len(lost)} pair(s) bridged in "
+            f"fewer seeds with the whole domain"
+        )
+
     # A verdict over a partially run campaign is a verdict about whichever
     # pairs happen to have finished. Saying so is the difference between a
     # result and a progress report, and the conclusion is the line that gets
