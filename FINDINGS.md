@@ -4345,3 +4345,41 @@ atlas was built from the current code. F88 did it by hand, diffing 11,002
 leaf values after the scoring changes, and found two deliberate moves. That
 check is not automated, and a caveat added to a report is exactly what it
 would catch.
+
+## F97. The gap F96 named, closed
+
+F96 ended by naming what it could not fix: nothing checks that the
+published atlas was built from the current code. F88 had made that check by
+hand, diffing 11,002 leaf values after a day of scoring changes, and F96
+was the case it would have caught, a caveat present in the code's output
+and absent from the page.
+
+`tools/atlas_drift.py` is that comparison as a command. It reads the
+campaign the published atlas names, rebuilds into a temporary directory,
+and compares leaf by leaf: 11,008 values, four seconds, 25 MB of scratch.
+
+`deploy.sh` runs it before the rsync and refuses on drift. Refusing rather
+than rebuilding, and the reason is worth stating: a deploy that silently
+rebuilds publishes something nobody looked at, and the rebuild is one
+command whose output an operator should see. The message names that command.
+`tools/status.sh` reports it too, because a drift found at deploy time is a
+refused deploy and a drift found in status is a rebuild.
+
+The exclusion list is where this check could go wrong in either direction.
+`built_at`, byte counts, `jobs_done` and the outstanding-campaign list move
+on every build by design, so counting them would make the check fire always,
+which is the same as never firing. Excusing too much is the opposite
+failure, so a second test asserts that `redactions`, `redacted_ligands`,
+`conclusion`, `median_rmsd` and `auc` are not covered by any exclusion:
+F72's redaction count was misreported and must never be waved through as a
+build-time fact.
+
+The control is the F96 case itself. The test strips the caveat from the
+published conclusion, confirms the check reports drift and names
+`comparison.json.conclusion`, restores the file, and then confirms the
+check reports "in step" again, so a control that failed to restore would
+fail loudly rather than leaving the atlas edited.
+
+Both mutations caught: a volatile list that swallows everything, and a
+comparison that never reports a difference. The second took long enough to
+run in the background, because each mutation rebuilds the atlas.
