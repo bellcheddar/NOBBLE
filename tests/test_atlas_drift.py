@@ -135,6 +135,12 @@ def test_cost_recomputed_from_new_timings_is_not_a_failure():
     _requires_atlas()
     report = atlas_drift.drift()
     assert "recomputed" in report
+    if not report["recomputed"]:
+        # Nothing has been recomputed since the atlas was built, so there is
+        # nothing to classify. Skipped rather than looped over an empty list,
+        # so the never-executed-assertion sweep can tell a deliberate gap
+        # from a silent one (F152).
+        pytest.skip("no recomputed values in the current atlas")
     for row in report["recomputed"]:
         assert row["key"].endswith(atlas_drift.RECOMPUTED), row["key"]
 

@@ -74,3 +74,37 @@ def published_documents(suffixes: tuple[str, ...] = (".json", ".jsonl")):
                     yield path, number, json.loads(line)
         else:
             yield path, 0, json.loads(text)
+
+
+@pytest.fixture(autouse=True)
+def _restore_app_state():
+    """Put `nobble.app.data`'s module globals back after every test (F152).
+
+    `data.configure()` sets `_CAMPAIGN`, a module global, and nine test
+    files call it. `monkeypatch` cannot undo it, so a test that pinned the
+    app to a fixture campaign left every later test seeing that campaign.
+
+    `design.report.build()` reads `app_data.scores()` to rank its candidate
+    parents, so whether its ranking matches a given campaign depended on
+    which tests had run before it. One of my own tests returned early on
+    exactly that basis and asserted nothing, which the never-executed-
+    assertion sweep is how I found out: it passed either way and the
+    difference was invisible.
+
+    The cache is cleared as well as the path. It is keyed by file and
+    mtime, so a fixture campaign and a real one at the same path would
+    otherwise be indistinguishable to it.
+    """
+    try:
+        from nobble.app import data as app_data
+    except Exception:                                   # noqa: BLE001
+        yield
+        return
+    campaign = app_data._CAMPAIGN
+    cache = dict(app_data._CACHE)
+    try:
+        yield
+    finally:
+        app_data._CAMPAIGN = campaign
+        app_data._CACHE.clear()
+        app_data._CACHE.update(cache)

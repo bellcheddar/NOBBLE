@@ -6978,3 +6978,58 @@ and where the other half comes from.
 A guarantee by construction is better than a guarantee by check. It is worse
 than either when the documentation points at the wrong one, because the next
 person to change the assembler reads that documentation.
+
+## F152. Which assertions never ran
+
+The failure that recurs most in this project is a test that cannot fail.
+F107 had two tests looping on a key the plan does not carry, so every
+iteration hit `continue`. F111's strict-side test filtered on a line that
+never matched. F122's asserted the wrong check. F131's permitted the defect
+it existed to catch. One of mine this session asserted the right outcome for
+the wrong reason. Every one passed, and passing is what made them invisible.
+
+A static sweep finds the shape and drowns in it: 68 tests have every
+assertion inside a loop, and nearly all of those loop over something that
+cannot be empty, such as every template or every construct. A list of 68
+tests to read is not a sweep anyone runs twice.
+
+The decisive measurement is whether each assertion *executed*. One that never
+runs cannot fail, whatever it says, and that holds whether it sits behind an
+empty loop, an early return, a skip, an untaken branch or a filter that
+matches nothing. `coverage` is not in the environment and this needs one
+number rather than a report, so `tools/vacuous_tests.py` runs the suite under
+a twenty-line tracer.
+
+2,063 assertions, 2,049 executed, 14 never reached. That is a list worth
+reading, and reading it gave three outcomes.
+
+Eleven are honest. Four are behind `pytest.skip` for a state this checkout
+does not have: no recomputed atlas values, a campaign occupying the GPU, tier
+2 not selected. Seven are the untaken branch of a conditional whose other
+branch asserts, which is how a test should handle live data it cannot control:
+`test_gates.py` checks for "Provisional" when pairs are incomplete and for
+its absence when they are not, and only one of those can run.
+
+Two were mine, from F147, and both were worse than they looked. One returned
+early when the ranked parent happened to equal the scanned one, so it
+asserted nothing; the other returned early when the live campaign and the
+live report happened to agree. Standalone they disagree, so the assertion
+should have run, and under the full suite it did not. The reason is the
+finding inside the finding: `data.configure()` sets a module global that
+`monkeypatch` cannot undo, nine test files call it, and
+`design.report.build()` reads `app_data.scores()` to rank its candidate
+parents. So whether my test asserted anything depended on which tests had run
+before it. `tests/conftest.py` now restores `_CAMPAIGN` and the cache around
+every test, and both tests assert on both branches.
+
+One was genuinely vacuous. `test_the_bridge_reference_count_is_the_one_quoted`
+searched `thresholds.toml` for a key containing "bridge" with an integer value
+over 100,000, and there is no such key: the count is a property of BINMAN's
+atlas, not a configured cutoff. `quoted` was always None and the comparison
+behind `if quoted is not None` never ran, so the README's 285,996 was checked
+against nothing at all. It now counts the atlas and requires the spec to state
+the same figure, so three places agree rather than two of them agreeing with
+each other.
+
+What the sweep cannot do is tell whether an assertion that did run is *about*
+anything: F122's ran and asserted the wrong thing. It narrows where to look.

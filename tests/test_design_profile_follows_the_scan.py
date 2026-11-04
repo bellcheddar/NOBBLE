@@ -92,15 +92,28 @@ def test_a_mismatch_is_stated_rather_than_silent(tmp_path, monkeypatch):
     per-position profile of another, with nothing connecting them.
     """
     monkeypatch.setattr(paths, "CAMPAIGNS", tmp_path)
-    _design_campaign(tmp_path, "benchmark_888fd2c63e")
+    # Scanned parent chosen so it cannot be the one the report ranks first:
+    # no such peptide exists in the parent list at all. The first version
+    # returned early when the two happened to agree, which made it assert
+    # nothing, and whether they agreed depended on which tests had run
+    # before it (F152).
+    scanned = "not_a_real_parent_id"
+    _design_campaign(tmp_path, scanned)
     built = report.build()
     chosen = (built.get("preview") or {}).get("parent") or {}
-    if chosen.get("peptide_id") == "benchmark_888fd2c63e":
-        return          # they agree here, so there is nothing to state
-    assert built["lifts"].get("note"), (
+    assert chosen.get("peptide_id") != scanned, (
+        "the fixture's scanned parent is the ranked one, so there is no "
+        "mismatch to state and this test checks nothing"
+    )
+    note = built["lifts"].get("note")
+    assert note, (
         "the ranked parent and the scanned parent differ and nothing says so"
     )
-    assert "benchmark_888fd2c63e" in built["lifts"]["note"]
+    assert scanned in note
+    assert chosen["peptide_id"] in note, (
+        "the note names the scanned parent and not the ranked one, so a "
+        "reader cannot tell which peptide the ranking is of"
+    )
 
 
 def test_it_names_the_campaign_the_profile_came_from(tmp_path, monkeypatch):
@@ -128,14 +141,28 @@ def test_a_campaign_with_no_record_falls_back_to_the_ranked_parent(tmp_path, mon
 def test_the_live_campaign_and_the_live_report_really_do_disagree():
     """The fact that makes this finding live rather than hypothetical.
 
-    If they ever agree again this test should be deleted, not loosened: its
-    only job is to record that the two were apart.
+    Both branches assert. The first version returned when the two agreed,
+    so it recorded nothing in the case it exists to describe and nothing in
+    the other case either: the sweep for never-executed assertions found it
+    had never reached its only assert, because an earlier test had left
+    `nobble.app.data` pinned elsewhere and the ranking came out different
+    (F152).
+
+    If the two ever agree again this test still passes, and says so by
+    taking the other branch rather than by falling silent.
     """
     design = sorted((ROOT / "campaigns").glob("design_*/campaign.json"))
     if not design:
         return
     recorded = json.loads(design[-1].read_text()).get("parent")
     chosen = (report.build().get("preview") or {}).get("parent") or {}
+    assert recorded, f"{design[-1]} records no parent"
     if recorded == chosen.get("peptide_id"):
+        # They agree. The fix is unnecessary on today's data and still
+        # correct; nothing to record beyond that they are both present.
+        assert chosen.get("peptide_id")
         return
-    assert recorded and chosen.get("peptide_id"), (recorded, chosen)
+    assert chosen.get("peptide_id"), (
+        "the report ranks no parent at all, so the disagreement this "
+        "records is between a campaign and nothing"
+    )

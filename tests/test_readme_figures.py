@@ -104,14 +104,26 @@ def test_the_bridge_reference_count_is_the_one_quoted():
     every bridge percentile is taken against."""
     text = (ROOT / "README.md").read_text()
     assert "285,996" in text
-    from nobble import paths
 
-    thresholds = paths.thresholds()
-    quoted = None
-    for section in thresholds.values():
-        if isinstance(section, dict):
-            for key, value in section.items():
-                if "bridge" in key and isinstance(value, int) and value > 100000:
-                    quoted = value
-    if quoted is not None:
-        assert f"{quoted:,}" in text, (quoted, "not the figure the README quotes")
+    # Counted in the atlas, which is where the figure comes from.
+    #
+    # This used to search `thresholds.toml` for a key containing "bridge"
+    # with an integer value over 100,000. There is no such key: the count is
+    # a property of BINMAN's atlas, not a configured cutoff, so `quoted` was
+    # always None and the comparison behind `if quoted is not None` never
+    # ran. The README's figure was never checked against anything, which the
+    # never-executed-assertion sweep is how I found out (F152).
+    from nobble.curate import binman_store as store
+
+    counted = store.atlas_rows(
+        "select count(*) n from bridge where status = 'ok'")[0]["n"]
+    assert f"{counted:,}" in text, (
+        f"the atlas holds {counted:,} bridges with status ok and the README "
+        "quotes a different figure"
+    )
+    # And the spec's own statement of it, so the three agree rather than two
+    # of them agreeing with each other.
+    spec = (ROOT / "BUILD_SPEC.md").read_text()
+    assert f"{counted:,} experimentally observed bridges" in spec, (
+        f"spec 4.1 no longer states the population as {counted:,}"
+    )
