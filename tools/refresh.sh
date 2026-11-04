@@ -38,7 +38,24 @@ for name, layer in r['layers'].items():
     print(f\"    {name}: {layer['status'][:90]}\")
 "
 
+# The opt-out, decided once, because it has to gate both side effects on
+# shared state and used to gate only one (F170).
+NO_PUBLISH=0
+if [[ "${NOBBLE_NO_PUBLISH:-}" == "1" || "${2:-}" == "--no-publish" ]]; then
+  NO_PUBLISH=1
+fi
+
 echo "--- throughput"
+# data/throughput.json is read by the app, by the projection that sizes a
+# campaign and decides Gate G1, and by wait_for_gpu.sh. Writing it from a
+# campaign someone is merely inspecting replaces the running campaign's
+# measurement with that one's, which is F131's incident arriving through a
+# tool instead of a test. --no-publish said it meant "change nothing shared"
+# and gated the atlas alone (F170).
+if [[ "$NO_PUBLISH" == "1" ]]; then
+  echo "    skipped (--no-publish): data/throughput.json is shared state and"
+  echo "    still describes whatever campaign last measured it"
+else
 "$SCI" -m nobble.execute.runner --campaign "$CAMPAIGN" --throughput 2>&1 \
   | python3 -c "
 import json,sys
@@ -48,13 +65,14 @@ try:
 except Exception as e:
     print('    throughput not updated:', e)
 "
+fi
 
 # Publishing is opt-out, because scoring a secondary campaign to look at
 # it should not change what the public site serves. Running
 # `refresh.sh campaigns/corrected_...` to inspect a half-finished run
 # republished the atlas from it, which is a side effect nobody asks for
 # when they say "score this".
-if [[ "${NOBBLE_NO_PUBLISH:-}" == "1" || "${2:-}" == "--no-publish" ]]; then
+if [[ "$NO_PUBLISH" == "1" ]]; then
   echo "--- atlas skipped (--no-publish): $CAMPAIGN scored but not published"
 else
   echo "--- atlas"

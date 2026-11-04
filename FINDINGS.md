@@ -7782,3 +7782,43 @@ copies of every name and the correction would find no reference for any of
 them. That is now a hard refusal with a message naming the holders, so the
 failure is visible rather than a quiet fifteen jobs re-run on the same input,
 and this test says so before the chain gets there.
+
+## F170. An opt-out that protected the atlas and not the measurement
+
+`tools/refresh.sh` scores a campaign, validates it, measures throughput and
+publishes the atlas. It takes `--no-publish`, and the comment explaining why
+is specific: "Publishing is opt-out, because scoring a secondary campaign to
+look at it should not change what the public site serves. Running
+`refresh.sh campaigns/corrected_...` to inspect a half-finished run
+republished the atlas from it, which is a side effect nobody asks for when
+they say score this."
+
+The flag gated the atlas build. It did not gate the throughput step, and
+`write_throughput` writes `data/throughput.json` unconditionally.
+
+That file is shared state with four readers. `app/data.py` serves it,
+`curate.diversity.projected_hours` sizes a campaign from it and decides Gate
+G1 on the result, `tools/wait_for_gpu.sh` consults it, and `mutate.py` lists
+it as protected precisely because a test must not change it. So
+`refresh.sh campaigns/benchmark_... --no-publish`, which reads as "score this
+and change nothing shared", replaced the running campaign's measurement with
+the benchmark's.
+
+This is F131's incident arriving through a tool rather than a test. There, a
+test of mine wrote the live throughput and put the benchmark's measurement
+where the running campaign's belonged; the protected-file list caught it. The
+same write through `refresh.sh` is nobody's mistake and nothing catches it,
+because the tool is entitled to write the file when it is doing the thing the
+file is for.
+
+The opt-out is decided once now and gates both, with the skip saying what it
+is protecting. Verified by running `refresh.sh` against the benchmark
+campaign with the flag and confirming `data/throughput.json` came out
+byte-identical, still describing the running campaign's 317 timed jobs.
+
+The shape is one this project keeps producing: a boundary drawn one notch too
+narrow. F128's walk of one directory in four, F144's argument that scoped a
+read and not the writes, F139's filter naming a class nothing carried, and
+now a flag that covers one of two side effects. In each case the narrower
+thing was the one someone had in mind at the time, and the wider one was
+equally obvious afterwards.

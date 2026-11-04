@@ -139,3 +139,40 @@ def test_the_gpu_wait_does_not_wait_for_its_own_session():
         subprocess.run(["tmux", "kill-session", "-t", session],
                        capture_output=True)
         Path(handle.name).unlink(missing_ok=True)
+
+
+def test_refresh_no_publish_protects_the_shared_measurement():
+    """`--no-publish` has to gate both side effects, not one (F170).
+
+    Its comment says publishing is opt-out because "scoring a secondary
+    campaign to look at it should not change what the public site serves".
+    It gated the atlas build and not the throughput step, and
+    `data/throughput.json` is shared state: the app reads it,
+    `curate.diversity.projected_hours` sizes a campaign from it and decides
+    Gate G1 on the result, and `wait_for_gpu.sh` consults it.
+
+    So inspecting the benchmark campaign replaced the running campaign's
+    measurement with the benchmark's, which is F131's incident arriving
+    through a tool instead of a test.
+    """
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    script = (root / "tools" / "refresh.sh").read_text()
+
+    # One decision, used twice.
+    assert script.count("NO_PUBLISH=1") >= 1
+    guards = script.count('if [[ "$NO_PUBLISH" == "1" ]]')
+    assert guards == 2, (
+        f"{guards} step(s) honour the opt-out; the throughput write and the "
+        "atlas build are both side effects on shared state"
+    )
+
+    # And the throughput guard comes before the write, not after it.
+    throughput = script.index("--- throughput")
+    write = script.index("--throughput", throughput)
+    guard = script.index('if [[ "$NO_PUBLISH" == "1" ]]', throughput)
+    assert guard < write, (
+        "the opt-out is checked after the throughput write, so the write "
+        "has already happened"
+    )
