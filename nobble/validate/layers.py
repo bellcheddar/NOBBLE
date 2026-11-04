@@ -20,6 +20,7 @@ rather than a bare number, and "not computed" is always distinguishable from
 from __future__ import annotations
 
 import json
+import math
 import random
 from collections import Counter
 from dataclasses import asdict, dataclass, field
@@ -314,10 +315,33 @@ def _seed_balance(positive_rows: list[dict], negative_rows: list[dict]) -> dict:
             "imbalanced": not balanced, "verdict": verdict}
 
 
+def _finite(value) -> bool:
+    """A real number, which `isinstance(value, (int, float))` is not.
+
+    NaN is a float, and a bool is an int. A NaN passing a type check into
+    this curve loses every comparison in the estimator, because NaN is
+    neither greater than nor equal to anything, so it is counted as a
+    unanimous loss: one NaN among three positives moves the AUC from 1.0 to
+    0.667. Python's json writes NaN as a bare `NaN` literal and reads it
+    back, so a non-finite value can round-trip through scores.jsonl without
+    anything objecting (F74).
+    """
+    return (isinstance(value, (int, float)) and not isinstance(value, bool)
+            and math.isfinite(value))
+
+
 def _auc(positives: list[float], negatives: list[float]) -> float:
     """Mann-Whitney U as the ROC area, which handles ties correctly."""
     if not positives or not negatives:
         return float("nan")
+    offenders = [v for v in list(positives) + list(negatives) if not _finite(v)]
+    if offenders:
+        # Refusing rather than returning a number. The caller filters these
+        # out before getting here; this is the floor under that, because a
+        # biased AUC is indistinguishable from a real one.
+        raise ValueError(
+            f"non-finite value(s) in the ROC inputs: {offenders[:5]}"
+        )
     wins = 0.0
     for p in positives:
         for n in negatives:
@@ -373,10 +397,19 @@ def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerR
 
     positive_rows = [row for row in arm
                      if row.get("peptide_label") == "degraded"
-                     and isinstance(row.get(statistic), (int, float))]
+                     and _finite(row.get(statistic))]
     negative_rows = [row for row in arm
                      if row.get("peptide_label") == "not_degraded"
-                     and isinstance(row.get(statistic), (int, float))]
+                     and _finite(row.get(statistic))]
+    # Dropped for being non-finite rather than absent, counted separately
+    # because a silent change of denominator is its own problem: a reader
+    # comparing the positive count against the campaign needs to see that a
+    # pair was scored and then excluded (F74).
+    non_finite = sum(
+        1 for row in arm
+        if row.get("peptide_label") in ROC_LABELS
+        and row.get(statistic) is not None
+        and not _finite(row.get(statistic)))
     positives = [row[statistic] for row in positive_rows]
     negatives = [row[statistic] for row in negative_rows]
 
@@ -400,6 +433,7 @@ def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerR
         "positives": len(positives),
         "matched_negatives": len(negatives),
         "pairs_outside_the_arm_excluded": excluded,
+        "non_finite_dropped": non_finite,
         "source": "Sievers zinc-finger screen: negatives assayed in the same screen",
         "seed_counts": balance["counts"],
         "seed_balance": balance["verdict"],
