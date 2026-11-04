@@ -536,3 +536,30 @@ It was found by running the comparison early on a partially complete
 campaign to see whether a signal was emerging, rather than by waiting for
 the chain to run it at the end. The result would otherwise have arrived as
 a refusal after 100 jobs.
+
+## F13. A prediction for the two unfinished pairs, recorded before they finish
+
+F12 is provisional on five of seven pairs. The two outstanding ones are the
+most informative in the panel, and writing down what F6 predicts for them
+now, while the jobs are still queued, makes the result a test rather than a
+story told afterwards.
+
+| pair | 15-mer median RMSD | why it is informative |
+|---|---|---|
+| CDK12 / DDB1 | **44.92 A** | The worst pose in the panel by a wide margin. Its substrate is a 15-mer cut from a kinase domain, so if F6 is right this is where the fragment hypothesis has the most to explain |
+| RBM39 / DCAF15 | **6.08 A** | Already the second-best 15-mer pose. Little room to improve, so it tests the other side |
+
+**Predicted, under F6.** CDK12 improves substantially: a 15-mer of a kinase
+domain is the clearest case of a fragment that cannot fold, and 44.92 A is
+not a near-miss pose but a chain placed somewhere else entirely. RBM39
+changes little in either direction, because at 6.08 A the 15-mer was already
+roughly right and there is not much for the whole domain to fix.
+
+**What would falsify it.** CDK12 staying above about 20 A would say the
+fragment was not the limitation there and something else is wrong with that
+pair: the DDB1 construct, the CR8 pocket, or the 6TD3 frame. RBM39 getting
+materially worse would say the whole-domain construct can harm a pair that
+the 15-mer already handled, which would make the corrected campaign a
+trade rather than an improvement and would weaken F12's "none got worse".
+
+Recorded at 71 of 100 jobs, with both pairs unrun.
