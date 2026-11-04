@@ -4847,3 +4847,60 @@ the same bundle.
 
 The atlas was rebuilt from the campaign it names, `benchmark_20261103T192126Z`,
 and the drift check reports in step across 11,014 leaf values.
+
+## F106. Two name spaces for five components, and only one layer knew
+
+The composite has five components, and they have two sets of names. The
+fitter names each after the column it reads; the UI names each after the
+signal its slider is labelled for. Four agree exactly:
+`bridge_percentile`, `delta_iptm`, `convergence_score`,
+`plip_fingerprint_match`. The fifth does not. `weights.CANDIDATES` carries
+`lysine_reach_exposed_fraction`, because the value is a fraction derived from
+the score row's `lysine_reach` object, and `data.COMPONENTS` is keyed
+`lysine_reach`.
+
+So a join by key loses exactly one component of five, and the join was
+`fitted_w.get(key, meta.default_weight)`, which turns the miss into a
+plausible number: the lysine slider would have shown 0.0 as though the fit
+had chosen it, on the one component the project separately flags as having no
+validated discriminating power.
+
+This was already found and already fixed, in one of the two places that do
+the join. `campaign.html`'s JavaScript builds a `FITTED_ALIASES` map and
+resolves through it, with a comment saying "without the alias the fitted
+weight lands on no slider". The Jinja that renders the same slider's initial
+`value=` three hundred lines above did not. So the two layers disagreed about
+how to resolve a name, only one of them was right, and the right one was the
+one that ran second and overwrote the other. The user-visible symptom was
+already gone; what remained was a correct answer that depended on JavaScript
+running after a wrong one.
+
+It had not bitten and could not yet: the fit needs the Sievers matched set
+and reports `not_fitted` with no weights at all, so the far side of the alias
+has never held a value. It would have bitten when the fit lands, which is the
+end of the campaign.
+
+The map now lives in `data.py` with a `fitted_weight()` function beside it,
+the route passes both, the Jinja calls the function and the JavaScript is
+served the map rather than carrying its own copy. One definition, two
+consumers, which is the arrangement that makes the two unable to disagree.
+
+Three of the tests are the invariant rather than the instance: every UI key
+resolves to a fitter candidate, every candidate is reachable from some UI
+key, and the mapping is one to one, so a component added on either side with
+a name the other does not use fails here rather than rendering a default.
+A fourth holds that an alias mapping a key to itself is rejected, since that
+is noise that hides a real one. One checks that a fitted zero survives,
+because zero is a decision and `or` would have replaced it with the default.
+And the last renders `/campaign` with a fitted lysine weight injected, which
+is the state that has never existed, and asserts 0.25 reaches the slider's
+server-rendered value.
+
+Found by sweeping the templates for sentences that assert a state rather than
+deriving it, after F105 found one. That sweep's own result is worth recording:
+`about.html` branches on the real layer status in all three places it reports
+one and renders `{{ roc.get('status') }}`, `{{ split.get('status') }}` and
+`{{ recovery.get('status') }}`; `campaign.html` branches on `meta.trust`; and
+the one remaining literal, ProtCID's veto being not computed, is a permanent
+fact rather than a state. So F105 was a single instance and not a class, and
+this is what the sweep turned up instead.

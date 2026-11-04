@@ -96,7 +96,11 @@
           <div class="weight__head">
             <label class="weight__label" for="w-{{ key }}">{{ meta.label }}</label>
             {% set fitted_w = (weight_fit.weights if weight_fit and weight_fit.get('fitted') else {}) %}
-            {% set start_w = fitted_w.get(key, meta.default_weight) %}
+            {# Resolved through data.FITTED_ALIASES, the same map the
+               JavaScript below uses. A bare fitted_w.get(key, ...)
+               misses the lysine component and renders its default
+               as though it had been fitted (F106). #}
+            {% set start_w = fitted_weight(fitted_w, key, meta.default_weight) %}
             <span class="weight__value" data-weight-display>{{ start_w }}</span>
           </div>
           <input type="range" id="w-{{ key }}" min="0" max="1" step="0.05"
@@ -241,8 +245,9 @@
   /* The fitter names the lysine component by the column it reads
      (lysine_reach_exposed_fraction); the UI names the slider after the
      signal (lysine_reach). Without the alias the fitted weight lands on no
-     slider and the slider silently keeps its hand-set default. */
-  const FITTED_ALIASES = { lysine_reach: 'lysine_reach_exposed_fraction' };
+     slider. Served from nobble/app/data.py rather than written here, so the
+     Jinja above and this JavaScript resolve the name through one map (F106) and the slider silently keeps its hand-set default. */
+  const FITTED_ALIASES = {{ fitted_aliases|tojson }};
   const FITTED = {};
   Object.keys(COMPONENTS).forEach(k => {
     const source = FITTED_ALIASES[k] || k;

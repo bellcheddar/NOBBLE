@@ -275,6 +275,36 @@ def campaign_state() -> dict:
 # Component metadata for the weights panel and the tooltips. Each entry carries
 # what the number is, its units, and whether it is measured, predicted or
 # model-derived, which is what spec Phase 4's tooltip requirement asks for.
+# How a UI component key maps to the name the fitter uses for it.
+#
+# The fitter names a component after the column it reads and the UI names it
+# after the signal: `lysine_reach_exposed_fraction` against `lysine_reach`.
+# Four of the five names agree exactly and that one does not, so a join by
+# key silently loses it, and `fitted_w.get(key, default)` turns the miss into
+# a plausible default rather than an error.
+#
+# This lived as a literal inside campaign.html's JavaScript, which resolved
+# it correctly. The Jinja that renders the slider's initial value did not, so
+# the two layers disagreed about how to resolve a name and only one of them
+# was right. Defined here so both read the same map, and
+# `tests/test_component_names.py` holds that every fitter candidate resolves
+# to exactly one UI key and back (F106).
+FITTED_ALIASES = {"lysine_reach": "lysine_reach_exposed_fraction"}
+
+
+def fitted_weight(fitted: dict | None, key: str, default=None):
+    """The fitted weight for a UI component key, or `default`.
+
+    One function so the template cannot resolve the name one way and the
+    JavaScript another.
+    """
+    if not fitted:
+        return default
+    source = FITTED_ALIASES.get(key, key)
+    value = fitted.get(source)
+    return default if value is None else value
+
+
 COMPONENTS = {
     "bridge_percentile": {
         "label": "Bridge percentile",

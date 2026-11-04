@@ -39,6 +39,11 @@ def campaign():
         throughput=data.throughput(),
         weight_fit=data.weight_fit(),
         lm_available=_lm_available(),
+        # One definition of how a UI component key maps to the fitter's name
+        # for it, read by the Jinja that renders each slider's initial value
+        # and by the JavaScript that sets it (F106).
+        fitted_aliases=data.FITTED_ALIASES,
+        fitted_weight=data.fitted_weight,
     )
 
 
