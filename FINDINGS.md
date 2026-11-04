@@ -3592,3 +3592,48 @@ naming. F74 asked what happens to a NaN in the headline curve. F76 asked how
 many other places made the same assumption, and found fourteen. F77 asked
 what the surviving numeric code does with one when it is not compared but
 scaled, and the answer was worse than either.
+
+## F78. The recovery statistics were computed over values that need not be numbers
+
+`_rmsd` sums squared coordinate differences and takes a square root.
+`gemmi.Position` accepts a NaN coordinate, and one NaN anywhere in the sum
+makes the result NaN. There was no guard, and every consumer filtered on
+`is not None`, which a NaN passes.
+
+What it reaches is wider than a median, and that is the part worth stating.
+`pose_recovery` sorts a pair's values and reports `ordered[0]`, the middle
+element and `ordered[-1]` as best, median and worst recovery. Every
+comparison against NaN is false, so `sorted` leaves the other elements
+unsorted too: `[5.0, nan, 1.0, 9.0]` comes back with 5.0 at the front, so
+the "best" recovery is not the best of anything. All three are published on
+the Benchmark tab, and the median is what `tools/check_prediction.py` scored
+F13's predictions against.
+
+`success_rate_curve` had a second shape of the same problem. It filtered on
+`is not None` and then counted values at or below each breakpoint. `NaN <=
+1.0` is false, so a NaN counted as a failure at every breakpoint while
+remaining in the denominator: a pair with one unmeasurable seed would have
+reported a lower success rate than it earned, which is a quieter error than
+a visible NaN.
+
+**What is demonstrated and what is not.** A NaN coordinate yields a NaN
+RMSD, and that NaN reaches the published median: both measured. That a
+Boltz-written CIF can carry a NaN coordinate is not demonstrated. An attempt
+to read one through gemmi's CIF parser failed on a malformed test file
+rather than on the NaN, so the external route is unproven and is recorded
+here as unproven. The fix is three lines and the consequence is a published
+figure, so it is guarded either way.
+
+The refactor moves nothing. 221 rmsd fields in the published atlas were
+compared before and after, and none changed; 112 rmsd values across the
+campaigns and the atlas are finite. An unmeasurable RMSD is now None, which
+puts it on the same footing as a superposition with too few anchor atoms,
+and a pair with nothing measurable is absent from `by_pair` rather than
+present with three meaningless numbers.
+
+This is the fourth finding from one question and the last of them: F74 in
+the headline curve, F76 across fourteen type checks, F77 in the composite's
+clamp, F78 in the geometry that feeds all three. The pattern each time was
+not that a NaN appeared, because none ever has, but that the code treated
+"not a number" as a number and the failure was silent in a direction that
+flattered the result.
