@@ -6601,3 +6601,11 @@ does not hold. If every filter matches alone and the conjunction still does
 not, every part has been run and the combination has not, which is a
 different and more useful thing to be told, and it is precisely the case the
 old code got backwards.
+
+The cutoff sweep then failed, which is the detail worth keeping. That length
+rule was in `ALLOWED_INT_COMPARISONS` with the justification "shortest token
+worth matching on", so the project had granted it an explicit exemption, and
+`test_the_integer_allowances_are_all_still_real` noticed the allowance no
+longer describes anything in the tree. An allowlist that is only ever added
+to stops being a list of the cutoffs that exist, so the sweep checks both
+directions. Removing the heuristic removed the need for the exemption.

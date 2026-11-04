@@ -146,7 +146,12 @@ ALLOWED_INT_COMPARISONS = {
     "len(sort) != 2": "sort clause is field, direction",
     'len(parts) >= 3': "pair ids are tier_gene_e3",
     "len(substitution) >= 3": "a substitution label is at least wild, position, mutant",
-    'len(token.strip(" ,.?;:()[]")) >= 3': "shortest token worth matching on",
+    # Was: len(token.strip(" ,.?;:()[]")) >= 3, "shortest token worth
+    # matching on". That was BINMAN-LM deciding which words in a question
+    # might be gene names, and three characters makes "the" and "and"
+    # candidates. The heuristic is gone: what the campaign is missing is now
+    # read off the query's own filters, which needs no rule for the shape of
+    # a gene name, so the allowance is not needed either (F141).
     # Facts about the identifiers themselves.
     "len(pdb_id) != 4": "a PDB accession is four characters",
     "len(token) == 4": "a PDB accession is four characters",
