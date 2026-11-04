@@ -6154,3 +6154,157 @@ gunicorn.
 I could not apply it myself: a direct `ssh` to read the live vhost was
 declined, which is the right default for a production box. The script is
 written to be read before it is run.
+
+## F133. The Tier B glue recall set contained no glues
+
+`glue_recall_set` is the ligand side of spec 3.3's discovery arm, which asks
+whether any known glue chemotype shows a Delta-ipTM signal against an
+unexploited ligase. It selected BINMAN's `ccd_class = 'glue_candidate'`. The
+rule behind that class, in BINMAN's own `ccd_class_rule` column, is
+`size_and_no_furniture_signal`: large enough not to be furniture, and nothing
+says it is furniture. A negative definition, and 7,676 CCDs satisfy it.
+
+The ordering made it worse. `order by heavy_atoms asc`, so a limit took the
+smallest end of that bucket. `glue_recall_set(15)` returned fifteen compounds
+of ten heavy atoms each: 3-nitrotoluene, adipic acid, 3-hydroxybenzoic acid,
+2-amino-6-fluorobenzonitrile. Lenalidomide has nineteen and is the smallest
+thing this campaign calls a glue.
+
+Replaced with the evidence the rest of the project runs on. A compound is in
+the recall set if it was observed bridging a triaged E3 ligase in a deposited
+structure, if a bridge of that compound is classed `molecular_glue` or
+`protac` by BINMAN rather than `native_cofactor` or
+`crystallisation_artefact`, and if it is not flagged as furniture. 130 CCDs
+across CRBN, VHL, KBTBD4, DCAF16 and RNF113A, reduced to 121 Murcko
+chemotypes because the spec's question is about chemotypes. Median 59 heavy
+atoms.
+
+All three conditions are load-bearing, which is worth recording because each
+looks redundant beside the others. Without the furniture flag the set gains
+citrate and tetraethylene glycol, which genuinely do sit between a ligase and
+its partner in deposited structures. Without the evidence class it gains
+inositol hexaphosphate, which bridges KBTBD4 and RNF113A as a native
+cofactor. Without the ligase join it gains the fluoroquinolones, which bridge
+gyrase and DNA and are glues of something that is not a ligase.
+
+The test is on the content of the set rather than on the query: all five of
+the campaign's curated glues are in it, and none of the fragments the old
+bucket returned first. A definition of "known glue chemotype" that excludes
+pomalidomide or includes 3-nitrotoluene is wrong whatever SQL it is spelled
+with.
+
+My first attempt dropped lenalidomide. It shares a Murcko scaffold with
+A1IWG, both at one deposition, and A1IWG sorts first alphabetically, so the
+deduplication picked the unknown compound to represent the chemotype whose
+known member is the point. The deduplication was right and the tie-break was
+arbitrary, so the scaffold representative is now chosen by a stated
+preference, curated glue first, and that preference is tested on the real
+LVY/A1IWG pair rather than on a fixture.
+
+Nothing caught any of this because nothing calls the function. See F134.
+
+## F134. Tier B is selected, frozen, gate-passed and never run
+
+Spec 3.3 is unusually direct: "**Tier B is in the first campaign** (decision
+D-NOB-002). Do not defer it." The selection half is done properly. The
+funnel is auditable, 15 ligases are frozen to
+`data/tier_b_selection.parquet`, DCAF8L1, CCNF and ASB8 come out at ranks 1
+to 3 exactly as the spec predicts, and PROGRESS.md records the phase-1 gate
+as passing.
+
+No Tier B pair exists in any campaign. The five campaigns on disk hold
+`benchmark`, `sievers_zf`, `scramble`, `corrected` and `design` jobs.
+`assemble_campaign`'s own docstring says what it emits: "benchmark panel,
+Sievers arm and scrambles".
+
+The gate is why this went unnoticed, and the gate is not wrong. Spec 4.6
+words it as "Manifest contains the Tier B set, non-empty, with at least 10
+ligases", and the manifest does. Selection and execution are separate halves
+and only the first has a check. The LM's example query in spec 5 is "show me
+Tier B pairs where the glue dependence beats the matched negatives", and the
+open question in spec 6.3 is whether the Tier B arm publishes as a ranked
+list: both presume results that do not exist.
+
+What it would cost, measured rather than guessed. Receptor windows are 200
+residues each, a glue is 59 heavy atoms at the recall set's median, a peptide
+is 15, so a Tier B job is 274 tokens. At the campaign's measured 0.4825
+s/token and 15 jobs per pair that is 0.55 hours per pair:
+
+| Design | Pairs | Hours |
+|---|---|---|
+| 15 ligases, 1 chemotype, 1 peptide | 15 | 8.2 |
+| 15 ligases, 5 chemotypes, 1 peptide | 75 | 41.1 |
+| 15 ligases, 10 chemotypes, 1 peptide | 150 | 82.3 |
+| 15 ligases, 121 chemotypes, 1 peptide | 1815 | 995.6 |
+| 15 ligases, 5 chemotypes, 3 peptides | 225 | 123.4 |
+
+Automatic scope reduction gets some of the way. The arms can go from three to
+two by dropping the unconstrained ternary control, which is the
+pocket-conditioning check and is already validated on tier A, and the seeds
+from five to the three that `config/thresholds.toml` sets as the floor below
+which a Delta-ipTM is not interpretable. That is 6 jobs per pair rather than
+15, so the five-chemotype design falls to 16.5 hours.
+
+Against the budget: 22.9 hours are spent, the running campaign has roughly 57
+hours of tier 1 left, and `max_compute_hours` is 96. There is no room for
+16.5 hours, and one chemotype against fifteen ligases cannot answer a
+question whose subject is "any known glue chemotype".
+
+So this is Gate G1 as CLAUDE.md defines it: the minimum viable set exceeds
+`max_compute_hours` after automatic scope reduction. Recorded rather than
+decided, because the three ways out are Marc's: accept that Tier B publishes
+as a separate campaign, raise the budget, or supply a GPU. What is not
+acceptable is the state it was in, where the spec says do not defer, the
+project reports the phase complete, and the arm does not exist.
+
+## F135. Refinement was never priced against the gate it can blow
+
+Gate G1 is judged against `max_compute_hours`, and the projection it is
+judged on prices tier 1 only. `curate.diversity.projected_hours` sizes a
+selection of pairs at the measured tier-1 rate, which is the right question
+when choosing how large a library to select. Nothing asked it about
+refinement.
+
+Refinement is not a rounding error on tier 1. It re-runs the top decile's
+ternary jobs at 25 diffusion samples and 10 recycles against tier 1's 1 and
+3. `tier2.py` contains no reference to `max_compute_hours`, to
+`projected_hours`, or to any total: what it gives each job is a timeout, and
+a timeout bounds one job. The main campaign's decile is 150 jobs, and 150
+jobs at the six-hour timeout is 900 hours of permitted wall clock against a
+96-hour gate.
+
+Nothing had gone wrong, because tier 2 has never run. The chain runs it as
+soon as tier 1 finishes.
+
+The projection is a range, for the reason `scaling_bound` already gives:
+Boltz runs the trunk once per recycle and the structure module once per
+diffusion sample, and the split between them is unknown without instrumenting
+a run. So the cost is `trunk * (r2/r1) + structure * (d2/d1)` with
+`trunk + structure` equal to the tier-1 time, which is smallest when all of
+tier 1 is trunk and largest when all of it is the structure module. On this
+campaign's decile those extremes are 31 hours and 235 hours against 73 hours
+remaining. One of them fits and one is three times over.
+
+The gate is judged on the high end. A budget judged on its optimistic end is
+how a budget is overrun, and I had it the other way round first: judging on
+the low end so that a refusal would not depend on an unmeasured split. That
+reasoning is right for a refusal and wrong for permission to start.
+
+Being pessimistic is also temporary, which is the part worth keeping. The
+range exists only because tier 2 has never run, so the first completed
+refinement collapses it to a measured factor, paired by job id because a
+tier-2 job id is its tier-1 job id plus a suffix. The refusal says so rather
+than just refusing. Automatic scope reduction then drops pairs from the
+bottom of the ranking, never seeds from a pair, and on the current campaign
+five of the decile's sixteen pairs are affordable under the bound, with more
+likely once the first one has been measured. Gate G1 opens only if nothing is
+affordable.
+
+Two mistakes of my own in the tests for this. `gate_g1` first read
+`paths.CAMPAIGNS` for hours spent, so two of its tests passed only because
+the live campaign had consumed 22.9 hours: the gate answered a different
+question every time the runner finished a job, which is F131 again in a
+different file. Accounting over the directory the campaign being priced lives
+in fixes it for both the real case and the fixture. And with that fixed, the
+two fixtures turned out not to exceed the budget at all, so the assertions
+had been passing on live state rather than on the thing they name.

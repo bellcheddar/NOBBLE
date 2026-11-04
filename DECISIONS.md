@@ -1878,3 +1878,56 @@ percentile literals are one line below in the return statement, and the sweep
 reads comparisons, module constants and default arguments, not arithmetic
 (F80). An allowlist records what was looked at and waved through, which is
 not the same as what was looked at.
+
+## D-NOB-063. The Tier B glue recall set is defined by observed bridges, not by a size class
+
+**Decision.** `glue_recall_set` selects CCDs observed bridging a triaged E3
+ligase in a deposited structure, where a bridge of that CCD is classed
+`molecular_glue` or `protac` and the CCD is not flagged as furniture. One
+representative per Murcko scaffold, a curated glue preferred, then the
+most-deposited, then the code.
+
+**Alternatives.** BINMAN's `ccd_class = 'glue_candidate'`, which is what it
+was, and which is a size filter: 7,676 CCDs whose rule is literally
+`size_and_no_furniture_signal`. Or the spec's named sources, MGDB, MolGlueDB
+and MGTbind, which BINMAN's atlas does not hold and which would mean curating
+three external databases to run one exploratory arm.
+
+**Why.** The arm's question is whether a known glue chemotype shows a signal,
+so the set has to be compounds known to glue. Observed bridging is the same
+evidence base the rest of the project runs on, which makes the recall set
+answerable to the same data as the primary signal rather than to a separate
+annotation. The check that it is right is that all five of the campaign's
+curated glues survive it.
+
+**Reversal.** Replace `_recall_rows`. The three conditions are one SQL
+statement and each is separately load-bearing, documented in F133. If the
+spec's named sources become available, the right change is to add them as a
+source and keep the bridge evidence as a filter, not to swap one for the
+other.
+
+## D-NOB-064. Tier 2 is priced against the gate, judged on the upper bound, and reduced automatically
+
+**Decision.** `nobble/execute/budget.py` prices a tier-2 queue from the
+campaign's own measured tier-1 seconds for the jobs that would be refined,
+against hours already spent and `max_compute_hours`. The scaling factor is a
+range until a refinement has run, the gate is judged on its upper end, and
+the decile is reduced by dropping pairs from the bottom of the ranking until
+it fits. Gate G1 opens only if nothing is affordable.
+
+**Alternatives.** Judge on the lower end, which is what I wrote first: a
+refusal then does not depend on a split nobody has measured, which is the
+right property for a refusal and the wrong one for permission to spend. Use
+`scaling_bound`'s 42.5, which its own docstring says double-counts
+deliberately and is a timeout rather than an estimate. Or reduce seeds rather
+than pairs, which is cheaper per pair and makes the refinement a different
+statistic from the tier-1 arm it is compared against.
+
+**Why.** A per-job timeout bounds one job. The decile is 150 jobs, and
+nothing compared the queue to the budget. Pessimism is acceptable here
+because it is self-limiting: one completed refinement replaces the range with
+a measured factor, and the refusal says so.
+
+**Reversal.** `budget.gate_g1` chooses the end in one line. Removing the
+reduction means deleting the `affordable_pairs` call in `tier2.run`, which
+restores the previous behaviour of queueing the whole decile unpriced.

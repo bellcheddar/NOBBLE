@@ -26,10 +26,19 @@ PY_BOLTZ="../BoltzMaker/.pixi/envs/default/bin/python"
 CAMPAIGN="${1:-}"
 
 echo "--- select the top decile"
+# Exit 3 is Gate G1: the decile, after automatic reduction, does not fit in
+# what is left of max_compute_hours. Refining nothing is the point, so stop
+# here rather than running the refiner against a queue that was not written
+# (F135).
 if [ -n "$CAMPAIGN" ]; then
   "$PY_SCI" -m nobble.execute.tier2 "$CAMPAIGN"
 else
   "$PY_SCI" -m nobble.execute.tier2
+fi
+SELECT_CODE=$?
+if [ "$SELECT_CODE" -eq 3 ]; then
+  echo "=== GATE G1: refinement does not fit the compute budget. Not refining. ==="
+  exit 3
 fi
 
 echo "--- refine"

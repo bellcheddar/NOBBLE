@@ -22,6 +22,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from nobble import paths
+from nobble.execute import budget
 from nobble.numeric import finite
 
 # Ranking keys in order of preference. The first one with values on enough
@@ -318,9 +319,51 @@ def build_tier2_queue(campaign: Path, selection: Selection) -> dict:
 
 
 def run(campaign: Path, fraction: float | None = None) -> dict:
+    """Select, price against the budget, reduce if needed, then queue.
+
+    The pricing step is new (F135). Refinement re-runs the decile's ternary
+    jobs at 25 diffusion samples against tier 1's 1, so it is not a rounding
+    error on tier 1, and nothing here compared it to `max_compute_hours`: the
+    per-job timeout bounds one job, and a hundred and fifty jobs at a
+    six-hour timeout is nine hundred hours against a ninety-six hour gate.
+    Priced on this campaign's decile it is 31 to 235 hours against 73 left.
+
+    Reduction drops pairs from the bottom of the ranking. Gate G1 opens only
+    if nothing is affordable, which is what the gate is defined against: the
+    minimum viable set, after automatic scope reduction.
+    """
     selection = select_top_decile(campaign, fraction)
     report = {"selection": selection.to_dict()}
     if selection.status == "selected":
+        ranked = [item["pair_id"] for item in selection.selected]
+        affordable = budget.affordable_pairs(campaign, ranked)
+        report["budget"] = affordable
+        if affordable["gate_g1_open"]:
+            selection.status = "refused: gate G1"
+            selection.notes.append(
+                "GATE G1 OPEN: " + affordable["report"]["verdict"]
+            )
+            report["selection"] = selection.to_dict()
+            (campaign / "tier2.json").write_text(
+                json.dumps(report, indent=2, default=str))
+            return report
+        if affordable["dropped"]:
+            keep = set(affordable["affordable"])
+            selection.selected = [item for item in selection.selected
+                                  if item["pair_id"] in keep]
+            selection.pairs_selected = len(selection.selected)
+            selection.notes.append(
+                f"reduced from {len(ranked)} pair(s) to "
+                f"{len(selection.selected)} to fit the compute budget: "
+                + affordable["report"]["verdict"]
+                + ". Dropped from the bottom of the ranking, never seeds "
+                "from a pair, because a pair refined with fewer seeds than "
+                "its own tier-1 arm is not a cheaper measurement of the "
+                "same thing. Re-running this step after the first "
+                "refinement completes prices the rest on a measured factor "
+                "rather than a bound, and may afford more"
+            )
+            report["selection"] = selection.to_dict()
         report["queue"] = build_tier2_queue(campaign, selection)
     (campaign / "tier2.json").write_text(json.dumps(report, indent=2, default=str))
     return report
@@ -348,6 +391,14 @@ def main() -> int:
 
     report = run(Path(campaign), fraction=args.fraction)
     print(json.dumps(report, indent=2, default=str))
+    # 3 for an open gate, matching `curate.library.main`. tools/tier2.sh
+    # keys on it to skip refinement: without that the refiner runs next with
+    # no queue to read, which is harmless and reads in the log as though the
+    # refinement had been done.
+    if report.get("budget", {}).get("gate_g1_open"):
+        print("GATE G1 OPEN: " + report["budget"]["report"]["verdict"],
+              file=sys.stderr)
+        return 3
     # A selection that refused is not a failure of this step: it is the
     # correct answer when nothing has enough values to rank on yet.
     return 0

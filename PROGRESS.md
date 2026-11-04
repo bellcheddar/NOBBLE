@@ -7,10 +7,32 @@ Rewritten after every phase and at least every 30 minutes during long compute.
 | Phase | State | Detail |
 |---|---|---|
 | 0 Probe | **complete** | Apple M2 Ultra, 16 performance + 8 efficiency cores, 128 GB unified memory, 60 GPU cores, 507 GB free, MPS on torch 2.10.0. `config/hardware.toml` and `config/tuning.toml` written |
-| 1 Curation and manifest | **complete** | All gates pass. Tier A 17, Tier B 15 (frozen), 25,567-peptide library reduced to 220, 11 MSAs cached, manifest emitted with 0 errors |
+| 1 Curation and manifest | **complete for selection, Tier B execution at Gate G1** | All phase-1 gates pass. Tier A 17, Tier B 15 (frozen, and not paired into any campaign: F134), 25,567-peptide library reduced to 220, 11 MSAs cached, manifest emitted with 0 errors |
 | 2 Execution | **benchmark complete, campaign queued** | Benchmark queue finished 99/99, exit 0, zero failures across the whole run. The corrected-construct campaign started automatically in tmux `nobble-corrected`. The main campaign is assembled and waiting: `campaigns/campaign_20261104T004632Z`, 158 pairs, 2,360 jobs, 2,360 YAMLs |
 | 3 Scoring and validation | **complete** | Every component, the three validation layers and the composite weight fitter are built and running. The fitter and two of the three layers correctly report `not_computed` with their reasons until the Sievers arm supplies matched negatives |
 | 4 Application | **complete** | Seven tabs on the Depot system (the seventh is the design arm, DESIGN_ARM.md, which is an addition rather than part of the spec), Mol* wired, BINMAN-LM query head with a deterministic executor. Playwright: 14 captures at two viewports, 0 non-200, 0 console errors, 0 serious axe violations |
+
+## Gate G1 open: Tier B has no pairs
+
+Spec 3.3 says "Tier B is in the first campaign (decision D-NOB-002). Do not
+defer it." The selection is frozen and correct. No Tier B pair exists in any
+campaign, and the phase-1 gate does not ask: it is worded about the manifest.
+
+Measured, not estimated. A Tier B job is 274 tokens (200-residue receptor
+window, 59-heavy-atom glue at the recall set's median, 15-mer peptide), which
+at the campaign's measured 0.4825 s/token is 0.55 hours per pair at 15 jobs
+per pair. After automatic scope reduction to 6 jobs per pair (two arms rather
+than three, three seeds rather than five, which is the floor
+`config/thresholds.toml` sets for an interpretable Delta-ipTM) the smallest
+design that can answer a question about "any known glue chemotype" is 15
+ligases against 5 chemotypes, 75 pairs, 16.5 hours.
+
+Budget: 22.9 hours spent, roughly 57 hours of tier-1 queue left,
+`max_compute_hours` 96. There is no room for 16.5 hours.
+
+Needs a decision: Tier B publishes as a separate campaign, the budget rises,
+or a GPU appears. Nothing is blocked on it meanwhile; the running campaign
+and every other phase continue.
 
 ## Phase 1 gates: all passing
 
@@ -21,7 +43,7 @@ Rewritten after every phase and at least every 30 minutes during long compute.
 | Every job under 400 tokens, or a declared exception | **pass** (6 constructs, 2 declared exceptions) |
 | Queue survives a kill and resumes without duplicating or dropping a job | **pass** (`tests/test_resume.py`, 8 tests). Seven cover the state machine: torn writes, killed mid-flight, repeated restarts, failed jobs. The eighth runs it against the real assembled campaign, 2,360 jobs, with half marked done, one left recorded as running and a torn final line: nothing dropped, nothing re-queued that had finished, the interrupted job re-run. Observed once end to end on the live queue as well. A deliberate forced kill of a production run was still not performed |
 | Zero manifest validation errors | **pass** (7 pairs, 105 jobs, 0 errors, 10 warnings, all `smiles_fallback` for dBET57) |
-| Tier B set present, at least 10 ligases | **pass** (15 ligases; DCAF8L1, CCNF, ASB8 at ranks 1-3 as spec 3.3 predicts) |
+| Tier B set present, at least 10 ligases | **pass** (15 ligases; DCAF8L1, CCNF, ASB8 at ranks 1-3 as spec 3.3 predicts). The gate is worded about the manifest and the manifest holds the set. It does not ask whether any Tier B pair was ever run, and none was: see Gate G1 below (F134) |
 
 `tests/test_phase1.py`: 9 passed.
 
