@@ -119,6 +119,12 @@ class PairMetrics:
     # so the table could not show what the manifest had recorded (F51).
     ligand_encoding: str | None = None
     ligand_flags: list = field(default_factory=list)
+    # Whether Boltz's affinity head was requested for this pair's ligand.
+    # False means the ligand exceeds the 128 heavy-atom cap, which spec 2.2
+    # says to record as affinity_unavailable, and spec Phase 4 lists as one
+    # of the three flags the ledger is faceted on. It was on the queue row
+    # and not on the pair, so the facet could not be built (F53).
+    affinity_available: bool | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -341,6 +347,11 @@ def aggregate(results_path: Path, sampling_tier: int = 1) -> list[PairMetrics]:
             ligand_flags=sorted({
                 flag for job in pair_jobs for flag in (job.get("flags") or [])
             }),
+            affinity_available=next(
+                (str(job.get("affinity_available")).lower() == "true"
+                 for job in pair_jobs if job.get("affinity_available") is not None),
+                None,
+            ),
             modality=first.get("modality", "none"),
             tier=first.get("tier", "unknown"),
             peptide_sequence=first.get("peptide_sequence"),

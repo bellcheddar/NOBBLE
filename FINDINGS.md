@@ -2501,3 +2501,48 @@ reminder to implement the secondary curve rather than leave the note
 standing. That is the same guard as the F47 drift allowlist and the F26
 cutoff allowances, and it is the third time today that an "it cannot be
 done" note needed a test to stop it outliving the reason.
+
+## F53. The ledger was faceted on two of five things
+
+Spec Phase 4 on the Campaign tab: "Faceted on modality (glue / PROTAC),
+tier (benchmark / A / B), and flags (furniture, forced,
+affinity_unavailable)."
+
+Modality and tier were there, with three useful extras the spec does not
+ask for: bridging seeds only, pinned only, complete scores only. None of
+the three flags was.
+
+**forced** is the one that matters, and it is the second half of F48's
+finding arriving from a different direction. Spec 4.7 says forced hits are
+"shown separately", which I read as a marker and an exclusion from the
+ranking; Phase 4 says the ledger is faceted on it, which is the other
+mechanism and the one that lets a reader ask the question. CDK12 is the
+live case at 0.494.
+
+**affinity_unavailable** could not be faceted on at all, for exactly F51's
+reason: `affinity_available` was on the queue row and dropped when scoring
+aggregated jobs into pairs, so there was nothing for a filter to read. The
+same one-join fix, the third time today. It needed care in a way F51's did
+not: the JSONL row carries the string `"False"`, which is truthy, so the
+value is parsed rather than passed through, and the mutation that treats
+it as a boolean is caught.
+
+**furniture** is deliberately not offered. ProtCID was never acquired, so
+the field is null on every pair and its status is permanently
+"not_computed: protcid_unavailable" (D-NOB-010). A control that can never
+match anything is worse than no control: it invites a reader to conclude
+that nothing was furniture, when the truth is that nothing was tested. The
+reason sits in the template where the control would have gone, so its
+absence is distinguishable from forgetting it.
+
+One distinction worth the care it took. The affinity facet matches
+`affinity_available === false` and not `!p.affinity_available`, so a pair
+whose availability was never recorded is left out rather than filtered in.
+`None` is not `False`: one says the ligand exceeds the cap, the other says
+nobody looked, and a filter that conflates them makes a claim out of a
+gap. That is the same distinction as F32's refused-versus-never-attempted
+fingerprint and F43's absent-versus-null key.
+
+The filter predicate is lifted from the template and run under node, per
+F50, against a plain pair, a forced one, one over the cap, one with
+nothing recorded, and one that is both.

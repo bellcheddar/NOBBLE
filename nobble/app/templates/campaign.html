@@ -35,6 +35,16 @@
         <label><input type="checkbox" id="f-bridged"> bridging seeds only</label>
         <label><input type="checkbox" id="f-pinned"> pinned only</label>
         <label><input type="checkbox" id="f-complete"> complete scores only</label>
+        {# Spec Phase 4 facets the ledger on "flags (furniture, forced,
+           affinity_unavailable)". Two of the three are offered.
+
+           furniture is not: ProtCID was never acquired, so the field is null
+           on every pair and its status is permanently
+           "not_computed: protcid_unavailable" (D-NOB-010). A control that can
+           never match anything is worse than no control, and the About page
+           already says the veto is not computed (F53). #}
+        <label><input type="checkbox" id="f-forced"> forced poses only</label>
+        <label><input type="checkbox" id="f-no-affinity"> affinity unavailable only</label>
       <span class="ledger-count mono" id="ledger-count"></span>
       </div>
 
@@ -234,6 +244,8 @@
     const bridgedOnly = document.getElementById('f-bridged').checked;
     const pinnedOnly = document.getElementById('f-pinned').checked;
     const completeOnly = document.getElementById('f-complete').checked;
+    const forcedOnly = document.getElementById('f-forced').checked;
+    const noAffinityOnly = document.getElementById('f-no-affinity').checked;
     const pins = NOBBLE.pins.get();
 
   /* "4/4 seeds bridged" with four more seeds that could not be assessed
@@ -275,7 +287,9 @@
                             (!tier || p.tier === tier) &&
                             (!bridgedOnly || (p.bridging_seeds_with_bridge || 0) > 0) &&
                             (!pinnedOnly || NOBBLE.pins.matches(p)) &&
-                            (!completeOnly || p.composite_complete));
+                            (!completeOnly || p.composite_complete) &&
+                            (!forcedOnly || p.forced === true) &&
+                            (!noAffinityOnly || p.affinity_available === false));
 
     rows.sort((a, b) => {
       const x = a[sortKey], y = b[sortKey];
@@ -341,7 +355,8 @@
     });
   });
 
-  ['f-modality', 'f-tier', 'f-bridged', 'f-pinned', 'f-complete'].forEach(id => {
+  ['f-modality', 'f-tier', 'f-bridged', 'f-pinned', 'f-complete',
+   'f-forced', 'f-no-affinity'].forEach(id => {
     document.getElementById(id).addEventListener('change', render);
   });
 
