@@ -3544,3 +3544,51 @@ below a value. Ties are immaterial at this scale, the heaviest being
 `buried_fraction = 1.0` at 802 of 285,996 rows, so the choice understates
 that one extreme by 0.28 points and every typical value by under 0.01. The
 distribution is cached once rather than queried per call.
+
+## F77. An unmeasurable component scored as the best possible one
+
+Spec 4.8's composite puts every component on 0 to 1 so that a weight means
+the same thing across them. The scaling ends in a clamp,
+`max(0.0, min(1.0, value))`.
+
+`min(1.0, nan)` returns 1.0. Python's `min` keeps what it holds when the
+comparison is false, and `nan < 1.0` is false. So a NaN component neither
+propagated nor raised: the clamp converted it into the maximum possible
+score. A pair whose bridge percentile could not be measured would have
+ranked as having the best bridge in the panel. `+inf` did the same, and
+`-inf` became 0.0.
+
+That is the worst of the three outcomes available. Propagating would have
+shown a NaN on the page; raising would have stopped the scorer; promoting it
+to 1.0 reads as a measurement, and reads as the best one.
+
+The route in is `percentile_of`, which returns NaN when the reference
+distribution is empty, and the distribution is empty on any host without
+BINMAN's atlas. A non-finite component is now absent rather than clamped, so
+the weighted mean renormalises over what was measurable, which is what both
+`fit` and `apply` already did with a missing value. Two pairs alike except
+that one's bridge is unmeasurable now score the same, where before the
+unmeasurable one scored 0.75 against 0.5.
+
+An out-of-range value is still clamped, because that is a different thing: a
+bridge percentile of 120 is a bug upstream and 1.0 is the right answer for
+it.
+
+**And `weights.py` carried its own Mann-Whitney estimator.** Identical in its
+tie handling to the one in `layers.py`, and never hardened when F74 hardened
+that one. It is the function the grid search maximises to choose the weights,
+so a non-finite feature would have biased the weighting itself rather than
+one reported number.
+
+The two contracts differ for good reasons and that is kept: the validation
+layer reports an absent curve as NaN and refuses to publish, the fitter
+returns None and declines that point on its grid. The arithmetic is shared
+in `nobble/numeric.py`, with a sweep that fails on a third copy. Sharing the
+estimator and splitting the contract is the distinction that was missing:
+sharing neither is how one copy came to be hardened and the other did not.
+
+This is the third finding in a row from the same question, which is worth
+naming. F74 asked what happens to a NaN in the headline curve. F76 asked how
+many other places made the same assumption, and found fourteen. F77 asked
+what the surviving numeric code does with one when it is not compared but
+scaled, and the answer was worse than either.
