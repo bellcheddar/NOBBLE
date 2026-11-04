@@ -49,12 +49,36 @@ Rewritten after every phase and at least every 30 minutes during long compute.
   146 affordable pairs in the 48-hour target
 - **Corrected-construct campaign**: running in tmux `nobble-corrected`, chained
   automatically behind the benchmark queue (D-NOB-030)
+- **The chain**: `tools/run_chain.sh` is armed in tmux `nobble-chain`,
+  waiting for the GPU. It runs the corrected comparison, then the main
+  campaign, then tier 2, then the design scan (D-NOB-039). Each stage is
+  resumable, so a kill anywhere is recovered by rerunning the script
 - **Main campaign**: assembled and ready, not yet started.
   `campaigns/campaign_20261104T004632Z`, 158 pairs (7 benchmark, 120 Sievers,
   31 scrambles), 2,360 jobs. Projects to 51.8 hours at the measured rate: over
   the 48-hour per-run target by 3.8, far under the 96-hour Gate G1 threshold,
   so no gate opens and the priority ordering absorbs the overrun
-- **Tier 2**: built, wired and partitioned (D-NOB-032), not yet run
+- **Tier 2**: built, wired and partitioned (D-NOB-032), not yet run. Queued
+  behind the main campaign in the chain, because the decile it refines is
+  chosen from the ranking that campaign produces
+- **Design scan**: assembled (`campaigns/design_20261104T012406Z`, 16 pairs,
+  240 jobs), preflighted, queued last. Last on purpose: its own tab says the
+  composite is untrustworthy until the Sievers arm runs, so earlier lifts
+  would need caveating into uselessness and rerunning
+
+## The design arm
+
+Not part of `BUILD_SPEC.md`. Scoped in `DESIGN_ARM.md`, decided in D-NOB-037
+and D-NOB-038, findings in F11.
+
+| Piece | State |
+|---|---|
+| Generators (alanine scan, saturation, chemistry grouping) | built, 18 tests |
+| Design lift, with refusals for mismatched conditions | built |
+| Campaign assembler, parent re-run alongside its variants | built, preflight clean |
+| Runner (`tools/run_design.sh`): wait, preflight, run, score, profile | built |
+| Tab, 31 selectable parents, scan profile chart | built, deployed, chart verified against a synthetic profile |
+| A real scan | not run: queued last in the chain |
 
 - `campaigns/benchmark_20261103T192126Z`: 100 YAMLs, queue running in tmux `nobble-bench`
 - 5 conditioned jobs dropped for benchmark member 3, which has no measurable
