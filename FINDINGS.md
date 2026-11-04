@@ -4383,3 +4383,41 @@ fail loudly rather than leaving the atlas edited.
 Both mutations caught: a volatile list that swallows everything, and a
 comparison that never reports a difference. The second took long enough to
 run in the background, because each mutation rebuilds the atlas.
+
+## F98. A decision already made, and its premise checked instead
+
+The Sievers fingers carry `msa: empty`. D-NOB-029 gives folded-domain
+substrates an MSA and a C2H2 finger is a folding unit, so the question of
+whether the arm should get one looked open. It is not: D-NOB-035 decided it,
+and the recorded reason is stronger than the concern I was forming.
+
+The reason is the ROC rather than the cost. Alignment depth would not be
+distributed evenly across the two classes the headline curve separates. The
+matching that built the arm matched on length and amino-acid composition, not
+on how well studied the parent protein is, so if the degraded set came
+systematically from better-characterised genes then MSA depth would correlate
+with the label and the curve would partly measure homology. D-NOB-034 covers
+the folding half: what a C2H2 finger needs to fold is its zinc, and it has
+one.
+
+What was missing is that nobody had checked the arm against that description.
+The argument rests on three facts, and all three hold in the assembled queue:
+
+| | pairs | distinct genes | length median | length range |
+|---|---|---|---|---|
+| degraded | 24 | 24 | 23 | 23-26 |
+| not_degraded | 96 | 86 | 23 | 23-26 |
+
+Composition is matched to within two percentage points on every class:
+cysteine and histidine 0.191 against 0.195, basic 0.188 against 0.179, acidic
+0.048 against 0.054, hydrophobic 0.294 against 0.273. The gene asymmetry the
+argument turns on is real and is the sharpest part of it: every degraded
+finger is its own gene, while the 96 controls come from 86, so "better
+studied" has room to track the label in exactly one direction.
+
+No change made. `tests/test_sievers_matching.py` pins the four numbers, the
+`msa: empty` on the peptide chain, and the presence of the decision with its
+reason, because a decision is only as good as its premise and an arm whose
+classes stopped being matched would need the question reopened. Recorded
+rather than fixed, on F75's precedent: the next reader to notice a folding
+unit without an alignment will otherwise rediscover this as a hypothesis.
