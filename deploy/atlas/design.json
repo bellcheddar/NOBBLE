@@ -570,9 +570,9 @@
       "cost": {
         "variants": 15,
         "jobs": 225,
-        "projected_hours": 4.2,
+        "projected_hours": 4.5,
         "status": "within_max_compute",
-        "basis": "225 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "225 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -832,9 +832,9 @@
       "cost": {
         "variants": 15,
         "jobs": 225,
-        "projected_hours": 4.2,
+        "projected_hours": 4.5,
         "status": "within_max_compute",
-        "basis": "225 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "225 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -1094,9 +1094,9 @@
       "cost": {
         "variants": 15,
         "jobs": 225,
-        "projected_hours": 4.2,
+        "projected_hours": 4.5,
         "status": "within_max_compute",
-        "basis": "225 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "225 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -1360,9 +1360,9 @@
       "cost": {
         "variants": 15,
         "jobs": 225,
-        "projected_hours": 4.2,
+        "projected_hours": 4.5,
         "status": "within_max_compute",
-        "basis": "225 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "225 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -1622,9 +1622,9 @@
       "cost": {
         "variants": 15,
         "jobs": 225,
-        "projected_hours": 4.2,
+        "projected_hours": 4.5,
         "status": "within_max_compute",
-        "basis": "225 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "225 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -1886,9 +1886,9 @@
       "cost": {
         "variants": 15,
         "jobs": 225,
-        "projected_hours": 4.2,
+        "projected_hours": 4.5,
         "status": "within_max_compute",
-        "basis": "225 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "225 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -2148,9 +2148,9 @@
       "cost": {
         "variants": 15,
         "jobs": 225,
-        "projected_hours": 4.2,
+        "projected_hours": 4.5,
         "status": "within_max_compute",
-        "basis": "225 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "225 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -2590,9 +2590,9 @@
       "cost": {
         "variants": 26,
         "jobs": 390,
-        "projected_hours": 7.2,
+        "projected_hours": 7.8,
         "status": "within_max_compute",
-        "basis": "390 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "390 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -2982,9 +2982,9 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 6.4,
+        "projected_hours": 6.9,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "345 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -3374,9 +3374,9 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 6.4,
+        "projected_hours": 6.9,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "345 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -3764,9 +3764,9 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 6.4,
+        "projected_hours": 6.9,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "345 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -4204,9 +4204,9 @@
       "cost": {
         "variants": 26,
         "jobs": 390,
-        "projected_hours": 7.2,
+        "projected_hours": 7.8,
         "status": "within_max_compute",
-        "basis": "390 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "390 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -4630,9 +4630,9 @@
       "cost": {
         "variants": 25,
         "jobs": 375,
-        "projected_hours": 7.0,
+        "projected_hours": 7.5,
         "status": "within_max_compute",
-        "basis": "375 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "375 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -5054,9 +5054,9 @@
       "cost": {
         "variants": 25,
         "jobs": 375,
-        "projected_hours": 7.0,
+        "projected_hours": 7.5,
         "status": "within_max_compute",
-        "basis": "375 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "375 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -5446,9 +5446,9 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 6.4,
+        "projected_hours": 6.9,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "345 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -5840,9 +5840,9 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 6.4,
+        "projected_hours": 6.9,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "345 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -6232,9 +6232,9 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 6.4,
+        "projected_hours": 6.9,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "345 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -6654,9 +6654,9 @@
       "cost": {
         "variants": 25,
         "jobs": 375,
-        "projected_hours": 7.0,
+        "projected_hours": 7.5,
         "status": "within_max_compute",
-        "basis": "375 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "375 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -7046,9 +7046,9 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 6.4,
+        "projected_hours": 6.9,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "345 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -7440,9 +7440,9 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 6.4,
+        "projected_hours": 6.9,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "345 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -7834,9 +7834,9 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 6.4,
+        "projected_hours": 6.9,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "345 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -8226,9 +8226,9 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 6.4,
+        "projected_hours": 6.9,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "345 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -8618,9 +8618,9 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 6.4,
+        "projected_hours": 6.9,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "345 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -9010,9 +9010,9 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 6.4,
+        "projected_hours": 6.9,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "345 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -9402,9 +9402,9 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 6.4,
+        "projected_hours": 6.9,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "345 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -9794,9 +9794,9 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 6.4,
+        "projected_hours": 6.9,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "345 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -10186,9 +10186,9 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 6.4,
+        "projected_hours": 6.9,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "345 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -10578,9 +10578,9 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 6.4,
+        "projected_hours": 6.9,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "345 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -10970,9 +10970,9 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 6.4,
+        "projected_hours": 6.9,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "345 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -11362,9 +11362,9 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 6.4,
+        "projected_hours": 6.9,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "345 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     },
@@ -11752,9 +11752,9 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 6.4,
+        "projected_hours": 6.9,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "basis": "345 jobs at 72.4 s for a 155-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
         "parent": null
       }
     }
@@ -12019,9 +12019,9 @@
     "cost": {
       "variants": 15,
       "jobs": 225,
-      "projected_hours": 4.4,
+      "projected_hours": 4.5,
       "status": "within_max_compute",
-      "basis": "benchmark_888fd2c63e: 240 jobs totalling 32,960 tokens, each priced in its own token band across 4 measured band(s) spanning 0.2111 to 0.663 s/token",
+      "basis": "benchmark_888fd2c63e: 240 jobs totalling 32,960 tokens, each priced in its own token band across 4 measured band(s) spanning 0.3501 to 0.7375 s/token",
       "parent": "benchmark_888fd2c63e"
     }
   },
@@ -12030,6 +12030,15 @@
     "lifts": []
   },
   "profile": {},
-  "score_validation": {},
-  "caveat": "The composite score this arm would rank by is not validated: the matched-control ROC reports not_computed until the Sievers arm runs. Until it does, the durable claim from a scan is the ordering of positions, not the absolute lift and not a prediction that any variant will be degraded."
+  "score_validation": {
+    "matched_control_roc": "not_computed: 0 positive(s) and 0 matched negative(s) scored. The Sievers arm runs after the benchmark panel; a curve drawn from benchmark pairs alone would have no matched negatives and spec 5 forbids reporting one",
+    "auc": null,
+    "ci95": null,
+    "interpretation": null,
+    "read_from": "campaigns/benchmark_20261103T192126Z/validation.json",
+    "searched": [
+      "campaigns/benchmark_20261103T192126Z/validation.json"
+    ]
+  },
+  "caveat": "The composite is not validated: the matched-control ROC has not computed. Read the ordering of positions, not the absolute lift."
 }

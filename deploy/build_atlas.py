@@ -291,7 +291,11 @@ def main() -> int:
     # target was GSPT1 and the scan that runs is IKZF1: two answers to the
     # design arm's headline question, one on the page and one in the queue
     # (F89).
-    design = design_report.build()
+    # The campaign is passed explicitly so the design arm's validation
+    # caveat comes from the same campaign every other section is built from,
+    # rather than from whichever file a global lookup happened to find
+    # (F105).
+    design = design_report.build(campaign=campaign)
     (OUT / "design.json").write_text(json.dumps(design, indent=2, default=str))
     summary["files"]["design.json"] = len(design.get("parents", []))
 

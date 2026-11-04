@@ -10,12 +10,15 @@
   </p>
 </section>
 
+{# The caveat is pipeline-generated and follows the matched-control ROC's
+   actual status. This panel used to check `design.caveat` and then render a
+   literal sentence of its own saying the composite was not validated, so
+   three layers all asserted it and none read the status: the field, the
+   Python string and this template. After the Sievers arm computes a curve
+   the page would still have said "not validated yet" (F105). #}
 {% if design.get('caveat') %}
 <section class="panel">
-  <p class="caveat">
-    The composite is not validated yet, so read the <b>ordering</b> of
-    positions, not the absolute lift.
-  </p>
+  <p class="caveat">{{ design.get('caveat') }}</p>
 </section>
 {% endif %}
 

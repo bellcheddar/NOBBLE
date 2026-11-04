@@ -4775,3 +4775,75 @@ four-chain path produces what it should. The first completed Sievers ternary
 carries chain A at 109 residues, P at 26, Z holding one ZN and L holding one
 Y70, with a four by four pair matrix. The path was checked ahead of itself in
 F82, F83 and F86; this is it running.
+
+## F105. Three layers all asserted the same thing and none of them read it
+
+The design page ranks variants, and a ranked list reads as a recommendation
+whatever the caption says, so the caveat beside it carries weight. It said the
+composite score is not validated. That is true today. It was asserted in three
+places and derived in none, so it would have gone on being said after it
+stopped being true.
+
+**The field.** `score_validation` exists to carry the matched-control ROC's
+real status, and read `data/atlas/validation.json`. That path has never
+existed: `data/atlas` is an empty directory, and the layer statuses live in
+the campaign, which is where `build_atlas` reads them for everything else,
+including the correlation twenty lines further down. Guarded by
+`if validation_path.exists()`, so it fell through silently on every build
+since it was written, and `{}` is what the failure and an honest "nothing to
+report" both look like.
+
+**The string.** The caveat was a Python literal: "the matched-control ROC
+reports not_computed until the Sievers arm runs". It is published, and it
+becomes false the moment the Sievers arm finishes, which is the moment the
+project's headline result arrives. The design page would have gone on saying
+the score is not validated while the curve that validates it sat one file
+away.
+
+**The template.** `design.html` checked `design.caveat` and then rendered a
+sentence of its own: "The composite is not validated yet, so read the
+ordering of positions, not the absolute lift." So the derived sentence, had
+there been one, would have been computed, published and never shown. This is
+the layer that actually reaches the reader, and it was the one furthest from
+the data.
+
+F96 was a caveat that never reached the page. This is a caveat that reaches
+the page and could not change, three times over, in the one panel whose job
+is to stop a scan being read as a prediction.
+
+Now: the status is read from the campaign, with the published atlas as a
+fallback and an unreadable status falling back to "not validated" rather than
+to silence, because that is the safe direction for a page that ranks things.
+The sentence is derived from it and names the AUC and its confidence interval
+when there is one. The template renders that sentence. The layer's own reason
+can run to three lines, so it stays in `score_validation` where a reader of
+the JSON finds it, and the panel keeps to 20 words against a budget of 40.
+
+**Two mistakes of my own, both caught by reading output rather than by a
+test.**
+
+`build` already had a local named `campaign` holding the campaigns directory,
+assigned before the validation lookup. The argument I added was shadowed, so
+a campaign passed in was silently replaced by `campaigns/` and could never
+have been read. Visible only because the diagnostic I had just added printed
+the paths it searched, and the first one was `campaigns/validation.json`.
+
+Then the diagnostic recorded resolved paths, which published
+`/Users/<name>/Documents/...` into `design.json` and made the value depend on
+how the build was invoked: the chain passes a relative campaign path and the
+drift check passes an absolute one, so the same campaign produced two
+different bundles and the drift check could never settle. Both now relative
+to the project root.
+
+That second one is worth a check of its own, and did not have one.
+`build_atlas` verifies that no PROTAC-DB chemistry reaches the bundle,
+because spec 2.1 requires it. Nothing verified that the bundle carries no
+local filesystem paths, which is the other thing a build leaks by accident
+and which puts a home directory on a public page.
+`tests/test_no_local_paths_published.py` checks every published JSON for
+`/Users`, `/home`, `/private/tmp`, `/var/folders` and the project root
+itself, and holds that a relative and an absolute campaign argument produce
+the same bundle.
+
+The atlas was rebuilt from the campaign it names, `benchmark_20261103T192126Z`,
+and the drift check reports in step across 11,014 leaf values.

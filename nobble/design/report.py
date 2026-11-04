@@ -188,7 +188,105 @@ def _scan_job_tokens(parent_id: str) -> list[int] | None:
     return tokens or None
 
 
-def build(parent_id: str | None = None) -> dict:
+def _score_validation(campaign: Path | None = None) -> tuple[dict, str]:
+    """The matched-control ROC's actual state, and the caveat that follows.
+
+    This used to read `data/atlas/validation.json`, a path that has never
+    existed: `data/atlas` is empty and the layer statuses live in the
+    campaign, which is where `build_atlas` reads them for everything else.
+    So `score_validation` was published as `{}` on every build, and the
+    caveat beside it asserted "the matched-control ROC reports not_computed"
+    as a literal string.
+
+    That literal is true today and becomes false the moment the Sievers arm
+    finishes, which is the moment the project's headline result arrives: the
+    design page would go on saying the score is not validated while the
+    curve that validates it sat one file away. F96 was a caveat that never
+    reached the page; this is a caveat that reaches the page and cannot
+    change (F105).
+
+    An unreadable status falls back to the conservative reading rather than
+    to silence. Not validated until shown otherwise is the safe direction
+    for a page that ranks variants.
+    """
+    from nobble.execute.campaign import latest
+
+    def relative(path: Path) -> str:
+        """Project-relative, so the record is stable and leaks nothing.
+
+        Recording the resolved path published an absolute home-directory path
+        into the atlas, and made the value depend on how the build was
+        invoked: the chain passes a relative campaign path and the drift check
+        passes an absolute one, so the same campaign produced two different
+        strings and the drift check could never settle (F105).
+        """
+        try:
+            return str(Path(path).resolve().relative_to(paths.ROOT.resolve()))
+        except ValueError:
+            return Path(path).name
+
+    searched: list[str] = []
+    candidates: list[Path] = []
+    if campaign is not None:
+        candidates.append(Path(campaign) / "validation.json")
+    newest = latest("campaign")
+    if newest is not None:
+        candidates.append(Path(newest) / "validation.json")
+    candidates.append(paths.ROOT / "deploy" / "atlas" / "validation.json")
+
+    layer: dict = {}
+    for candidate in candidates:
+        searched.append(relative(candidate))
+        if not candidate.exists():
+            continue
+        try:
+            document = json.loads(candidate.read_text())
+        except Exception:                                  # noqa: BLE001
+            continue
+        found = (document.get("layers") or {}).get("matched_control_roc")
+        if isinstance(found, dict):
+            layer = found
+            break
+
+    status = layer.get("status")
+    summary = layer.get("summary") or {}
+    validation = {
+        "matched_control_roc": status,
+        "auc": summary.get("auc"),
+        "ci95": summary.get("ci95"),
+        "interpretation": summary.get("interpretation"),
+        "read_from": searched[-1] if layer and searched else None,
+        "searched": searched,
+    }
+
+    # Kept short on purpose. This is the sentence the page renders, and the
+    # UI copy budget is under 40 words a panel; the layer's own reason can
+    # run to three lines, so it stays in `score_validation` where a reader
+    # of the JSON finds it and the panel does not carry it.
+    ordering = "Read the ordering of positions, not the absolute lift."
+
+    if status == "computed" and summary.get("auc") is not None:
+        interpretation = str(summary.get("interpretation") or "")
+        low, high = (summary.get("ci95") or [None, None])[:2]
+        band = f", 95 per cent CI {low} to {high}" if low is not None else ""
+        if interpretation.startswith("above chance"):
+            caveat = (f"The composite separates the matched controls at AUC "
+                      f"{summary['auc']}{band}, above chance. {ordering}")
+        else:
+            caveat = (f"The composite is not validated: the matched-control "
+                      f"ROC computed at AUC {summary['auc']}{band} and is not "
+                      f"distinguishable from chance. {ordering}")
+    elif status:
+        caveat = ("The composite is not validated: the matched-control ROC "
+                  f"has not computed. {ordering}")
+    else:
+        caveat = ("The composite is not validated: no matched-control ROC "
+                  f"status could be read. {ordering}")
+    return validation, caveat
+
+
+def build(parent_id: str | None = None,
+          campaign: Path | None = None) -> dict:
     """The document the tab renders."""
     parents = candidate_parents()
     chosen = None
@@ -212,8 +310,13 @@ def build(parent_id: str | None = None) -> dict:
     # Lifts, if a design campaign has actually run.
     lifts: dict = {"status": "no design campaign has run yet", "lifts": []}
     profile: dict = {}
-    campaign = paths.CAMPAIGNS
-    scored = sorted(campaign.glob("design_*/scores.jsonl")) if campaign.exists() else []
+    # Named for what it is. This was `campaign`, which shadowed the `campaign`
+    # argument added for the validation lookup below: a campaign passed in was
+    # silently replaced by the campaigns directory, so the argument could
+    # never have been read (F105).
+    campaigns_root = paths.CAMPAIGNS
+    scored = (sorted(campaigns_root.glob("design_*/scores.jsonl"))
+              if campaigns_root.exists() else [])
     if scored and chosen:
         lifts = lift_module.from_scores(scored[-1], chosen["peptide_id"])
         if lifts.get("lifts"):
@@ -223,15 +326,7 @@ def build(parent_id: str | None = None) -> dict:
     # The validation state of the score the arm would rank by. Reported
     # next to the rankings rather than buried: a ranked list reads as a
     # recommendation whatever the caption says.
-    validation = {}
-    validation_path = paths.DATA / "atlas" / "validation.json"
-    if validation_path.exists():
-        try:
-            document = json.loads(validation_path.read_text())
-            layer = (document.get("layers") or {}).get("matched_control_roc", {})
-            validation = {"matched_control_roc": layer.get("status")}
-        except Exception:                                  # noqa: BLE001
-            validation = {}
+    validation, caveat = _score_validation(campaign)
 
     # Previews for every scannable parent, precomputed. The droplet has no
     # curation stack, so it cannot generate a scan on request: without this
@@ -254,13 +349,8 @@ def build(parent_id: str | None = None) -> dict:
         "lifts": lifts,
         "profile": profile,
         "score_validation": validation,
-        "caveat": (
-            "The composite score this arm would rank by is not validated: the "
-            "matched-control ROC reports not_computed until the Sievers arm "
-            "runs. Until it does, the durable claim from a scan is the "
-            "ordering of positions, not the absolute lift and not a "
-            "prediction that any variant will be degraded."
-        ),
+        # Derived from the status above, not asserted. See _score_validation.
+        "caveat": caveat,
     }
 
 
