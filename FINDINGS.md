@@ -3205,8 +3205,17 @@ to see what was filtered without the number reading as a measurement.
 
 Where no model is configured the panel says so in one sentence and adds
 that the figures do not depend on it, because a panel that reads as broken
-would make a reader doubt the numbers beside it. That is the droplet's
-normal state.
+would make a reader doubt the numbers beside it.
+
+That is the droplet's state and it is deliberate, so the claim here needs
+stating precisely rather than generously. QC passes (14 pages, 0 non-200, 0
+console errors, 0 serious axe) and the panel is deployed and live, where it
+reads "No model is configured". A visitor to nobble.mdeller.com still
+cannot ask a question, because spec Phase 4 requires the droplet to serve a
+precomputed atlas with no compute at request time, and a model call is
+compute at request time. The component is reachable on a host with
+`BINMAN_LM_URL` set, which is the Studio. What changed is that it is
+reachable at all: before this there was no interface on any host.
 
 ## F70. Asking whether a model exists imported one, and broke two tests
 
