@@ -7274,3 +7274,60 @@ the rule and not the exception.
 
 Verified by restoring the contradiction and watching the test fail, then
 restoring the file and checking it byte for byte.
+
+## F159. Browser QC had never seen a computed ROC
+
+Every QC run in this build has been against the benchmark campaign, where
+the matched-control ROC is `not_computed` and the Delta tab shows an empty
+state. So the page that carries the project's headline result had never been
+rendered with that result present. Fixed by building a campaign whose ROC
+computes, from the benchmark campaign plus a synthesised Sievers arm of 24
+degraded and 96 matched negatives, and pointing QC at it.
+
+Four things fell out, and the first was mine from F138.
+
+**An unreachable server was reported as a stale build.** The fingerprint
+guard fetched `/healthz` once and treated a failed fetch the same as a
+missing field, so it said "does not report a source fingerprint" about a
+server that was still binding its port. It now retries three times over two
+seconds and distinguishes the two, because one is an operator's timing and
+the other is a stale build, and blaming the build sends someone to restart a
+server that is running.
+
+**Then it reported a healthy server as unreachable, and was right.** Node
+and Chromium refuse a list of unsafe ports, 5060 and 5061 among them as SIP,
+and the failure is `bad port`: curl reaches the server, `fetch` cannot. Told
+only that nothing answered, an operator restarts a server that was never
+down. The message names that case now. The port PROGRESS.md documents, 5055,
+is not on the list, so this only bites someone who picked one.
+
+**The copy budget held only while the headline panel was empty.** With the
+ROC computed, `/delta`'s chart panel read 71 words against a budget of 40.
+The excess was a caption the chart writes from the data, "Showing the 12
+pairs whose difference of minima is furthest from their difference of
+medians, 115 further pair(s) agree more closely and are not plotted", plus
+eighteen words explaining why only some are plotted. The counts are
+pipeline-generated status text, which the budget excludes; the explanation is
+reasoning about a presentation choice, which the budget sends to
+DECISIONS.md. The caption is marked and the explanation is a comment, and the
+panel reads 24.
+
+The marking exposed something worse in my own F139 filter: it excluded
+`chart__caption`, and no template carried that class. A filter entry naming
+nothing is a filter entry that looks like coverage, and the caption it was
+meant to exclude was marked `panel__hint` and counted as prose the whole
+time. Both ends now meet, and a test fails if either moves.
+
+**And the verdict was not beside its curve.** The Delta tab computes an AUC
+in JavaScript for the chart title. The bootstrap interval and the
+interpretation are computed in Python, land in `validation.json`, and were
+rendered on the About tab. A reader looking at the curve saw one number and
+had to infer what it meant.
+
+That matters most in the case spec 4.3 asks to be reported rather than
+hidden: an interval entirely below 0.5, where the statistic separates the two
+classes in the opposite direction to the prediction. F120 wrote that sentence
+specifically so an inverted result would say so, and nothing put it next to
+the figure. It is there now, as `AUC, 95 per cent CI, interpretation`, absent
+rather than empty when the ROC has not computed, and marked as the machine
+output it is.

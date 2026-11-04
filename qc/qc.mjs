@@ -39,12 +39,55 @@ try {
   console.log('could not compute the expected fingerprint: ' + e.message);
 }
 if (expected) {
-  const health = await fetch(BASE + '/healthz').then((r) => r.json())
-    .catch(() => null);
+  /* Retried, and an unreachable server reported as unreachable.
+   *
+   * This fetched once and treated a failure the same as a missing field, so
+   * a server still binding its port was reported as "does not report a
+   * source fingerprint", which blames the build for an operator's timing.
+   * It happened to me pointing QC at a server I had just started (F159).
+   *
+   * Three attempts over about two seconds: enough for a Flask process that
+   * has printed its banner, and not a wait loop that hides a server which
+   * is never coming up. */
+  let health = null;
+  let reached = false;
+  let cause = 'no attempt made';
+  for (let attempt = 0; attempt < 3 && !reached; attempt += 1) {
+    if (attempt) { await new Promise((done) => setTimeout(done, 700)); }
+    try {
+      const response = await fetch(BASE + '/healthz');
+      reached = true;
+      health = await response.json().catch(() => null);
+    } catch (e) {
+      health = null;
+      cause = (e.cause && (e.cause.code || e.cause.message)) || e.message;
+    }
+  }
+  if (!reached) {
+    /* The cause matters, because one of them is not about the server at all.
+     * Node and Chromium refuse a list of unsafe ports, 5060 and 5061 among
+     * them as SIP, and the failure is "bad port": the server is running, curl
+     * reaches it, and this cannot. Told to start the server, an operator
+     * restarts a server that was never down. The documented local port, 5055,
+     * is not on the list, so this only bites someone who picked a port
+     * (F159). */
+    console.error('FAIL: nothing answered ' + BASE + '/healthz after three '
+      + 'attempts (' + cause + ').');
+    if (String(cause).includes('bad port')) {
+      console.error('       That is node refusing the port, not the server '
+        + 'being down: 5060 and 5061 are on the unsafe-port list. Use '
+        + 'another port; 5055 is the one PROGRESS.md documents.');
+    } else {
+      console.error('       Start the server, or set NOBBLE_BASE. This says '
+        + 'nothing about which build it would be running.');
+    }
+    process.exit(3);
+  }
   const serving = health && health.source_fingerprint;
   if (!serving) {
-    console.error('FAIL: ' + BASE + ' does not report a source fingerprint, '
-      + 'so there is no way to tell which build it is running');
+    console.error('FAIL: ' + BASE + ' answered /healthz and reports no '
+      + 'source_fingerprint, so it is running code from before that check '
+      + 'and there is no way to tell which build it is.');
     process.exit(3);
   }
   if (serving !== expected) {

@@ -20,7 +20,11 @@
       </div>
       <div>
         <div class="chart" id="marginal"></div>
-        <p class="panel__hint" id="marginal-caption"></p>
+        {# chart__caption, not panel__hint: its content is counts the
+           pipeline produces, which CLAUDE.md's copy budget excludes, and
+           the budget tool's filter named that class while nothing in the
+           project carried it (F159). #}
+        <p class="panel__hint chart__caption" id="marginal-caption"></p>
       </div>
     </div>
   {% endif %}
@@ -34,6 +38,18 @@
     mean anything. Drag the threshold to read precision and recall off the live
     numbers.
   </p>
+  {# The Python layer's verdict and interval, beside its curve. `mono`
+     because every word of it is pipeline output, which is what the copy
+     budget excludes, and because it is a figure rather than prose (F159). #}
+  {% if roc_status == "computed" and roc_summary.get("auc") is not none %}
+    <p class="mono" id="roc-verdict">
+      AUC {{ '%.4f'|format(roc_summary.auc) }},
+      {{ roc_summary.confidence_level }}% CI
+      {{ '%.4f'|format(roc_summary.ci95[0]) }} to
+      {{ '%.4f'|format(roc_summary.ci95[1]) }}:
+      {{ roc_summary.interpretation }}
+    </p>
+  {% endif %}
   <div id="roc-wrap">
     <div class="empty" id="roc-empty">
       <h3>Not computable yet</h3>
@@ -269,11 +285,16 @@
     const caption = document.getElementById('marginal-caption');
     if (caption) {
       caption.textContent = omitted
+        /* Counts only. The clause that followed explained the choice,
+           that at this campaign size every pair on one axis is unreadable
+           and the pairs which agree are the ones with nothing to show.
+           That is reasoning about a presentation decision, which the copy
+           budget sends to DECISIONS.md, and it pushed this panel to 71
+           words the moment the campaign grew enough to omit anything
+           (F159). */
         ? ('Showing the ' + rows.length + ' pairs whose difference of minima is '
            + 'furthest from their difference of medians. ' + omitted
-           + ' further pair(s) agree more closely and are not plotted: at this '
-           + 'campaign size every pair on one axis is unreadable, and the pairs '
-           + 'that agree are the ones with nothing to show.')
+           + ' further pair(s) agree more closely and are not plotted.')
         : '';
     }
 

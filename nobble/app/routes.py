@@ -88,9 +88,23 @@ def delta():
     # without noticing the literal in the template (F54).
     from nobble import paths
 
+    # The Python layer's own verdict, beside the curve it is about (F159).
+    #
+    # The chart title carries an AUC the page computes in JavaScript, and the
+    # interval and the interpretation existed only in `validation.json`,
+    # rendered on the About tab. So a reader looking at the curve saw a
+    # single number and had to infer what it meant. That matters most in the
+    # case spec 4.3 asks to be reported rather than hidden: an interval
+    # entirely below 0.5, where the statistic separates the two classes in
+    # the opposite direction to the prediction. F120 wrote that sentence and
+    # nothing put it next to the figure.
+    roc = ((data.precomputed("validation.json").get("layers") or {})
+           .get("matched_control_roc") or {})
     return render_template(
         "delta.html", page_title="Delta", active="delta",
         pairs=data.scores(), components=data.COMPONENTS,
+        roc_summary=roc.get("summary") or {},
+        roc_status=roc.get("status") or "",
         roc_minimum_per_side=int(
             paths.thresholds()["validation"]["roc_minimum_per_side"]
         ),
