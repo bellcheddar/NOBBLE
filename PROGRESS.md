@@ -8,7 +8,7 @@ Rewritten after every phase and at least every 30 minutes during long compute.
 |---|---|---|
 | 0 Probe | **complete** | Apple M2 Ultra, 16 performance + 8 efficiency cores, 128 GB unified memory, 60 GPU cores, 507 GB free, MPS on torch 2.10.0. `config/hardware.toml` and `config/tuning.toml` written |
 | 1 Curation and manifest | **complete** | All gates pass. Tier A 17, Tier B 15 (frozen), 25,567-peptide library reduced to 220, 11 MSAs cached, manifest emitted with 0 errors |
-| 2 Execution | **running** | Benchmark queue of 100 jobs in tmux session `nobble-bench`. Smoke test 42.5 s for 124 tokens on MPS; warm rate 31.9 s. Resume verified in practice |
+| 2 Execution | **benchmark complete, campaign queued** | Benchmark queue finished 99/99, exit 0, zero failures across the whole run. The corrected-construct campaign started automatically in tmux `nobble-corrected`. The main campaign is assembled and waiting: `campaigns/campaign_20261104T004632Z`, 158 pairs, 2,360 jobs, 2,360 YAMLs |
 | 3 Scoring and validation | **complete** | Every component, the three validation layers and the composite weight fitter are built and running. The fitter and two of the three layers correctly report `not_computed` with their reasons until the Sievers arm supplies matched negatives |
 | 4 Application | **complete** | Six tabs on the Depot system, Mol* wired, BINMAN-LM query head with a deterministic executor. Playwright: 12 captures at two viewports, 0 non-200, 0 console errors, 0 serious axe violations |
 
@@ -43,6 +43,18 @@ Rewritten after every phase and at least every 30 minutes during long compute.
 `nobble/score/run.py` is incremental and re-runnable against a live queue.
 
 ## Phase 2 in flight
+
+- **Benchmark panel: complete.** 99/99 jobs, exit 0, no failures at any point.
+  Final measured throughput over 100 timed jobs: median 0.4551 s/token, giving
+  146 affordable pairs in the 48-hour target
+- **Corrected-construct campaign**: running in tmux `nobble-corrected`, chained
+  automatically behind the benchmark queue (D-NOB-030)
+- **Main campaign**: assembled and ready, not yet started.
+  `campaigns/campaign_20261104T004632Z`, 158 pairs (7 benchmark, 120 Sievers,
+  31 scrambles), 2,360 jobs. Projects to 51.8 hours at the measured rate: over
+  the 48-hour per-run target by 3.8, far under the 96-hour Gate G1 threshold,
+  so no gate opens and the priority ordering absorbs the overrun
+- **Tier 2**: built, wired and partitioned (D-NOB-032), not yet run
 
 - `campaigns/benchmark_20261103T192126Z`: 100 YAMLs, queue running in tmux `nobble-bench`
 - 5 conditioned jobs dropped for benchmark member 3, which has no measurable

@@ -55,15 +55,25 @@
       "gene": "RBM39",
       "e3": "DCAF15",
       "bridge_rate": 1.0,
-      "bridging": "8/8",
-      "median_rmsd": 6.18,
+      "bridging": "10/10",
+      "median_rmsd": 6.085,
       "best_rmsd": 5.462,
-      "convergence": 0.8207
+      "convergence": 0.818
+    },
+    {
+      "pair_id": "bench07_CDK12_DDB1",
+      "gene": "CDK12",
+      "e3": "DDB1",
+      "bridge_rate": 0.0,
+      "bridging": "0/10",
+      "median_rmsd": 44.921,
+      "best_rmsd": 44.277,
+      "convergence": 0.1693
     }
   ],
-  "n": 6,
-  "pearson_r": -0.872,
-  "pearson_p": 0.0237,
-  "spearman_rho": -0.88,
-  "spearman_p": 0.0206
+  "n": 7,
+  "pearson_r": -0.932,
+  "pearson_p": 0.0022,
+  "spearman_rho": -0.927,
+  "spearman_p": 0.0027
 }

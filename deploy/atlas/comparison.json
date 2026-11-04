@@ -52,6 +52,22 @@
       "verdict": "incomplete: one campaign has no recovery number yet"
     },
     {
+      "gene": "CDK12",
+      "e3": "DDB1",
+      "baseline_pair": "bench07_CDK12_DDB1",
+      "corrected_pair": null,
+      "substrate_mode": "folded_domain",
+      "baseline_median_rmsd": 44.921,
+      "corrected_median_rmsd": null,
+      "delta_rmsd": null,
+      "baseline_anchor_rmsd": 1.35,
+      "corrected_anchor_rmsd": null,
+      "baseline_poses": 10,
+      "corrected_poses": 0,
+      "is_control": false,
+      "verdict": "incomplete: one campaign has no recovery number yet"
+    },
+    {
       "gene": "CSNK1A1",
       "e3": "CRBN",
       "baseline_pair": "bench05_CSNK1A1_CRBN",
@@ -105,12 +121,12 @@
       "baseline_pair": "bench06_RBM39_DCAF15",
       "corrected_pair": null,
       "substrate_mode": "folded_domain",
-      "baseline_median_rmsd": 6.18,
+      "baseline_median_rmsd": 6.085,
       "corrected_median_rmsd": null,
       "delta_rmsd": null,
       "baseline_anchor_rmsd": 0.756,
       "corrected_anchor_rmsd": null,
-      "baseline_poses": 8,
+      "baseline_poses": 10,
       "corrected_poses": 0,
       "is_control": false,
       "verdict": "incomplete: one campaign has no recovery number yet"
