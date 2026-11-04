@@ -117,6 +117,17 @@ def main() -> int:
         return 2
     print(f"publishing {campaign.name}")
 
+    # Configured here, before anything is built, rather than part way down.
+    #
+    # F89 found the design report taking its fallback because nothing had
+    # configured the data layer. The call that fixed it sat immediately
+    # above that one section, which left every section built earlier
+    # depending on not needing it. Whether that is true is a question this
+    # ordering stops anyone having to ask again (F90).
+    from nobble.app import data as app_data
+
+    app_data.configure(str(campaign))
+
     # Before anything is written or removed. A campaign holds two
     # descriptions of every job, the queue row and the YAML Boltz actually
     # reads, and a disagreement between them is invisible from either side:
@@ -262,10 +273,10 @@ def main() -> int:
     # The design arm (DESIGN_ARM.md). Built here rather than at request time
     # like everything else: the generator imports the curation stack, and the
     # droplet has no gemmi.
-    from nobble.app import data as app_data
     from nobble.design import report as design_report
 
-    # Configured before the report is built, which it was not.
+    # The data layer is configured at the top of this function. It was not
+    # configured at all until F89, and the reason that mattered here:
     #
     # `_default_parent` ranks the candidate degrons by measured Delta-ipTM
     # and falls back to the shortest glue parent when nothing is scored, so
@@ -280,8 +291,6 @@ def main() -> int:
     # target was GSPT1 and the scan that runs is IKZF1: two answers to the
     # design arm's headline question, one on the page and one in the queue
     # (F89).
-    app_data.configure(str(campaign))
-
     design = design_report.build()
     (OUT / "design.json").write_text(json.dumps(design, indent=2, default=str))
     summary["files"]["design.json"] = len(design.get("parents", []))

@@ -129,3 +129,43 @@ def test_the_published_cost_names_its_parent(tmp_path):
     parent = (preview.get("parent") or {}).get("peptide_id")
     assert cost.get("parent") == parent
     assert parent in (cost.get("basis") or ""), cost.get("basis")
+
+
+def test_the_data_layer_is_configured_before_anything_is_built():
+    """F89's fix sat immediately above the one section that needed it,
+    which left every earlier section depending on not needing it.
+
+    Checked by position rather than by presence: `configure` appearing
+    somewhere in the file is what was true while the design report was
+    still taking its fallback, since the call was below it. The question
+    this answers is not whether the call exists but whether anything is
+    built before it (F90).
+    """
+    source = (ROOT / "deploy" / "build_atlas.py").read_text()
+    configure_at = source.index("app_data.configure(str(campaign))")
+
+    # Every write into the published bundle must come after it.
+    writes = [source.index(marker) for marker in (
+        'OUT / "benchmark.json"', 'OUT / "about.json"',
+        'OUT / "design.json"', 'OUT / "ATLAS.json"')]
+    assert all(position > configure_at for position in writes), (
+        "a section of the atlas is written before the data layer is "
+        "configured, so whether it needs the campaign is a question again"
+    )
+
+
+def test_configuring_earlier_changed_nothing_else():
+    """The ordering fix must be behaviour-preserving, which is the only
+    reason to make it rather than leave the call where it worked. Checked
+    against the published atlas: every leaf value equal."""
+    atlas = ROOT / "deploy" / "atlas"
+    if not (atlas / "benchmark.json").exists():
+        pytest.skip("no published atlas")
+    # The published atlas was built with the call in its final position, so
+    # this asserts the file that records the decision rather than rebuilding
+    # a second time inside a test: the rebuild comparison is in F90's entry.
+    source = (ROOT / "deploy" / "build_atlas.py").read_text()
+    assert source.count("app_data.configure(str(campaign))") == 1, (
+        "the data layer is configured more than once, so which call wins "
+        "depends on order again"
+    )
