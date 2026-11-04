@@ -15,6 +15,9 @@
 #   under `set -e`.
 # - The final check fetches every page, not just /healthz. /healthz has
 #   answered {"ok": true} while every real page returned 500.
+# - And then it compares the fingerprint the droplet reports against the tree
+#   that was shipped. Every page returning 200 says the app works, not that
+#   it is this version of the app (F140).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 # shellcheck disable=SC1091
@@ -58,6 +61,13 @@ trap '"${SSH[@]}" -O exit "$DROPLET_SSH" >/dev/null 2>&1 || true' EXIT
   exit 1; }
 echo "    ssh ok, multiplexed"
 
+# The digest of the tree about to be shipped, taken before the rsync so it
+# describes what is sent rather than what is on the Mac afterwards.
+echo "==> fingerprint the tree being shipped"
+ATLAS_PY="${ATLAS_PY:-../BINMAN/.pixi/envs/default/bin/python}"
+SHIPPING=$(PYTHONPATH=. KMP_DUPLICATE_LIB_OK=TRUE "$ATLAS_PY" tools/app_fingerprint.py)
+echo "    $SHIPPING"
+
 echo "==> sync application code"
 rsync -rlpt --delete \
   --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r \
@@ -83,8 +93,8 @@ rsync -rlpt --delete \
 # one command whose output the operator should see.
 echo "==> is the atlas in step with the code"
 # deploy.sh has no interpreter variable of its own: it is a shell script
-# that rsyncs and restarts, and this is the one Python it needs.
-ATLAS_PY="${ATLAS_PY:-../BINMAN/.pixi/envs/default/bin/python}"
+# that rsyncs and restarts, and this is the one Python it needs. Set above,
+# where the fingerprint is taken.
 if ! PYTHONPATH=. KMP_DUPLICATE_LIB_OK=TRUE "$ATLAS_PY" tools/atlas_drift.py; then
   echo "    REFUSING TO DEPLOY: the published atlas is not what the current" >&2
   echo "    code builds. Rebuild it first:" >&2
@@ -145,4 +155,33 @@ if [[ "$FAILED" != "0" ]]; then
   echo "        file ownership." >&2
   exit 1
 fi
+
+# Every page returning 200 does not mean the new code is serving it. An rsync
+# that excluded a file, a gunicorn that restarted on a stale import, a worker
+# that outlived the restart: each of those answers 200 on every page with the
+# previous build. That is the same mistake browser QC was making, where a
+# clean report described a server started hours earlier (F138), and the deploy
+# had the identical hole one layer down.
+#
+# Absent rather than different is also a failure. The tree reports a
+# fingerprint, so a server that does not is a server running code from before
+# this check, which after a successful deploy means the deploy did not take.
+echo "==> is the droplet serving the tree that was shipped"
+SERVING=$(curl -s --max-time 15 "${PUBLIC_HOST}/healthz" \
+  | sed -n 's/.*"source_fingerprint"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+if [[ -z "$SERVING" ]]; then
+  echo "deploy: ${PUBLIC_HOST}/healthz reports no source_fingerprint, so the" >&2
+  echo "        droplet is running code from before this check. The pages are" >&2
+  echo "        200 and they are the previous build." >&2
+  exit 1
+fi
+if [[ "$SERVING" != "$SHIPPING" ]]; then
+  echo "deploy: the droplet is serving $SERVING, this tree is $SHIPPING." >&2
+  echo "        The pages are 200 and they are not what was just sent." >&2
+  echo "        Compare the two with:" >&2
+  echo "          PYTHONPATH=. python tools/app_fingerprint.py --detail" >&2
+  echo "          ssh <droplet> 'cd $REMOTE_DIR && PYTHONPATH=. .venv/bin/python tools/app_fingerprint.py --detail'" >&2
+  exit 1
+fi
+echo "    $SERVING"
 echo "==> deployed and verified"

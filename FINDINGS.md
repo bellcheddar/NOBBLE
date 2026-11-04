@@ -6534,3 +6534,37 @@ The measurement now runs inside browser QC and exits 4 when a data page is
 over, which is the part that matters: the two previous attempts at this
 number were mine, and the reason the budget drifted for a whole build is that
 checking it was a thing somebody had to decide to do.
+
+## F140. The deploy checked that the site worked, not that it was this site
+
+`deploy/deploy.sh` ends by fetching every page and requiring 200, and the
+comment above it records why that replaced a /healthz check: /healthz has
+answered `{"ok": true}` while every real page returned 500. That check is
+right and it is not sufficient. An rsync that excluded a file, a gunicorn
+that restarted on a stale import, a worker that outlived the restart: each of
+those answers 200 on every page with the previous build, and the deploy
+reports "deployed and verified".
+
+Which is F138 one layer down. Browser QC could pass against a server from
+hours earlier; the deploy could pass against a droplet that had not taken the
+code. The same digest closes both, so the deploy now records the fingerprint
+of the tree before the rsync and compares it against what `/healthz` reports
+after the restart.
+
+An absent fingerprint is a failure, not an abstention. A server from before
+this check reports none, and after a successful deploy the new code is
+running and reports one, so "cannot tell, carry on" would pass exactly the
+deploy that did not take effect.
+
+Two things my own tests caught while writing it. The fingerprint was being
+taken after the code rsync, which describes the Mac rather than the bundle:
+the same thing unless the tree changes during a deploy, which is when the
+check matters. And the test that the hashed files are all rsynced exists
+because an excluded path would be hashed on the Mac, absent on the droplet,
+and every deploy would then refuse for a reason that looks like a failed
+deploy.
+
+Verified against real servers rather than by reading the shell: the
+extraction returns the digest from the current build and the empty string
+from the stale process still holding port 5055, which is the branch that
+refuses.
