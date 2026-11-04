@@ -23,6 +23,7 @@ sys.path.insert(0, str(ROOT))
 
 PROGRESS = (ROOT / "PROGRESS.md").read_text()
 README = (ROOT / "README.md").read_text()
+DECISIONS = (ROOT / "DECISIONS.md").read_text()
 
 
 def _latest(prefix: str) -> Path | None:
@@ -93,3 +94,30 @@ def test_the_design_scan_cost_in_the_readme_matches_the_generator():
     saturation = 15 * 19
     assert f"{saturation} variants and {saturation * per_pair:,} jobs" in README, \
         f"README does not state {saturation} variants and {saturation * per_pair:,} jobs"
+
+
+def test_the_route_count_in_the_prose_matches_what_deploy_checks():
+    """PROGRESS, DECISIONS and run_chain all quote how many routes
+    deploy.sh verifies before it will report success.
+
+    PROGRESS said eight for as long as the design arm has existed, because
+    the number was written when there were eight and the tab made it nine.
+    Nothing read it, so nothing caught it.
+    """
+    import re
+
+    deploy = (ROOT / "deploy" / "deploy.sh").read_text()
+    match = re.search(r"^for path in ((?:/\S*\s*)+); do", deploy, re.MULTILINE)
+    assert match, "deploy.sh no longer loops over a literal list of routes"
+    checked = match.group(1).split()
+
+    words = {8: "eight", 9: "nine", 10: "ten", 11: "eleven", 12: "twelve"}
+    expected = words.get(len(checked))
+    assert expected, f"no word for {len(checked)} routes"
+
+    for name, text in (("PROGRESS.md", PROGRESS),
+                       ("DECISIONS.md", DECISIONS),
+                       ("run_chain.sh", (ROOT / "tools" / "run_chain.sh").read_text())):
+        stale = [w for w in words.values()
+                 if w != expected and f"{w} routes" in text]
+        assert not stale, f"{name} says {stale} routes, deploy.sh checks {expected}"

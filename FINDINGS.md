@@ -836,3 +836,32 @@ enough, because the cleanup still has to drain it. Boltz spawns worker
 processes. The test for it hangs pytest past 45 seconds on the old code
 and passes in 7 on the new, so the gap was real even though the stall that
 sent me looking for it was not.
+
+## F21. The deployment test stopped covering the newest page, and passed
+
+`tests/test_deployed_app.py` exists for one reason: `/benchmark` and
+`/about` once imported the curation stack at request time, passed every
+local check and returned 500 in production. It blocks gemmi, pandas and
+the rest, then fetches every page.
+
+"Every page" was a tuple written by hand. The design arm added `/design`
+and the tuple was not updated, so the one test whose whole job is to
+catch a route that dies on the droplet silently stopped looking at the
+newest and least-exercised route in the app. Four API routes were
+uncovered too. The test went on passing throughout, which is the point:
+a stale list produces no symptom.
+
+`/design` turned out to be fine under droplet conditions, so this cost
+nothing. It was one import away from costing a production 500 that no
+local check would have found.
+
+The list is now derived from `app.url_map`, so coverage grows with the
+app, with a `MUST_INCLUDE` floor that fails if a route disappears, which
+enumeration alone cannot detect. Both halves were checked by breaking
+them: a route importing pandas fails the first, renaming `/design` fails
+the second.
+
+Same shape as F20 one layer up. There, a number maintained by hand was
+read wrongly. Here, a list maintained by hand went quietly out of date.
+Neither announced itself, because neither had anything comparing it to
+the thing it described.

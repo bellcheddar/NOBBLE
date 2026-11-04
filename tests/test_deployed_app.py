@@ -19,8 +19,31 @@ sys.path.insert(0, str(ROOT))
 
 ATLAS = ROOT / "deploy" / "atlas"
 BLOCKED = ("gemmi", "pandas", "freesasa", "rdkit", "sklearn", "transformers", "torch")
-PAGES = ("/", "/campaign", "/pose", "/interactions", "/delta", "/benchmark",
-         "/about", "/healthz", "/api/state", "/api/pairs")
+# Every argument-free GET route is enumerated from the app itself rather than
+# listed here. The list that used to live at this name stopped covering
+# /design the day the design arm shipped, and nothing noticed, because a test
+# that checks a stale list goes on passing. This one grows with the app.
+#
+# MUST_INCLUDE is the opposite guard: it fails if a route disappears, which
+# enumeration alone cannot catch.
+MUST_INCLUDE = ("/", "/campaign", "/pose", "/interactions", "/delta",
+                "/benchmark", "/design", "/about", "/healthz",
+                "/api/state", "/api/pairs")
+
+
+def _argument_free_get_routes(app) -> list[str]:
+    """Routes a plain GET can reach, so the test needs no fixtures to call them.
+
+    Parameterised routes (/structure/<job_id>.cif and friends) need a real id
+    and are covered by test_structures_serve_from_the_atlas instead.
+    """
+    return sorted({
+        str(rule.rule)
+        for rule in app.url_map.iter_rules()
+        if not rule.arguments
+        and rule.endpoint != "static"
+        and "GET" in (rule.methods or ())
+    })
 
 
 class _Blocker:
@@ -51,8 +74,13 @@ def test_every_page_serves_without_the_curation_stack(droplet_like):
     from nobble.app import create_app
 
     app = create_app()
+    routes = _argument_free_get_routes(app)
+
+    missing = [path for path in MUST_INCLUDE if path not in routes]
+    assert not missing, f"route(s) gone from the app: {missing}"
+
     with app.test_client() as client:
-        for path in PAGES:
+        for path in routes:
             response = client.get(path)
             assert response.status_code == 200, f"{path} returned {response.status_code}"
 

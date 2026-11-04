@@ -164,7 +164,7 @@ QC: `npx node qc/qc.mjs` with the app running.
   the certificate is issued to `nobble.mdeller.com` (not the ALPHABETTI
   certificate that was being presented before), it verifies cleanly and runs
   to 2027-02-01, and port 80 returns a 301 to HTTPS. `deploy/deploy.sh`
-  re-checks all eight routes on every deploy and refuses to report success
+  re-checks all nine routes on every deploy and refuses to report success
   unless each returns 200.
 - **G4 Publish**: closed, granted and used. `github.com/bellcheddar/NOBBLE`
   is public. PROTAC-DB SMILES were removed from the history before the first
