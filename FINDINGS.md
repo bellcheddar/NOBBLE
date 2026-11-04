@@ -1860,3 +1860,50 @@ A same-length substitution is covered separately, because a length
 comparison alone would miss a different protein of exactly the same size,
 which is the one case where the error message has to say something other
 than a count.
+
+## F41. A construct boundary chosen by someone else's list order
+
+CLAUDE.md: construct boundaries come from InterPro named entries, never
+hardcoded ranges. The lookup did exactly that, and then resolved a
+question the lookup cannot answer on its own.
+
+FEM1B carries IPR036770, the ankyrin repeat superfamily, twice: residues
+5 to 301, and again 424 to 610. `domain_by_accession` returned whichever
+record InterPro listed first. So "the ankyrin domain of FEM1B" meant 297
+residues or 187 residues depending on an ordering nobody in this project
+controls, and had that ordering changed, the construct would have become a
+different region of the protein with nothing failing. No error, no
+warning: a ligase folded against the wrong half of itself, and a Tier B
+arm built on it.
+
+Of the twelve construct segments, FEM1B's is the only ambiguous one today.
+Three other proteins carry repeated entries that no construct uses: DDB1's
+three beta propellers share one CATH superfamily, KEAP1 has six Kelch
+repeats and FEM1B eight ankyrin repeats under their own accessions. Any of
+those becoming a construct boundary would have inherited the same
+behaviour.
+
+The resolution it happened to produce was the right one. The segment is
+labelled "Ankyrin repeats, N-terminal region" and 5-301 is the N-terminal
+region, so the construct was correct and correct by accident of ordering.
+
+Now `domains()` returns records sorted by position, so an occurrence index
+means something stable, and `domain_by_accession` raises `AmbiguousEntry`
+naming both ranges unless the caller says which it means. FEM1B's segment
+declares occurrence 0 with the reason beside it. Every construct resolves
+to exactly the range it did before: nothing moved, the choice is simply
+now written down.
+
+### The reasoning was already in the file, one level down
+
+`domains()` takes a multi-fragment location's extent with `min` and `max`
+rather than first and last, and the comment says why: "Relying on that
+would be relying on an undocumented property of someone else's API, and
+getting it wrong moves a construct boundary without anything failing."
+That is this finding, stated exactly, about fragments within a location.
+It had not been applied to which location among several.
+
+Which is the most useful thing here. The hazard was understood, written
+down, and fixed at one level by someone who did not notice the same shape
+one level up. A sweep built from the comment would have found it; reading
+the comment and agreeing with it did not.

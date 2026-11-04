@@ -17,6 +17,10 @@ URL = "https://www.ebi.ac.uk/interpro/api/entry/all/protein/uniprot/{acc}/?page_
 KEEP_TYPES = {"domain", "family", "homologous_superfamily"}
 
 
+class AmbiguousEntry(KeyError):
+    """An entry annotated at more than one place, with no occurrence given."""
+
+
 def _fetch(accession: str) -> dict:
     cached = CACHE / f"{accession}.json"
     if cached.exists():
@@ -65,17 +69,53 @@ def domains(accession: str) -> list[dict]:
                         "length": end - start + 1,
                     }
                 )
+    # Deterministic order, for the same reason the fragments above are taken
+    # by min and max rather than by position: an entry can be annotated at
+    # several places on one protein, and which one a caller gets should not
+    # depend on the order InterPro happened to list them. FEM1B carries the
+    # ankyrin superfamily twice, at 5-301 and at 424-610.
+    records.sort(key=lambda record: (record["start"], record["end"],
+                                     record["accession"] or ""))
     return records
 
 
-def domain_by_accession(accession: str, entry: str) -> dict:
+def domain_by_accession(accession: str, entry: str,
+                        occurrence: int | None = None) -> dict:
     """One named InterPro or member-database entry, by its accession.
 
     Named entries rather than "the longest domain" because which domain binds
     the substrate is science knowledge; where that domain starts and ends is a
     lookup, and only the lookup belongs in the code.
+
+    An entry can be annotated at several places on one protein, and then the
+    lookup alone does not answer the question. FEM1B carries IPR036770, the
+    ankyrin repeat superfamily, at 5-301 and again at 424-610, so asking for
+    "the ankyrin domain" of FEM1B has two answers. This used to return
+    whichever InterPro listed first, which is both the wrong 187 or 297
+    residues depending on an ordering nobody controls, and a boundary that
+    could move without anything failing (F41).
+
+    So an ambiguous entry raises unless the caller says which occurrence it
+    means, counted from the N-terminus. Which one is the substrate-binding
+    region is science knowledge, like the entry itself, and belongs in the
+    construct rather than here.
     """
-    for record in domains(accession):
-        if record["accession"] == entry:
-            return record
-    raise KeyError(f"{entry} not annotated on {accession}")
+    matches = [record for record in domains(accession)
+               if record["accession"] == entry]
+    if not matches:
+        raise KeyError(f"{entry} not annotated on {accession}")
+    if len(matches) == 1:
+        return matches[0]
+    if occurrence is None:
+        places = ", ".join(f"{m['start']}-{m['end']}" for m in matches)
+        raise AmbiguousEntry(
+            f"{entry} is annotated {len(matches)} times on {accession} "
+            f"({places}): say which occurrence the construct means"
+        )
+    try:
+        return matches[occurrence]
+    except IndexError:
+        raise KeyError(
+            f"{entry} is annotated {len(matches)} times on {accession}, so "
+            f"occurrence {occurrence} does not exist"
+        ) from None

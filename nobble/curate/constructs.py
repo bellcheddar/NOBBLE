@@ -29,11 +29,19 @@ class Segment:
     label: str
     interpro_entry: str | None      # None means the whole canonical sequence
     note: str = ""
+    # Which annotation of that entry, counted from the N-terminus, when the
+    # entry appears more than once on the protein. FEM1B carries the ankyrin
+    # superfamily twice and the lookup alone cannot say which region binds
+    # the substrate (F41). Left None for an unambiguous entry, and the lookup
+    # refuses rather than guessing if one ever becomes ambiguous.
+    interpro_occurrence: int | None = None
 
     def range(self) -> tuple[int, int]:
         if self.interpro_entry is None:
             return 1, len(numbering.canonical_sequence(self.accession))
-        record = interpro.domain_by_accession(self.accession, self.interpro_entry)
+        record = interpro.domain_by_accession(
+            self.accession, self.interpro_entry, self.interpro_occurrence
+        )
         return record["start"], record["end"]
 
     def sequence(self) -> str:
@@ -186,7 +194,11 @@ CONSTRUCTS: dict[str, Construct] = {
         segments=(
             Segment("Q9UK73", "Ankyrin repeats, N-terminal region", FEM1B_ANK,
                     "Spec 1.1 names a TPR domain; InterPro annotates ankyrin "
-                    "repeats and no TPR on Q9UK73 (D-NOB-014)"),
+                    "repeats and no TPR on Q9UK73 (D-NOB-014). The superfamily "
+                    "is annotated twice, 5-301 and 424-610; the N-terminal "
+                    "region is the substrate-binding one, declared here rather "
+                    "than taken from InterPro's ordering (F41)",
+                    interpro_occurrence=0),
         ),
         rationale="Substrate-binding domain alone, per spec 1.1",
     ),
