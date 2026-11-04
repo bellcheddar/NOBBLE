@@ -49,6 +49,21 @@ def plddt_profile(accession: str) -> tuple[float, ...]:
     values = []
     for chain in structure[0]:
         for residue in chain:
+            # CA preferred, and it makes no difference on AlphaFold data.
+            # Measured rather than assumed, because the mutation sweep could
+            # not catch removing this and I went looking for the test that
+            # was missing (F155): across 200 cached models and 106,983
+            # residues, no residue has atoms that disagree about b_iso, every
+            # residue has a CA, and no residue has the CA first. AlphaFold
+            # writes one per-residue confidence into every atom's B-factor,
+            # so `atoms[0].b_iso` is the same number either way and the `or
+            # list(residue)` fallback never fires.
+            #
+            # Kept because it states which atom the number is meant to come
+            # from, and a model that stored genuine per-atom confidence would
+            # make the difference real. Not claimed as load-bearing: the
+            # invariant it rests on is pinned by a test, so if AFDB ever
+            # ships per-atom values this stops being a no-op and we are told.
             atoms = [atom for atom in residue if atom.name == "CA"] or list(residue)
             if atoms:
                 values.append(atoms[0].b_iso)

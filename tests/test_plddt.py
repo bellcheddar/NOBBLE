@@ -75,3 +75,60 @@ def test_an_unreadable_or_absent_model_reports_rather_than_raises(monkeypatch):
     broken = plddt.summary("BROKEN")
     assert broken["status"].startswith("unreadable: OSError")
     assert broken["best_window_mean_plddt"] is None
+
+
+def test_alphafold_writes_one_confidence_per_residue():
+    """The invariant the CA preference rests on (F155).
+
+    `plddt_profile` takes the CA's B-factor, falling back to the residue's
+    first atom. On AlphaFold data those are the same number, because one
+    per-residue confidence is written into every atom, so removing the
+    preference changes nothing and the mutation sweep could not catch it.
+
+    Pinned rather than argued. If AFDB ever ships genuine per-atom
+    confidence this fails, which is the moment the preference stops being a
+    no-op and starts deciding the profile.
+
+    Sampled with a fixed seed: 20,279 models is too many to read in a test
+    and one is too few to call an invariant.
+    """
+    import random
+
+    import gemmi
+
+    from nobble.curate import plddt as plddt_module
+
+    models = sorted(plddt_module.AFDB_CACHE.glob("afdb_cif_*.bin"))
+    if len(models) < 5:
+        pytest.skip("no cached AlphaFold models on this checkout")
+    random.Random(20261104).shuffle(models)
+    residues = disagreeing = without_ca = ca_first = 0
+    for path in models[:12]:
+        try:
+            structure = gemmi.read_structure(
+                str(path), format=gemmi.CoorFormat.Mmcif)
+        except Exception:                               # noqa: BLE001
+            continue
+        for chain in structure[0]:
+            for residue in chain:
+                residues += 1
+                names = [atom.name for atom in residue]
+                if "CA" not in names:
+                    without_ca += 1
+                elif names[0] == "CA":
+                    ca_first += 1
+                if len({round(atom.b_iso, 6) for atom in residue}) > 1:
+                    disagreeing += 1
+    assert residues > 1000, f"only {residues} residues sampled"
+    assert disagreeing == 0, (
+        f"{disagreeing} of {residues} residues have atoms that disagree "
+        "about pLDDT, so which atom the profile reads now decides the number"
+    )
+    # The other two halves of why it is a no-op: the fallback never fires,
+    # and the preference always has something to prefer.
+    assert without_ca == 0, f"{without_ca} residues have no CA atom"
+    assert ca_first == 0, (
+        f"{ca_first} residues already have CA first, which is not a problem "
+        "and does mean this test no longer describes the data it was written "
+        "against"
+    )

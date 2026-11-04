@@ -65,9 +65,20 @@ MUTATIONS: list[tuple[str, str, str, str]] = [
      "    stage = list(pool)"),
     ("nobble/curate/plddt.py", "the best pLDDT window becomes the first window",
      "            if running > best_total:", "            if False:"),
-    ("nobble/curate/plddt.py", "CA atoms stop being preferred for the profile",
-     '            atoms = [atom for atom in residue if atom.name == "CA"] or list(residue)',
-     "            atoms = list(residue)"),
+    # Was: "CA atoms stop being preferred for the profile", which no test
+    # caught and none can. AlphaFold writes one per-residue confidence into
+    # every atom's B-factor, so taking the CA and taking the first atom are
+    # the same number: measured over 106,983 residues in 200 cached models
+    # (F155). A mutation with no observable effect is a false positive in
+    # this list, and leaving it in trains the reader to ignore a miss.
+    #
+    # Replaced by the thing the same function's docstring says went wrong:
+    # the format argument. Without it gemmi infers from the .bin suffix
+    # BINMAN's fetcher uses and raises "Unknown format", which once turned
+    # 20,279 usable models into a uniform "no model" answer.
+    ("nobble/curate/plddt.py", "the model format is left to be inferred",
+     "    structure = gemmi.read_structure(str(path), format=gemmi.CoorFormat.Mmcif)",
+     "    structure = gemmi.read_structure(str(path))"),
     ("nobble/curate/library.py", "the diversity reduction's selection is ignored",
      "    selected = [by_id[pid] for pid in reduction.selected_ids if pid in by_id]",
      "    selected = list(by_id.values())"),
