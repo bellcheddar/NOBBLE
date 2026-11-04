@@ -4277,3 +4277,37 @@ recorded plan read `pair_id` and `substrate.gene`, neither of which exists:
 the gene and the E3 are top level and the substrate carries the accession,
 entry, range, length, mode and reason. Printing the keys took one command
 and I wrote the guess first, which is the seventh time today.
+
+## F95. A sweep that found nothing, and why it is kept
+
+Seven times today I read a field that does not exist: `preview.cost` as a
+top-level key, `row["plip_notes"]`, `pair_id` and `substrate.gene` on a
+plan entry, and others. Each returned None and None read as a finding until
+I checked. The habit is mine, but the same mistake in production code is
+decidable, so I swept for it.
+
+The general form is not decidable. 94 string keys are read in `nobble/` and
+never written there, and almost all are legitimate: TOML section names,
+BINMAN store columns, an environment variable. A sweep reporting those is a
+list to ignore, which is worse than no sweep.
+
+The configured subset is decidable, because the file exists and can be
+opened. Every `paths.thresholds()` and `paths.tuning()` chain in the
+project, 89 of them, resolves to a key the TOML actually holds.
+
+So this found nothing and is kept, which needs a reason rather than an
+instinct. Read with `["key"]` a missing key raises on the first call, which
+is loud and gets fixed in a minute. Read with `.get("key")` it returns None
+silently, and None then flows into whatever the value was for: a threshold
+that is None compares false against everything, a scale that is None raises
+somewhere unrelated, a device that is None is handed to Boltz as a string.
+Both forms are swept, because the point is that the key is real rather than
+which form reads it.
+
+It is also the other direction of F91. That found `tuning.campaign.seeds`,
+a key the file held and nothing read. This checks for a key Python reads
+and the file might not hold. The two together are the pair of questions
+worth asking of a configuration, and only one of them had an answer.
+
+Mutation-checked both ways: a typo'd key read by index and the same typo
+read through `.get` are each caught.
