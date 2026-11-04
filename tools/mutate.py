@@ -77,22 +77,26 @@ def _dirty_files() -> set[str]:
             if line and not line.startswith("??")}
 
 
-def _check(paths: set[str] | None = None) -> tuple[bool, str]:
-    """Whether the files this tool may have written are clean.
+def _check(paths: set[str]) -> tuple[bool, str]:
+    """Whether the files this sweep touches are clean.
 
-    Scoped to `paths` on the way out rather than looking at the whole tree.
-    The first version compared everything, so an unrelated edit made
-    somewhere else during the sweep, a PROGRESS.md note in the case that
-    found this, was reported as "the sweep left a mutation behind". A
-    false alarm about the thing the check exists to catch is worse than no
-    check: it trains you to ignore it.
+    Scoped on both sides, and it took three goes to get there.
 
-    On the way in the check is deliberately unscoped, because a leftover
-    from a previous run could be in any file and should stop this one.
+    No check at all let a stopped run leave a mutation in the tree (F45).
+    An unscoped exit check then reported an unrelated edit made during the
+    sweep, a PROGRESS.md note, as "the sweep left a mutation behind", and a
+    false alarm about the thing a check exists to catch is worse than no
+    check. An unscoped entry check then refused to start because two new
+    test files were staged, which were never at risk.
+
+    The reason the scope is right is that this tool restores from an
+    in-memory copy of the file rather than from git, so an uncommitted
+    change elsewhere is not in danger. What is dangerous is an uncommitted
+    change in a file this sweep is about to read as its "original": if a
+    previous run left a mutation there, this run would restore to it and
+    carry it forward.
     """
-    dirty = _dirty_files()
-    if paths is not None:
-        dirty &= paths
+    dirty = _dirty_files() & paths
     return (not dirty), "\n".join(sorted(dirty))
 
 
@@ -113,10 +117,12 @@ def main(argv: list[str] | None = None) -> int:
         print("no mutation matched", file=sys.stderr)
         return 2
 
-    clean, dirty = _check()
+    touched = {relative for relative, _l, _f, _r in chosen}
+    clean, dirty = _check(touched)
     if not clean:
-        print("refusing to start: the working tree has uncommitted changes to "
-              "tracked files, and this tool restores by rewriting them.\n"
+        print("refusing to start: these files have uncommitted changes and "
+              "this sweep is about to read them as its baseline, so a "
+              "mutation left by an earlier run would be carried forward.\n"
               f"{dirty}", file=sys.stderr)
         return 2
 
@@ -125,7 +131,6 @@ def main(argv: list[str] | None = None) -> int:
 
     global _active
     missed = 0
-    touched = {relative for relative, _l, _f, _r in chosen}
     try:
         for relative, label, find, replace in chosen:
             path = ROOT / relative

@@ -2131,3 +2131,67 @@ Caught by checking `git status` immediately rather than assuming the
 rows, yesterday's mtime. The lesson is the obvious one in hindsight. A
 tool that mutates tracked files is safe only while it completes, and
 "stop it before the risky window" has a risky window of its own.
+
+## F46. The frozen curation, and two checks of mine that checked nothing
+
+The fifth sweep caught one of five. All four misses are curation code, and
+all four decide which pairs enter a campaign: the mandatory Tier A
+ligases, Tier B's pocket-druggability floor, the pLDDT profile's choice of
+atoms, and whether the diversity reduction's selection is used at all.
+
+They are unexercised for a defensible reason. The selection is frozen and
+committed, so nothing reruns the code that produced it, and rerunning it
+in a test would need an ESM checkpoint and BINMAN's triage table. The
+consequence is that the rules behind the campaign's composition have no
+test, so a future rerun could produce a different library with nothing to
+say so.
+
+So the artefacts are now checked against the rules. The worst of the four
+misses is the clearest: with the reduction's selection ignored,
+`library.jsonl` would hold all 25,519 candidates rather than 158, and the
+campaign would be 383,000 jobs instead of 2,360. The manifest must equal
+its own recorded selection, the reduction must have reduced, every
+mandatory source must have survived it, and being over budget must be
+recorded rather than absorbed, which it is: 158 against a budget of 156,
+with a note saying the controls are not trimmed to hit a number.
+
+### The pLDDT floor is not applied to the column named after it
+
+My first version of the Tier B test asserted the floor against
+`mean_plddt` and reported seven of fifteen frozen ligases below it. The
+criterion is `best_window_mean_plddt`, where all fifteen sit between 85.8
+and 98.1. `mean_plddt` is the whole-model mean, 66.8 to 90.5, and
+deliberately not the criterion: a whole-model mean punishes a protein with
+one tight domain and long disordered linkers, which is the shape Tier B
+exists to find.
+
+Both columns are in the table and the threshold is called
+`mean_plddt_min`, which is what invited it. The distinction is now pinned
+from both sides, so a selection that switched to the whole-model mean
+fails rather than quietly rejecting half the tier.
+
+### A reproducibility canary, and a test that was serving the wrong campaign
+
+Every campaign runs the benchmark panel first, with the same constructs,
+peptides, ligands and seeds. Boltz is deterministic, so a job id in two
+campaigns must carry the same numbers in both: the main campaign's first
+nine shared jobs reproduced the benchmark campaign's to every recorded
+decimal. That overlap is now a test, and it is a canary for the whole
+input path. A moved construct boundary (F41), a lost cached MSA (F39), a
+dropped structural zinc, a pocket constraint on an unconstrained arm:
+none of those raise, and every one changes the prediction for a job whose
+id did not change.
+
+Checking the app against today's scoring schema turned up something
+smaller and more embarrassing. `create_app` calls `data.configure(campaign)`
+itself, so a `configure()` before it is silently undone and the app falls
+back to `NOBBLE_CAMPAIGN`. Two tests I wrote earlier today did exactly
+that, and were working through the environment variable while appearing to
+work through the configure call. Both now pass the campaign to
+`create_app`, and I proved it by pointing the environment variable at a
+nonexistent path: they still pass, where before they would have served
+whatever that resolved to.
+
+All fourteen routes render today's schema against today's records, which
+was the thing worth knowing: the chain rebuilds the atlas from this
+scoring code in about thirty-seven hours.

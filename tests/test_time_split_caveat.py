@@ -34,8 +34,12 @@ def _hints(monkeypatch, time_split):
 
     # Without this the recovery panel does not render at all, and the test
     # would pass by finding no caveat because there was no figure.
+    # Passed to create_app rather than configured beforehand: create_app
+    # calls data.configure(campaign) itself, so a configure() before it is
+    # silently undone and the app falls back to the environment. These tests
+    # were working through NOBBLE_CAMPAIGN while appearing to work through
+    # the configure call.
     monkeypatch.setenv("NOBBLE_CAMPAIGN", str(ATLAS))
-    routes.data.configure(str(ATLAS))
 
     real = routes.data.precomputed
 
@@ -47,7 +51,7 @@ def _hints(monkeypatch, time_split):
     monkeypatch.setattr(routes.data, "precomputed", fake)
 
     from nobble.app import create_app
-    app = create_app()
+    app = create_app(str(ATLAS))
     with app.test_client() as client:
         response = client.get("/benchmark")
         assert response.status_code == 200
@@ -100,10 +104,14 @@ def test_the_benchmark_page_stays_inside_the_prose_budget(monkeypatch):
     and pipeline-generated status text."""
     from nobble.app import create_app, routes
 
+    # Passed to create_app rather than configured beforehand: create_app
+    # calls data.configure(campaign) itself, so a configure() before it is
+    # silently undone and the app falls back to the environment. These tests
+    # were working through NOBBLE_CAMPAIGN while appearing to work through
+    # the configure call.
     monkeypatch.setenv("NOBBLE_CAMPAIGN", str(ATLAS))
-    routes.data.configure(str(ATLAS))
 
-    app = create_app()
+    app = create_app(str(ATLAS))
     with app.test_client() as client:
         body = client.get("/benchmark").get_data(as_text=True)
 

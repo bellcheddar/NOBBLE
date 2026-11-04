@@ -38,12 +38,16 @@ def _render(monkeypatch, page, scores):
     # did nothing in the full suite.
     from nobble.app import routes
 
+    # Passed to create_app rather than configured beforehand: create_app
+    # calls data.configure(campaign) itself, so a configure() before it is
+    # silently undone and the app falls back to the environment. These tests
+    # were working through NOBBLE_CAMPAIGN while appearing to work through
+    # the configure call.
     monkeypatch.setenv("NOBBLE_CAMPAIGN", str(ATLAS))
-    routes.data.configure(str(ATLAS))
     monkeypatch.setattr(routes.data, "scores", lambda: scores)
 
     from nobble.app import create_app
-    app = create_app()
+    app = create_app(str(ATLAS))
     with app.test_client() as client:
         response = client.get(page)
         assert response.status_code == 200, (page, response.status_code)
