@@ -132,3 +132,43 @@ def test_alphafold_writes_one_confidence_per_residue():
         "and does mean this test no longer describes the data it was written "
         "against"
     )
+
+
+def test_a_cached_model_actually_reads(tmp_path):
+    """The failure the profile's docstring is about (F155).
+
+    BINMAN's fetcher stores every cached body under a `.bin` suffix, and
+    gemmi infers format from the extension: without the explicit
+    `CoorFormat.Mmcif` it raises "Unknown format" on a perfectly good mmCIF.
+    That was caught silently once and turned 20,279 usable models into a
+    uniform "no model" answer.
+
+    The mutation sweep found no test behind it either, which is how this
+    came to be written: a test that reads a model with gemmi directly, as
+    the invariant check above does, passes the format itself and so cannot
+    see the bug. This goes through `plddt_profile`.
+    """
+    from nobble.curate import plddt as plddt_module
+
+    models = sorted(plddt_module.AFDB_CACHE.glob("afdb_cif_*.bin"))
+    if not models:
+        pytest.skip("no cached AlphaFold models on this checkout")
+    accession = models[0].name.removeprefix("afdb_cif_").removesuffix(".bin")
+
+    profile = plddt_module.plddt_profile(accession)
+    assert profile, (
+        f"{accession} is cached and read as no residues at all, which is "
+        "what an inferred format does to a .bin body"
+    )
+    assert all(0.0 <= value <= 100.0 for value in profile), (
+        "pLDDT is a percentage; these are not in range, so the B-factor "
+        "column is not what was read"
+    )
+
+    # And through the caller, which swallows the exception into a status
+    # rather than raising: the uniform "no model" answer was that status,
+    # reported 20,279 times.
+    outcome = plddt_module.summary(accession)
+    assert outcome["status"] != "unreadable", outcome
+    assert outcome["residues"] == len(profile)
+    assert outcome["mean_plddt"] is not None
