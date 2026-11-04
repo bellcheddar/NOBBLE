@@ -168,3 +168,52 @@ def test_the_panel_uses_depot_tokens_only():
     literals = re.findall(r"#[0-9A-Fa-f]{3,8}\b", block)
     assert not literals, f"literal colour(s) in the ask panel styles: {literals}"
     assert "var(--" in block
+
+
+def test_the_page_asks_the_real_availability_check(monkeypatch):
+    """The wiring, not the panel (F40).
+
+    Every test above substitutes `_lm_available`, so making it return True
+    unconditionally passed all of them: the panel was covered and the
+    question it depends on was not. This drives the real function and the
+    real page, and the only thing faked is the model itself.
+    """
+    import types
+
+    from nobble.app import create_app, lm, routes
+
+    if not ATLAS.exists():
+        pytest.skip("no published atlas")
+
+    monkeypatch.delenv(lm.LM_URL_VARIABLE, raising=False)
+    app = create_app(str(ATLAS))
+    with app.test_client() as client:
+        body = client.get("/campaign").get_data(as_text=True)
+    assert "No model is configured" in body
+    assert 'id="ask-form"' not in body
+
+    monkeypatch.setenv(lm.LM_URL_VARIABLE, "http://127.0.0.1:9/v1")
+    fake = types.SimpleNamespace(enabled=lambda: True)
+    monkeypatch.setitem(sys.modules, "app", types.SimpleNamespace(lm=fake))
+    monkeypatch.setitem(sys.modules, "app.lm", fake)
+    assert routes._lm_available() is True
+
+    app = create_app(str(ATLAS))
+    with app.test_client() as client:
+        body = client.get("/campaign").get_data(as_text=True)
+    assert 'id="ask-form"' in body
+    assert "No model is configured" not in body
+
+
+def test_an_unreachable_model_is_not_offered(monkeypatch):
+    """Configured is not reachable. If BINMAN says it is not enabled, the
+    panel must not invite a question it cannot answer."""
+    import types
+
+    from nobble.app import lm, routes
+
+    monkeypatch.setenv(lm.LM_URL_VARIABLE, "http://127.0.0.1:9/v1")
+    fake = types.SimpleNamespace(enabled=lambda: False)
+    monkeypatch.setitem(sys.modules, "app", types.SimpleNamespace(lm=fake))
+    monkeypatch.setitem(sys.modules, "app.lm", fake)
+    assert routes._lm_available() is False
