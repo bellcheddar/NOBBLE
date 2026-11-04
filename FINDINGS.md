@@ -2944,3 +2944,47 @@ then; this was the one left, and the reason it was left is that it cannot
 run until the design campaign produces results, which is queued behind
 fifty hours of main campaign. A path that cannot be exercised for two days
 is exactly the one worth covering with fixtures.
+
+## F64. Verified rather than fixed: the template edits and the new config key
+
+Four templates were edited across F55 and the two findings before it, and
+the local app had been serving them from a process started before those
+edits. With `debug=False` Jinja does not reload, so the running instance was
+compiled from the old files: a QC pass against it would have reported on
+templates that no longer exist. Restarted first, then checked.
+
+`node qc/qc.mjs`: 14 pages captured, 0 non-200, 0 console errors, 0 serious
+axe violations. The edits are clean end to end, which the template tests
+could not establish on their own: they run the inline helpers under node and
+the routes through Flask's test client, and neither sees a console error or
+an accessibility regression.
+
+F55 also introduced a deployment hazard worth checking rather than assuming.
+`routes.py` now reads `scoring.significance_alpha`, so a droplet without the
+updated `config/thresholds.toml` would raise `KeyError` on `/benchmark`. The
+app-code rsync excludes `campaigns/`, `logs/`, `qc/`, the MSA and cache
+directories and the atlas, and does not exclude `config/`, so the key
+travels. Deployed to confirm it in the environment that matters: the droplet
+has neither gemmi nor pandas nor BINMAN, which is why spec Phase 4 requires
+a precomputed atlas and why two routes once returned 500 there while working
+locally.
+
+All nine routes answer 200 on the droplet, and the live page carries
+`const RECOVERED_A = 5.0` from the configured breakpoints and renders its
+Pearson stat from the configured alpha. HTTPS answers 200 and port 80 still
+returns 301.
+
+Deployed now rather than at the end of the chain deliberately. The chain
+deploys last, so an environment-specific break in a change made today would
+have surfaced after fifty hours of campaign rather than within the hour.
+The published atlas is unchanged and still the benchmark panel's, because
+the main campaign's atlas refuses while F47's correction is pending, so this
+shipped the code fixes and nothing else.
+
+One thing this did not find, recorded because the error was mine and the
+near-miss is instructive: a grep over the served page for `RECOVERED_A`
+came back empty and briefly looked like the template had stopped injecting
+it. The pattern was an alternation with `stat--good`, and `head -4` consumed
+four class matches before reaching the constant. The template was correct
+and the check was wrong, which is the same shape as the string checks F50
+retired, arriving this time in a shell pipeline.
