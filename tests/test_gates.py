@@ -43,3 +43,25 @@ def test_a_floor_of_zero_never_opens_the_gate(monkeypatch):
     monkeypatch.setattr(paths, "tuning", lambda: {"gates": {}})
     monkeypatch.setattr(runner, "free_disk_gb", lambda path=None: 0.5)
     assert runner.disk_gate()["open"] is False
+
+
+def test_the_rmsd_curve_reads_its_breakpoints_from_config():
+    """CLAUDE.md: thresholds come from thresholds.toml, never hard-coded in
+    Python. This one lived in a default argument while the configured value
+    went unread, so editing the config changed nothing."""
+    from nobble.score.poses import success_rate_curve
+
+    configured = paths.thresholds()["scoring"]["rmsd_breakpoints"]
+    curve = success_rate_curve([0.5, 1.5, 2.5, 4.0, 9.0])
+    for point in configured:
+        assert f"within_{point}A" in curve, curve.keys()
+
+
+def test_changing_the_configured_breakpoints_changes_the_curve(monkeypatch):
+    from nobble.score import poses
+
+    monkeypatch.setattr(poses.paths, "thresholds",
+                        lambda: {"scoring": {"rmsd_breakpoints": [0.5, 8.0]}})
+    curve = poses.success_rate_curve([0.4, 6.0, 20.0])
+    assert set(curve) == {"within_0.5A", "within_8.0A", "n", "median_rmsd"}
+    assert curve["within_0.5A"] == round(1 / 3, 4)

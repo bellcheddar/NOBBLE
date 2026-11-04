@@ -410,3 +410,12 @@
   reported a floor of 0.0, a gate that can never open, which is why the test
   asserts the floor is read and is positive. Headroom: 543 GB free, about
   7 GB needed. 104 tests pass.
+- 2026-11-04T11:50Z Swept the config for other thresholds that were set but
+  never read, the pattern G5 had. Of 44 keys, two: rmsd_breakpoints and
+  tumour_enrichment_above_median. The first was a real violation of the
+  project rule that no cutoff is hard-coded in Python: success_rate_curve
+  carried the breakpoints in a default argument while the configured value
+  went unread, so editing thresholds.toml changed nothing. Now read from
+  config, with a test that changing the config changes the curve. The second
+  is genuinely dead (D-NOB-009: the column is 0 for all 650 rows) and is now
+  annotated as not applied rather than looking live. 106 tests pass.

@@ -24,6 +24,7 @@ from dataclasses import asdict, dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
+from nobble import paths
 from nobble.curate import constructs as C
 from nobble.curate import numbering, structures
 
@@ -347,8 +348,18 @@ def recovery_against_crystal(
     return result
 
 
-def success_rate_curve(values: list[float], breakpoints=(1.0, 2.0, 3.0, 5.0)) -> dict:
-    """Fraction of poses within each RMSD breakpoint (spec 5.1)."""
+def success_rate_curve(values: list[float], breakpoints=None) -> dict:
+    """Fraction of poses within each RMSD breakpoint (spec 5.1).
+
+    Breakpoints come from `thresholds.toml`, not from this signature. The
+    project rule is that no cutoff is hard-coded in Python, and this one had
+    been sitting in the default argument while the configured value went
+    unread: changing the config would have changed nothing.
+    """
+    if breakpoints is None:
+        breakpoints = tuple(
+            paths.thresholds()["scoring"].get("rmsd_breakpoints", (1.0, 2.0, 3.0, 5.0))
+        )
     present = [value for value in values if value is not None]
     if not present:
         return {f"within_{point}A": None for point in breakpoints} | {"n": 0}

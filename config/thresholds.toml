@@ -4,7 +4,11 @@
 # Spec 3.3 selection function.
 pocket_druggability_min = 0.85
 mean_plddt_min = 80.0
-tumour_enrichment_above_median = true
+# Spec 3.3's fourth Tier B filter. Left here for traceability and read by
+# nothing: BINMAN's ligase.tumour_enriched is 0 for all 650 rows, so the
+# filter is unpopulated rather than selective, and applying it literally
+# emptied the funnel. See D-NOB-009.
+tumour_enrichment_above_median = true  # not applied
 take_top = 15
 min_ligases_for_gate = 10
 
