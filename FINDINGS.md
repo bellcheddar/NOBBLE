@@ -7665,3 +7665,32 @@ covered the partial case and not the empty one, and now this. In each case
 the check passed, which is what made the narrowness invisible, and in each
 case the thing that found it was running the check against a state nobody
 had put it in before.
+
+## F167. The handover's figures were typed, so they were already wrong
+
+PROGRESS.md's "Waiting on Marc" table said "G4 Publish: 160 commits
+unpushed". It is 202. The number was right when written and this session
+commits often, so it was stale within the hour and will be stale again by
+the time anyone reads it.
+
+The same row says `origin/main` still carries 100 of the absolute project
+paths F128 removed, which is the reason a push does not fix that on its own.
+That one is 107.
+
+Neither figure is worth a reader's trust unless something checks it, and
+both are one git command away: `rev-list --count origin/main..HEAD` and
+`git grep -c` against the published atlas on the branch. Both are measured
+now and compared against what the table says, so the table is either right
+or the suite fails.
+
+This is the same defect as F136, where the progress report quoted a library
+reduction from an earlier build, and F157, where the README called a
+finished comparison provisional. Three instances is enough to state the
+rule: a number in a document that is also available from a command should be
+checked against the command, and the ones that are not will be wrong in
+whichever direction flatters the state of the work.
+
+The third row, `bash deploy/enable_gzip.sh`, carries no figure and is
+unchanged. The script still passes a syntax check and references nothing
+altered since it was written, which I checked rather than assumed, because
+twenty-odd findings have landed between writing it and now.

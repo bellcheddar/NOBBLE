@@ -56,7 +56,7 @@ other phase continue.
 | Item | What is needed |
 |---|---|
 | **G1 Compute**: Tier B has no pairs | A decision: Tier B as a separate campaign, a larger `max_compute_hours`, or a GPU. Measured cost above |
-| **G4 Publish**: 160 commits unpushed | `git push origin main` was declined by the permission classifier. `origin/main` also still carries 100 of the absolute project paths F128 removed, which a push does not clear from history |
+| **G4 Publish**: 202 commits unpushed | `git push origin main` was declined by the permission classifier. `origin/main` also still carries 107 of the absolute project paths F128 removed, which a push does not clear from history. Both figures are measured by `tests/test_pending_items_are_current.py`, because a count typed into a handover is stale the next time anyone commits (F167) |
 | **F132**: static assets uncompressed | `bash deploy/enable_gzip.sh`. A direct ssh to the live vhost is declined to me, so the script is written to be read first. 10.1 MB to a first visitor, of which molstar is 5.1 and plotly 4.45 |
 
 ## Phase 1 gates: all passing
