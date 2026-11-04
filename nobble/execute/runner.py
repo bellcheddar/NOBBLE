@@ -28,6 +28,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from nobble import paths
+from nobble.numeric import finite
 
 TERMINAL_STATUSES = ("done",)
 RETRIES = 1
@@ -541,7 +542,19 @@ def write_throughput(campaign: Path) -> dict:
         return {"status": "no results yet"}
 
     records = paths.read_jsonl(results_path, tolerate_torn=True)
-    timed = [item for item in records if item.get("seconds") and item.get("tokens")]
+    # `finite`, not truthiness. A NaN is truthy, so `if item.get("seconds")`
+    # admits one, and a NaN rate makes `sorted()` leave the whole list
+    # unsorted: `rates[len(rates) // 2]` then returns the NaN or an arbitrary
+    # neighbour, and that median sizes the campaign and decides Gate G1.
+    # That is F74's defect in the idiom F76's sweep does not look for, which
+    # is the type check rather than the truthy guard.
+    #
+    # The truthy form also rejected a zero, which this keeps on purpose: a
+    # job recorded at zero seconds or zero tokens is not a measurement
+    # either (F130).
+    timed = [item for item in records
+             if finite(item.get("seconds")) and finite(item.get("tokens"))
+             and item["seconds"] > 0 and item["tokens"] > 0]
     if not timed:
         return {"status": "no timed results"}
 

@@ -25,6 +25,7 @@ import time
 from pathlib import Path
 
 from nobble import paths
+from nobble.numeric import finite
 from nobble.execute import runner
 
 TERMINAL = ("done",)
@@ -57,7 +58,7 @@ def _tokens_by_job(queue_path: Path) -> dict[str, int]:
             row = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if "job_id" in row and row.get("tokens"):
+        if "job_id" in row and finite(row.get("tokens")) and row["tokens"] > 0:
             tokens[row["job_id"]] = int(row["tokens"])
     return tokens
 
@@ -106,8 +107,14 @@ def stall_report(campaign: Path, tier: int = 1, now: float | None = None) -> dic
     rates = sorted(
         float(row["seconds"]) / float(row["tokens"])
         for row in records.values()
-        if row.get("status") in TERMINAL and row.get("seconds") and row.get("tokens")
+        if row.get("status") in TERMINAL
+        and finite(row.get("seconds")) and finite(row.get("tokens"))
+        and row["seconds"] > 0 and row["tokens"] > 0
     )
+    # Taken by index from a sorted list, so one non-finite rate above would
+    # leave the list unsorted and make this an arbitrary element rather than
+    # the middle one. `finite` rather than truthiness, because a NaN is truthy
+    # (F130).
     typical_rate = rates[len(rates) // 2] if rates else None
     multiple = float(paths.thresholds()["watchdog"]["overdue_multiple"])
     bound = hard_bound_seconds(tier)

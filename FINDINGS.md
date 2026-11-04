@@ -6015,3 +6015,48 @@ It is not shared code: BINMAN's opens a sqlite connection, BoltzMaker's fixes
 reason `wsgi.py` is already listed as allowed to differ. Recorded there with
 that reason. It is also F124's widening working within the hour: the check
 that could not see a renamed file now sees a new one the moment it lands.
+
+## F130. A NaN is truthy, which the numeric sweep does not look for
+
+F74 found that `isinstance(value, (int, float))` admits a NaN. F76 moved the
+rule into `nobble/numeric.py` and swept the fourteen places that had retyped
+it. That sweep looks for the type check.
+
+It does not look for a truthy guard asking the same question, and two
+modules used one on a measured duration.
+
+`write_throughput` filtered `if item.get("seconds") and item.get("tokens")`,
+then built `rates = sorted(seconds / tokens ...)` and took
+`rates[len(rates) // 2]`. A NaN is truthy, so it passes that filter, and one
+NaN in a list leaves `sorted()` with the whole list unsorted: the index then
+returns the NaN or an arbitrary neighbour rather than the median. That median
+sizes the campaign and feeds the projection Gate G1 is judged on.
+
+The watchdog's comparable-job filter did the same thing and takes its typical
+rate by the same index, which is the baseline its `overdue` signal is
+measured against.
+
+Neither is reachable from the runner. `seconds` is a difference of two
+`time.monotonic()` readings and `tokens` is an integer from the queue, so a
+NaN cannot arise. Both use `finite` now anyway, because ten lines from the
+throughput filter sits the `tier1_worst_seconds` added for F100, which
+already did: two rules for one question in adjacent code is precisely what
+F76 was about, and I wrote the second one myself this morning without
+noticing the first.
+
+The truthy form also rejected a zero, and that is kept deliberately: a job
+recorded at zero seconds or zero tokens is not a measurement either, so the
+guard is `finite(...) and value > 0` rather than `finite(...)` alone. A test
+holds both halves, because replacing a truthy check with a finiteness check
+silently admits zero if nobody looks.
+
+Verified behaviour-preserving on the real data: 100 benchmark jobs timed at
+a median of 0.4551 seconds per token, which is the figure the README quotes.
+
+**No sweep added, and that is a decision.** A general "truthiness standing in
+for finiteness" detector cannot tell `if rows:` from `if row.get("seconds"):`
+without knowing which fields are numeric, and F95 established the precedent:
+a sweep whose false positives outnumber its findings fifteen to two is not
+kept. The two instances are fixed, tested by name, and a test asserts that
+the numeric sweep still covers the type check and not this, so the note goes
+stale loudly if that changes.
