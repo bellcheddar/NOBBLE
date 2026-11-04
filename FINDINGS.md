@@ -4083,3 +4083,30 @@ The wiring test skipped on its first run, because it asked for the latest
 scored campaign and that is the main one, whose atlas build correctly
 refuses while F47's correction is pending. A wiring test that skips is what
 F40 is about, so it drives the benchmark panel instead.
+
+## F90. The fix sat where it was needed, not where it belonged
+
+F89 added a `configure` call to `build_atlas.py` immediately above the
+design report, which is the section that was wrong. That leaves every
+section built earlier, the benchmark panel and the About page, depending on
+not needing the data layer.
+
+Whether that is true was a question worth removing rather than answering.
+The call is at the top of `main()` now, where the campaign is resolved, so
+nothing is built before it.
+
+It is behaviour-preserving: 11,002 leaf values compared against the
+published atlas and none moved, with `benchmark.json` and `about.json`
+byte-identical. So those two sections genuinely did not need it, which is
+the answer I would have guessed, and guessing was the thing to avoid.
+
+The test checks position rather than presence. A `configure` call somewhere
+in the file is exactly what was true while the design report was still
+taking its fallback, because the call was below it. So the assertion is
+that every write into the bundle happens after the call, and that there is
+only one call, since two would make the order matter again.
+
+This is the third time today a fix has been placed at the symptom rather
+than at the rule: F74 guarded one of fourteen numeric type checks, F78
+guarded one of nine median sites, and F89 configured one of five sections.
+Each time the sweep that followed was worth more than the original fix.
