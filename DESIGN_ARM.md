@@ -87,6 +87,26 @@ Three decisions followed, beyond the scope above:
   parent is chosen from 158 scored pairs rather than the 7 that happened to
   exist when the arm was built.
 
+## A second signal, added after the benchmark showed its worth
+
+Design lift is a Delta-ipTM difference, and Delta-ipTM is a confidence
+number. F16 and F17 found that bridge formation, which asks only whether
+the glue touched both chains in the prediction, is informative and
+independent of any crystal: on the benchmark panel every failed bridge
+failed the same way, and giving substrates their whole domain took three
+pairs from 3/10 and 4/10 seeds to 10/10.
+
+A scan now reports it per variant, beside the lift rather than inside it:
+
+- **bridge lost** means the parent bridged and the variant did not, in any
+  seed. The substitution stopped the glue reaching both chains.
+- a **large negative lift** means the interface got worse.
+
+Both can be true at once, and they are not the same claim. A variant that
+loses the bridge has broken the ternary; one with a poor lift has detuned
+it. Ranking on a single number would merge the two, so `scan_profile`
+lists bridge-breaking positions separately.
+
 ## Symmetry, again
 
 A variant and its parent must be run under identical conditions: same

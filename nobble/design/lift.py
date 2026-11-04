@@ -44,6 +44,14 @@ class Lift:
     variant_delta_iptm: float | None = None
     parent_delta_iptm: float | None = None
     lift: float | None = None
+    # Bridge formation beside the lift, not inside it. F16 and F17 showed
+    # this is informative and independent: it needs no crystal, and it
+    # separates "the substitution weakened the interface" from "the
+    # substitution stopped the glue reaching both chains at all". A scan
+    # that loses the bridge has broken the ternary rather than detuned it.
+    variant_bridged: str | None = None
+    parent_bridged: str | None = None
+    bridge_lost: bool | None = None
     status: str = "not_computed"
     mismatches: list = field(default_factory=list)
 
@@ -139,6 +147,20 @@ def compute(variant_row: dict, parent_row: dict) -> Lift:
         return result
 
     result.lift = round(variant_delta - parent_delta, 4)
+
+    v_with = variant_row.get("bridging_seeds_with_bridge")
+    v_total = variant_row.get("bridging_seeds_total")
+    p_with = parent_row.get("bridging_seeds_with_bridge")
+    p_total = parent_row.get("bridging_seeds_total")
+    if v_total:
+        result.variant_bridged = f"{v_with or 0}/{v_total}"
+    if p_total:
+        result.parent_bridged = f"{p_with or 0}/{p_total}"
+    if v_total and p_total:
+        # Lost outright, not merely reduced: the parent bridged and the
+        # variant did not, in any seed.
+        result.bridge_lost = bool((p_with or 0) > 0 and (v_with or 0) == 0)
+
     result.status = "computed"
     return result
 
@@ -176,6 +198,8 @@ def scan_profile(lifts: list[Lift], parent_sequence: str) -> dict:
             "wild_type": residue,
             "substitution": item.substitution if item else None,
             "lift": item.lift if item else None,
+            "bridged": item.variant_bridged if item else None,
+            "bridge_lost": item.bridge_lost if item else None,
             "status": item.status if item else "not_scored",
         })
 
@@ -188,6 +212,10 @@ def scan_profile(lifts: list[Lift], parent_sequence: str) -> dict:
         "of": len(rows),
         # Most negative lift: replacing this residue hurt the interface most,
         # which is the operational meaning of "this position matters".
+        # Positions where the substitution did not merely reduce the
+        # interface but removed the bridge entirely. A different and
+        # stronger claim than a large negative lift.
+        "bridge_breaking": [r["substitution"] for r in rows if r.get("bridge_lost")],
         "most_sensitive": ranked[0] if ranked else None,
         "least_sensitive": ranked[-1] if ranked else None,
         "note": (

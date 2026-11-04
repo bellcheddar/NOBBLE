@@ -437,3 +437,45 @@ def test_a_zinc_finger_scan_keeps_the_ion_on_every_variant_through_assembly():
     for substitution in coordinating:
         pair = next(p for p in variants if p["substitution"] == substitution)
         assert pair["cofactor"]["required"] is True, substitution
+
+
+def test_a_substitution_that_breaks_the_bridge_is_distinguished_from_one_that_weakens_it():
+    """F16 and F17 showed bridge formation is independent of the crystal
+    and separates placement from quality. In a scan that distinction is
+    the interesting one: a variant that loses the bridge in every seed has
+    stopped the glue reaching both chains, which is a different statement
+    from a large negative lift.
+
+    Both can be true at once, so the scan reports them separately rather
+    than ranking on one number."""
+    base = dict(construct="CRBN_CULT", e3_gene="CRBN", ligand_key="Y70",
+                modality="glue", seeds_binary=5, seeds_ternary=5)
+    parent = {**base, "delta_iptm": 0.30,
+              "bridging_seeds_with_bridge": 5, "bridging_seeds_total": 5}
+
+    broke = Lmod.compute({**base, "delta_iptm": 0.05, "substitution": "C4A",
+                          "position": 4, "bridging_seeds_with_bridge": 0,
+                          "bridging_seeds_total": 5}, parent)
+    weakened = Lmod.compute({**base, "delta_iptm": 0.22, "substitution": "K7A",
+                             "position": 7, "bridging_seeds_with_bridge": 4,
+                             "bridging_seeds_total": 5}, parent)
+
+    assert broke.bridge_lost is True
+    assert broke.variant_bridged == "0/5" and broke.parent_bridged == "5/5"
+    assert weakened.bridge_lost is False
+    assert weakened.variant_bridged == "4/5"
+
+    profile = Lmod.scan_profile([broke, weakened], "PFQCNQCGASFTQKG")
+    assert profile["bridge_breaking"] == ["C4A"], profile["bridge_breaking"]
+
+
+def test_bridge_fields_stay_absent_when_the_campaign_has_no_bridging_data():
+    """Scores written before bridging was recorded must not produce a
+    false "bridge lost"."""
+    base = dict(construct="CRBN_CULT", e3_gene="CRBN", ligand_key="Y70",
+                modality="glue", seeds_binary=5, seeds_ternary=5)
+    result = Lmod.compute({**base, "delta_iptm": 0.1, "substitution": "K7A"},
+                          {**base, "delta_iptm": 0.3})
+    assert result.status == "computed"
+    assert result.bridge_lost is None
+    assert result.variant_bridged is None
