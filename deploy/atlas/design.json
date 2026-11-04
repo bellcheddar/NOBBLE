@@ -572,7 +572,8 @@
         "jobs": 225,
         "projected_hours": 4.2,
         "status": "within_max_compute",
-        "basis": "225 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "225 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "benchmark_c9b55ab831": {
@@ -833,7 +834,8 @@
         "jobs": 225,
         "projected_hours": 4.2,
         "status": "within_max_compute",
-        "basis": "225 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "225 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "benchmark_e7d7a575d5": {
@@ -1094,7 +1096,8 @@
         "jobs": 225,
         "projected_hours": 4.2,
         "status": "within_max_compute",
-        "basis": "225 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "225 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "benchmark_b14fa633af": {
@@ -1359,7 +1362,8 @@
         "jobs": 225,
         "projected_hours": 4.2,
         "status": "within_max_compute",
-        "basis": "225 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "225 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "benchmark_83c557c3dc": {
@@ -1620,7 +1624,8 @@
         "jobs": 225,
         "projected_hours": 4.2,
         "status": "within_max_compute",
-        "basis": "225 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "225 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "benchmark_888fd2c63e": {
@@ -1883,7 +1888,8 @@
         "jobs": 225,
         "projected_hours": 4.2,
         "status": "within_max_compute",
-        "basis": "225 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "225 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "benchmark_8be125d899": {
@@ -2144,7 +2150,8 @@
         "jobs": 225,
         "projected_hours": 4.2,
         "status": "within_max_compute",
-        "basis": "225 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "225 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "sievers_e797a11de7": {
@@ -2585,7 +2592,8 @@
         "jobs": 390,
         "projected_hours": 7.2,
         "status": "within_max_compute",
-        "basis": "390 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "390 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "sievers_8076e7901a": {
@@ -2976,7 +2984,8 @@
         "jobs": 345,
         "projected_hours": 6.4,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "sievers_5b1a0c4109": {
@@ -3367,7 +3376,8 @@
         "jobs": 345,
         "projected_hours": 6.4,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "sievers_d0dbe9051c": {
@@ -3756,7 +3766,8 @@
         "jobs": 345,
         "projected_hours": 6.4,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "sievers_b20821e7bc": {
@@ -4195,7 +4206,8 @@
         "jobs": 390,
         "projected_hours": 7.2,
         "status": "within_max_compute",
-        "basis": "390 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "390 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "sievers_f9ffe042fc": {
@@ -4620,7 +4632,8 @@
         "jobs": 375,
         "projected_hours": 7.0,
         "status": "within_max_compute",
-        "basis": "375 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "375 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "sievers_0af57d5047": {
@@ -5043,7 +5056,8 @@
         "jobs": 375,
         "projected_hours": 7.0,
         "status": "within_max_compute",
-        "basis": "375 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "375 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "sievers_9309419fbe": {
@@ -5434,7 +5448,8 @@
         "jobs": 345,
         "projected_hours": 6.4,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "sievers_6884d17767": {
@@ -5827,7 +5842,8 @@
         "jobs": 345,
         "projected_hours": 6.4,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "sievers_dfec9147fa": {
@@ -6218,7 +6234,8 @@
         "jobs": 345,
         "projected_hours": 6.4,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "sievers_d49b438204": {
@@ -6639,7 +6656,8 @@
         "jobs": 375,
         "projected_hours": 7.0,
         "status": "within_max_compute",
-        "basis": "375 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "375 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "sievers_730371dd60": {
@@ -7030,7 +7048,8 @@
         "jobs": 345,
         "projected_hours": 6.4,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "sievers_dec864eee0": {
@@ -7423,7 +7442,8 @@
         "jobs": 345,
         "projected_hours": 6.4,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "sievers_2dd8849030": {
@@ -7816,7 +7836,8 @@
         "jobs": 345,
         "projected_hours": 6.4,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "sievers_dc66fdefdc": {
@@ -8207,7 +8228,8 @@
         "jobs": 345,
         "projected_hours": 6.4,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "sievers_9d25ba3680": {
@@ -8598,7 +8620,8 @@
         "jobs": 345,
         "projected_hours": 6.4,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "sievers_d1c496c42b": {
@@ -8989,7 +9012,8 @@
         "jobs": 345,
         "projected_hours": 6.4,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "sievers_84b150f6a7": {
@@ -9380,7 +9404,8 @@
         "jobs": 345,
         "projected_hours": 6.4,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "sievers_2bac03e3e2": {
@@ -9771,7 +9796,8 @@
         "jobs": 345,
         "projected_hours": 6.4,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "sievers_daf84100fa": {
@@ -10162,7 +10188,8 @@
         "jobs": 345,
         "projected_hours": 6.4,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "sievers_58aca9048e": {
@@ -10553,7 +10580,8 @@
         "jobs": 345,
         "projected_hours": 6.4,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "sievers_ca8e3d0ecc": {
@@ -10944,7 +10972,8 @@
         "jobs": 345,
         "projected_hours": 6.4,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "sievers_b843c1de28": {
@@ -11335,7 +11364,8 @@
         "jobs": 345,
         "projected_hours": 6.4,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     },
     "sievers_a4e431a394": {
@@ -11724,130 +11754,67 @@
         "jobs": 345,
         "projected_hours": 6.4,
         "status": "within_max_compute",
-        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+        "basis": "345 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized",
+        "parent": null
       }
     }
   },
   "preview": {
     "parent": {
-      "peptide_id": "benchmark_83c557c3dc",
-      "gene": "GSPT1",
-      "sequence": "CLVDKKSGEKSKTRP",
+      "peptide_id": "benchmark_888fd2c63e",
+      "gene": "IKZF1",
+      "sequence": "PFQCNQCGASFTQKG",
       "length": 15,
       "source": "benchmark",
       "e3_hint": "CRBN",
       "label": "degraded",
       "modality": "glue",
-      "chosen_because": "nothing is scored yet, so the shortest benchmark glue degron stands in. A scan chosen this way has not been ranked against anything"
+      "chosen_because": "largest measured delta-ipTM of the scored parents (+0.316): the degron with the most glue dependence to move"
     },
     "generator": "alanine_scan",
     "variants": [
       {
-        "variant_id": "design_04cae1de8f",
-        "sequence": "ALVDKKSGEKSKTRP",
-        "parent_peptide_id": "benchmark_83c557c3dc",
-        "parent_sequence": "CLVDKKSGEKSKTRP",
+        "variant_id": "design_85a37645a5",
+        "sequence": "AFQCNQCGASFTQKG",
+        "parent_peptide_id": "benchmark_888fd2c63e",
+        "parent_sequence": "PFQCNQCGASFTQKG",
         "generator": "alanine_scan",
         "position": 1,
-        "wild_type": "C",
+        "wild_type": "P",
         "mutant": "A",
-        "substitution": "C1A",
-        "crosses_group": false,
-        "from_group": "hydrophobic",
+        "substitution": "P1A",
+        "crosses_group": true,
+        "from_group": "special",
         "to_group": "hydrophobic",
         "notes": [],
         "length": 15
       },
       {
-        "variant_id": "design_905f660502",
-        "sequence": "CAVDKKSGEKSKTRP",
-        "parent_peptide_id": "benchmark_83c557c3dc",
-        "parent_sequence": "CLVDKKSGEKSKTRP",
+        "variant_id": "design_20bca93809",
+        "sequence": "PAQCNQCGASFTQKG",
+        "parent_peptide_id": "benchmark_888fd2c63e",
+        "parent_sequence": "PFQCNQCGASFTQKG",
         "generator": "alanine_scan",
         "position": 2,
-        "wild_type": "L",
+        "wild_type": "F",
         "mutant": "A",
-        "substitution": "L2A",
-        "crosses_group": false,
-        "from_group": "hydrophobic",
+        "substitution": "F2A",
+        "crosses_group": true,
+        "from_group": "aromatic",
         "to_group": "hydrophobic",
         "notes": [],
         "length": 15
       },
       {
-        "variant_id": "design_0073558651",
-        "sequence": "CLADKKSGEKSKTRP",
-        "parent_peptide_id": "benchmark_83c557c3dc",
-        "parent_sequence": "CLVDKKSGEKSKTRP",
+        "variant_id": "design_b7cd43fcc4",
+        "sequence": "PFACNQCGASFTQKG",
+        "parent_peptide_id": "benchmark_888fd2c63e",
+        "parent_sequence": "PFQCNQCGASFTQKG",
         "generator": "alanine_scan",
         "position": 3,
-        "wild_type": "V",
+        "wild_type": "Q",
         "mutant": "A",
-        "substitution": "V3A",
-        "crosses_group": false,
-        "from_group": "hydrophobic",
-        "to_group": "hydrophobic",
-        "notes": [],
-        "length": 15
-      },
-      {
-        "variant_id": "design_863145dfda",
-        "sequence": "CLVAKKSGEKSKTRP",
-        "parent_peptide_id": "benchmark_83c557c3dc",
-        "parent_sequence": "CLVDKKSGEKSKTRP",
-        "generator": "alanine_scan",
-        "position": 4,
-        "wild_type": "D",
-        "mutant": "A",
-        "substitution": "D4A",
-        "crosses_group": true,
-        "from_group": "negative",
-        "to_group": "hydrophobic",
-        "notes": [],
-        "length": 15
-      },
-      {
-        "variant_id": "design_26d66203ec",
-        "sequence": "CLVDAKSGEKSKTRP",
-        "parent_peptide_id": "benchmark_83c557c3dc",
-        "parent_sequence": "CLVDKKSGEKSKTRP",
-        "generator": "alanine_scan",
-        "position": 5,
-        "wild_type": "K",
-        "mutant": "A",
-        "substitution": "K5A",
-        "crosses_group": true,
-        "from_group": "positive",
-        "to_group": "hydrophobic",
-        "notes": [],
-        "length": 15
-      },
-      {
-        "variant_id": "design_4ef4e99b59",
-        "sequence": "CLVDKASGEKSKTRP",
-        "parent_peptide_id": "benchmark_83c557c3dc",
-        "parent_sequence": "CLVDKKSGEKSKTRP",
-        "generator": "alanine_scan",
-        "position": 6,
-        "wild_type": "K",
-        "mutant": "A",
-        "substitution": "K6A",
-        "crosses_group": true,
-        "from_group": "positive",
-        "to_group": "hydrophobic",
-        "notes": [],
-        "length": 15
-      },
-      {
-        "variant_id": "design_c57897a3a3",
-        "sequence": "CLVDKKAGEKSKTRP",
-        "parent_peptide_id": "benchmark_83c557c3dc",
-        "parent_sequence": "CLVDKKSGEKSKTRP",
-        "generator": "alanine_scan",
-        "position": 7,
-        "wild_type": "S",
-        "mutant": "A",
-        "substitution": "S7A",
+        "substitution": "Q3A",
         "crosses_group": true,
         "from_group": "polar",
         "to_group": "hydrophobic",
@@ -11855,10 +11822,74 @@
         "length": 15
       },
       {
-        "variant_id": "design_209dfea57f",
-        "sequence": "CLVDKKSAEKSKTRP",
-        "parent_peptide_id": "benchmark_83c557c3dc",
-        "parent_sequence": "CLVDKKSGEKSKTRP",
+        "variant_id": "design_41cfffedea",
+        "sequence": "PFQANQCGASFTQKG",
+        "parent_peptide_id": "benchmark_888fd2c63e",
+        "parent_sequence": "PFQCNQCGASFTQKG",
+        "generator": "alanine_scan",
+        "position": 4,
+        "wild_type": "C",
+        "mutant": "A",
+        "substitution": "C4A",
+        "crosses_group": false,
+        "from_group": "hydrophobic",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      },
+      {
+        "variant_id": "design_29b31f12a6",
+        "sequence": "PFQCAQCGASFTQKG",
+        "parent_peptide_id": "benchmark_888fd2c63e",
+        "parent_sequence": "PFQCNQCGASFTQKG",
+        "generator": "alanine_scan",
+        "position": 5,
+        "wild_type": "N",
+        "mutant": "A",
+        "substitution": "N5A",
+        "crosses_group": true,
+        "from_group": "polar",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      },
+      {
+        "variant_id": "design_4089c980d8",
+        "sequence": "PFQCNACGASFTQKG",
+        "parent_peptide_id": "benchmark_888fd2c63e",
+        "parent_sequence": "PFQCNQCGASFTQKG",
+        "generator": "alanine_scan",
+        "position": 6,
+        "wild_type": "Q",
+        "mutant": "A",
+        "substitution": "Q6A",
+        "crosses_group": true,
+        "from_group": "polar",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      },
+      {
+        "variant_id": "design_9f380ec887",
+        "sequence": "PFQCNQAGASFTQKG",
+        "parent_peptide_id": "benchmark_888fd2c63e",
+        "parent_sequence": "PFQCNQCGASFTQKG",
+        "generator": "alanine_scan",
+        "position": 7,
+        "wild_type": "C",
+        "mutant": "A",
+        "substitution": "C7A",
+        "crosses_group": false,
+        "from_group": "hydrophobic",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      },
+      {
+        "variant_id": "design_27c8f0cb8b",
+        "sequence": "PFQCNQCAASFTQKG",
+        "parent_peptide_id": "benchmark_888fd2c63e",
+        "parent_sequence": "PFQCNQCGASFTQKG",
         "generator": "alanine_scan",
         "position": 8,
         "wild_type": "G",
@@ -11871,47 +11902,33 @@
         "length": 15
       },
       {
-        "variant_id": "design_4aa7460c21",
-        "sequence": "CLVDKKSGAKSKTRP",
-        "parent_peptide_id": "benchmark_83c557c3dc",
-        "parent_sequence": "CLVDKKSGEKSKTRP",
+        "variant_id": "design_5f134db7cf",
+        "sequence": "PFQCNQCGGSFTQKG",
+        "parent_peptide_id": "benchmark_888fd2c63e",
+        "parent_sequence": "PFQCNQCGASFTQKG",
         "generator": "alanine_scan",
         "position": 9,
-        "wild_type": "E",
-        "mutant": "A",
-        "substitution": "E9A",
+        "wild_type": "A",
+        "mutant": "G",
+        "substitution": "A9G",
         "crosses_group": true,
-        "from_group": "negative",
-        "to_group": "hydrophobic",
-        "notes": [],
+        "from_group": "hydrophobic",
+        "to_group": "special",
+        "notes": [
+          "position was already alanine: scanned to glycine, which removes the remaining side chain rather than reporting an untested position as unchanged"
+        ],
         "length": 15
       },
       {
-        "variant_id": "design_ccda79b119",
-        "sequence": "CLVDKKSGEASKTRP",
-        "parent_peptide_id": "benchmark_83c557c3dc",
-        "parent_sequence": "CLVDKKSGEKSKTRP",
+        "variant_id": "design_32aaa96180",
+        "sequence": "PFQCNQCGAAFTQKG",
+        "parent_peptide_id": "benchmark_888fd2c63e",
+        "parent_sequence": "PFQCNQCGASFTQKG",
         "generator": "alanine_scan",
         "position": 10,
-        "wild_type": "K",
-        "mutant": "A",
-        "substitution": "K10A",
-        "crosses_group": true,
-        "from_group": "positive",
-        "to_group": "hydrophobic",
-        "notes": [],
-        "length": 15
-      },
-      {
-        "variant_id": "design_3d3a719185",
-        "sequence": "CLVDKKSGEKAKTRP",
-        "parent_peptide_id": "benchmark_83c557c3dc",
-        "parent_sequence": "CLVDKKSGEKSKTRP",
-        "generator": "alanine_scan",
-        "position": 11,
         "wild_type": "S",
         "mutant": "A",
-        "substitution": "S11A",
+        "substitution": "S10A",
         "crosses_group": true,
         "from_group": "polar",
         "to_group": "hydrophobic",
@@ -11919,31 +11936,31 @@
         "length": 15
       },
       {
-        "variant_id": "design_7b62ac3f4e",
-        "sequence": "CLVDKKSGEKSATRP",
-        "parent_peptide_id": "benchmark_83c557c3dc",
-        "parent_sequence": "CLVDKKSGEKSKTRP",
+        "variant_id": "design_8d1a94f4fd",
+        "sequence": "PFQCNQCGASATQKG",
+        "parent_peptide_id": "benchmark_888fd2c63e",
+        "parent_sequence": "PFQCNQCGASFTQKG",
+        "generator": "alanine_scan",
+        "position": 11,
+        "wild_type": "F",
+        "mutant": "A",
+        "substitution": "F11A",
+        "crosses_group": true,
+        "from_group": "aromatic",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      },
+      {
+        "variant_id": "design_411c59e78d",
+        "sequence": "PFQCNQCGASFAQKG",
+        "parent_peptide_id": "benchmark_888fd2c63e",
+        "parent_sequence": "PFQCNQCGASFTQKG",
         "generator": "alanine_scan",
         "position": 12,
-        "wild_type": "K",
-        "mutant": "A",
-        "substitution": "K12A",
-        "crosses_group": true,
-        "from_group": "positive",
-        "to_group": "hydrophobic",
-        "notes": [],
-        "length": 15
-      },
-      {
-        "variant_id": "design_289bb93b0f",
-        "sequence": "CLVDKKSGEKSKARP",
-        "parent_peptide_id": "benchmark_83c557c3dc",
-        "parent_sequence": "CLVDKKSGEKSKTRP",
-        "generator": "alanine_scan",
-        "position": 13,
         "wild_type": "T",
         "mutant": "A",
-        "substitution": "T13A",
+        "substitution": "T12A",
         "crosses_group": true,
         "from_group": "polar",
         "to_group": "hydrophobic",
@@ -11951,15 +11968,31 @@
         "length": 15
       },
       {
-        "variant_id": "design_8406160606",
-        "sequence": "CLVDKKSGEKSKTAP",
-        "parent_peptide_id": "benchmark_83c557c3dc",
-        "parent_sequence": "CLVDKKSGEKSKTRP",
+        "variant_id": "design_6338de3faa",
+        "sequence": "PFQCNQCGASFTAKG",
+        "parent_peptide_id": "benchmark_888fd2c63e",
+        "parent_sequence": "PFQCNQCGASFTQKG",
+        "generator": "alanine_scan",
+        "position": 13,
+        "wild_type": "Q",
+        "mutant": "A",
+        "substitution": "Q13A",
+        "crosses_group": true,
+        "from_group": "polar",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      },
+      {
+        "variant_id": "design_f451c7db52",
+        "sequence": "PFQCNQCGASFTQAG",
+        "parent_peptide_id": "benchmark_888fd2c63e",
+        "parent_sequence": "PFQCNQCGASFTQKG",
         "generator": "alanine_scan",
         "position": 14,
-        "wild_type": "R",
+        "wild_type": "K",
         "mutant": "A",
-        "substitution": "R14A",
+        "substitution": "K14A",
         "crosses_group": true,
         "from_group": "positive",
         "to_group": "hydrophobic",
@@ -11967,15 +12000,15 @@
         "length": 15
       },
       {
-        "variant_id": "design_60f77e698a",
-        "sequence": "CLVDKKSGEKSKTRA",
-        "parent_peptide_id": "benchmark_83c557c3dc",
-        "parent_sequence": "CLVDKKSGEKSKTRP",
+        "variant_id": "design_389c0a186a",
+        "sequence": "PFQCNQCGASFTQKA",
+        "parent_peptide_id": "benchmark_888fd2c63e",
+        "parent_sequence": "PFQCNQCGASFTQKG",
         "generator": "alanine_scan",
         "position": 15,
-        "wild_type": "P",
+        "wild_type": "G",
         "mutant": "A",
-        "substitution": "P15A",
+        "substitution": "G15A",
         "crosses_group": true,
         "from_group": "special",
         "to_group": "hydrophobic",
@@ -11986,9 +12019,10 @@
     "cost": {
       "variants": 15,
       "jobs": 225,
-      "projected_hours": 4.2,
+      "projected_hours": 4.4,
       "status": "within_max_compute",
-      "basis": "225 jobs at 66.8 s for a 144-token job, which is the median job of campaign_20261104T004632Z and not necessarily of the campaign being sized"
+      "basis": "benchmark_888fd2c63e: 240 jobs totalling 32,960 tokens, each priced in its own token band across 4 measured band(s) spanning 0.2111 to 0.663 s/token",
+      "parent": "benchmark_888fd2c63e"
     }
   },
   "lifts": {

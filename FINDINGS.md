@@ -4042,3 +4042,44 @@ discrepancy that does not exist. Four of those today, after the
 `RECOVERED_A` grep, the `preview.cost` key and `plip_notes`, and the pattern
 is the same each time: I compare two numbers without first checking they are
 answers to the same question.
+
+## F89. The published scan target was chosen by the method that was rejected
+
+`_default_parent` picks which degron the design arm scans first. It ranks
+the candidates by measured Delta-ipTM, "because the degron worth scanning
+first is the one with the largest signal to move", and falls back to the
+shortest glue parent when nothing is scored so the tab has something before
+a campaign runs. Its docstring says plainly why length is the wrong rule:
+it "was an arbitrary tiebreak that happened to land on BRD4/VHL: a PROTAC
+pair, when the arm is about glue dependence".
+
+`build_atlas.py` never configured a campaign before building the design
+report. `data._CAMPAIGN` starts as None, `data.scores()` returns an empty
+list when it is None, so the ranking saw nothing scored and the fallback
+fired on every atlas this project has ever published. The fix that replaced
+length with measurement was inert in the published output.
+
+The chain does configure, so the two disagreed about the arm's headline
+choice. The site said the scan target was GSPT1, picked by length. The scan
+the chain assembles and will run is IKZF1, picked by a measured Delta-ipTM
+of +0.316. One answer on the page and a different one in the queue.
+
+Both now read the same ranking. The published parent is IKZF1 and says
+"largest measured delta-ipTM of the scored parents (+0.316): the degron with
+the most glue dependence", which is a sentence that can be checked against
+the scores it cites. Rebuilt and deployed.
+
+Found by following my own mistake. F88 compared a design cost of 4.7 hours
+against a measured 4.4 and I put it down to different parents, which was
+true, and stopped there. The question I had not asked was why the atlas was
+previewing a different parent from the one the chain assembles, and the
+answer was that it had never been asking the measurement at all.
+
+So the cost now names its parent, in the basis string and as a field. Two
+15-mers emit the same number of jobs and different token totals, and a
+figure without its subject invites exactly the comparison I made.
+
+The wiring test skipped on its first run, because it asked for the latest
+scored campaign and that is the main one, whose atlas build correctly
+refuses while F47's correction is pending. A wiring test that skips is what
+F40 is about, so it drives the benchmark panel instead.

@@ -16,13 +16,8 @@
   "outstanding": [
     {
       "campaign": "campaign_20261104T004632Z",
-      "jobs_done": 75,
+      "jobs_done": 81,
       "jobs_total": 2360
-    },
-    {
-      "campaign": "design_20261104T024349Z",
-      "jobs_done": 0,
-      "jobs_total": 240
     },
     {
       "campaign": "design_20261104T094939Z",
@@ -34,7 +29,7 @@
   "jobs_total": 100,
   "pairs_total": 7,
   "structures": 100,
-  "bytes": 25745870,
+  "bytes": 25746790,
   "redacted_ligands": [
     "dBET57"
   ]
