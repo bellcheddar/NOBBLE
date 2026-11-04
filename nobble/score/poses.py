@@ -26,11 +26,13 @@ from functools import lru_cache
 from nobble import paths
 from nobble.curate import constructs as C
 from nobble.curate import numbering, structures
-from nobble.numeric import finite_values, median_of
+from nobble.numeric import finite, finite_values, median_of
 
 # Receptor anchor RMSD above which the frame is called poor, which
 # qualifies every peptide RMSD measured in it. Was a literal below.
 FRAME_POOR_ANCHOR_A = float(paths.thresholds()["scoring"]["frame_poor_anchor_rmsd_a"])
+# Mean pairwise RMSD at which the convergence score reaches zero.
+CONVERGENCE_SCALE_A = float(paths.thresholds()["scoring"]["convergence_scale_a"])
 
 BACKBONE = ("N", "CA", "C", "O")
 PEPTIDE_CHAIN = "P"
@@ -194,7 +196,10 @@ def convergence(pair_jobs: list[dict], condition: str = "ternary") -> Convergenc
     values = []
     for first, second in itertools.combinations(selected, 2):
         value = peptide_rmsd_between(first, second)
-        if value is not None:
+        # `finite` rather than `is not None`: `_rmsd` refuses a non-finite
+        # result since F78, so this is a local guarantee rather than a
+        # dependence on that one staying in place (F87).
+        if finite(value):
             values.append(round(value, 3))
     if not values:
         result.notes.append("no comparable pose pairs")
@@ -204,10 +209,16 @@ def convergence(pair_jobs: list[dict], condition: str = "ternary") -> Convergenc
     result.mean_rmsd = round(sum(values) / len(values), 3)
     result.max_rmsd = round(max(values), 3)
     result.spread = round(max(values) - min(values), 3)
-    # A bounded score so the composite can use it: 1.0 at zero RMSD, falling to
-    # 0 by 10 angstrom, which is roughly the point at which two poses are in
-    # different places rather than the same place imprecisely.
-    result.convergence_score = round(max(0.0, 1.0 - (result.mean_rmsd / 10.0)), 4)
+    # A bounded score so the composite can use it: 1.0 at zero RMSD, falling
+    # to 0 at the configured scale, which is roughly the point at which two
+    # poses are in different places rather than the same place imprecisely.
+    #
+    # The scale was a bare 10.0 in this expression. It decides a published
+    # component of the composite, and the cutoff sweep looks in comparisons,
+    # module constants, default arguments and templates, not in arithmetic:
+    # the fifth place, as in F80 (F87).
+    result.convergence_score = round(
+        max(0.0, 1.0 - (result.mean_rmsd / CONVERGENCE_SCALE_A)), 4)
     return result
 
 

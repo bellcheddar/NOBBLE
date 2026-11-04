@@ -174,7 +174,13 @@ def _receptor_peptide_iptm(confidence: dict, construct_name: str) -> tuple:
     chains = C.CONSTRUCTS[construct_name].substrate_receptor_chains()
     peptide = peptide_chain_index(construct_name)
     values = [_pair_iptm(confidence, chain, peptide) for chain in chains]
-    present = [value for value in values if value is not None]
+    # `finite`, not `is not None`. These come straight from Boltz's
+    # confidence JSON, where Python's json round-trips a bare NaN literal,
+    # and `min` with a NaN present is order-dependent: min([0.9, nan]) is
+    # 0.9 and min([nan, 0.9]) is nan. So the receptor segment order would
+    # have decided whether a NaN survived into Delta-ipTM, which is the
+    # headline statistic (F87).
+    present = finite_values(values)
     return (
         min(present) if present else None,
         list(chains),

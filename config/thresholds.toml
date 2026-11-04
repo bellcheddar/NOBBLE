@@ -84,6 +84,11 @@ rmsd_breakpoints = [1.0, 2.0, 3.0, 5.0]
 # as provisional. The only significance level this project applies, and it
 # applies it to presentation rather than to any decision about the data.
 significance_alpha = 0.05
+# Mean pairwise peptide RMSD at which the convergence score (spec 4.4)
+# reaches zero: roughly where two poses are in different places rather than
+# the same place imprecisely. Was a bare 10.0 inside the expression that
+# computes the score (F87).
+convergence_scale_a = 10.0
 seeds = 5
 
 [gates]
