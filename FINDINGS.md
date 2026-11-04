@@ -6289,6 +6289,7 @@ as a separate campaign, raise the budget, or supply a GPU. What is not
 acceptable is the state it was in, where the spec says do not defer, the
 project reports the phase complete, and the arm does not exist.
 
+**Revised by F163:** the gate is not only about compute: Tier B cannot be assembled at all, because none of the fifteen has a receptor construct and neither mechanical route to one is allowed.
 ## F135. Refinement was never priced against the gate it can blow
 
 Gate G1 is judged against `max_compute_hours`, and the projection it is
@@ -6341,6 +6342,7 @@ in fixes it for both the real case and the fixture. And with that fixed, the
 two fixtures turned out not to exceed the budget at all, so the assertions
 had been passing on live state rather than on the thing they name.
 
+**Revised by F161:** the projection charged an unmeasured campaign nothing, so the gate reported a fit at 0.0 hours.
 ## F136. The progress report's library figures were from an earlier build
 
 PROGRESS.md's phase table said "25,567-peptide library reduced to 220". The
@@ -6484,6 +6486,7 @@ link where its authors put it. Retried on a short bounded timer because the
 logo appears asynchronously after the mount, so a single query right after
 construction finds nothing.
 
+**Revised by F159 and F162:** the guard reported an unreachable server as a stale build, and a file vanishing between the listing and the read aborted the check with a traceback.
 ## F139. The copy budget was a rule nothing could measure
 
 CLAUDE.md sets it: "Budget: under 40 words per panel, under 150 per page,
@@ -6535,6 +6538,7 @@ over, which is the part that matters: the two previous attempts at this
 number were mine, and the reason the budget drifted for a whole build is that
 checking it was a thing somebody had to decide to do.
 
+**Revised by F159 and F160:** the budget held only while the headline panels were empty, and one of the filter's classes existed on nothing.
 ## F140. The deploy checked that the site worked, not that it was this site
 
 `deploy/deploy.sh` ends by fetching every page and requiring 200, and the
@@ -6648,6 +6652,7 @@ like a measurement and quietly replaces the baseline is the shape this
 project keeps finding, and I put one inside the fix for another. The digests
 are now taken explicitly by the caller and passed in.
 
+**Revised by F154:** an identical rewrite has the same size and prefix, so it was reported as the runner appending.
 ## F143. The status page showed half of Gate G1
 
 `tools/status.sh` has a gates section, and it reported G1 from
@@ -6808,6 +6813,7 @@ the parent and the sequence from the same `campaign.json`, so they agree by
 construction rather than by coincidence. The file is kept and labelled rather
 than deleted, since it is the only per-campaign copy.
 
+**Revised by F160:** the profile was attached to the right peptide and the panel above it still named the other one.
 ## F148. Verifying the publish path for refined poses, and the one thing holding it together
 
 The atlas rebuild with tier 2 and the design scan included is the last stage
@@ -7067,6 +7073,7 @@ because the profile's values move and nothing currently asserts which atom
 they came from; the honest statement is that the preference is a documented
 choice with no test behind it.
 
+**Revised by F155:** one of the mutations it added cannot be caught, because the behaviour it reverses is unobservable.
 ## F154. A sweep that excused the thing it exists to flag
 
 Running F153's sweep printed four lines saying a protected file "grew by
@@ -7559,3 +7566,36 @@ last command's: `tail` succeeded, so the `&&` did not gate anything. I have
 been running the suite that way all session and it has only now mattered,
 which is the definition of a latent fault in one's own method rather than in
 the code.
+
+## F164. Nine findings were superseded and not one said so
+
+FINDINGS.md is the document of record, read from the top by anyone tracing
+why something is the way it is. In one session nine findings were revised by
+later ones in the same session, and not one pointed forward.
+
+So a reader of F134 concludes Tier B costs 16.5 hours of compute and stops,
+where F163 says it cannot be assembled at all because none of the fifteen has
+a receptor construct. A reader of F142 concludes the runner's appends are
+told apart from a rewrite, where F154 says an identical rewrite was reported
+as an append. A reader of F138 concludes the fingerprint guard is sound,
+where F159 says it blamed the build for an operator's timing and F162 that a
+vanished file aborted it with a traceback.
+
+This is F158's defect moved from one document to another: statements written
+deliberately, each true when written, nothing comparing them, and the one a
+reader reaches first being the stale one. It is also a measurement of this
+session rather than a complaint about it. Seven of the nine revisions are of
+my own work from the same day, which is the honest rate for fixes written
+quickly: F135 needed F161, F138 needed F159 and F162, F139 needed F159 and
+F160, F142 needed F154, F147 needed F160, F153 needed F155.
+
+The convention is a `**Revised by FNNN:**` line at the end of the earlier
+finding, saying in one clause what changed. At the end rather than the top,
+because a reader who has read the finding is at the bottom of it, and the
+point is to catch them before they act on it.
+
+The relation is maintained in the test rather than inferred from the prose.
+"This finding revises that one" is a judgement, and a regex guessing at it
+would either miss revisions or invent them; what the test guarantees is that
+a recorded relation stays symmetric, points at findings that exist, and
+never points backwards.
