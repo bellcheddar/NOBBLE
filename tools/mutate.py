@@ -74,7 +74,15 @@ MUTATIONS: list[tuple[str, str, str, str]] = [
 
 # Where a mutation may be written. Everything else is either live state or
 # not source, and a sweep has no business in it.
-MUTABLE_ROOTS = ("nobble", "tools", "deploy", "qc")
+#
+# `tests` is included because several of this project's checks are
+# implemented in test files rather than in the package: the cutoff sweeps,
+# the template sweep, the house-style sweep. Verifying that one of those
+# still fires means mutating the file it lives in, and the negative
+# controls beside it are the coverage that makes the result mean anything.
+# Mutating a test with nothing else covering it reports "not caught"
+# truthfully and tells you only that you weakened the sole check.
+MUTABLE_ROOTS = ("nobble", "tools", "deploy", "qc", "tests")
 
 # Live state: campaign results and queues, the published atlas, measured
 # throughput. A test run under a mutation must leave every one of these

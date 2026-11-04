@@ -64,6 +64,12 @@ def test_source_files_are_allowed():
         assert mutate._refuse_protected(relative) is None, relative
 
 
+def test_test_files_are_mutable():
+    """Several of this project's checks live in test files, so verifying
+    one still fires means mutating where it lives."""
+    assert mutate._refuse_protected("tests/test_house_style.py") is None
+
+
 def test_documents_and_configuration_are_not_mutable():
     """Not because editing them is dangerous but because a mutation there
     is not testing code, and the sweep reports "not caught" for a change no
