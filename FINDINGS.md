@@ -1138,3 +1138,49 @@ reference accessible surface area, and the three runtime values governing
 retries and how long to wait for a child to die. None is a threshold
 applied to data, and the allowlist is itself checked for naming code that
 still exists.
+
+## F28. The third blind spot, and where the sweep stops
+
+F26 swept comparisons against float literals. F27 swept module-level
+numeric constants, after `MINIMUM_SEEDS = 3` walked through the first
+sweep untouched. Neither caught an integer compared inline, which is the
+most natural way to write a cutoff in Python, and five were sitting
+there.
+
+Two of them decide what the site says about its own numbers.
+`len(labelled) < 25` in `weights.py` decides whether the composite is
+published as indicative rather than calibrated. `positives < 5` decides
+whether the fitted AUC is called a number with very wide bounds rather
+than a performance claim. Both are judgements about how far to trust a
+result, which is exactly the kind of number that should not be buried in
+an expression.
+
+One decides whether the headline curve exists at all: `len(positives) < 3
+or len(negatives) < 3` in `matched_control_roc`, the floor below which
+spec 5 forbids drawing it. One decides which jobs run: `substrate
+["length"] >= 250`, the token-cap exception for a folded domain
+(D-NOB-027). One decides whether collapse detection runs at all:
+`len(present) < 3` in `metrics.py`.
+
+All five now read from `config/thresholds.toml`.
+
+### Where the sweep deliberately stops
+
+Comparisons against 0 and 1 are not swept. They are emptiness and sign
+checks, and twenty-eight of them would need allowlisting to catch
+nothing. That is a stated limit of the guard rather than an oversight,
+and it is written into the test so the next person does not have to
+rediscover why.
+
+Above 1, fifteen comparisons remain and are allowed with their reasons.
+Each is a fact about the data rather than a choice about it: a PDB
+accession is four characters, C2H2 means two cysteines and two
+histidines, three points are the fewest that fix a rigid body, two the
+fewest that define a direction, and a pair id is tier, gene and E3.
+Writing those reasons out was worth more than the sweep itself, because
+each one had been sitting in the code as a bare number that a reader
+would have had to reconstruct.
+
+The pattern across F26, F27 and F28 is one guard needing three passes
+because each pass only looked where the last failure had been. A sweep
+built from a single example checks for that example.

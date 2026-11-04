@@ -20,6 +20,13 @@ from pathlib import Path
 
 from nobble import paths
 
+INDICATIVE_BELOW_LABELLED = int(
+    paths.thresholds()["weights"]["indicative_below_labelled"]
+)
+WIDE_BOUNDS_BELOW_PER_SIDE = int(
+    paths.thresholds()["weights"]["wide_bounds_below_per_side"]
+)
+
 # The components the composite may weight. Lysine geometry is a candidate so
 # the fit can speak for itself, but it carries its own warning: BINMAN measured
 # it at or below chance (D-NOB-024).
@@ -216,7 +223,7 @@ def fit(campaign: Path) -> FitResult:
         "performance on unseen pairs"
     )
 
-    if len(labelled) < 25:
+    if len(labelled) < INDICATIVE_BELOW_LABELLED:
         result.caveats.append(
             f"fitted on only {len(labelled)} labelled pairs: treat the weights as "
             "indicative, not as a calibrated model. They will be refitted when "
@@ -230,7 +237,8 @@ def fit(campaign: Path) -> FitResult:
                 "at or below chance (D-NOB-024). On this few pairs that weight is "
                 "as likely to be noise as signal"
             )
-    if result.positives < 5 or result.negatives < 5:
+    if (result.positives < WIDE_BOUNDS_BELOW_PER_SIDE
+            or result.negatives < WIDE_BOUNDS_BELOW_PER_SIDE):
         result.caveats.append(
             "fewer than five on one side of the split: the AUC has very wide "
             "confidence bounds and is not a performance claim"

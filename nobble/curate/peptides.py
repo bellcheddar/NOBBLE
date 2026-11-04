@@ -36,6 +36,10 @@ from nobble import paths
 from nobble.curate import binman_store as store
 from nobble.curate import numbering, plddt
 
+FOLDED_DOMAIN_EXCEPTION_MIN_LENGTH = int(
+    paths.thresholds()["manifest"]["folded_domain_exception_min_length"]
+)
+
 # Post-translational modifications that are non-negotiable for a degron class
 # (spec 2.3). A peptide of one of these classes submitted without its
 # modification is a manifest error, not a low-scoring result.
@@ -861,7 +865,7 @@ def benchmark_substrate_constructs() -> list[dict]:
         # and a kinase domain cut in half is not a kinase domain.
         declared = construct_name in {"VHL_VCB", "DCAF15_DDB1_DDA1"} or (
             substrate["mode"] == "folded_domain"
-            and substrate["length"] >= 250
+            and substrate["length"] >= FOLDED_DOMAIN_EXCEPTION_MIN_LENGTH
             and tokens > cap
         )
         declared_reason = None

@@ -32,6 +32,8 @@ from pathlib import Path
 from nobble.curate import constructs as C
 from nobble import paths
 
+COLLAPSE_MINIMUM_SEEDS = int(paths.thresholds()["scoring"]["collapse_minimum_seeds"])
+
 MISSING = None
 
 
@@ -198,7 +200,7 @@ def _collapsed_seeds(values: list[tuple[int, float | None]]) -> list[int]:
     the headline. See D-NOB-023.
     """
     present = [(seed, value) for seed, value in values if isinstance(value, (int, float))]
-    if len(present) < 3:
+    if len(present) < COLLAPSE_MINIMUM_SEEDS:
         return []
     median = _median([value for _seed, value in present])
     if median is None:

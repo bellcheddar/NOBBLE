@@ -119,6 +119,103 @@ def test_the_constant_allowances_are_all_still_real():
     assert not stale, f"ALLOWED_CONSTANTS lists names that no longer exist: {stale}"
 
 
+# Inline integer comparisons. The float sweep missed these and so did the
+# constant sweep, which is how `len(labelled) < 25` decided whether the
+# weights are published as "indicative" and `len(positives) < 3` decided
+# whether the headline curve is drawn at all.
+#
+# Comparisons against 0 and 1 are not swept: they are emptiness and sign
+# checks rather than cutoffs, and sweeping them would mean allowlisting
+# twenty-eight of them to catch nothing. That is a stated limit of this
+# guard, not an oversight.
+#
+# Everything above 1 is either read from config or listed here as a fact
+# about the data rather than a choice about it.
+ALLOWED_INT_COMPARISONS = {
+    # Arity of a parsed clause, label or identifier: not a tunable quantity.
+    "len(clause) != 3": "query clause is field, operator, value",
+    "len(sort) != 2": "sort clause is field, direction",
+    'len(parts) >= 3': "pair ids are tier_gene_e3",
+    "len(substitution) >= 3": "a substitution label is at least wild, position, mutant",
+    'len(token.strip(" ,.?;:()[]")) >= 3': "shortest token worth matching on",
+    # Facts about the identifiers themselves.
+    "len(pdb_id) != 4": "a PDB accession is four characters",
+    "len(token) == 4": "a PDB accession is four characters",
+    # Identity, not magnitude.
+    "tier == 2": "names the second sampling tier, it is not a threshold",
+    # The definition of the domain class, not a choice about it.
+    "cysteines >= 2": "C2H2 means two cysteines and two histidines",
+    "histidines >= 2": "C2H2 means two cysteines and two histidines",
+    # Mathematical minima for the geometry to be defined at all.
+    "len(moving_anchor) < 3": "three points are the fewest that fix a rigid body",
+    "len(selected) < 2": "two points are the fewest that define a direction",
+    # An API response cap, not a threshold applied to data.
+    "limit > 100": "caps how many rows one query may return",
+}
+
+
+def _int_cutoff_comparisons() -> dict[str, list[str]]:
+    """Comparisons against an integer literal above 1."""
+    found: dict[str, list[str]] = {}
+    for path in sorted((ROOT / "nobble").rglob("*.py")):
+        source = path.read_text()
+        tree = ast.parse(source)
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Compare):
+                continue
+            for operand in [node.left, *node.comparators]:
+                value = operand
+                if isinstance(value, ast.UnaryOp) and isinstance(value.op, ast.USub):
+                    value = value.operand
+                if (isinstance(value, ast.Constant)
+                        and isinstance(value.value, int)
+                        and not isinstance(value.value, bool)
+                        and abs(value.value) > 1):
+                    text = " ".join(
+                        (ast.get_source_segment(source, node) or "").split()
+                    )
+                    found.setdefault(text, []).append(
+                        f"{path.relative_to(ROOT)}:{node.lineno}"
+                    )
+                    break
+    return found
+
+
+def test_no_integer_cutoff_is_hard_coded_either():
+    found = _int_cutoff_comparisons()
+    unexplained = {
+        text: where for text, where in found.items()
+        if text not in ALLOWED_INT_COMPARISONS
+    }
+    assert not unexplained, (
+        "integer cutoff(s) that should read from config/thresholds.toml: "
+        f"{unexplained}"
+    )
+
+
+def test_the_integer_allowances_are_all_still_real():
+    found = _int_cutoff_comparisons()
+    stale = [text for text in ALLOWED_INT_COMPARISONS if text not in found]
+    assert not stale, f"ALLOWED_INT_COMPARISONS lists comparisons that are gone: {stale}"
+
+
+def test_the_moved_integer_cutoffs_resolve_from_config():
+    from nobble import paths
+    from nobble.curate import peptides
+    from nobble.score import metrics, weights
+    from nobble.validate import layers
+
+    t = paths.thresholds()
+    assert peptides.FOLDED_DOMAIN_EXCEPTION_MIN_LENGTH == int(
+        t["manifest"]["folded_domain_exception_min_length"])
+    assert metrics.COLLAPSE_MINIMUM_SEEDS == int(t["scoring"]["collapse_minimum_seeds"])
+    assert layers.ROC_MINIMUM_PER_SIDE == int(t["validation"]["roc_minimum_per_side"])
+    assert weights.INDICATIVE_BELOW_LABELLED == int(
+        t["weights"]["indicative_below_labelled"])
+    assert weights.WIDE_BOUNDS_BELOW_PER_SIDE == int(
+        t["weights"]["wide_bounds_below_per_side"])
+
+
 def test_no_threshold_is_hard_coded_in_python():
     found = _cutoff_comparisons()
     unexplained = {text: where for text, where in found.items() if text not in ALLOWED}

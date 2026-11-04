@@ -25,7 +25,10 @@ from collections import Counter
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+from nobble import paths
 from nobble.score import poses
+
+ROC_MINIMUM_PER_SIDE = int(paths.thresholds()["validation"]["roc_minimum_per_side"])
 
 # Boltz-2's training cutoff. Depositions released after it cannot have been
 # memorised, which is the only thing that makes the blind split meaningful.
@@ -394,7 +397,7 @@ def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerR
     # Spec 5 is explicit that reporting a curve without the matched negatives is
     # itself the failure. Refusing to compute here is the correct behaviour, not
     # a gap.
-    if len(positives) < 3 or len(negatives) < 3:
+    if len(positives) < ROC_MINIMUM_PER_SIDE or len(negatives) < ROC_MINIMUM_PER_SIDE:
         layer.status = (
             f"not_computed: {len(positives)} positive(s) and {len(negatives)} "
             "matched negative(s) scored. The Sievers arm runs after the benchmark "

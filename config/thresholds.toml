@@ -21,6 +21,10 @@ scrambles_per_positive = 1
 [manifest]
 token_cap_tier1 = 400
 affinity_heavy_atom_cap = 128
+# Shortest folded domain that may declare a token-cap exception (D-NOB-027).
+# CR-8 is recognised through CDK12's kinase domain, and a kinase domain cut in
+# half is not a kinase domain.
+folded_domain_exception_min_length = 250
 
 [geometry]
 # Heavy-atom contact distance for the peptide-receptor contact map, angstrom.
@@ -51,6 +55,8 @@ domain_coverage_self_sufficient = 0.80
 [scoring]
 # A seed is collapsed when it sits this far below the median of its set.
 collapse_margin = 0.30
+# Fewest seeds carrying a value before collapse detection is attempted at all.
+collapse_minimum_seeds = 3
 # How far the IKZF1 control may move before a campaign comparison is untrusted.
 control_tolerance_a = 2.0
 # Change in median RMSD that counts as a real improvement or regression when
@@ -106,3 +112,14 @@ minimum_ranked = 3
 [weights]
 # Fewest labelled pairs before any weight fit is attempted.
 minimum_labelled = 8
+# Below this many labelled pairs the weights are reported as indicative only.
+indicative_below_labelled = 25
+# Below this many on either side of the split, the AUC's bounds are called
+# very wide and the number is not a performance claim.
+wide_bounds_below_per_side = 5
+
+[validation]
+# Fewest pairs on each side before the matched-control curve is drawn at all.
+# Spec 5: reporting a curve without the matched negatives is itself the
+# failure, so refusing here is correct behaviour rather than a gap.
+roc_minimum_per_side = 3
