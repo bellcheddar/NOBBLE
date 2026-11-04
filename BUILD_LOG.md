@@ -294,3 +294,9 @@
   fraction, "7 of 6", which is impossible. They are two counts, scored and
   bridged, now separated by a middot. tests/test_status.py (3 tests).
   95 tests pass.
+- 2026-11-04T08:30Z The status note was computed and never rendered. Fixing
+  the wording in data.py had changed nothing visible: `site_status.note`
+  appeared nowhere in base.html, so "complete" stood alone on the page while
+  three campaigns were queued. The state word now carries it as a tooltip
+  and the outstanding count shows inline as "+3 queued", because a caveat
+  reachable only on hover is not a caveat. Live and verified.

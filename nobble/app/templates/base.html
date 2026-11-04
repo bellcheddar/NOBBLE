@@ -85,9 +85,18 @@
        figure comes from the published slice, so what is on screen is what the
        pipeline produced. #}
     <div class="status" role="group" aria-label="Campaign status">
+      {# The note was computed and never rendered, so "complete" stood alone
+         on the page while three campaigns were still queued. The state word
+         carries it as a tooltip, and the outstanding count is shown inline
+         because a caveat only reachable on hover is not a caveat. #}
       <span class="status__dot status__dot--{{ site_status.health | replace(' ', '-') }}"
             aria-hidden="true"></span>
-      <span class="status__state">{{ site_status.health }}</span>
+      <span class="status__state" data-tip="{{ site_status.note }}"
+            data-tip-title="Status" data-tip-value="{{ site_status.note }}"
+            tabindex="0">{{ site_status.health }}</span>
+      {% if site_status.outstanding %}
+        <span class="status__sub" title="{{ site_status.note }}">+{{ site_status.outstanding | length }} queued</span>
+      {% endif %}
       <span class="status__bar" aria-hidden="true">
         <span class="status__fill" style="width: {{ site_status.percent }}%"></span>
       </span>
