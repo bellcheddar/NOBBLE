@@ -4544,3 +4544,52 @@ evidence: I inferred "the budget is spent" from elapsed wall clock, which is
 true in practice and leaves the reason to be read off the clock. A test I
 wrote caught it, because a stubbed runner returns instantly and the retry
 fired. The timeout branch now breaks and says why.
+
+## F101. The exclusion list handled the source and not its consumers
+
+F97 added the atlas drift check and argued, in its own write-up, that the
+exclusion list is where it could go wrong in either direction: "counting
+them would make the check fire always, which is the same as never firing."
+The list excludes `throughput`. It does not exclude the values computed from
+throughput, which is one line away in the same tuple.
+
+Thirteen jobs later the check reported 63 drifted values. Every one was a
+design preview's `cost.basis` or `cost.projected_hours`, moved because the
+campaign had remeasured its token bands: the 800 to 1600 token band went
+from 0.663 to 0.7375 seconds per token as the DCAF15 jobs completed, and the
+representative job from 144 tokens at 66.8s to 155 at 72.2s. Nothing was
+wrong. The atlas was in step on everything that is not a function of
+timings, and the check said "DRIFTED from the code: 63 value(s)".
+
+The consequence is the one F97 named. `deploy.sh` refuses before the rsync on
+drift and `status.sh` reports it, so both would have fired continuously for
+the length of every campaign. Worse for the signal: the report prints six
+rows and then "and 57 more", so a real difference would have arrived
+somewhere in the 57. The drift F96 was, a caveat missing from the published
+conclusion, is exactly that shape.
+
+This is the third instance of the same habit in this project and the first
+in my own code from an hour earlier. F74 guarded one of fourteen numeric
+type checks, F78 one of nine median sites, F89 configured one of five atlas
+sections. Here the source is excluded and its consumers are not.
+
+The fix is not a wider exclusion. A cost that moved for a reason other than
+new timings is worth seeing, and F97's own test asserts that `redactions`,
+`redacted_ligands`, `conclusion`, `median_rmsd` and `auc` are not excused.
+So drift now comes back in two categories: `moved`, which needs explaining
+and fails the check, and `recomputed`, which is counted and reported and
+does not. The check reads "in step, 11008 leaf values compared, 63
+recomputed from new timings".
+
+The category is matched on the whole leaf name, `.cost.basis` and
+`.cost.projected_hours`, rather than on a substring, because "cost" would
+swallow anything with cost in its path. A test holds that each pattern is a
+full leaf name and that the science fields cannot be filed under new
+timings, which is the same guard F97 wrote against the first category,
+applied to the second.
+
+The control is the one that matters: with sixty-odd costs legitimately
+moving, strip the caveat from the published conclusion and the check must
+still report `comparison.json.conclusion`, fail on it, and print it in the
+first six rows rather than the 58th. It does, and the file is restored with
+a check that the restore worked.

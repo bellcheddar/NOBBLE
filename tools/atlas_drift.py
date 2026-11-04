@@ -15,6 +15,12 @@ temporary directory, and compare leaf by leaf.
     python tools/atlas_drift.py            # report, exit 1 on drift
     python tools/atlas_drift.py --quiet    # exit status only
 
+Two categories come back. `moved` is drift that needs explaining and fails
+the check. `recomputed` is the design previews' cost, which is a function of
+the token-band timings and so moves after every completed job while a
+campaign is running: reported, counted, and not a failure. Keeping them
+apart is what stops a real difference from arriving as "and 57 more".
+
 Build-time facts are excluded, listed in VOLATILE below. They move every
 build by design: when it ran, how many bytes it holds, how far the other
 campaigns had got. Everything else should be identical, and a difference
@@ -36,6 +42,25 @@ PUBLISHED = ROOT / "deploy" / "atlas"
 # Facts about the build rather than about the science.
 VOLATILE = ("built_at", "measured_at", "bytes", "atlas_bytes", "jobs_done",
             "outstanding", "note", "throughput", "measured_at")
+
+# Leaves that are functions of measured throughput, reported separately
+# rather than excluded.
+#
+# VOLATILE excluded `throughput` and not the values computed from it, which
+# is the same mistake as F74, F78 and F89: the source was handled and its
+# consumers were not. A running campaign remeasures its token bands after
+# every job, so every design preview's cost moves with them. Thirteen jobs
+# after F97 was committed, the check reported 63 drifted values, all of them
+# these, and printed six with "and 57 more": a genuine drift in
+# `comparison.json.conclusion`, which is what F96 was, would have been
+# somewhere in the 57. A check that fires continuously is the failure F97's
+# own write-up warned about, one line away from the exclusion list.
+#
+# Not excluded, because a cost that moved for a reason other than new
+# timings is worth seeing. Matched on the full leaf name rather than on a
+# substring, so the category cannot widen quietly: "cost" alone would
+# swallow anything with cost in its path.
+RECOMPUTED = (".cost.basis", ".cost.projected_hours")
 
 
 def _leaves(root: Path) -> dict[str, object]:
@@ -85,17 +110,22 @@ def drift() -> dict:
         here, rebuilt = _leaves(PUBLISHED), _leaves(Path(workdir))
 
     shared = set(here) & set(rebuilt)
-    moved = [
+    differing = [
         {"key": key, "published": here[key], "rebuilt": rebuilt[key]}
         for key in sorted(shared)
         if here[key] != rebuilt[key]
         and not any(field in key for field in VOLATILE)
     ]
+    moved = [row for row in differing
+             if not row["key"].endswith(RECOMPUTED)]
+    recomputed = [row for row in differing
+                  if row["key"].endswith(RECOMPUTED)]
     return {
         "status": "drifted" if moved else "in step",
         "campaign": campaign.name,
         "compared": len(shared),
         "moved": moved,
+        "recomputed": recomputed,
         "only_published": sorted(set(here) - set(rebuilt))[:10],
         "only_rebuilt": sorted(set(rebuilt) - set(here))[:10],
     }
@@ -108,9 +138,12 @@ def main(argv: list[str] | None = None) -> int:
 
     report = drift()
     if not args.quiet:
+        recomputed = report.get("recomputed") or []
         print(f"   atlas         {report['status']}"
               + (f", {report.get('compared')} leaf value(s) compared"
-                 if report.get("compared") else ""))
+                 if report.get("compared") else "")
+              + (f", {len(recomputed)} recomputed from new timings"
+                 if recomputed else ""))
         for row in report["moved"][:6]:
             print(f"      {row['key']}: {row['published']!r} -> {row['rebuilt']!r}")
         if len(report["moved"]) > 6:

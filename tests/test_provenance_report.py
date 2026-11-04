@@ -104,3 +104,16 @@ def test_the_status_script_calls_it():
     source = (ROOT / "tools" / "status.sh").read_text()
     assert "tools/provenance.py" in source
     assert source.index("-- provenance") < source.index("tools/provenance.py")
+
+
+def test_the_recomputed_cost_count_reaches_the_report():
+    """F101 split atlas drift into values that need explaining and costs
+    that move with new timings. The split is only useful if the second
+    number is visible: a report saying "in step" while sixty-odd costs
+    await the next rebuild tells the operator less than it knows, which is
+    the shape of F79, F91 and F96."""
+    source = (ROOT / "tools" / "provenance.py").read_text()
+    assert 'report_.get("recomputed")' in source, (
+        "provenance computes the atlas drift and drops the recomputed count"
+    )
+    assert "recomputed from new timings" in source

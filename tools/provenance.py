@@ -50,12 +50,19 @@ try:
 
     report_ = atlas_drift.drift()
     moved = report_.get("moved") or []
+    # Counted by the check and reported here, or the operator reading
+    # status.sh sees "in step" and never learns that sixty-odd costs are
+    # waiting for the next rebuild (F101).
+    recomputed = report_.get("recomputed") or []
+    tail = (f", {len(recomputed)} cost(s) recomputed from new timings"
+            if recomputed else "")
     if moved:
         print(f"   atlas         DRIFTED from the code: {len(moved)} value(s), "
-              f"first is {moved[0]['key']}")
+              f"first is {moved[0]['key']}{tail}")
     else:
         print(f"   atlas         {report_['status']}"
-              f"{', ' + str(report_.get('compared')) + ' leaves' if report_.get('compared') else ''}")
+              f"{', ' + str(report_.get('compared')) + ' leaves' if report_.get('compared') else ''}"
+              f"{tail}")
 except Exception as problem:                        # noqa: BLE001
     print(f"   atlas         drift not checked: {type(problem).__name__}")
 

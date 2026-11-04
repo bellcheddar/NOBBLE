@@ -110,3 +110,82 @@ def test_the_status_report_shows_it():
     in status is a rebuild."""
     source = (ROOT / "tools" / "provenance.py").read_text()
     assert "atlas_drift" in source
+
+
+def test_cost_recomputed_from_new_timings_is_not_a_failure():
+    """The gap F97 left one line from its own exclusion list.
+
+    VOLATILE excluded `throughput` and not the values computed from it. A
+    running campaign remeasures its token bands after every job, so every
+    design preview's cost moves: thirteen jobs after F97 was committed the
+    check reported 63 drifted values, all of them costs, and printed six of
+    them with "and 57 more". The same mistake as F74, F78 and F89: the
+    source handled, the consumers not (F101).
+    """
+    _requires_atlas()
+    report = atlas_drift.drift()
+    assert "recomputed" in report
+    for row in report["recomputed"]:
+        assert row["key"].endswith(atlas_drift.RECOMPUTED), row["key"]
+
+
+def test_the_recomputed_category_is_matched_on_the_whole_leaf_name():
+    """"cost" as a substring would swallow any key with cost in its path.
+    Each pattern must be a full leaf name, so the category cannot widen by
+    accident."""
+    for pattern in atlas_drift.RECOMPUTED:
+        assert pattern.startswith("."), pattern
+        assert pattern.count(".") == 2, pattern
+    assert "cost" not in atlas_drift.RECOMPUTED
+    assert "basis" not in atlas_drift.RECOMPUTED
+
+
+def test_the_science_is_not_recomputed_either():
+    """The same guard as `test_the_science_is_not_excluded`, against the
+    second category. A conclusion or a redaction count has no business
+    being filed under new timings."""
+    for field in ("redactions", "redacted_ligands", "conclusion",
+                  "median_rmsd", "auc", "delta_iptm", "bridge_percentile"):
+        assert not any(field in pattern for pattern in atlas_drift.RECOMPUTED), field
+
+
+def test_a_real_drift_is_not_buried_behind_cost_churn():
+    """The control, and the reason the split exists rather than a wider
+    exclusion. With sixty-odd costs legitimately moving, a stripped
+    conclusion must still be the thing the check reports and the thing it
+    fails on."""
+    _requires_atlas()
+    published = atlas_drift.PUBLISHED / "comparison.json"
+    original = published.read_text()
+    data = json.loads(original)
+    conclusion = data.get("conclusion")
+    if not isinstance(conclusion, str) or len(conclusion) < 40:
+        pytest.skip("no conclusion string to perturb")
+
+    data["conclusion"] = conclusion[: len(conclusion) // 2]
+    published.write_text(json.dumps(data, indent=2))
+    try:
+        report = atlas_drift.drift()
+    finally:
+        published.write_text(original)
+    assert published.read_text() == original, "the control failed to restore"
+
+    assert report["status"] == "drifted"
+    keys = [row["key"] for row in report["moved"]]
+    assert "comparison.json.conclusion" in keys, keys[:5]
+    # And it is not competing for the six printed lines with the costs.
+    assert not any(key.endswith(atlas_drift.RECOMPUTED) for key in keys), keys[:5]
+    # It is the first thing printed, not the 58th.
+    assert keys.index("comparison.json.conclusion") < 6, keys[:8]
+
+
+def test_the_check_passes_while_only_costs_move():
+    """The state right now: the atlas content is in step and the costs are
+    not. That must read as a pass, or the deploy refusal fires for the whole
+    length of every campaign and stops meaning anything."""
+    _requires_atlas()
+    report = atlas_drift.drift()
+    if not report.get("recomputed"):
+        pytest.skip("no recomputed values to distinguish from drift")
+    assert report["status"] == "in step", report["moved"][:3]
+    assert atlas_drift.main(["--quiet"]) == 0
