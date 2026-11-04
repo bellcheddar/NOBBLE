@@ -64,6 +64,14 @@
   <h3>Scan profile</h3>
 
   <div class="chart chart--short" id="scan"></div>
+  {% if design.profile.get('bridge_breaking') %}
+    <p class="panel__hint">
+      Bridge lost at
+      <span class="mono">{{ design.profile.bridge_breaking | join(', ') }}</span>:
+      the glue stopped reaching both chains, which is a stronger result than
+      a poor lift.
+    </p>
+  {% endif %}
 </section>
 {% endif %}
 
@@ -98,12 +106,25 @@
   if (!PROFILE.positions || !document.getElementById('scan')) { return; }
   const scored = PROFILE.positions.filter(p => p.lift !== null);
   if (!scored.length) { return; }
+  /* A broken bridge is a stronger result than a poor lift and is drawn as
+     one: the substitution stopped the glue reaching both chains, rather
+     than leaving a worse interface. Outlined rather than recoloured, so
+     the lift's own sign stays readable. */
+  const broke = p => p.bridge_lost === true;
   Plotly.newPlot('scan', [{
     x: scored.map(p => p.position + ' ' + p.wild_type),
     y: scored.map(p => p.lift),
     type: 'bar',
-    marker: { color: scored.map(p => p.lift < 0 ? '#A64708' : '#2F6F4F') },
-    hovertemplate: '%{x}<br>lift %{y:.4f}<extra></extra>'
+    customdata: scored.map(p => [p.bridged || 'n/a', broke(p) ? 'yes' : 'no']),
+    marker: {
+      color: scored.map(p => p.lift < 0 ? '#A64708' : '#2F6F4F'),
+      line: {
+        color: scored.map(p => broke(p) ? '#0c183c' : 'rgba(0,0,0,0)'),
+        width: scored.map(p => broke(p) ? 3 : 0)
+      }
+    },
+    hovertemplate: '%{x}<br>lift %{y:.4f}<br>bridged %{customdata[0]}'
+      + '<br>bridge lost: %{customdata[1]}<extra></extra>'
   }], {
     margin: { l: 55, r: 16, t: 12, b: 56 },
     xaxis: { title: { text: 'position and wild-type residue', font: { size: 12 } } },

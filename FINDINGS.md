@@ -760,3 +760,26 @@ not: the distributions are disjoint by more than four angstrom.
 
 The CDK12 half of F13 is still open and is the half the prediction was
 confident about.
+
+## F19. A variant can gain confidence while losing the interface
+
+Rendering the design scan with bridge formation marked produced a case
+worth recording before any real scan runs. Among synthetic variants, two
+positions came back with a **positive design lift** and **no bridge in any
+seed**: Delta-ipTM rose while the glue stopped reaching both chains.
+
+That combination is not a contradiction. Delta-ipTM is the model's
+confidence in an interface between two chains; bridge formation asks
+whether the glue buries surface against both. A variant whose peptide
+drifts away can leave the model confident about whatever contact remains
+while the ternary it was asked to build has gone.
+
+The consequence for the arm is concrete. Ranking a scan on lift alone
+would list those positions as improvements, and they are the opposite: the
+substitution broke the ternary. So the two are reported separately, the
+chart outlines bridge-breaking positions rather than recolouring them, and
+`scan_profile` lists them under their own key.
+
+This is the same lesson as F16 one level down. There, an absent bridge
+percentile hid the difference between a weak interface and no interface.
+Here, a healthy-looking lift hides it.
