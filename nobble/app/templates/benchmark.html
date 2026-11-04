@@ -71,7 +71,9 @@
       <thead><tr>
         <th>Pair</th><th>Substrate</th>
         <th class="num">15-mer RMSD</th><th class="num">Domain RMSD</th>
-        <th class="num">Change</th><th>Verdict</th>
+        <th class="num">Change</th>
+        <th class="num">Bridged</th>
+        <th>Verdict</th>
       </tr></thead>
       <tbody>
         {% for c in comparison.comparisons %}
@@ -81,6 +83,12 @@
           <td class="num">{{ c.baseline_median_rmsd if c.baseline_median_rmsd is not none else '—' }}</td>
           <td class="num">{{ c.corrected_median_rmsd if c.corrected_median_rmsd is not none else '—' }}</td>
           <td class="num">{{ c.delta_rmsd if c.delta_rmsd is not none else '—' }}</td>
+          {# Independent of the RMSD columns: those compare the prediction to
+             a crystal, this asks only whether the glue touched both chains
+             inside the prediction (F17). #}
+          <td class="num mono" style="font-size:0.72rem">
+            {{ c.baseline_bridged or '—' }} &rarr; {{ c.corrected_bridged or '—' }}
+          </td>
           <td>
             {% if c.verdict == 'improved' %}<span class="flag flag--glue">improved</span>
             {% elif c.verdict == 'worse' %}<span class="flag flag--bad">worse</span>
@@ -94,8 +102,9 @@
     </table>
   </div>
   <p class="panel__hint" style="margin-top:0.5rem">
-    All RMSD values are peptide backbone, superposed on the receptor, against
-    the same deposited structures in both campaigns.
+    RMSD is peptide backbone superposed on the receptor, against the same
+    deposited structures in both campaigns. Bridged counts seeds whose glue
+    touched both chains, which needs no crystal.
   </p>
 </section>
 {% endif %}

@@ -637,3 +637,14 @@
   placement rather than quality, consistent with CDK12 also having the
   worst pose recovery at 44.92 A. F16. The reason now reaches the pair
   record and the tooltip on an empty percentile cell. 131 tests pass.
+- 2026-11-04T19:00Z Bridge formation added to the automated comparison and
+  to the benchmark tab's table. The comparison reported pose RMSD only, so
+  the chain would have produced F12 and missed F17: recovery compares a
+  prediction to a crystal, bridging asks only whether the glue touched both
+  chains inside the prediction, and they are independent. Now reported per
+  pair, with the column rendering live.
+- 2026-11-04T19:00Z Note for future debugging: locally the app points at the
+  campaign directory, where comparison.json does not exist, so the whole
+  comparison panel is absent. On the droplet NOBBLE_CAMPAIGN points at the
+  atlas and it renders. Checking a published panel locally needs
+  NOBBLE_CAMPAIGN=$(pwd)/deploy/atlas, not the default.
