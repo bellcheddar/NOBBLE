@@ -6402,8 +6402,22 @@ quantity added to `scores.jsonl` later is withheld until someone has thought
 about its shape. A blacklist fails the other way, and its failure is a biased
 number presented as an improvement, which would look exactly like a result.
 
-The module imports nothing. The droplet serves a precomputed atlas with no
-scoring stack and no gemmi behind it, and this is read from both sides.
+The module imports `nobble.numeric` and nothing else. The droplet serves a
+precomputed atlas with no scoring stack and no gemmi behind it, and this is
+read from both sides.
+
+It imported nothing at all on the first attempt, and that was the mistake.
+Writing the change as `round(after - before, 4) if isinstance(before, (int,
+float)) and isinstance(after, (int, float))` kept the module dependency-free
+and admitted a NaN, which `tests/test_numeric_rule.py` rejected on its next
+run with the reason already written into its docstring: a new
+`isinstance(x, (int, float))` is a fifteenth copy of a rule with one home and
+it admits NaN by construction. A NaN change would have reached the page as
+the literal `NaN`, which `JSON.parse` refuses, so the panel would not have
+rendered at all rather than rendering a wrong number (F130). `numeric` is
+pure stdlib precisely so that importing it costs the droplet nothing, and the
+import test now checks that transitively rather than checking for no imports
+at all.
 
 Verified by running tier-2 scoring for the first time, on a copy of the
 benchmark campaign with a synthesised refinement queue. It works, and

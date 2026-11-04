@@ -97,15 +97,42 @@ def test_compare_does_not_subtract_a_string():
     assert report["rows"][0]["change"] is None
 
 
-def test_sampling_imports_nothing():
+# nobble.numeric is pure stdlib and is the one home of the finite check, so
+# importing it is the rule rather than an exception to it. Anything else from
+# the project would be.
+ALLOWED_IMPORTS = {"__future__", "nobble.numeric"}
+
+
+def test_sampling_imports_only_what_a_droplet_has():
     """The app serves a precomputed atlas on a droplet with no scoring stack.
 
-    An import of nobble.score here would take the Pose tab down on the
-    droplet, which is where this is read.
+    An import of nobble.score here, directly or through something else,
+    would take the Pose tab down on the droplet, which is where this is
+    read. Checked transitively, because an import that is itself pure
+    stdlib today can acquire a dependency tomorrow.
     """
-    source = (ROOT / "nobble" / "sampling.py").read_text()
-    imports = re.findall(r"^\s*(?:from|import)\s+(\S+)", source, re.MULTILINE)
-    assert set(imports) <= {"__future__"}, imports
+    for module in ("nobble/sampling.py", "nobble/numeric.py"):
+        source = (ROOT / module).read_text()
+        imports = set(re.findall(r"^\s*(?:from|import)\s+(\S+)",
+                                 source, re.MULTILINE))
+        project = {name for name in imports if name.startswith("nobble")}
+        assert project <= ALLOWED_IMPORTS, f"{module} imports {project}"
+
+
+def test_a_nan_is_not_a_change():
+    """The defect tests/test_numeric_rule.py caught in this module.
+
+    `isinstance(value, (int, float))` is true of a NaN, so a NaN on either
+    side produced a NaN difference, and a NaN reaches the page as the literal
+    `NaN`, which `JSON.parse` refuses: the panel would not render at all.
+    """
+    nan = float("nan")
+    report = sampling.compare({"bridge_percentile": nan},
+                              {"bridge_percentile": 70.0})
+    assert report["rows"][0]["change"] is None
+    report = sampling.compare({"bridge_percentile": 50.0},
+                              {"bridge_percentile": nan})
+    assert report["rows"][0]["change"] is None
 
 
 def test_the_pose_template_renders_the_comparison():

@@ -23,11 +23,18 @@ So the comparison is a whitelist rather than a blacklist. A quantity added to
 which is the safe default: the failure of a blacklist here is a biased number
 presented as an improvement, and it would look exactly like a result.
 
-Deliberately imports nothing. The app serves a precomputed atlas on a droplet
-with no scoring stack and no gemmi, and this has to be readable from both
-sides.
+Imports `nobble.numeric` and nothing else. The app serves a precomputed
+atlas on a droplet with no scoring stack and no gemmi, so this has to be
+readable from both sides, and `numeric` is pure stdlib for that reason.
+
+`finite` rather than `isinstance(value, (int, float))`, which is what I wrote
+first and what `tests/test_numeric_rule.py` rejected within the minute. That
+check admits a NaN, and a NaN difference would reach the page as the literal
+`NaN`, which `JSON.parse` refuses: the panel would not render at all (F130).
 """
 from __future__ import annotations
+
+from nobble.numeric import finite
 
 # Comparable across sampling regimes, with what each is and why it survives.
 COMPARABLE = {
@@ -81,8 +88,7 @@ def compare(tier1: dict | None, tier2: dict | None) -> dict:
             # when both exist. Refinement is meant to improve a pose, so the
             # direction is the point.
             "change": (round(after - before, 4)
-                       if isinstance(before, (int, float))
-                       and isinstance(after, (int, float)) else None),
+                       if finite(before) and finite(after) else None),
         })
     return {
         "rows": rows,
