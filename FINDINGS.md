@@ -4593,3 +4593,44 @@ moving, strip the caveat from the published conclusion and the check must
 still report `comparison.json.conclusion`, fail on it, and print it in the
 first six rows rather than the 58th. It does, and the file is restored with
 a check that the restore worked.
+
+## F102. Boltz calls the structural zinc the ligand too
+
+F81 dealt with PLIP perceiving every het group as a ligand. Boltz does the
+same thing one level up, in a confidence field, and that one had not been
+looked at.
+
+The main campaign reached the Sievers arm at job 100. The first completed
+result,
+`sv_neg_ZN346_d5063d__binary__unconstrained__seed1`, reports `ligand_iptm`
+0.9946. That is exactly `pair_chains_iptm["2"]["0"]`, the structural zinc's
+row, and the job is the binary arm: there is no glue in it at all. Across
+the 120-pair Sievers arm the field would describe the finger holding itself
+together, on both arms, which is the measurement D-NOB-034 added the zinc to
+make possible rather than anything about the glue.
+
+Nothing reads it, which is why nothing is wrong. It is recorded in
+`scores.jsonl` and is not in the published atlas, the app, or any template.
+So this is a note, not a fix: the field stays as a record of what Boltz
+reported, with a comment at the field saying what it means on a job carrying
+a cofactor, and a test that fails if any module in `nobble`, `deploy`,
+`tools` or `qc` starts reading it. Wiring it to a glue panel would otherwise
+ship a plausible number, and 0.99 is exactly the sort of plausible.
+
+Two things were verified rather than assumed while looking at this, on real
+output rather than on fixtures.
+
+The zinc is present in the binary arm. The completed structure has chains A
+at 109 residues, which is the CULT domain's 318-426, P at 26, and Z holding
+one ZN. D-NOB-034's requirement is that a cofactor appears in both arms or
+neither, and preflight checks the YAMLs; this is the prediction.
+
+`pair_chains_iptm` is not symmetric, and more so than the smoke test
+suggested. A to P reads 0.8561 and P to A reads 0.9274, against the 0.876
+and 0.840 recorded in `_pair_iptm`'s docstring. The zinc's column is 0.0 in
+all three rows and its row is 0.9946 and 0.9019, so a consumer reading one
+direction would get either a near-perfect score or a zero for the same pair
+of chains. `_pair_iptm` already symmetrises on the minimum, for the reason
+spec 4.3 gives for seed aggregation, and `iptm_receptor_peptide` for this
+job is 0.8561: the conservative direction, over receptor chains only, with
+the zinc's zero column and high row both outside it.

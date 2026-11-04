@@ -50,6 +50,20 @@ class SeedRecord:
     iptm_receptor_peptide: float | None
     ptm: float | None
     complex_plddt: float | None
+    # Boltz's own field, carried through unchanged and read by nothing. The
+    # name is Boltz's and it means "whichever het group was in the job", not
+    # "the glue". On a Sievers pair it is the structural zinc: measured on
+    # sv_neg_ZN346_d5063d__binary__unconstrained__seed1, `ligand_iptm` is
+    # 0.9946, which is exactly the zinc's row in `pair_chains_iptm`, and that
+    # job has no glue in it at all because it is the binary arm. Across the
+    # 120-pair Sievers arm it would describe the finger holding itself
+    # together, on both arms, which is the same mistake F14 found in the
+    # geometry consumers and F81 in PLIP: every consumer classifies chains
+    # itself, and "not receptor, not peptide, not the cofactor" is only
+    # correct where that branch exists. Here it does not, so the field is
+    # kept as a record of what Boltz reported and not used as a measurement.
+    # `tests/test_ligand_iptm_is_not_the_glue.py` fails if anything starts
+    # reading it (F102).
     ligand_iptm: float | None
     confidence_score: float | None
     affinity_pred_value: float | None
