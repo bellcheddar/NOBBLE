@@ -109,3 +109,40 @@ def test_elapsed_is_computed_from_the_epoch_not_from_formatted_time(tmp_path):
         time_module.tzset()
 
     assert answers == [780.0, 780.0, 780.0], answers
+
+
+def test_one_pathological_job_does_not_blunt_the_yardstick(tmp_path):
+    """The scale is a median, as it is everywhere else in the runner.
+
+    The first version of this took the slowest completed job as the
+    yardstick. One job whose recorded time included a killed attempt then
+    nearly doubled the overdue threshold for every job after it, which is
+    exactly the failure runner.throughput() already avoids by using a
+    median rather than a mean.
+    """
+    now = 1_793_772_308.0
+    campaign = tmp_path / "campaign_y"
+    campaign.mkdir()
+    queue, state = [], []
+    # Nine normal jobs and one that took twice as long.
+    for index in range(9):
+        queue.append({"job_id": f"d{index}", "tokens": TOKENS, "pair_id": "p"})
+        state.append({"job_id": f"d{index}", "status": "done",
+                      "seconds": TYPICAL, "tokens": TOKENS})
+    queue.append({"job_id": "slow", "tokens": TOKENS, "pair_id": "p"})
+    state.append({"job_id": "slow", "status": "done",
+                  "seconds": TYPICAL * 2, "tokens": TOKENS})
+    # A job running well past three normal jobs' worth of time.
+    queue.append({"job_id": "live1", "tokens": TOKENS, "pair_id": "p"})
+    state.append({"job_id": "live1", "status": "running",
+                  "started_at": now - 3.5 * TYPICAL})
+
+    (campaign / "queue.jsonl").write_text(
+        "\n".join(json.dumps(r) for r in queue) + "\n")
+    (campaign / "state.jsonl").write_text(
+        "\n".join(json.dumps(r) for r in state) + "\n")
+
+    report = watchdog.stall_report(campaign, now=now)
+    assert [job["job_id"] for job in report["overdue"]] == ["live1"], (
+        "the outlier raised the threshold and hid a genuinely overdue job"
+    )

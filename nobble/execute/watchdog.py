@@ -97,12 +97,18 @@ def stall_report(campaign: Path, tier: int = 1, now: float | None = None) -> dic
 
     # The yardstick is the campaign's own completed work, per token, so a
     # large job is not called overdue for being large.
-    rates = [
+    #
+    # Median, not max, for the same reason runner.throughput() sizes the
+    # budget on a median: one pathological job must not set the scale. The
+    # first version of this used max and was immediately blunted by a single
+    # job whose recorded time included an attempt killed by hand, which
+    # nearly doubled the threshold for every job after it.
+    rates = sorted(
         float(row["seconds"]) / float(row["tokens"])
         for row in records.values()
         if row.get("status") in TERMINAL and row.get("seconds") and row.get("tokens")
-    ]
-    slowest_rate = max(rates) if rates else None
+    )
+    typical_rate = rates[len(rates) // 2] if rates else None
     multiple = float(paths.thresholds()["watchdog"]["overdue_multiple"])
     bound = hard_bound_seconds(tier)
 
@@ -123,8 +129,8 @@ def stall_report(campaign: Path, tier: int = 1, now: float | None = None) -> dic
         if elapsed > bound:
             entry = dict(entry, bound_seconds=round(bound, 1))
             report["stalled"].append(entry)
-        elif slowest_rate is not None and tokens.get(job_id):
-            expected = slowest_rate * tokens[job_id]
+        elif typical_rate is not None and tokens.get(job_id):
+            expected = typical_rate * tokens[job_id]
             if elapsed > multiple * expected:
                 report["overdue"].append(
                     dict(entry, expected_seconds=round(expected, 1))
