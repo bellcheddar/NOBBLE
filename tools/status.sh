@@ -74,8 +74,53 @@ if camps:
     # was measured last: that method projected this campaign at 104 h and
     # opened Gate G1 on a 54-hour run (F45).
     h = projected_hours(pairs, total_tokens=sum(r["tokens"] for r in rows))
-    print(f"   G1 compute   {'OPEN' if h.get('gate_g1_open') else 'closed'}  "
+    print(f"   G1 tier 1    {'OPEN' if h.get('gate_g1_open') else 'closed'}  "
           f"{h.get('projected_hours')} h projected, max {h.get('max_compute_hours')}")
+
+    # And the refinement side, which this did not show. projected_hours
+    # prices tier 1, so a reader of this section saw "G1 closed" while the
+    # decile's refinement cost 31 to 235 hours against 73 remaining and
+    # nothing had compared the two (F135). The gate is computed; it was not
+    # visible here, which for a status page is most of the way to not being
+    # computed.
+    from nobble.execute import budget, tier2
+    spent = budget.hours_spent()
+    campaign = Path(camps[-1])
+
+    # Scoped to the decile, because that is all refinement ever runs on.
+    # Pricing every ternary job in the campaign said 159 to 1,190 hours and
+    # read as a gate about to stop the build, when the decile is a tenth of
+    # it.
+    #
+    # Sized from the campaign's own pair count rather than read out of
+    # tier2.json. The recorded selection answers "what did the last
+    # selection cost"; a status page is asked "what will refinement cost",
+    # and the two diverge as soon as scoring advances. The selection on disk
+    # here was taken against the six pairs scored so far and names one pair,
+    # where the finished campaign's decile is sixteen. Which pairs they are
+    # needs the scores, so this is the decile's size and not its membership,
+    # and it says so.
+    every = sorted({r["pair_id"] for r in rows})
+    take = max(1, int(len(every) * tier2.DECILE_FRACTION))
+    ranked = every[:take]
+
+    report = budget.gate_g1(campaign, ranked)
+    t2 = report["tier2"]
+    print(f"   G1 refine    {'OPEN' if report['gate_g1_open'] else 'closed'}  "
+          f"{t2['hours_low']} to {t2['hours_high']} h for {t2['jobs']} job(s) "
+          f"over {len(ranked)} pair(s), {report['hours_remaining']} h left, "
+          f"judged on {report['judged_on']}")
+    print(f"                a decile-sized slice of {len(every)} pair(s), "
+          "not the ranking: that needs the scores")
+    # What will happen, not just whether the full decile fits. An OPEN on
+    # the line above does not stop the chain: tier2.run drops pairs from the
+    # bottom of the ranking until the rest fits, and only an empty result
+    # opens the gate for real. Saying only "OPEN" reads as a halt.
+    affordable = budget.affordable_pairs(campaign, ranked)
+    kept = len(affordable["affordable"])
+    print(f"                after reduction {kept} of {len(ranked)} pair(s) "
+          f"fit; gate {'OPEN' if affordable['gate_g1_open'] else 'closed'}")
+    print(f"   spent        {spent['hours']} h over {spent['jobs']} job(s)")
 PY
 echo
 

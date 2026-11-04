@@ -185,8 +185,10 @@ fi
 
 # Deploying is the point of having published an atlas, and Marc granted it
 # explicitly. It runs last, after everything that could still change the
-# bundle, and deploy.sh refuses to report success unless all nine routes
-# answer 200.
+# bundle. deploy.sh refuses to report success unless all nine routes answer
+# 200 and the fingerprint the droplet reports is the tree that was shipped:
+# every route answering 200 says the app works, not that it is this version
+# of the app (F140).
 say "deploying"
 bash deploy/deploy.sh || echo "deploy failed: the atlas is built locally, rerun deploy/deploy.sh" >&2
 

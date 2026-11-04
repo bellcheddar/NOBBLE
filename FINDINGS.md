@@ -6647,3 +6647,41 @@ it immediately: append, rewrite, truncation, no change. A function that looks
 like a measurement and quietly replaces the baseline is the shape this
 project keeps finding, and I put one inside the fix for another. The digests
 are now taken explicitly by the caller and passed in.
+
+## F143. The status page showed half of Gate G1
+
+`tools/status.sh` has a gates section, and it reported G1 from
+`projected_hours`, which prices tier 1. So a reader saw "G1 compute closed,
+52.6 h projected, max 96" while refinement of the decile cost 29 to 219 hours
+against 71 remaining.
+
+`nobble.execute.budget` has computed that since F135. It was not surfaced
+anywhere a reader looks, and for a status page whose stated job is to say
+"which gates are open" that is most of the way to not having computed it.
+
+Three things the line had to get right, and I got each wrong first, which is
+worth recording because every one of them produced a plausible-looking number.
+
+Scope. `gate_g1(campaign)` with no pair list prices every ternary job in the
+campaign, so the first version read "OPEN, 159 to 1,190 h for 1,570 jobs".
+Refinement only ever runs on the top decile. Pricing the whole campaign
+answers a question nobody asks and reads as a gate about to stop the build.
+
+Source. The second version read the decile out of `tier2.json`. That file
+answers "what did the last selection cost", and a status page is asked "what
+will refinement cost". The two agree only until scoring advances: the
+selection on disk was taken against the six pairs scored at the time and
+names one pair, where the finished campaign's decile is sixteen. So the
+decile is sized from the campaign's own pair count, and labelled as a size
+rather than as the ranking, because which pairs are in it needs the scores.
+
+Outcome. The third version said "OPEN" and stopped there, which reads as a
+halt. It is not one: `tier2.run` drops pairs from the bottom of the ranking
+until the rest fits, and only an empty result opens the gate for real. The
+line now says both, and on the running campaign that is "OPEN on the full
+decile of 15 pairs, 5 of 15 fit after reduction, gate closed".
+
+Also corrected: `run_chain.sh` described the deploy check as "refuses to
+report success unless all nine routes answer 200", which was the whole of it
+until F140 added the build comparison. A comment a reader relies on to know
+what the chain guarantees.
