@@ -204,14 +204,24 @@
   }
 
   function buildRoc() {
-    const positives = PAIRS.filter(p => p.peptide_label === 'degraded' &&
-      p.delta_iptm !== null && p.delta_iptm !== undefined);
-    const negatives = PAIRS.filter(p => p.peptide_label === 'not_degraded' &&
-      p.delta_iptm !== null && p.delta_iptm !== undefined);
+    /* The Sievers arm only, matching matched_control_roc in Python
+       (D-NOB-036). The benchmark panel also carries peptide_label
+       "degraded", and on label alone its pairs would join the positive side
+       of this curve: a different experiment, other E3 ligases, PROTACs as
+       well as glues, no matched negative from the same screen, and chosen
+       for having good co-crystals, so the AUC would rise. This filter and
+       the Python one have to agree, because the figure here and the number
+       in the validation report are supposed to be the same curve. */
+    const arm = PAIRS.filter(p => p.tier === 'sievers_zf');
+    const excluded = PAIRS.length - arm.length;
+    const scored = p => p.delta_iptm !== null && p.delta_iptm !== undefined;
+    const positives = arm.filter(p => p.peptide_label === 'degraded' && scored(p));
+    const negatives = arm.filter(p => p.peptide_label === 'not_degraded' && scored(p));
 
     const counts = document.getElementById('roc-counts');
     counts.textContent = positives.length + ' positive(s), ' + negatives.length +
-      ' matched negative(s) scored so far';
+      ' matched negative(s) scored so far' +
+      (excluded ? ' (' + excluded + ' pair(s) outside the Sievers arm excluded)' : '');
 
     if (positives.length < 3 || negatives.length < 3) { return; }
 

@@ -151,3 +151,15 @@
   the Sievers set both; the contrast is documented in weights._label so it is
   not tidied away later. D-NOB-036. tests/test_roc_scope.py (3 tests), with
   the contamination case verified to fail without the filter. 71 tests pass.
+- 2026-11-04T04:25Z The same ROC contamination existed in the browser.
+  delta.html's buildRoc() filtered on peptide_label === 'degraded' with no
+  tier filter, so fixing the Python left the figure on the live site still
+  counting benchmark pairs as Sievers positives. Two implementations of one
+  curve had diverged the moment one was corrected. Now scoped to
+  tier === 'sievers_zf' to match, and the panel reports how many pairs it
+  excluded. No wrong curve was ever displayed: the three-negative floor kept
+  it from drawing, but the count under it said "6 positive(s)" when the
+  correct answer was none. QC: 12 captures, 0 non-200, 0 console errors,
+  0 serious axe violations. Deployed.
+- 2026-11-04T04:25Z Benchmark queue finished: 99/99, exit 0, zero failures
+  across the whole run. The corrected campaign started automatically.
