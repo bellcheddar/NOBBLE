@@ -1,0 +1,125 @@
+# Tier B receptor constructs (spec 3.3, F163).
+#
+# Spec 1.1 names a receptor construct for each Tier A ligase, because which
+# domain of a ligase binds its substrate is science knowledge and not a
+# lookup. Spec 3.3 selects fifteen Tier B ligases and names no construct for
+# any of them, so Tier B is selected, frozen, gate-passed and unrunnable.
+#
+# This file is the gap, as a form. One entry per ligase and Tier B can be
+# assembled; the loader in nobble/curate/tier_b_constructs.py refuses and
+# names what is missing until then. Nothing here is derivable: the two
+# mechanical routes are both ruled out, the longest annotated domain by F41
+# and the frozen best_window because it says which part of the model is
+# confident rather than which part binds substrate.
+#
+# The candidates below are InterPro entries on each accession between 60
+# residues and 326, which is the tier-1 token cap of 400 less a 15-mer
+# peptide and a glue at the recall set's median of 59 heavy atoms. Member
+# database duplicates of the same region are collapsed. A domain outside that
+# range is still allowed: set exception = true and say why, as spec 1.1 does
+# for VHL and DCAF15.
+#
+# Entries are read as:
+#
+#   [constructs.DCAF8L1_EXAMPLE]
+#   e3_gene = "DCAF8L1"
+#   rationale = "why this domain is the substrate-binding one"
+#   exception = false
+#   [[constructs.DCAF8L1_EXAMPLE.segments]]
+#   accession = "A6NGE4"
+#   label = "DDB1- and CUL4-associated factor"
+#   interpro_entry = "IPR045151"
+#   occurrence = 0          # omit unless the entry is annotated twice
+#   note = ""
+
+[constructs]
+
+
+# DCAF8L1 (A6NGE4): 1 candidate(s) within the cap
+#   IPR036322    WD40-repeat-containing domain superfamily      183-508 (326 aa)
+
+# CCNF (P41002): 7 candidate(s) within the cap
+#   IPR039361    Cyclin                                         275-499 (225 aa)
+#   IPR011990    Tetratricopeptide-like helical domain superf   86-284 (199 aa)
+#   IPR004367    Cyclin, C-terminal domain                      408-531 (124 aa)
+#   IPR006671    Cyclin, N-terminal                             290-405 (116 aa)
+#   IPR013763    Cyclin-like domain                             315-399 (85 aa)
+#   IPR036047    F-box-like domain superfamily                  32-114 (83 aa)
+#   IPR013763    Cyclin-like domain                             416-494 (79 aa)
+
+# ASB8 (Q9H765): 1 candidate(s) within the cap
+#   IPR036770    Ankyrin repeat-containing domain superfamily   25-231 (207 aa)
+
+# KCNC1 (P48547): 4 candidate(s) within the cap
+#   IPR005821    Ion transport domain                           190-444 (255 aa)
+#   IPR027359    Voltage-dependent channel domain superfamily   167-327 (161 aa)
+#   IPR011333    SKP1/BTB/POZ domain superfamily                5-122 (118 aa)
+#   IPR000210    BTB/POZ domain                                 8-112 (105 aa)
+
+# NEURL2 (Q9BR09): 1 candidate(s) within the cap
+#   IPR006573    Neuralized homology repeat (NHR) domain        21-244 (224 aa)
+
+# TRIM55 (Q9BYV6): 2 candidate(s) within the cap
+#   IPR050617    E3 ubiquitin-protein ligases and FN3/SPRY do   119-301 (183 aa)
+#   IPR013083    Zinc finger, RING/FYVE/PHD-type                4-119 (116 aa)
+
+# KCND2 (Q9NZV8): 6 candidate(s) within the cap
+#   IPR005821    Ion transport domain                           186-416 (231 aa)
+#   IPR027359    Voltage-dependent channel domain superfamily   157-306 (150 aa)
+#   IPR011333    SKP1/BTB/POZ domain superfamily                1-145 (145 aa)
+#   IPR000210    BTB/POZ domain                                 41-140 (100 aa)
+#   IPR003131    Potassium channel tetramerisation-type BTB d   43-132 (90 aa)
+#   IPR024587    Potassium channel, voltage dependent, Kv4, C   471-545 (75 aa)
+
+# KCTD4 (Q8WVF5): 2 candidate(s) within the cap
+#   IPR045740    BTB/POZ domain-containing protein KCTD4, C-t   138-259 (122 aa)
+#   IPR011333    SKP1/BTB/POZ domain superfamily                27-135 (109 aa)
+
+# FBXO11 (Q86XK2): 12 candidate(s) within the cap
+#   IPR011050    Pectin lyase fold/virulence factor             523-826 (304 aa)
+#   IPR012334    Pectin lyase fold                              270-527 (258 aa)
+#   IPR011050    Pectin lyase fold/virulence factor             269-492 (224 aa)
+#   IPR012334    Pectin lyase fold                              720-879 (160 aa)
+#   IPR039448    Right handed beta helix domain                 388-543 (156 aa)
+#   IPR039448    Right handed beta helix domain                 664-819 (156 aa)
+#   IPR012334    Pectin lyase fold                              582-719 (138 aa)
+#   IPR006633    Carbohydrate-binding/sugar hydrolysis domain   418-554 (137 aa)
+#   IPR006633    Carbohydrate-binding/sugar hydrolysis domain   708-837 (130 aa)
+#   IPR006633    Carbohydrate-binding/sugar hydrolysis domain   570-692 (123 aa)
+#   IPR036047    F-box-like domain superfamily                  158-241 (84 aa)
+#   IPR003126    Zinc finger, UBR-type                          833-904 (72 aa)
+
+# FBXW4 (P57775): 3 candidate(s) within the cap
+#   IPR036322    WD40-repeat-containing domain superfamily      153-399 (247 aa)
+#   IPR015943    WD40/YVTN repeat-like-containing domain supe   266-412 (147 aa)
+#   IPR015943    WD40/YVTN repeat-like-containing domain supe   133-265 (133 aa)
+
+# TRIP12 (Q14669): 5 candidate(s) within the cap
+#   IPR011989    Armadillo-like helical                         478-769 (292 aa)
+#   IPR057948    E3 ubiquitin-protein ligase TRIP12-like, TPR   470-607 (138 aa)
+#   IPR037197    WWE domain superfamily                         793-880 (88 aa)
+#   IPR004170    WWE domain                                     797-873 (77 aa)
+#   IPR018123    WWE domain, subgroup                           806-881 (76 aa)
+
+# SMURF2 (Q9HAU4): 2 candidate(s) within the cap
+#   IPR035892    C2 domain superfamily                          11-140 (130 aa)
+#   IPR000008    C2 domain                                      1-119 (119 aa)
+
+# RNF175 (Q8N4F7): 2 candidate(s) within the cap
+#   IPR040176    RING finger protein RNF121/RNF175              15-328 (314 aa)
+#   IPR013083    Zinc finger, RING/FYVE/PHD-type                216-289 (74 aa)
+
+# TRIM17 (Q9Y577): 4 candidate(s) within the cap
+#   IPR001870    B30.2/SPRY domain                              277-475 (199 aa)
+#   IPR043136    B30.2/SPRY domain superfamily                  290-475 (186 aa)
+#   IPR003877    SPRY domain                                    348-472 (125 aa)
+#   IPR013083    Zinc finger, RING/FYVE/PHD-type                1-83 (83 aa)
+
+# RAG1 (P15918): 7 candidate(s) within the cap
+#   IPR035714    RAG1 importin-binding                          12-291 (280 aa)
+#   IPR058556    V(D)J recombination-activating protein 1, Zn   792-954 (163 aa)
+#   IPR058554    V(D)J recombination-activating protein 1, RN   596-726 (131 aa)
+#   IPR013083    Zinc finger, RING/FYVE/PHD-type                268-353 (86 aa)
+#   IPR058553    V(D)J recombination-activating protein 1, pr   521-594 (74 aa)
+#   IPR023336    RAG nonamer-binding domain                     390-460 (71 aa)
+#   IPR058555    V(D)J recombination-activating protein 1, Zn   728-790 (63 aa)

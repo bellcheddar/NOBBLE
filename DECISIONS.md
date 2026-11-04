@@ -2006,3 +2006,35 @@ in the tool, and a second would need this decision rewritten.
 **Reversal.** Remove `/about` from `EXPOSITION` in `qc/copy_budget.mjs`. Its
 ten panels then report over budget and the page needs cutting to 150 words,
 with the rest moving to the README, where the house style does allow prose.
+
+## D-NOB-068. The Tier B construct gap is a form, not a guess
+
+**Decision.** `config/tier_b_constructs.toml` ships empty, listing the
+InterPro candidates for each of the fifteen Tier B ligases that fit the
+tier-1 token cap, and `nobble/curate/tier_b_constructs.py` loads and
+validates whatever is filled in. Until it has an entry per ligase, `report()`
+returns blocked and names every gene still without one.
+
+**Alternatives.** Pick the longest annotated domain, which F41 rejects in
+`domain_by_accession`'s own docstring: which domain binds the substrate is
+science knowledge and only the lookup belongs in the code. Use the frozen
+selection's `best_window`, which is the highest-mean-pLDDT 200-residue
+window and so a statement about which part of the model is confident. Or
+write the fifteen into `constructs.py` myself, which is writing spec content
+into code when BUILD_SPEC.md is authoritative.
+
+**Why a form.** The gap is fifteen science decisions and no amount of code
+closes it. What code can do is make answering cheap: the candidates are
+listed, member-database duplicates collapsed, the four that exceed the cap
+named, and a filled entry is checked rather than trusted. 59 InterPro
+candidates across the fifteen, three of which have exactly one within the
+cap.
+
+**What is validated.** That the accession carries the entry, that an
+ambiguous entry says which occurrence it means, that a rationale is present
+because that is the one thing the file exists to record, and that the
+construct fits the cap unless it declares an exception as spec 1.1 does for
+VHL and DCAF15.
+
+**Reversal.** Delete the file and the module. Tier B returns to being
+selected, frozen and unrunnable with nothing saying why.

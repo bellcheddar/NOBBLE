@@ -7531,3 +7531,16 @@ campaign, a larger budget, or a GPU. Any of those still leaves Tier B
 unrunnable until someone names a substrate-binding domain for fifteen
 proteins. Recorded here with the candidate counts and the token overruns so
 that naming them is a sitting down with a table, not a research project.
+
+The mechanism for closing F163 is D-NOB-068: `config/tier_b_constructs.toml`
+ships empty with the candidates listed, and
+`nobble/curate/tier_b_constructs.py` loads and validates what is filled in.
+Deliberately the mechanism and not the judgement, and tested against a
+*filled* table synthesised in the tests, because a module that only ever runs
+against an empty form is the shape this project keeps finding defects in:
+F134, F137, F141, F145 and F147 were all paths nothing had executed.
+
+One defect in my own loader, found by that filled-table test rather than by
+reading it: `report()` built its `form` field with `relative_to(ROOT)`, which
+raises for a form outside the project root. A report that raises while
+describing a blocked state is worse than the blocked state.
