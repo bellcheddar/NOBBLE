@@ -337,3 +337,29 @@ def test_a_lift_with_neither_position_nor_a_readable_label_is_skipped():
         {**base, "delta_iptm": 0.3})
     profile = Lmod.scan_profile([unreadable], "PFQCNQCGASFTQKG")
     assert profile["scored"] == 0
+
+
+def test_the_unscored_fallback_never_picks_a_bivalent_degrader():
+    """Every benchmark degron is a 15-mer, so "shortest" was an arbitrary
+    tiebreak and it landed on BRD4/VHL: a PROTAC pair, in an arm about glue
+    dependence. The fallback fires whenever nothing is scored, which
+    includes the case where the main campaign failed to score, so it has to
+    be right on its own rather than relying on scores existing."""
+    from nobble.design.report import _default_parent
+
+    parents = [
+        {"peptide_id": "p_protac", "gene": "BRD4", "sequence": "A" * 15,
+         "length": 15, "source": "benchmark", "e3_hint": "VHL",
+         "label": "degraded", "modality": "protac"},
+        {"peptide_id": "p_glue", "gene": "GSPT1", "sequence": "C" * 15,
+         "length": 15, "source": "benchmark", "e3_hint": "CRBN",
+         "label": "degraded", "modality": "glue"},
+    ]
+    chosen = _default_parent(parents)
+    assert chosen["modality"] == "glue", chosen["gene"]
+    assert "not been ranked" in chosen["chosen_because"]
+
+
+def test_sievers_parents_are_glues():
+    from nobble.design.report import _modality_of
+    assert _modality_of({"source": "sievers_zf", "gene": "ZN346"}) == "glue"

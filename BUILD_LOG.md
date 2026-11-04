@@ -388,3 +388,11 @@
   on F6. No verdict yet, and the machinery said so correctly: "not concluded,
   the IKZF1 control has no number in both campaigns". The three-state control
   logic behaving as intended rather than collapsing to a false negative.
+- 2026-11-04T11:05Z Dry-ran the chain's new re-assembly block before trusting
+  it to run unattended, and it picked BRD4/VHL: a PROTAC pair, in an arm
+  about glue dependence. The fallback fires whenever nothing is scored, which
+  includes the case where the main campaign fails to score, so it has to be
+  right on its own rather than relying on scores existing. Parents now carry
+  a modality and the fallback prefers a glue, picking GSPT1/CRBN instead, and
+  says plainly that a parent chosen this way has not been ranked against
+  anything. 101 tests pass.

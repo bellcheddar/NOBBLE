@@ -40,8 +40,30 @@ def candidate_parents() -> list[dict]:
             "source": row["source"],
             "e3_hint": row.get("e3_hint"),
             "label": row.get("label"),
+            "modality": _modality_of(row),
         })
     return sorted(parents, key=lambda item: (item["source"], item["gene"] or ""))
+
+
+def _modality_of(row: dict) -> str:
+    """glue or protac, for the parent this peptide belongs to.
+
+    The arm measures glue dependence, so a bivalent degrader is a poor
+    default target even though it is a perfectly good benchmark pair.
+    Sievers fingers are all IMiD glues.
+    """
+    from nobble.curate import ligands as ligand_module
+    from nobble.curate import peptides as peptide_module
+
+    if row.get("source") == "sievers_zf":
+        return "glue"
+    member = next((m for m in peptide_module.BENCHMARK_CHAINS
+                   if m["gene"] == row.get("gene")
+                   and m["e3"] == row.get("e3_hint")), None)
+    if member is None:
+        return "unknown"
+    entry = ligand_module.BENCHMARK_LIGANDS.get(member["index"])
+    return entry[1] if entry else "unknown"
 
 
 def _default_parent(parents: list[dict]) -> dict:
@@ -78,12 +100,17 @@ def _default_parent(parents: list[dict]) -> dict:
         )
         return best
 
-    benchmark = [p for p in parents if p["source"] == "benchmark"]
-    fallback = min(benchmark or parents, key=lambda p: (p["length"], p["peptide_id"]))
-    fallback = dict(fallback)
+    # Nothing scored. Fall back, but not to a bivalent degrader: the arm
+    # measures glue dependence, and the unqualified "shortest benchmark
+    # degron" rule picked BRD4/VHL, a PROTAC pair, because every benchmark
+    # degron is a 15-mer and length was an arbitrary tiebreak.
+    glue = [p for p in parents if p.get("modality") == "glue"]
+    benchmark = [p for p in (glue or parents) if p["source"] == "benchmark"]
+    fallback = dict(min(benchmark or glue or parents,
+                        key=lambda p: (p["length"], p["peptide_id"])))
     fallback["chosen_because"] = (
-        "nothing is scored yet, so the shortest benchmark degron stands in: "
-        "the cheapest complete scan"
+        "nothing is scored yet, so the shortest benchmark glue degron stands "
+        "in. A scan chosen this way has not been ranked against anything"
     )
     return fallback
 

@@ -7,7 +7,8 @@
       "length": 15,
       "source": "benchmark",
       "e3_hint": "VHL",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "protac"
     },
     {
       "peptide_id": "benchmark_c9b55ab831",
@@ -16,7 +17,8 @@
       "length": 15,
       "source": "benchmark",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "protac"
     },
     {
       "peptide_id": "benchmark_e7d7a575d5",
@@ -25,7 +27,8 @@
       "length": 15,
       "source": "benchmark",
       "e3_hint": "DDB1",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "benchmark_b14fa633af",
@@ -34,7 +37,8 @@
       "length": 15,
       "source": "benchmark",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "benchmark_83c557c3dc",
@@ -43,7 +47,8 @@
       "length": 15,
       "source": "benchmark",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "benchmark_888fd2c63e",
@@ -52,7 +57,8 @@
       "length": 15,
       "source": "benchmark",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "benchmark_8be125d899",
@@ -61,7 +67,8 @@
       "length": 15,
       "source": "benchmark",
       "e3_hint": "DCAF15",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "sievers_e797a11de7",
@@ -70,7 +77,8 @@
       "length": 26,
       "source": "sievers_zf",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "sievers_8076e7901a",
@@ -79,7 +87,8 @@
       "length": 23,
       "source": "sievers_zf",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "sievers_5b1a0c4109",
@@ -88,7 +97,8 @@
       "length": 23,
       "source": "sievers_zf",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "sievers_d0dbe9051c",
@@ -97,7 +107,8 @@
       "length": 23,
       "source": "sievers_zf",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "sievers_b20821e7bc",
@@ -106,7 +117,8 @@
       "length": 26,
       "source": "sievers_zf",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "sievers_f9ffe042fc",
@@ -115,7 +127,8 @@
       "length": 25,
       "source": "sievers_zf",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "sievers_0af57d5047",
@@ -124,7 +137,8 @@
       "length": 25,
       "source": "sievers_zf",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "sievers_9309419fbe",
@@ -133,7 +147,8 @@
       "length": 23,
       "source": "sievers_zf",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "sievers_6884d17767",
@@ -142,7 +157,8 @@
       "length": 23,
       "source": "sievers_zf",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "sievers_dfec9147fa",
@@ -151,7 +167,8 @@
       "length": 23,
       "source": "sievers_zf",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "sievers_d49b438204",
@@ -160,7 +177,8 @@
       "length": 25,
       "source": "sievers_zf",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "sievers_730371dd60",
@@ -169,7 +187,8 @@
       "length": 23,
       "source": "sievers_zf",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "sievers_dec864eee0",
@@ -178,7 +197,8 @@
       "length": 23,
       "source": "sievers_zf",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "sievers_2dd8849030",
@@ -187,7 +207,8 @@
       "length": 23,
       "source": "sievers_zf",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "sievers_dc66fdefdc",
@@ -196,7 +217,8 @@
       "length": 23,
       "source": "sievers_zf",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "sievers_9d25ba3680",
@@ -205,7 +227,8 @@
       "length": 23,
       "source": "sievers_zf",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "sievers_d1c496c42b",
@@ -214,7 +237,8 @@
       "length": 23,
       "source": "sievers_zf",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "sievers_84b150f6a7",
@@ -223,7 +247,8 @@
       "length": 23,
       "source": "sievers_zf",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "sievers_2bac03e3e2",
@@ -232,7 +257,8 @@
       "length": 23,
       "source": "sievers_zf",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "sievers_daf84100fa",
@@ -241,7 +267,8 @@
       "length": 23,
       "source": "sievers_zf",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "sievers_58aca9048e",
@@ -250,7 +277,8 @@
       "length": 23,
       "source": "sievers_zf",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "sievers_ca8e3d0ecc",
@@ -259,7 +287,8 @@
       "length": 23,
       "source": "sievers_zf",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "sievers_b843c1de28",
@@ -268,7 +297,8 @@
       "length": 23,
       "source": "sievers_zf",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     },
     {
       "peptide_id": "sievers_a4e431a394",
@@ -277,7 +307,8 @@
       "length": 23,
       "source": "sievers_zf",
       "e3_hint": "CRBN",
-      "label": "degraded"
+      "label": "degraded",
+      "modality": "glue"
     }
   ],
   "previews": {
@@ -289,7 +320,8 @@
         "length": 15,
         "source": "benchmark",
         "e3_hint": "VHL",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "protac"
       },
       "variants": [
         {
@@ -550,7 +582,8 @@
         "length": 15,
         "source": "benchmark",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "protac"
       },
       "variants": [
         {
@@ -809,7 +842,8 @@
         "length": 15,
         "source": "benchmark",
         "e3_hint": "DDB1",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -1068,7 +1102,8 @@
         "length": 15,
         "source": "benchmark",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -1331,7 +1366,8 @@
         "length": 15,
         "source": "benchmark",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -1590,7 +1626,8 @@
         "length": 15,
         "source": "benchmark",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -1851,7 +1888,8 @@
         "length": 15,
         "source": "benchmark",
         "e3_hint": "DCAF15",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -2110,7 +2148,8 @@
         "length": 26,
         "source": "sievers_zf",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -2549,7 +2588,8 @@
         "length": 23,
         "source": "sievers_zf",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -2938,7 +2978,8 @@
         "length": 23,
         "source": "sievers_zf",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -3327,7 +3368,8 @@
         "length": 23,
         "source": "sievers_zf",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -3714,7 +3756,8 @@
         "length": 26,
         "source": "sievers_zf",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -4151,7 +4194,8 @@
         "length": 25,
         "source": "sievers_zf",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -4574,7 +4618,8 @@
         "length": 25,
         "source": "sievers_zf",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -4995,7 +5040,8 @@
         "length": 23,
         "source": "sievers_zf",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -5384,7 +5430,8 @@
         "length": 23,
         "source": "sievers_zf",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -5775,7 +5822,8 @@
         "length": 23,
         "source": "sievers_zf",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -6164,7 +6212,8 @@
         "length": 25,
         "source": "sievers_zf",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -6583,7 +6632,8 @@
         "length": 23,
         "source": "sievers_zf",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -6972,7 +7022,8 @@
         "length": 23,
         "source": "sievers_zf",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -7363,7 +7414,8 @@
         "length": 23,
         "source": "sievers_zf",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -7754,7 +7806,8 @@
         "length": 23,
         "source": "sievers_zf",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -8143,7 +8196,8 @@
         "length": 23,
         "source": "sievers_zf",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -8532,7 +8586,8 @@
         "length": 23,
         "source": "sievers_zf",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -8921,7 +8976,8 @@
         "length": 23,
         "source": "sievers_zf",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -9310,7 +9366,8 @@
         "length": 23,
         "source": "sievers_zf",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -9699,7 +9756,8 @@
         "length": 23,
         "source": "sievers_zf",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -10088,7 +10146,8 @@
         "length": 23,
         "source": "sievers_zf",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -10477,7 +10536,8 @@
         "length": 23,
         "source": "sievers_zf",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -10866,7 +10926,8 @@
         "length": 23,
         "source": "sievers_zf",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -11255,7 +11316,8 @@
         "length": 23,
         "source": "sievers_zf",
         "e3_hint": "CRBN",
-        "label": "degraded"
+        "label": "degraded",
+        "modality": "glue"
       },
       "variants": [
         {
@@ -11637,125 +11699,44 @@
   },
   "preview": {
     "parent": {
-      "peptide_id": "benchmark_6e0551f38f",
-      "gene": "BRD4",
-      "sequence": "PVDVEALGLHDYCDI",
+      "peptide_id": "benchmark_83c557c3dc",
+      "gene": "GSPT1",
+      "sequence": "CLVDKKSGEKSKTRP",
       "length": 15,
       "source": "benchmark",
-      "e3_hint": "VHL",
+      "e3_hint": "CRBN",
       "label": "degraded",
-      "chosen_because": "nothing is scored yet, so the shortest benchmark degron stands in: the cheapest complete scan"
+      "modality": "glue",
+      "chosen_because": "nothing is scored yet, so the shortest benchmark glue degron stands in. A scan chosen this way has not been ranked against anything"
     },
     "generator": "alanine_scan",
     "variants": [
       {
-        "variant_id": "design_b437a9773d",
-        "sequence": "AVDVEALGLHDYCDI",
-        "parent_peptide_id": "benchmark_6e0551f38f",
-        "parent_sequence": "PVDVEALGLHDYCDI",
+        "variant_id": "design_04cae1de8f",
+        "sequence": "ALVDKKSGEKSKTRP",
+        "parent_peptide_id": "benchmark_83c557c3dc",
+        "parent_sequence": "CLVDKKSGEKSKTRP",
         "generator": "alanine_scan",
         "position": 1,
-        "wild_type": "P",
+        "wild_type": "C",
         "mutant": "A",
-        "substitution": "P1A",
-        "crosses_group": true,
-        "from_group": "special",
+        "substitution": "C1A",
+        "crosses_group": false,
+        "from_group": "hydrophobic",
         "to_group": "hydrophobic",
         "notes": [],
         "length": 15
       },
       {
-        "variant_id": "design_8d1c0b0831",
-        "sequence": "PADVEALGLHDYCDI",
-        "parent_peptide_id": "benchmark_6e0551f38f",
-        "parent_sequence": "PVDVEALGLHDYCDI",
+        "variant_id": "design_905f660502",
+        "sequence": "CAVDKKSGEKSKTRP",
+        "parent_peptide_id": "benchmark_83c557c3dc",
+        "parent_sequence": "CLVDKKSGEKSKTRP",
         "generator": "alanine_scan",
         "position": 2,
-        "wild_type": "V",
-        "mutant": "A",
-        "substitution": "V2A",
-        "crosses_group": false,
-        "from_group": "hydrophobic",
-        "to_group": "hydrophobic",
-        "notes": [],
-        "length": 15
-      },
-      {
-        "variant_id": "design_04ceef5bc8",
-        "sequence": "PVAVEALGLHDYCDI",
-        "parent_peptide_id": "benchmark_6e0551f38f",
-        "parent_sequence": "PVDVEALGLHDYCDI",
-        "generator": "alanine_scan",
-        "position": 3,
-        "wild_type": "D",
-        "mutant": "A",
-        "substitution": "D3A",
-        "crosses_group": true,
-        "from_group": "negative",
-        "to_group": "hydrophobic",
-        "notes": [],
-        "length": 15
-      },
-      {
-        "variant_id": "design_66e7c3ca02",
-        "sequence": "PVDAEALGLHDYCDI",
-        "parent_peptide_id": "benchmark_6e0551f38f",
-        "parent_sequence": "PVDVEALGLHDYCDI",
-        "generator": "alanine_scan",
-        "position": 4,
-        "wild_type": "V",
-        "mutant": "A",
-        "substitution": "V4A",
-        "crosses_group": false,
-        "from_group": "hydrophobic",
-        "to_group": "hydrophobic",
-        "notes": [],
-        "length": 15
-      },
-      {
-        "variant_id": "design_c633356b60",
-        "sequence": "PVDVAALGLHDYCDI",
-        "parent_peptide_id": "benchmark_6e0551f38f",
-        "parent_sequence": "PVDVEALGLHDYCDI",
-        "generator": "alanine_scan",
-        "position": 5,
-        "wild_type": "E",
-        "mutant": "A",
-        "substitution": "E5A",
-        "crosses_group": true,
-        "from_group": "negative",
-        "to_group": "hydrophobic",
-        "notes": [],
-        "length": 15
-      },
-      {
-        "variant_id": "design_5a35188580",
-        "sequence": "PVDVEGLGLHDYCDI",
-        "parent_peptide_id": "benchmark_6e0551f38f",
-        "parent_sequence": "PVDVEALGLHDYCDI",
-        "generator": "alanine_scan",
-        "position": 6,
-        "wild_type": "A",
-        "mutant": "G",
-        "substitution": "A6G",
-        "crosses_group": true,
-        "from_group": "hydrophobic",
-        "to_group": "special",
-        "notes": [
-          "position was already alanine: scanned to glycine, which removes the remaining side chain rather than reporting an untested position as unchanged"
-        ],
-        "length": 15
-      },
-      {
-        "variant_id": "design_f464bae84f",
-        "sequence": "PVDVEAAGLHDYCDI",
-        "parent_peptide_id": "benchmark_6e0551f38f",
-        "parent_sequence": "PVDVEALGLHDYCDI",
-        "generator": "alanine_scan",
-        "position": 7,
         "wild_type": "L",
         "mutant": "A",
-        "substitution": "L7A",
+        "substitution": "L2A",
         "crosses_group": false,
         "from_group": "hydrophobic",
         "to_group": "hydrophobic",
@@ -11763,10 +11744,90 @@
         "length": 15
       },
       {
-        "variant_id": "design_bbef375b0d",
-        "sequence": "PVDVEALALHDYCDI",
-        "parent_peptide_id": "benchmark_6e0551f38f",
-        "parent_sequence": "PVDVEALGLHDYCDI",
+        "variant_id": "design_0073558651",
+        "sequence": "CLADKKSGEKSKTRP",
+        "parent_peptide_id": "benchmark_83c557c3dc",
+        "parent_sequence": "CLVDKKSGEKSKTRP",
+        "generator": "alanine_scan",
+        "position": 3,
+        "wild_type": "V",
+        "mutant": "A",
+        "substitution": "V3A",
+        "crosses_group": false,
+        "from_group": "hydrophobic",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      },
+      {
+        "variant_id": "design_863145dfda",
+        "sequence": "CLVAKKSGEKSKTRP",
+        "parent_peptide_id": "benchmark_83c557c3dc",
+        "parent_sequence": "CLVDKKSGEKSKTRP",
+        "generator": "alanine_scan",
+        "position": 4,
+        "wild_type": "D",
+        "mutant": "A",
+        "substitution": "D4A",
+        "crosses_group": true,
+        "from_group": "negative",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      },
+      {
+        "variant_id": "design_26d66203ec",
+        "sequence": "CLVDAKSGEKSKTRP",
+        "parent_peptide_id": "benchmark_83c557c3dc",
+        "parent_sequence": "CLVDKKSGEKSKTRP",
+        "generator": "alanine_scan",
+        "position": 5,
+        "wild_type": "K",
+        "mutant": "A",
+        "substitution": "K5A",
+        "crosses_group": true,
+        "from_group": "positive",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      },
+      {
+        "variant_id": "design_4ef4e99b59",
+        "sequence": "CLVDKASGEKSKTRP",
+        "parent_peptide_id": "benchmark_83c557c3dc",
+        "parent_sequence": "CLVDKKSGEKSKTRP",
+        "generator": "alanine_scan",
+        "position": 6,
+        "wild_type": "K",
+        "mutant": "A",
+        "substitution": "K6A",
+        "crosses_group": true,
+        "from_group": "positive",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      },
+      {
+        "variant_id": "design_c57897a3a3",
+        "sequence": "CLVDKKAGEKSKTRP",
+        "parent_peptide_id": "benchmark_83c557c3dc",
+        "parent_sequence": "CLVDKKSGEKSKTRP",
+        "generator": "alanine_scan",
+        "position": 7,
+        "wild_type": "S",
+        "mutant": "A",
+        "substitution": "S7A",
+        "crosses_group": true,
+        "from_group": "polar",
+        "to_group": "hydrophobic",
+        "notes": [],
+        "length": 15
+      },
+      {
+        "variant_id": "design_209dfea57f",
+        "sequence": "CLVDKKSAEKSKTRP",
+        "parent_peptide_id": "benchmark_83c557c3dc",
+        "parent_sequence": "CLVDKKSGEKSKTRP",
         "generator": "alanine_scan",
         "position": 8,
         "wild_type": "G",
@@ -11779,31 +11840,31 @@
         "length": 15
       },
       {
-        "variant_id": "design_d2c5240d17",
-        "sequence": "PVDVEALGAHDYCDI",
-        "parent_peptide_id": "benchmark_6e0551f38f",
-        "parent_sequence": "PVDVEALGLHDYCDI",
+        "variant_id": "design_4aa7460c21",
+        "sequence": "CLVDKKSGAKSKTRP",
+        "parent_peptide_id": "benchmark_83c557c3dc",
+        "parent_sequence": "CLVDKKSGEKSKTRP",
         "generator": "alanine_scan",
         "position": 9,
-        "wild_type": "L",
+        "wild_type": "E",
         "mutant": "A",
-        "substitution": "L9A",
-        "crosses_group": false,
-        "from_group": "hydrophobic",
+        "substitution": "E9A",
+        "crosses_group": true,
+        "from_group": "negative",
         "to_group": "hydrophobic",
         "notes": [],
         "length": 15
       },
       {
-        "variant_id": "design_2d1c686ce2",
-        "sequence": "PVDVEALGLADYCDI",
-        "parent_peptide_id": "benchmark_6e0551f38f",
-        "parent_sequence": "PVDVEALGLHDYCDI",
+        "variant_id": "design_ccda79b119",
+        "sequence": "CLVDKKSGEASKTRP",
+        "parent_peptide_id": "benchmark_83c557c3dc",
+        "parent_sequence": "CLVDKKSGEKSKTRP",
         "generator": "alanine_scan",
         "position": 10,
-        "wild_type": "H",
+        "wild_type": "K",
         "mutant": "A",
-        "substitution": "H10A",
+        "substitution": "K10A",
         "crosses_group": true,
         "from_group": "positive",
         "to_group": "hydrophobic",
@@ -11811,81 +11872,81 @@
         "length": 15
       },
       {
-        "variant_id": "design_8bb4c8c275",
-        "sequence": "PVDVEALGLHAYCDI",
-        "parent_peptide_id": "benchmark_6e0551f38f",
-        "parent_sequence": "PVDVEALGLHDYCDI",
+        "variant_id": "design_3d3a719185",
+        "sequence": "CLVDKKSGEKAKTRP",
+        "parent_peptide_id": "benchmark_83c557c3dc",
+        "parent_sequence": "CLVDKKSGEKSKTRP",
         "generator": "alanine_scan",
         "position": 11,
-        "wild_type": "D",
+        "wild_type": "S",
         "mutant": "A",
-        "substitution": "D11A",
+        "substitution": "S11A",
         "crosses_group": true,
-        "from_group": "negative",
+        "from_group": "polar",
         "to_group": "hydrophobic",
         "notes": [],
         "length": 15
       },
       {
-        "variant_id": "design_5c0d800e45",
-        "sequence": "PVDVEALGLHDACDI",
-        "parent_peptide_id": "benchmark_6e0551f38f",
-        "parent_sequence": "PVDVEALGLHDYCDI",
+        "variant_id": "design_7b62ac3f4e",
+        "sequence": "CLVDKKSGEKSATRP",
+        "parent_peptide_id": "benchmark_83c557c3dc",
+        "parent_sequence": "CLVDKKSGEKSKTRP",
         "generator": "alanine_scan",
         "position": 12,
-        "wild_type": "Y",
+        "wild_type": "K",
         "mutant": "A",
-        "substitution": "Y12A",
+        "substitution": "K12A",
         "crosses_group": true,
-        "from_group": "aromatic",
+        "from_group": "positive",
         "to_group": "hydrophobic",
         "notes": [],
         "length": 15
       },
       {
-        "variant_id": "design_78610016dd",
-        "sequence": "PVDVEALGLHDYADI",
-        "parent_peptide_id": "benchmark_6e0551f38f",
-        "parent_sequence": "PVDVEALGLHDYCDI",
+        "variant_id": "design_289bb93b0f",
+        "sequence": "CLVDKKSGEKSKARP",
+        "parent_peptide_id": "benchmark_83c557c3dc",
+        "parent_sequence": "CLVDKKSGEKSKTRP",
         "generator": "alanine_scan",
         "position": 13,
-        "wild_type": "C",
+        "wild_type": "T",
         "mutant": "A",
-        "substitution": "C13A",
-        "crosses_group": false,
-        "from_group": "hydrophobic",
+        "substitution": "T13A",
+        "crosses_group": true,
+        "from_group": "polar",
         "to_group": "hydrophobic",
         "notes": [],
         "length": 15
       },
       {
-        "variant_id": "design_5742d594d4",
-        "sequence": "PVDVEALGLHDYCAI",
-        "parent_peptide_id": "benchmark_6e0551f38f",
-        "parent_sequence": "PVDVEALGLHDYCDI",
+        "variant_id": "design_8406160606",
+        "sequence": "CLVDKKSGEKSKTAP",
+        "parent_peptide_id": "benchmark_83c557c3dc",
+        "parent_sequence": "CLVDKKSGEKSKTRP",
         "generator": "alanine_scan",
         "position": 14,
-        "wild_type": "D",
+        "wild_type": "R",
         "mutant": "A",
-        "substitution": "D14A",
+        "substitution": "R14A",
         "crosses_group": true,
-        "from_group": "negative",
+        "from_group": "positive",
         "to_group": "hydrophobic",
         "notes": [],
         "length": 15
       },
       {
-        "variant_id": "design_d415c71135",
-        "sequence": "PVDVEALGLHDYCDA",
-        "parent_peptide_id": "benchmark_6e0551f38f",
-        "parent_sequence": "PVDVEALGLHDYCDI",
+        "variant_id": "design_60f77e698a",
+        "sequence": "CLVDKKSGEKSKTRA",
+        "parent_peptide_id": "benchmark_83c557c3dc",
+        "parent_sequence": "CLVDKKSGEKSKTRP",
         "generator": "alanine_scan",
         "position": 15,
-        "wild_type": "I",
+        "wild_type": "P",
         "mutant": "A",
-        "substitution": "I15A",
-        "crosses_group": false,
-        "from_group": "hydrophobic",
+        "substitution": "P15A",
+        "crosses_group": true,
+        "from_group": "special",
         "to_group": "hydrophobic",
         "notes": [],
         "length": 15
