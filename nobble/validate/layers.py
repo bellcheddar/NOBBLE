@@ -141,12 +141,17 @@ def pose_recovery(campaign: Path) -> LayerResult:
         return layer
 
     by_pair = {}
+    # Pairs that aligned but whose every RMSD was non-finite. A different
+    # thing from a pair whose jobs have not run, and the note below used to
+    # offer only the second explanation for both (F85).
+    unmeasurable: list[str] = []
     for pair_id, values in sorted(per_pair.items()):
         # sorted() on a list containing a NaN leaves the other elements
         # unsorted too, so ordered[0] and ordered[-1] are not the best and
         # worst of anything. Filtered before sorting rather than trusted.
         ordered = sorted(finite_values(values))
         if not ordered:
+            unmeasurable.append(pair_id)
             continue
         by_pair[pair_id] = {
             "n": len(ordered),
@@ -168,10 +173,23 @@ def pose_recovery(campaign: Path) -> LayerResult:
     }
     layer.detail = detail
     if len(by_pair) < len(RECOVERY_TARGETS):
-        layer.notes.append(
-            f"{len(RECOVERY_TARGETS) - len(by_pair)} benchmark pair(s) have no "
-            "recovery number yet: their ternary jobs have not completed"
-        )
+        # Two reasons, counted apart. F78 made an unmeasurable RMSD drop its
+        # pair from by_pair, which gave this note a second cause while it
+        # still asserted the first, so a pair whose geometry could not be
+        # measured was reported as one whose jobs had not run.
+        missing = len(RECOVERY_TARGETS) - len(by_pair)
+        pending = missing - len(unmeasurable)
+        if pending > 0:
+            layer.notes.append(
+                f"{pending} benchmark pair(s) have no recovery number yet: "
+                "their ternary jobs have not completed"
+            )
+        if unmeasurable:
+            layer.notes.append(
+                f"{len(unmeasurable)} benchmark pair(s) aligned but produced "
+                "no measurable RMSD, so they carry no recovery number: "
+                + ", ".join(sorted(unmeasurable))
+            )
     return layer
 
 
