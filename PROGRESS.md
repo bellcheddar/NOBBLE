@@ -30,9 +30,23 @@ ligases against 5 chemotypes, 75 pairs, 16.5 hours.
 Budget: 22.9 hours spent, roughly 57 hours of tier-1 queue left,
 `max_compute_hours` 96. There is no room for 16.5 hours.
 
-Needs a decision: Tier B publishes as a separate campaign, the budget rises,
-or a GPU appears. Nothing is blocked on it meanwhile; the running campaign
-and every other phase continue.
+Needs a decision, and the decision is not only about compute. Tier B cannot
+be assembled at all: spec 1.1 defines six receptor constructs, all for named
+Tier A ligases, and none of the fifteen Tier B genes has one. The two
+mechanical routes are both ruled out by decisions already taken, the longest
+annotated domain by F41 and the frozen `best_window` because it states which
+part of the model is confident rather than which part binds substrate.
+
+So any of the three ways out, a separate campaign, a larger budget or a GPU,
+still leaves Tier B unrunnable until someone names a substrate-binding domain
+for fifteen proteins. F163 records the candidate counts, 220 domains of 60
+residues or more across the fifteen, which of the top-ranked ones are ligase
+machinery rather than substrate interface, and the four that already exceed
+the 400-token tier-1 cap. Naming them should be a sitting down with that
+table rather than a research project.
+
+Nothing is blocked on it meanwhile; the running campaign and every other
+phase continue.
 
 ## Waiting on Marc
 

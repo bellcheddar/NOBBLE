@@ -7456,3 +7456,78 @@ session's own code have turned up one defect that mattered, F161's gate
 pricing an unmeasured campaign at zero, and one that would have wasted an
 afternoon, this one. Neither was in the logic the findings were about; both
 were in what happens when the inputs are not there yet.
+
+## F163. Tier B is not blocked on compute, it is blocked on fifteen constructs
+
+F134 recorded Gate G1 open on Tier B and measured the cost: 16.5 hours after
+automatic scope reduction, against a budget with no room. That framed the
+decision as a budget decision, and it is not only one. I went looking for
+what it would take to assemble a Tier B campaign, because with the decision
+pending the useful thing is to have the work ready either way.
+
+It cannot be assembled. Spec 1.1 defines six receptor constructs, all for
+named Tier A ligases, and none of the fifteen Tier B genes has one. So every
+Tier B pair needs a receptor construct that does not exist, and the two
+mechanical ways to produce one are both ruled out by decisions this project
+has already taken:
+
+- Take the longest annotated domain. `interpro.domain_by_accession`'s own
+  docstring rejects this: "Named entries rather than the longest domain
+  because which domain binds the substrate is science knowledge, and only
+  the lookup belongs in the code." That is F41.
+- Take the frozen selection's `best_window`. That is the highest-mean-pLDDT
+  200-residue window from the pLDDT scan, which is a statement about which
+  part of the model is confident, not about which part binds substrate.
+
+What the decision involves, quantified rather than asserted. Across the
+fifteen accessions InterPro annotates 220 domains of 60 residues or more,
+from 5 for ASB8 and RNF175 to 28 for FBXO11. The top-ranked one by
+N-terminal position is this:
+
+| gene | candidates | top-ranked domain |
+|---|---|---|
+| DCAF8L1 | 6 | DDB1- and CUL4-associated factor, 154-587 |
+| CCNF | 22 | F-box-like domain superfamily, 32-114 |
+| ASB8 | 5 | Ankyrin repeat and SOCS box, 1-272 |
+| KCNC1 | 16 | Potassium Channel Kv1.1, 5-122 |
+| NEURL2 | 10 | Neuralized, 20-243 |
+| TRIM55 | 8 | Zinc/RING finger, C3HC4, 4-119 |
+| KCND2 | 17 | Potassium Channel Kv1.1, 1-144 |
+| KCTD4 | 11 | Potassium Channel Kv1.1, 27-135 |
+| FBXO11 | 28 | unnamed, 143-244 |
+| FBXW4 | 8 | SCF Complex F-box/WD repeat, 11-411 |
+| TRIP12 | 24 | E3 ubiquitin-protein ligase HECT, 285-2067 |
+| SMURF2 | 22 | C2 domain, 1-119 |
+| RNF175 | 5 | RING finger protein RNF121/RNF175, 15-328 |
+| TRIM17 | 19 | Zinc/RING finger, C3HC4, 1-83 |
+| RAG1 | 19 | V(D)J recombination-activating, 1-1043 |
+
+Two things in that table are worth a reader's attention, and I am stating
+what the annotations say rather than what the biology is, because which
+domain binds substrate is the science knowledge this project keeps out of
+the code.
+
+The top-ranked domain is frequently not a substrate-binding one. An F-box
+binds SKP1 and a RING binds E2; for CCNF, TRIM55, TRIM17 and FBXO11 the
+first-listed domain is part of the ligase machinery rather than the
+substrate interface. A C2 domain is a membrane-targeting module, which is
+SMURF2's. So "take the first" would submit the wrong half of several
+proteins.
+
+And four of the fifteen have a top-ranked domain that already exceeds the
+tier-1 token cap of 400 before a peptide or a glue is added: DCAF8L1 at 434
+residues, FBXW4 at 401, RAG1 at 1,043 and TRIP12 at 1,783. Those need either
+a sub-domain choice or a declared exception, which spec 1.1 provides for and
+which is again a per-protein decision.
+
+Spec 3.3's selection function asks for pocket druggability, structural
+coverage, tumour enrichment and the triage composite. It does not ask which
+domain binds substrate, and nothing downstream supplies it. That is the
+actual distance between "Tier B is selected, frozen and gate-passed" and
+"Tier B can run", and it is fifteen decisions rather than a day's coding.
+
+So the G1 note is corrected. F134 offered three ways out: a separate
+campaign, a larger budget, or a GPU. Any of those still leaves Tier B
+unrunnable until someone names a substrate-binding domain for fifteen
+proteins. Recorded here with the candidate counts and the token overruns so
+that naming them is a sitting down with a table, not a research project.
