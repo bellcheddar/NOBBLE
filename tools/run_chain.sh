@@ -120,5 +120,11 @@ fi
 say "deploying"
 bash deploy/deploy.sh || echo "deploy failed: the atlas is built locally, rerun deploy/deploy.sh" >&2
 
+# Score the predictions recorded before any of this ran. Mechanical, so
+# the verdict is the thresholds' rather than a reading of the numbers
+# after the fact (F13, F18).
+say "scoring the F13 predictions"
+"$SENV/bin/python" tools/check_prediction.py || true
+
 say "chain complete"
 bash tools/status.sh || true
