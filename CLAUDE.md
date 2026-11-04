@@ -42,3 +42,13 @@ conda-forge scientific stack: see BoltzMaker's pixi.toml for why.
 | G4 Publish | Any git push, repo creation or public release |
 | G5 Disk | Free space on the project volume falls below 50 GB |
 | G6 Science | A positive control still fails after the fallback ladder and that would invalidate a headline result |
+
+## UI copy
+
+Keep narrative prose in the app to a minimum. One short line per panel saying
+what it shows or what the number means. Reasoning belongs in DECISIONS.md and
+FINDINGS.md, not on screen. Budget: under 40 words per panel, under 150 per
+page, excluding tables, labels and pipeline-generated status text. Disclaimers
+only where a figure would be actively misread without one, and then one
+sentence; a caveat repeated on every tab reads as a lack of confidence in the
+numbers rather than as rigour.

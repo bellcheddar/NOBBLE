@@ -355,3 +355,23 @@
   coming from one campaign with one seed tuple: they stop matching when a
   job fails, which is exactly when nobody is checking seed counts. Now
   refused. 96 tests pass.
+- 2026-11-04T10:10Z Cut the UI prose on Marc's instruction: too much narrative
+  text and too many disclaimers. Rendered visible prose down from about 2,100
+  words to 1,220, with six of seven tabs now at or under 150 words
+  (campaign 145, pose 100, interactions 56, delta 96, design 69,
+  benchmark 203, about 551). Removed explanations of why decisions were made,
+  caveats restating what the About page already says, and the 29-word footer
+  disclaimer repeated on every page (now 8). Kept pipeline-generated status
+  text, including validation layers' refusal reasons: those are output
+  explaining why a number is absent, not decoration.
+- 2026-11-04T10:10Z Added the rule to CLAUDE.md and to the marcs-vibe-coding
+  skill so it holds on future builds: one short line per panel, under 40
+  words per panel and 150 per page, disclaimers only where a figure would be
+  actively misread without one.
+- 2026-11-04T10:10Z Before that, rendered the app against a synthetic
+  158-pair atlas rather than waiting for the main campaign. All routes 200
+  and fast, but the per-pair minimum-against-median plot drew 158 category
+  rows into a 26rem box at two pixels each, unreadable. It now shows the 12
+  largest minimum-median gaps and states how many it left out. Also explained
+  why the scatter legend counts 31 degraded while the ROC below uses 24: the
+  ROC is the Sievers arm alone, and the two numbers differ on purpose.

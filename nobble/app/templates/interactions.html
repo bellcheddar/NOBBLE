@@ -3,20 +3,8 @@
 
 <section class="panel">
   <h2>Interactions</h2>
-  <p class="panel__hint">
-    The degron against the receptor: every peptide residue that comes within
-    4.5 angstrom of a receptor residue in the predicted ternary, coloured by
-    closest approach. Hover a cell for the distance, click one to pin the pair
-    and open it in the viewer. Only receptor residues that touch something are
-    shown, because an axis of 1,184 residues of which fourteen are in contact
-    is not a readable map.
-    </p>
-    <p class="panel__hint">
-    PLIP answers a different question and is reported beside it: it is a
-    protein-ligand tool, so it gives the glue's contacts with each protein and
-    has nothing to say about where the degron meets the receptor, which is the
-    interface &Delta;-ipTM is about.
-  </p>
+  <p class="panel__hint">Every peptide residue within 4.5 &angst; of a receptor residue, from the predicted structure.</p>
+    <p class="panel__hint">PLIP is a protein-ligand tool, so it reports the glue's contacts, not the peptide's.</p>
 
   {% if not selected %}
     <div class="empty">

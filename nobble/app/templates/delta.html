@@ -4,11 +4,8 @@
 <section class="panel">
   <h2>Glue dependence</h2>
   <p class="panel__hint">
-    The headline view. &Delta;-ipTM against bridge percentile, coloured by
-    experimental label, sized by the number of lysines in the peptide. Lasso or
-    box select to push a set into the pinned selection; every other tab follows.
-    &Delta;-ipTM is the spec's definition (minimum across seeds); the median is in
-    every tooltip, because one collapsed seed can invert the minimum.
+    &Delta;-ipTM against bridge percentile. Lasso to pin a set; every tab
+    follows. Legend counts all pairs; the ROC below uses the Sievers arm only.
   </p>
 
   {% if not pairs %}
@@ -23,6 +20,7 @@
       </div>
       <div>
         <div class="chart" id="marginal"></div>
+        <p class="panel__hint" id="marginal-caption"></p>
       </div>
     </div>
   {% endif %}
@@ -39,12 +37,7 @@
   <div id="roc-wrap">
     <div class="empty" id="roc-empty">
       <h3>Not computable yet</h3>
-      <p>
-        The ROC needs the Sievers matched set, which the campaign runs after the
-        benchmark panel. With only benchmark pairs scored there are no matched
-        experimental negatives to plot, and a curve drawn without them would be
-        meaningless rather than preliminary.
-      </p>
+      <p>Needs the Sievers matched set, which runs after the benchmark panel.</p>
       <p id="roc-counts" class="mono"></p>
     </div>
     <div class="chart chart--short" id="roc" hidden></div>
@@ -149,9 +142,23 @@
    * does the job the histogram could not: the length of each line is how far
    * a collapsed seed has dragged that pair's headline number from its median,
    * which is the whole of D-NOB-023 in one mark. */
+  /* At seven pairs this plotted everything. At 158 it drew 158 category rows
+     into a 26rem box, about two pixels each, with the labels unreadable and
+     most of the ink carrying no information: the plot exists to show where
+     the difference of minima parts company with the difference of medians,
+     and for most pairs it does not. So it now shows the largest
+     disagreements and says how many it left out, rather than showing
+     everything illegibly or silently truncating. */
+  const MARGINAL_ROWS = 12;
+
   function buildMarginal() {
-    const rows = PAIRS
-      .filter(p => p.delta_iptm !== null && p.delta_iptm !== undefined)
+    const scored = PAIRS
+      .filter(p => p.delta_iptm !== null && p.delta_iptm !== undefined);
+    const gap = p => Math.abs((p.delta_iptm ?? 0) - (p.delta_iptm_median ?? p.delta_iptm ?? 0));
+    const shown = scored.slice().sort((a, b) => gap(b) - gap(a)).slice(0, MARGINAL_ROWS);
+    const omitted = scored.length - shown.length;
+
+    const rows = shown
       .slice()
       .sort((a, b) => (a.delta_iptm_median ?? a.delta_iptm) - (b.delta_iptm_median ?? b.delta_iptm));
 
@@ -191,8 +198,23 @@
       hovertemplate: '<b>%{y}</b><br>median across seeds %{x:.4f}<extra></extra>'
     });
 
+    const caption = document.getElementById('marginal-caption');
+    if (caption) {
+      caption.textContent = omitted
+        ? ('Showing the ' + rows.length + ' pairs whose difference of minima is '
+           + 'furthest from their difference of medians. ' + omitted
+           + ' further pair(s) agree more closely and are not plotted: at this '
+           + 'campaign size every pair on one axis is unreadable, and the pairs '
+           + 'that agree are the ones with nothing to show.')
+        : '';
+    }
+
     Plotly.newPlot('marginal', traces, NOBBLE.plotLayout({
-      title: { text: 'Per pair: difference of minima against difference of medians', font: { size: 13 } },
+      title: {
+        text: omitted ? 'Per pair: the largest minimum-median gaps'
+                      : 'Per pair: difference of minima against difference of medians',
+        font: { size: 13 }
+      },
       xaxis: { title: 'Delta-ipTM', zeroline: true, zerolinewidth: 2 },
       yaxis: { automargin: true, type: 'category' },
       margin: { l: 150, r: 18, t: 34, b: 52 },

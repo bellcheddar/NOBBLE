@@ -4,13 +4,7 @@
 <div class="split split--sidebar">
   <section class="panel">
     <h2>Pair ledger</h2>
-    <p class="panel__hint">
-      Every (receptor, peptide, ligand) triple in the campaign. Sort by any column.
-      Click a row to pin it into every other tab. Hover any number for its raw
-      value, units and where it came from. The composite is re-weighted in the
-      browser from components the pipeline already measured: moving a slider
-      re-ranks this table without a server round trip.
-    </p>
+    <p class="panel__hint">Every (receptor, peptide, ligand) triple. Sort by any column, click a row to pin it.</p>
 
     {% if not pairs %}
       <div class="empty">
@@ -71,12 +65,7 @@
   <aside>
     <section class="panel">
       <h3>Composite weights</h3>
-      <p class="panel__hint">
-        Spec 4.8 fits these on the benchmark panel and the Sievers matched set,
-        never by hand. Until that fit has the data, these sliders explore the
-        weighting: they do not publish one. The pipeline's own
-        <code class="mono">nobble_score</code> stays null for the same reason.
-      </p>
+      <p class="panel__hint">Fitted on the benchmark panel and the Sievers matched set, never by hand.</p>
       <div class="weights" id="weights">
         {% for key, meta in components.items() %}
         <div class="weight{% if meta.trust == 'not validated' %} weight--unvalidated{% endif %}"

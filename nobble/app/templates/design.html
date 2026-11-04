@@ -4,30 +4,18 @@
 <section class="panel">
   <h2>Design arm</h2>
   <p class="panel__hint">
-    Everything else in NOBBLE measures whether a predicted interface tells you
-    something true. This is the part that proposes something new: variants of
-    degrons with a known experimental outcome, scored by the same pipeline, to
-    ask which positions a degron depends on and whether any change improves it.
-  </p>
-  <p class="panel__hint">
-    Every variant is anchored to a parent. The headline number is
-    <b>design lift</b>, <span class="mono">delta-ipTM(variant) minus
-    delta-ipTM(parent)</span>: a difference of differences, which cancels
-    whatever the receptor, the glue and the parent degron each contribute, and
-    leaves the effect of the one substitution.
+    Variants of known degrons, scored by the same pipeline.
+    <b>Design lift</b> = <span class="mono">&Delta;-ipTM(variant) &minus;
+    &Delta;-ipTM(parent)</span>. Negative means the residue mattered.
   </p>
 </section>
 
 {% if design.get('caveat') %}
 <section class="panel">
-  <h3>What this arm cannot tell you yet</h3>
-  <p class="caveat">{{ design.caveat }}</p>
-  {% if design.get('score_validation') %}
-    <p class="mono">
-      matched-control ROC:
-      {{ design.score_validation.get('matched_control_roc', 'unknown') }}
-    </p>
-  {% endif %}
+  <p class="caveat">
+    The composite is not validated yet, so read the <b>ordering</b> of
+    positions, not the absolute lift.
+  </p>
 </section>
 {% endif %}
 
@@ -37,16 +25,11 @@
   {% set preview = design.preview %}
   {% set parent = preview.parent %}
   <p class="panel__hint">
-    Parent <b>{{ parent.gene }}</b>
-    (<span class="mono">{{ parent.peptide_id }}</span>, {{ parent.source }},
-    experimentally {{ parent.label }}, {{ parent.length }} residues against
-    {{ parent.e3_hint }}). Alanine scan: every position replaced in turn, each
-    variant differing from the parent by exactly one residue.
+    Parent <b>{{ parent.gene }}</b>, {{ parent.length }} residues against
+    {{ parent.e3_hint }}, experimentally {{ parent.label }}. Alanine scan.
   </p>
   <p class="mono">{{ parent.sequence }}</p>
-  {% if parent.get('chosen_because') %}
-    <p class="panel__hint">Chosen because: {{ parent.chosen_because }}.</p>
-  {% endif %}
+
 
   <table class="ntable">
     <thead>
@@ -69,12 +52,8 @@
 
   {% if preview.get('cost') %}
     <p class="panel__hint">
-      Cost, from the measured throughput rather than an estimate:
-      <b>{{ preview.cost.variants }}</b> variants,
-      <b>{{ preview.cost.jobs }}</b> jobs,
-      about <b>{{ preview.cost.projected_hours }}</b> hours. A saturation scan
-      of every position would be 285 variants and 4,275 jobs, which is why
-      saturation follows the alanine scan rather than replacing it.
+      {{ preview.cost.variants }} variants, {{ preview.cost.jobs }} jobs,
+      about {{ preview.cost.projected_hours }} hours.
     </p>
   {% endif %}
 </section>
@@ -83,12 +62,7 @@
 {% if design.get('profile') and design.profile.get('positions') %}
 <section class="panel">
   <h3>Scan profile</h3>
-  <p class="panel__hint">
-    Negative lift means the substitution reduced glue dependence, so the
-    original residue was doing something. The ordering of positions is the
-    durable claim; the absolute values inherit whatever calibration
-    delta-ipTM has.
-  </p>
+
   <div class="chart chart--short" id="scan"></div>
 </section>
 {% endif %}
@@ -97,9 +71,7 @@
 <section class="panel">
   <h3>Scannable parents</h3>
   <p class="panel__hint">
-    {{ design.parents | length }} degrons carry an experimental label and can
-    anchor a scan. Pick one to see the scan it would generate. A scan of an unlabelled sequence would produce lifts against
-    a parent whose own delta-ipTM means nothing, which is a chart with no zero.
+    {{ design.parents | length }} labelled degrons. Pick one to see its scan.
   </p>
   <table class="ntable">
     <thead><tr><th>Gene</th><th>Source</th><th>E3</th><th>Length</th><th>Sequence</th></tr></thead>

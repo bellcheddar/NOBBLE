@@ -3,31 +3,14 @@
 
 <section class="panel">
   <h2>Benchmark panel</h2>
-  <p class="panel__hint">
-    Seven pairs with published crystallographic ternaries, run first in every
-    campaign. This is the page a sceptical reader opens first, so it reports what
-    each pair tests, what the pipeline predicted and where it disagreed with the
-    deposited structure. Every accession, chain and ligand code below was
-    resolved programmatically at build time: none is hardcoded.
-  </p>
-  <p class="panel__hint">
-    GSPT1 and BRD4 lead, as community standards. BRD4 appears twice, on VHL and
-    on CRBN, which tests an E3 swap on the same substrate.
-  </p>
+  <p class="panel__hint">Seven pairs with published crystallographic ternaries, run first in every campaign. Every accession, chain and ligand code was resolved at build time.</p>
+  <p class="panel__hint">BRD4 appears twice, on VHL and on CRBN, which tests an E3 swap on one substrate.</p>
 </section>
 
 {% if recovery_vs_bridge and recovery_vs_bridge.get('points') %}
 <section class="panel">
   <h2>What predicts a recovered pose</h2>
-  <p class="panel__hint">
-    Pose recovery needs a deposited crystal structure, so it can only ever be
-    computed for pairs whose answer is already known. Bridge formation rate,
-    the fraction of ternary seeds in which the glue actually buries surface
-    against both the receptor and the degron, needs nothing but the
-    prediction. If the two track each other, the second stands in for the
-    first on the pairs that have no crystal, which is every pair a discovery
-    campaign cares about.
-  </p>
+  <p class="panel__hint">Pose recovery needs a deposited crystal, so it covers only pairs with one.</p>
   <div class="split split--2">
     <div><div class="chart chart--short" id="recovery-plot"></div></div>
     <div>
@@ -66,18 +49,8 @@
 {% if comparison and comparison.get('comparisons') %}
 <section class="panel">
   <h2>Construct comparison: does the whole domain recover the pose?</h2>
-  <p class="panel__hint">
-    Six of the seven pairs submitted their substrate as a 15-mer cut out of a
-    folded domain, and all six missed the crystal pose by 12 to 29 angstrom.
-    The one whose epitope is linear, IKZF1, recovered at 5.4. This re-runs the
-    panel with each domain-mediated substrate submitted as its whole domain and
-    changes nothing else.
-  </p>
-  <p class="panel__hint">
-    <strong>IKZF1 is the control.</strong> It keeps its 15-mer in both
-    campaigns, so if its recovery moves, something other than the construct
-    changed and nothing below can be attributed to the construct.
-  </p>
+  <p class="panel__hint">Six pairs submitted their substrate as a 15-mer cut from a folded domain. The corrected campaign re-runs them as whole domains.</p>
+  <p class="panel__hint">IKZF1 is the control: it keeps its 15-mer in both campaigns, so if its recovery moves, something other than the construct changed.</p>
 
   {# The control has three states, not two: held, moved, and not yet run.
      Rendering it as a boolean announced "control MOVED" for a control that
