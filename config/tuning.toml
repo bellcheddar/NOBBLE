@@ -30,6 +30,17 @@ tier1_potentials = false
 tier2_recycles = 10
 tier2_diffusion_samples = 25
 tier2_potentials = true
+# How much longer a tier-2 job may run than a tier-1 one before it is
+# abandoned. Was a bare `* 4` in runner.py, which put the number that
+# decides when a refinement is killed in an expression rather than in
+# config, and the existing cutoff sweep looks in comparisons, module
+# constants and default arguments, not in arithmetic (F80).
+#
+# Unvalidated: tier 2 has never run. It does 10 recycles against 3 and 25
+# diffusion samples against 1, so 4 is a guess rather than a measurement,
+# and it is the quantity most likely to abandon a refinement that was
+# working. The first tier-2 campaign measures it.
+tier2_timeout_multiple = 4
 
 [gates]
 min_free_disk_gb = 50

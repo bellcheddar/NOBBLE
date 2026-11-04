@@ -3679,3 +3679,52 @@ cost showed `None`, and I took it for a regression from the refactor. The
 cost lives under `preview.cost` and my probe read a top-level key that has
 never existed. The code was right and the probe was wrong, for the second
 time today after the `RECOVERED_A` grep in F64.
+
+## F80. A factor that decides when a refinement is abandoned, written in code
+
+F79 generalises: a parameter added by a fix that no caller passes. Sweeping
+for the shape, every optional parameter in `nobble/` against every call
+anywhere, positionally or by name, gives twenty-two never supplied. Most are
+ordinary configurable defaults and were left alone. Three stated a reason
+that nothing exercised.
+
+`settings_from_config`'s timeout carries the comment "Still overridable,
+because a test needs to", and no test overrode it. The claim was the
+justification for the parameter's existence, which makes it worth either
+removing or making true. It is true now.
+
+`cost_of`'s `tokens_per_pair` became dead when F79 wired `job_tokens`
+through. It is the one-size form of the same idea and worth keeping, so the
+branch that expands it is tested: for a uniform scan the two must agree, or
+the simpler form is a trap for the next caller.
+
+`matched_control_roc`'s `statistic` names the curve's whole subject and had
+only ever been computed on one field. A test now asks for a curve over
+`bridge_percentile` with the deltas deliberately reversed, so the two
+statistics cannot agree by accident.
+
+**And the real find, from following the timeout.** Tier 2's timeout was
+`job_timeout_seconds * 4`, an inline factor deciding when a refinement is
+killed. The existing cutoff sweep looks in comparisons, module constants and
+default arguments; F54 added templates as a fourth place; this is a fifth,
+arithmetic.
+
+The factor is now `tier2_timeout_multiple` in tuning. What it should be is
+not known, and the comment beside it says so. Tier 2 runs 10 recycles
+against 3 and 25 diffusion samples against 1. If cost were the product of
+those, the slowest tier-1 job observed, 902 seconds, becomes 20.9 hours
+against a six-hour bound. If recycles drive the trunk and samples the
+structure module, which is closer to how Boltz is built, the two are nearer
+additive and four may be generous. I do not know which applies, and tier 2
+has never run, so the number is a guess either way.
+
+What makes the guess tolerable is that it fails loudly. A timed-out job is
+retried once and then recorded as `timeout after 21600s`, naming the value
+to change, so the first tier-2 campaign measures the factor rather than
+quietly losing refinements. That property is now a test, because it is the
+only reason leaving a guess in place is defensible.
+
+The watchdog's `hard_bound_seconds` derives from the runner rather than
+being configured separately, so it follows the multiple: 12.2 hours for tier
+2 against 3.2 for tier 1. A bound that did not follow would call a healthy
+refinement stalled, which is F20's mistake with a longer fuse.

@@ -248,7 +248,10 @@ def settings_from_config(tier: int = 1, job_timeout_seconds: int | None = None) 
         "diffusion_samples": int(campaign_settings["tier2_diffusion_samples"]),
         "potentials": bool(campaign_settings["tier2_potentials"]),
         "device": compute["model_device"],
-        "job_timeout_seconds": job_timeout_seconds * 4,
+        # From config, not a literal here. See tier2_timeout_multiple's
+        # comment in tuning.toml: the factor is a guess until tier 2 runs.
+        "job_timeout_seconds": job_timeout_seconds * int(
+            campaign_settings["tier2_timeout_multiple"]),
     }
 
 
