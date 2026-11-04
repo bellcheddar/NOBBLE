@@ -71,6 +71,48 @@ MUTATIONS: list[tuple[str, str, str, str]] = [
     ("nobble/curate/library.py", "the diversity reduction's selection is ignored",
      "    selected = [by_id[pid] for pid in reduction.selected_ids if pid in by_id]",
      "    selected = list(by_id.values())"),
+
+    # The modules that decide a published number. The five above were the
+    # whole default list, all in curation, so a sweep with no arguments said
+    # almost nothing about scoring or validation: every check of those has
+    # been an ad-hoc run with hand-written anchors, which is a method that
+    # only covers what someone remembered to type (F153).
+    #
+    # Each of these reverses a decision the project argued for in a
+    # docstring or a decision record, so "not caught" means the argument is
+    # unguarded rather than that the mutation is exotic.
+    ("nobble/score/metrics.py",
+     "the receptor-to-peptide ipTM takes the best segment, not the worst",
+     "        min(present) if present else None,",
+     "        max(present) if present else None,"),
+    ("nobble/score/metrics.py",
+     "the asymmetric pair-ipTM matrix is read optimistically",
+     "    return min(values) if values else None",
+     "    return max(values) if values else None"),
+    ("nobble/score/poses.py",
+     "convergence stops falling with RMSD",
+     "        max(0.0, 1.0 - (result.mean_rmsd / CONVERGENCE_SCALE_A)), 4)",
+     "        1.0, 4)"),
+    ("nobble/score/weights.py",
+     "scrambles and non-degraded peptides stop counting as negatives",
+     '    if label in ("not_degraded", "negative_control"):',
+     "    if False:"),
+    ("nobble/validate/layers.py",
+     "the ROC draws a curve with too few pairs on a side",
+     "    if len(positives) < ROC_MINIMUM_PER_SIDE or len(negatives) < ROC_MINIMUM_PER_SIDE:",
+     "    if False:"),
+    ("nobble/design/lift.py",
+     "lift stops subtracting the parent",
+     "    result.lift = round(variant_delta - parent_delta, 4)",
+     "    result.lift = round(variant_delta, 4)"),
+    ("nobble/execute/budget.py",
+     "the refinement gate is judged on the optimistic end",
+     '    fits = projection["hours_high"] <= remaining',
+     '    fits = projection["hours_low"] <= remaining'),
+    ("nobble/curate/ligands.py",
+     "the glue recall set stops requiring a ligase on one side",
+     "        \"  and (l1.gene is not null or l2.gene is not null) \"",
+     '        "  " '),
 ]
 
 # Where a mutation may be written. Everything else is either live state or
