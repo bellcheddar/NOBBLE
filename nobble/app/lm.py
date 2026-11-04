@@ -266,22 +266,42 @@ def execute(query: dict, rows: list[dict]) -> list[dict]:
     return out
 
 
-def _named_pairs(question: str, rows: list[dict]) -> tuple[list[str], list[str]]:
-    """Gene and ligand names in the question, split into present and absent."""
-    words = {
-        token.strip(" ,.?;:()[]").upper()
-        for token in question.split() if len(token.strip(" ,.?;:()[]")) >= 3
-    }
-    known = set()
-    for row in rows:
-        for key in ("e3_gene", "peptide_gene", "ligand_key"):
-            value = row.get(key)
-            if value:
-                known.add(str(value).upper())
-    # Only treat a word as a named entity if it looks like one: present in the
-    # campaign, or a gene-shaped token the campaign plainly lacks.
-    present = sorted(words & known)
-    return present, []
+def unmatched(query: dict, rows: list[dict]) -> list[str]:
+    """What the campaign has not run, stated from the query's own filters.
+
+    Spec 5 requires Head C to abstain when the campaign has not run the pair
+    in question "and state what is missing". This is that statement.
+
+    Derived from the query rather than from the question's words. The first
+    version of this scanned the question for tokens that looked like gene
+    names, which needs a rule for what a gene name looks like, and the rule
+    it used was "three characters or more", so "the" and "and" were
+    candidates. It then intersected them with the campaign's values and
+    assigned the result to `Answer.missing`: the names that are *present*,
+    published under the name `missing` and serialised to the browser by
+    `/api/ask`. A question about BRD4 and VHL against a campaign holding
+    both was answered "missing: BRD4, VHL" (F141).
+
+    Each filter is applied on its own. One that matches nothing by itself
+    names something the campaign does not hold. If every filter matches
+    alone and the conjunction still does not, then each part has been run
+    and the combination has not, which is a different and more useful thing
+    to be told.
+    """
+    clauses = query.get("filter") or []
+    if not clauses:
+        return []
+    absent = []
+    for field_name, operator, value in clauses:
+        test = OPERATORS[operator]
+        if not any(test(row.get(field_name), value) for row in rows):
+            absent.append(f"{field_name} {operator} {value!r}")
+    if absent:
+        return absent
+    if len(clauses) > 1:
+        shape = " and ".join(f"{name} {op} {val!r}" for name, op, val in clauses)
+        return [f"no pair with {shape}, though each holds on its own"]
+    return []
 
 
 def ask(question: str, rows: list[dict]) -> Answer:
@@ -353,9 +373,8 @@ def ask(question: str, rows: list[dict]) -> Answer:
     answer.row_count = len(matched)
 
     if not matched:
-        present, _ = _named_pairs(question, rows)
         answer.status = "abstained"
-        answer.missing = present
+        answer.missing = unmatched(query, rows)
         answer.explanation = (
             "The query is valid but no scored pair matches it. The campaign has "
             f"{len(rows)} scored pair(s); this question needs one it has not run. "

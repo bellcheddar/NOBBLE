@@ -6568,3 +6568,36 @@ Verified against real servers rather than by reading the shell: the
 extraction returns the digest from the current build and the empty string
 from the stale process still holding port 5055, which is the branch that
 refuses.
+
+## F141. Head C's abstention named what the campaign has, under "missing"
+
+Spec 5 gives Head C one job beyond refusing: "Head C abstains when the
+campaign has not run the pair in question and states what is missing."
+
+`Answer.missing` was set from `_named_pairs`, whose signature said it
+returned the question's gene and ligand names "split into present and
+absent". It returned `present, []`. The absent half was empty on every path,
+and the reasoning for the half that was never written sat in a comment
+directly above the return: "Only treat a word as a named entity if it looks
+like one: present in the campaign, or a gene-shaped token the campaign
+plainly lacks."
+
+The caller then assigned the present half to `missing`. So a question about
+BRD4 and VHL, against a campaign holding both, abstained with
+`missing: ["BRD4", "VHL"]`. The field is serialised to the browser by
+`/api/ask` through `asdict`, so that is what the endpoint published.
+
+Two reasons it survived. No template renders `missing`, so the only reader
+was a client nobody had written. And the model is unconfigured, so `ask` has
+never run against a real question on the live site.
+
+The rule it used to decide what a gene name looks like was "three characters
+or more", which makes "the" and "and" candidates for being gene names. That
+is the part that convinced me not to fix the heuristic. What is missing is
+derivable from the query Head A produced, which names its own fields and
+values, so no rule for the shape of a gene name is needed. Each filter is
+applied on its own: one that matches nothing names something the campaign
+does not hold. If every filter matches alone and the conjunction still does
+not, every part has been run and the combination has not, which is a
+different and more useful thing to be told, and it is precisely the case the
+old code got backwards.
