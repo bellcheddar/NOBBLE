@@ -688,3 +688,41 @@ ternary at all.
 
 The reason now travels to the pair record and into the tooltip on an empty
 percentile cell, so an absent primary signal explains itself.
+
+## F17. The whole domain fixes the bridge, not just the RMSD
+
+F16 found that every failed bridge in the benchmark panel failed the same
+way: `single_chain`, the glue burying surface against one chain rather than
+two, which means the peptide was not where the glue is. F6 says those
+substrates failed because a 15-mer cut from a folded domain cannot fold.
+
+If both are right, giving the substrate its whole domain should not merely
+improve pose RMSD, it should make the bridges form. It does.
+
+| pair | 15-mer | whole domain | rejections |
+|---|---|---|---|
+| GSPT1 / CRBN | 3/10 bridged | **10/10** | none |
+| BRD4 / VHL | 4/10 | **10/10** | none |
+| BRD4 / CRBN | 4/5 | **5/5** | none |
+| IKZF1 / CRBN (control) | 10/10 | 10/10 | none |
+| CSNK1A1 / CRBN | 10/10 | 10/10 | none |
+| RBM39 / DCAF15 | 10/10 | 3/3 so far | none |
+
+**Not one seed in the corrected campaign has failed to bridge.** The pairs
+that were losing six and seven seeds out of ten now lose none.
+
+This is independent of F12. Pose recovery compares a prediction to a
+deposited crystal; bridge formation asks only whether the glue touches both
+chains in the prediction itself, with no crystal involved. The two agree,
+and they agree in the way F16 predicts: the failure was placement, and
+placing the substrate correctly removes it.
+
+The control is informative here precisely because it cannot move. IKZF1
+keeps its 15-mer and was already 10/10, so it has no room to improve and
+does not: the change tracks the construct rather than anything that
+differs between the two runs.
+
+**Still open.** CDK12 / DDB1 is the case that matters most and has not run:
+0 of 10 in the 15-mer campaign, the worst pose in the panel at 44.92 A, and
+the subject of the prediction recorded in F13. RBM39 has three of ten
+seeds.

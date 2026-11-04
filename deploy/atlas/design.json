@@ -570,7 +570,7 @@
       "cost": {
         "variants": 15,
         "jobs": 225,
-        "projected_hours": 4.9,
+        "projected_hours": 6.7,
         "status": "within_max_compute"
       }
     },
@@ -830,7 +830,7 @@
       "cost": {
         "variants": 15,
         "jobs": 225,
-        "projected_hours": 4.9,
+        "projected_hours": 6.7,
         "status": "within_max_compute"
       }
     },
@@ -1090,7 +1090,7 @@
       "cost": {
         "variants": 15,
         "jobs": 225,
-        "projected_hours": 4.9,
+        "projected_hours": 6.7,
         "status": "within_max_compute"
       }
     },
@@ -1354,7 +1354,7 @@
       "cost": {
         "variants": 15,
         "jobs": 225,
-        "projected_hours": 4.9,
+        "projected_hours": 6.7,
         "status": "within_max_compute"
       }
     },
@@ -1614,7 +1614,7 @@
       "cost": {
         "variants": 15,
         "jobs": 225,
-        "projected_hours": 4.9,
+        "projected_hours": 6.7,
         "status": "within_max_compute"
       }
     },
@@ -1876,7 +1876,7 @@
       "cost": {
         "variants": 15,
         "jobs": 225,
-        "projected_hours": 4.9,
+        "projected_hours": 6.7,
         "status": "within_max_compute"
       }
     },
@@ -2136,7 +2136,7 @@
       "cost": {
         "variants": 15,
         "jobs": 225,
-        "projected_hours": 4.9,
+        "projected_hours": 6.7,
         "status": "within_max_compute"
       }
     },
@@ -2576,7 +2576,7 @@
       "cost": {
         "variants": 26,
         "jobs": 390,
-        "projected_hours": 8.5,
+        "projected_hours": 11.6,
         "status": "within_max_compute"
       }
     },
@@ -2966,7 +2966,7 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 7.5,
+        "projected_hours": 10.2,
         "status": "within_max_compute"
       }
     },
@@ -3356,7 +3356,7 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 7.5,
+        "projected_hours": 10.2,
         "status": "within_max_compute"
       }
     },
@@ -3744,7 +3744,7 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 7.5,
+        "projected_hours": 10.2,
         "status": "within_max_compute"
       }
     },
@@ -4182,7 +4182,7 @@
       "cost": {
         "variants": 26,
         "jobs": 390,
-        "projected_hours": 8.5,
+        "projected_hours": 11.6,
         "status": "within_max_compute"
       }
     },
@@ -4606,7 +4606,7 @@
       "cost": {
         "variants": 25,
         "jobs": 375,
-        "projected_hours": 8.2,
+        "projected_hours": 11.1,
         "status": "within_max_compute"
       }
     },
@@ -5028,7 +5028,7 @@
       "cost": {
         "variants": 25,
         "jobs": 375,
-        "projected_hours": 8.2,
+        "projected_hours": 11.1,
         "status": "within_max_compute"
       }
     },
@@ -5418,7 +5418,7 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 7.5,
+        "projected_hours": 10.2,
         "status": "within_max_compute"
       }
     },
@@ -5810,7 +5810,7 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 7.5,
+        "projected_hours": 10.2,
         "status": "within_max_compute"
       }
     },
@@ -6200,7 +6200,7 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 7.5,
+        "projected_hours": 10.2,
         "status": "within_max_compute"
       }
     },
@@ -6620,7 +6620,7 @@
       "cost": {
         "variants": 25,
         "jobs": 375,
-        "projected_hours": 8.2,
+        "projected_hours": 11.1,
         "status": "within_max_compute"
       }
     },
@@ -7010,7 +7010,7 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 7.5,
+        "projected_hours": 10.2,
         "status": "within_max_compute"
       }
     },
@@ -7402,7 +7402,7 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 7.5,
+        "projected_hours": 10.2,
         "status": "within_max_compute"
       }
     },
@@ -7794,7 +7794,7 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 7.5,
+        "projected_hours": 10.2,
         "status": "within_max_compute"
       }
     },
@@ -8184,7 +8184,7 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 7.5,
+        "projected_hours": 10.2,
         "status": "within_max_compute"
       }
     },
@@ -8574,7 +8574,7 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 7.5,
+        "projected_hours": 10.2,
         "status": "within_max_compute"
       }
     },
@@ -8964,7 +8964,7 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 7.5,
+        "projected_hours": 10.2,
         "status": "within_max_compute"
       }
     },
@@ -9354,7 +9354,7 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 7.5,
+        "projected_hours": 10.2,
         "status": "within_max_compute"
       }
     },
@@ -9744,7 +9744,7 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 7.5,
+        "projected_hours": 10.2,
         "status": "within_max_compute"
       }
     },
@@ -10134,7 +10134,7 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 7.5,
+        "projected_hours": 10.2,
         "status": "within_max_compute"
       }
     },
@@ -10524,7 +10524,7 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 7.5,
+        "projected_hours": 10.2,
         "status": "within_max_compute"
       }
     },
@@ -10914,7 +10914,7 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 7.5,
+        "projected_hours": 10.2,
         "status": "within_max_compute"
       }
     },
@@ -11304,7 +11304,7 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 7.5,
+        "projected_hours": 10.2,
         "status": "within_max_compute"
       }
     },
@@ -11692,7 +11692,7 @@
       "cost": {
         "variants": 23,
         "jobs": 345,
-        "projected_hours": 7.5,
+        "projected_hours": 10.2,
         "status": "within_max_compute"
       }
     }
@@ -11955,7 +11955,7 @@
     "cost": {
       "variants": 15,
       "jobs": 225,
-      "projected_hours": 4.9,
+      "projected_hours": 6.7,
       "status": "within_max_compute"
     }
   },

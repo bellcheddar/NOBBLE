@@ -1,16 +1,16 @@
 {
-  "campaign": "benchmark_20261103T192126Z",
+  "campaign": "corrected_20261103T214331Z",
   "files": {
-    "campaign.json": 7502,
-    "validation.json": 29099,
+    "campaign.json": 2596,
+    "validation.json": 22731,
     "weights.json": 475,
-    "scores.jsonl": 7,
-    "results.jsonl": 100,
+    "scores.jsonl": 6,
+    "results.jsonl": 78,
     "benchmark.json": 7,
     "about.json": 16,
     "design.json": 31,
-    "recovery_vs_bridge.json": 7,
-    "comparison.json": 7
+    "recovery_vs_bridge.json": 6,
+    "comparison.json": 6
   },
   "redactions": 0,
   "outstanding": [
@@ -20,19 +20,14 @@
       "jobs_total": 2360
     },
     {
-      "campaign": "corrected_20261103T214331Z",
-      "jobs_done": 78,
-      "jobs_total": 100
-    },
-    {
       "campaign": "design_20261104T024349Z",
       "jobs_done": 0,
       "jobs_total": 240
     }
   ],
-  "comparison_conclusion": "F6 supported: 5 pair(s) improved by more than 2 A with the whole domain, the control held, and none got worse. Provisional: 1 of 7 pair(s) have not finished in both campaigns (CDK12)",
+  "comparison_conclusion": "F6 not supported: the control held, and no pair changed by more than 2 A. The 15-mer was not what limited pose recovery, so the limitation is the model or the sampling, not the construct",
   "jobs_total": 100,
   "pairs_total": 7,
-  "structures": 100,
-  "bytes": 25739875
+  "structures": 78,
+  "bytes": 21969122
 }
