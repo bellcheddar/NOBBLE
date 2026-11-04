@@ -1524,3 +1524,63 @@ Worth recording because it is the fourth time this session a test has
 passed while checking nothing, after F21's stale tuple, F22's
 hand-written sentinel and F26's regex over a multi-fragment f-string. The
 failure modes differ and the symptom does not: green, and silent about it.
+
+## F34. The suite had no test for the rule that defines the headline
+
+Four tests this session passed while checking nothing, each by a
+different mechanism, so the fifth time was worth spending on the suite
+itself rather than on another feature.
+
+The cheap checks came back clean and are worth recording so they are not
+repeated. All 248 test functions carry a real assertion; none asserts a
+bare literal; and the full run skips nothing, so every data-dependent
+skip condition is currently false and the whole suite is genuinely
+exercising.
+
+The useful check was a mutation sweep over the eight highest-consequence
+modules. Six mutations were caught: the AUC's chance line, the campaign
+comparison's control check, the design arm's condition matching, tier 2's
+ranking direction, the weight fit's labelled floor, and the LM's field
+validation. Two were not, and one of those was my own mutation being a
+no-op, which is its own small lesson about sweeps.
+
+### The real gap
+
+`metrics._minimum` could become `max`, or a median, and the whole suite
+passed. Spec 4.3 is explicit:
+
+    Using the minimum across the five seeds in each condition, not the mean.
+
+That sentence defines the project's headline number, and nothing tested
+it. Every test that touched Delta-ipTM either stubbed the aggregation or
+used seed values where the minimum, median and mean sit close enough
+together that any of the three would have passed. The rule was load
+bearing and unverified.
+
+The new tests use seeds whose minimum, median, mean and maximum are all
+different: 0.10, 0.75, 0.80, 0.60, 0.95. A difference of minima gives
+0.20 where a difference of medians would give 0.05, so a wrong
+aggregation has nowhere to hide. They also pin that a null seed is
+skipped rather than treated as zero, which would otherwise make any pair
+with one failed seed look like a total collapse of the interface, and
+that one bad seed setting the minimum is flagged as collapsed, which is
+the whole reason the minimum is reported with diagnostics beside it.
+
+### The second gap
+
+`geometry.score_structure` could report `found = False` for every
+structure and nothing noticed. Everything that consumes a bridge was
+tested with the geometry stubbed, including the tests I added for F33, so
+the one function that decides whether a bridge exists had no test
+exercising its success path.
+
+It now runs for real against a predicted ternary from a pair the campaign
+scored as bridging, asserting not only `found` but that the measurements
+`found` grants permission to read are actually present: a `found` with
+null dSASA would be worse than a rejection. The refusal paths are covered
+in the same place, including that a missing structure is refused with its
+own reason rather than as an absent bridge, which is what F33 turns on.
+
+Both gaps shared a cause. Stubbing a dependency to test its consumer is
+right, and it leaves the dependency untested unless something else
+exercises it. Nothing else did.
