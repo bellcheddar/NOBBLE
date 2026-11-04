@@ -155,6 +155,21 @@ def assemble(parent_id: str, generator: str = "alanine_scan",
     if manifest["errors"]:
         raise RuntimeError(f"{manifest['errors']} manifest validation errors")
 
+    # One pocket serves the whole campaign because every pair shares the
+    # parent's receptor and glue by construction. That has been stated in a
+    # comment here and never checked: the pocket is derived from pairs[0], so
+    # a variant routed to a different glue would have been given the parent's
+    # pocket instead (F42). Checked before any work, since there is nothing to
+    # assemble if it fails.
+    ligands = sorted({(pair.get("ligand") or {}).get("ccd")
+                      for pair in manifest["pairs"]})
+    if len(ligands) > 1:
+        raise RuntimeError(
+            "the design scan's pairs do not share one glue "
+            f"({', '.join(str(c) for c in ligands)}): a single pocket cannot "
+            "describe them, so the campaign is not assembled"
+        )
+
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     directory = paths.CAMPAIGNS / f"design_{stamp}"
     (directory / "yaml").mkdir(parents=True, exist_ok=True)
@@ -177,8 +192,6 @@ def assemble(parent_id: str, generator: str = "alanine_scan",
                 cofactor=dict(pair["cofactor"]),
             )
 
-    # One pocket for the whole campaign: every pair shares the parent's
-    # receptor and glue by construction.
     first = manifest["pairs"][0]
     ccd = (first.get("ligand") or {}).get("ccd")
     pdb_id = None

@@ -1907,3 +1907,52 @@ Which is the most useful thing here. The hazard was understood, written
 down, and fixed at one level by someone who did not notice the same shape
 one level up. A sweep built from the comment would have found it; reading
 the comment and agreeing with it did not.
+
+## F42. Two more choices taken by list order, on invariants that held
+
+A sweep for F41's shape: a choice resolved by the order of a collection,
+correct only while an invariant nobody checks continues to hold. Most
+candidates were benign, `structure[0]` being gemmi's first model and
+`parts[0]` a split. One looked promising and was clean, which is worth
+recording: `degron_gate` takes `(glycines or contacts)[0]` and its comment
+says the glycine that packs closest to the glue, and
+`contacts_to_ligand` does return its hits sorted by distance, so the code
+does what the comment says.
+
+Two were real.
+
+**`metrics.aggregate`** reads a pair's construct, peptide id, gene,
+sequence, label, modality, tier, parent, substitution, position and role
+off `pair_jobs[0]`, on the understanding that these describe the pair
+rather than the job. They do. The telling part is that `ligand_key` is
+already taken differently, from the first job that has one, because the
+binary arm has none. So one field was known to vary and the other twelve
+were taken on trust.
+
+A disagreement there means the manifest emitted jobs for two different
+things under one pair id, and the pair would be reported as whichever job
+was read first. The worst of the twelve is `peptide_label`: a pair half
+degraded and half not would land on whichever side of the matched-control
+curve it happened to be read into. It is now recorded as a note and a
+field rather than raised, because scoring a finished campaign is not the
+place to refuse, and a pair carrying that note is one nobody should read.
+
+**`assemble.build_manifest`** derives one pocket for a whole design scan
+from `pairs[0]`'s ligand, with a comment saying every pair shares the
+parent's receptor and glue by construction. True, and unchecked, so a
+variant routed to a different glue would have been handed the parent's
+pocket. Now a precondition at the top of `assemble`, before any work,
+since there is nothing to assemble if it fails.
+
+Both campaigns are clean: 14 pairs, no disagreement on any of the twelve
+fields. As with F41, this is a correctness that was never wrong, only
+unverified.
+
+### What the exclusions are for
+
+The check had to be told which fields vary by design. `complex_type`,
+`conditioning`, `seed` and `job_id` differ across a pair's jobs by
+construction, and `ligand_key` is absent from the binary arm. A check that
+flagged those would fire on every pair in every campaign, which is the
+failure mode of a caveat that is always on: it would have been switched
+off within a day. There is a test that those five stay out of the set.

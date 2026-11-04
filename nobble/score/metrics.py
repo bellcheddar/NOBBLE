@@ -109,9 +109,23 @@ class PairMetrics:
     seeds_ternary: int = 0
     seed_records: list[dict] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    # Pair-level fields on which this pair's jobs disagree. Empty is the
+    # only healthy value: a non-empty one means the manifest emitted jobs
+    # for two different things under one pair id (F42).
+    pair_level_disagreements: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+
+# Properties of a (receptor, peptide, ligand) triple rather than of one job.
+# Deliberately excludes ligand_key, which the binary arm legitimately lacks,
+# and job_id, seed, complex_type and conditioning, which vary by design.
+PAIR_LEVEL_FIELDS = (
+    "construct", "e3_gene", "peptide_id", "peptide_gene", "peptide_label",
+    "modality", "tier", "peptide_sequence", "parent_peptide_id",
+    "substitution", "position", "role",
+)
 
 
 def peptide_chain_index(construct_name: str) -> int:
@@ -286,6 +300,22 @@ def aggregate(results_path: Path, sampling_tier: int = 1) -> list[PairMetrics]:
     output: list[PairMetrics] = []
     for pair_id, pair_jobs in sorted(grouped.items()):
         first = pair_jobs[0]
+        # Everything below is read off the first job on the understanding that
+        # these are properties of the pair, not of the job. They are, and
+        # nothing said so. `ligand_key` is already taken differently, from the
+        # first job that has one, because the binary arm has none: so one field
+        # was known to vary and the rest were taken on trust (F42).
+        #
+        # A disagreement here means the manifest emitted one pair's jobs with
+        # two different peptides, constructs or labels, and taking the first
+        # would report the pair as whichever job happened to be read first.
+        # Recorded rather than raised: scoring a campaign is not the place to
+        # refuse, and a pair carrying this note is one nobody should read.
+        disagreements = {
+            field: sorted({str(job.get(field)) for job in pair_jobs})
+            for field in PAIR_LEVEL_FIELDS
+            if len({str(job.get(field)) for job in pair_jobs}) > 1
+        }
         metrics = PairMetrics(
             pair_id=pair_id,
             construct=first["construct"],
@@ -304,6 +334,14 @@ def aggregate(results_path: Path, sampling_tier: int = 1) -> list[PairMetrics]:
             position=first.get("position"),
             role=first.get("role"),
         )
+        if disagreements:
+            metrics.notes.append(
+                "jobs in this pair disagree on "
+                + ", ".join(f"{field} ({'/'.join(values)})"
+                            for field, values in sorted(disagreements.items()))
+                + ": these are pair properties, so the pair is not one pair"
+            )
+            metrics.pair_level_disagreements = disagreements
 
         records = [seed_record(job) for job in pair_jobs]
         metrics.seed_records = [record.to_dict() for record in records]
