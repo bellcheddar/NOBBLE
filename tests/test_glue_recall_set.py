@@ -128,3 +128,62 @@ def test_every_entry_records_the_evidence_it_was_selected_on():
     for item in L.glue_recall_set(limit=10):
         assert any("observed bridging" in note for note in item.notes), item.notes
         assert item.source == "glue_recall_set"
+
+
+# Molecular glues of something that is not an E3 ligase. Rapamycin and FK506
+# are the textbook examples of the mechanism, the fluoroquinolones bridge
+# gyrase and DNA, and etoposide bridges topoisomerase and DNA. Every one is a
+# known glue and none has been observed on a ligase, so every one belongs
+# outside a set whose question is about ligases.
+GLUES_OF_OTHER_THINGS = ("RAP", "FK5", "FSC", "MFX", "LFX", "CPF", "EVP")
+
+
+def test_the_set_is_glues_of_a_ligase_not_glues_in_general():
+    """The condition this pins is the join to BINMAN's ligase table.
+
+    Dropping it takes the set from 130 CCDs to 1,248. None of the other
+    checks here notice: the curated glues are still present, the fragments
+    are still absent, the chemotypes are still distinct, and the median is
+    still glue-sized, because what arrives is a thousand real glues of the
+    wrong proteins. Measured after a mutation sweep found no test failing
+    with the join removed.
+    """
+    codes = {ligand.ccd for ligand in L.glue_recall_set()}
+    present = [code for code in GLUES_OF_OTHER_THINGS if code in codes]
+    assert not present, (
+        f"{present} are glues of proteins that are not E3 ligases, so the "
+        "set is no longer scoped to the question spec 3.3 asks"
+    )
+
+
+def test_those_compounds_are_excluded_by_the_join_and_not_by_luck():
+    """The other half of the check above.
+
+    Asserting that seven codes are absent proves nothing unless they would
+    otherwise be present: the same assertion passes against an empty set, or
+    against one that excludes them for some unrelated reason.
+    """
+    from nobble.curate import binman_store as store
+    # The same query `_recall_rows` runs with the ligase join removed, and
+    # narrowed to these seven codes. Narrowed because the unrestricted form
+    # returns 1,248 rows and took 35 seconds of the suite to prove a point
+    # about seven of them.
+    placeholders = ", ".join("?" for _ in GLUES_OF_OTHER_THINGS)
+    rows = store.atlas_rows(
+        "select e.ccd_id from edge e "
+        "join ligand g on g.ccd_id = e.ccd_id and g.status = 'ok' "
+        "     and g.is_furniture = 0 "
+        "where e.status = 'ok' and e.edge_type = 'bridged_by' "
+        f"  and e.ccd_id in ({placeholders}) "
+        "  and exists (select 1 from bridge b where b.ccd_id = e.ccd_id "
+        "              and b.status = 'ok' and b.symmetry_mediated = 0 "
+        "              and b.evidence_class in ('molecular_glue', 'protac')) "
+        "group by 1",
+        tuple(GLUES_OF_OTHER_THINGS),
+    )
+    unjoined = {row["ccd_id"] for row in rows}
+    missing = [code for code in GLUES_OF_OTHER_THINGS if code not in unjoined]
+    assert not missing, (
+        f"{missing} are no longer in the set the ligase join filters, so the "
+        "test above would pass whether the join were there or not"
+    )

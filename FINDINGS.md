@@ -6179,13 +6179,45 @@ across CRBN, VHL, KBTBD4, DCAF16 and RNF113A, reduced to 121 Murcko
 chemotypes because the spec's question is about chemotypes. Median 59 heavy
 atoms.
 
-All three conditions are load-bearing, which is worth recording because each
-looks redundant beside the others. Without the furniture flag the set gains
-citrate and tetraethylene glycol, which genuinely do sit between a ligase and
-its partner in deposited structures. Without the evidence class it gains
-inositol hexaphosphate, which bridges KBTBD4 and RNF113A as a native
-cofactor. Without the ligase join it gains the fluoroquinolones, which bridge
-gyrase and DNA and are glues of something that is not a ligase.
+Which of the three conditions actually does the work, measured rather than
+asserted, because I asserted it wrongly first. The claim here was that all
+three are load-bearing and that dropping the furniture flag admits citrate
+and tetraethylene glycol. A mutation sweep did not catch dropping it, which
+is how I came to measure:
+
+| Conditions | CCDs | Admitted |
+|---|---|---|
+| all three | 130 | |
+| without the furniture flag | 130 | nothing |
+| without the evidence class | 133 | CLR, IHP, OH0 |
+| without either | 137 | and CIT, PG4, XYZ, A1JQT |
+| without the ligase join | 1,248 | 1,118 more, among them RAP, FK5, FSC, MFX, EVP |
+
+The ligase join does most of the work and the evidence class does the rest.
+Citrate and tetraethylene glycol are excluded by the evidence class, not by
+the furniture flag, and the furniture flag changes nothing on today's data.
+It is kept as the second of two filters on the same risk, because the
+evidence class is someone else's annotation and a bridge classed
+`molecular_glue` for a compound BINMAN already flags as furniture is the case
+it covers. Kept, documented as redundant, and not claimed to be
+load-bearing: an untestable condition is not a defect, but calling it
+essential when it is not makes the next reader trust the wrong one.
+
+The join is the interesting one. Without it the set is ten times larger and
+it is not junk: it is rapamycin, FK506, fusicoccin, the fluoroquinolones,
+etoposide. Those are the textbook molecular glues, and every one of them is a
+glue of something that is not an E3 ligase. The mutation sweep caught none of
+my tests on it, for the reason that makes the condition worth a test of its
+own: what arrives when the join goes is a thousand real glues of the wrong
+proteins, so the curated controls are still present, the fragments still
+absent, the chemotypes still distinct and the median still glue-sized. Both
+halves are now pinned, the seven named compounds being absent from the set
+and present in the same query without the join, because asserting that seven
+codes are missing proves nothing unless they would otherwise be there.
+
+Worth stating as a property of the set rather than a defect: it deliberately
+excludes rapamycin and FK506. Spec 3.3's question is about unexploited
+ligases, and neither compound has been observed on a ligase.
 
 The test is on the content of the set rather than on the query: all five of
 the campaign's curated glues are in it, and none of the fragments the old
