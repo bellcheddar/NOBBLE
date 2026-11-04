@@ -19,6 +19,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from nobble import paths
+from nobble.numeric import finite, mann_whitney_auc
 
 INDICATIVE_BELOW_LABELLED = int(
     paths.thresholds()["weights"]["indicative_below_labelled"]
@@ -68,8 +69,20 @@ class FitResult:
 
 
 def _normalise(name: str, value):
-    """Put every component on 0 to 1 so a weight means the same thing across them."""
-    if value is None:
+    """Put every component on 0 to 1 so a weight means the same thing across them.
+
+    A non-finite value is treated as absent, not clamped. The clamp below
+    is `max(0.0, min(1.0, value))`, and `min(1.0, nan)` returns 1.0 because
+    `nan < 1.0` is false, so a NaN component became the maximum possible
+    score: a pair whose bridge percentile could not be measured would have
+    ranked as having the best bridge in the panel. `+inf` did the same and
+    `-inf` became 0.0.
+
+    Returning None instead means the component does not contribute and the
+    weighted mean renormalises over what was measurable, which is what both
+    `fit` and `apply` already do with a missing value (F77).
+    """
+    if not finite(value):
         return None
     if name == "bridge_percentile":
         return max(0.0, min(1.0, value / 100.0))
@@ -95,13 +108,15 @@ def _features(row: dict) -> dict:
 
 
 def _auc(positives: list[float], negatives: list[float]) -> float | None:
+    """None on an empty side: the grid declines that point rather than
+    raising. Non-finite input still raises, from the shared estimator.
+
+    This used to be a second copy of the arithmetic, identical in its tie
+    handling and never hardened when F74 hardened the other one (F77).
+    """
     if not positives or not negatives:
         return None
-    wins = 0.0
-    for p in positives:
-        for n in negatives:
-            wins += 1.0 if p > n else (0.5 if p == n else 0.0)
-    return wins / (len(positives) * len(negatives))
+    return mann_whitney_auc(positives, negatives)
 
 
 def _label(row: dict) -> str | None:

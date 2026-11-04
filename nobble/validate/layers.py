@@ -332,25 +332,18 @@ def _finite(value) -> bool:
 
 
 def _auc(positives: list[float], negatives: list[float]) -> float:
-    """Mann-Whitney U as the ROC area, which handles ties correctly."""
+    """Mann-Whitney U as the ROC area, which handles ties correctly.
+
+    NaN on an empty side, because this layer reports the curve's absence
+    rather than raising, and a raise on non-finite input, which is the
+    floor under the caller's filter: a biased AUC is indistinguishable from
+    a real one. The arithmetic is shared with the weight fitter (F77).
+    """
+    from nobble.numeric import mann_whitney_auc
+
     if not positives or not negatives:
         return float("nan")
-    offenders = [v for v in list(positives) + list(negatives) if not _finite(v)]
-    if offenders:
-        # Refusing rather than returning a number. The caller filters these
-        # out before getting here; this is the floor under that, because a
-        # biased AUC is indistinguishable from a real one.
-        raise ValueError(
-            f"non-finite value(s) in the ROC inputs: {offenders[:5]}"
-        )
-    wins = 0.0
-    for p in positives:
-        for n in negatives:
-            if p > n:
-                wins += 1
-            elif p == n:
-                wins += 0.5
-    return wins / (len(positives) * len(negatives))
+    return mann_whitney_auc(positives, negatives)
 
 
 def _bootstrap_interval(positives: list[float], negatives: list[float],

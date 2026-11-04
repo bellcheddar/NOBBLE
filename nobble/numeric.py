@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import math
 
-__all__ = ["finite", "finite_values", "median_of"]
+__all__ = ["finite", "finite_values", "median_of", "mann_whitney_auc"]
 
 
 def finite(value) -> bool:
@@ -54,3 +54,28 @@ def median_of(values) -> float | None:
     if not present:
         return None
     return present[len(present) // 2]
+
+
+def mann_whitney_auc(positives, negatives) -> float:
+    """ROC area as the Mann-Whitney statistic, with ties at half a win.
+
+    Raises on an empty side or on any non-finite input, so the two callers
+    can each decide what an absent curve should return: the validation
+    layer reports NaN and refuses to publish, the weight fitter returns
+    None and declines that point on its grid. Sharing the estimator and
+    splitting the contract is deliberate; sharing neither is how one copy
+    came to be hardened against NaN and the other did not (F77).
+    """
+    if not positives or not negatives:
+        raise ValueError("both sides are needed for an AUC")
+    offenders = [v for v in list(positives) + list(negatives) if not finite(v)]
+    if offenders:
+        raise ValueError(f"non-finite value(s) in the ROC inputs: {offenders[:5]}")
+    wins = 0.0
+    for positive in positives:
+        for negative in negatives:
+            if positive > negative:
+                wins += 1.0
+            elif positive == negative:
+                wins += 0.5
+    return wins / (len(positives) * len(negatives))
