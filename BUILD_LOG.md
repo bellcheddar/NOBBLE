@@ -742,3 +742,19 @@
   modules exercised against real data (interpro resolves CULT, layers
   recovers 17.14 A, compare concludes, assemble builds 16 pairs).
   Preflight on the 2,360-job campaign still clean, QC still clean.
+- 2026-11-04T22:00Z Checked for a shell linter (none installed) and
+  syntax-checked every inline script and static JS file through node:
+  8 blocks, 0 errors.
+- 2026-11-04T22:00Z Added tests/test_docs_match_reality.py. Documentation
+  drift has been a real defect in this build rather than a hypothetical
+  one: PROGRESS has claimed six tabs when there were seven, an open Gate
+  G3 that had been satisfied hours earlier, and a running benchmark queue
+  that had finished. Each was true when written. Four claims are now
+  pinned: the main campaign's 2,360 jobs and 158 pairs, the tab count, the
+  285,996-bridge reference, and the README's design-scan costs, all
+  derived from the code and data rather than hand-kept.
+- 2026-11-04T22:00Z Verified the tests fail on drift rather than assuming
+  they would: introduced the exact errors they exist to catch (2,400 jobs,
+  160 pairs, six tabs, 285,000 bridges, 230 jobs) and all four failed,
+  then restored. A documentation test that cannot fail is decoration.
+  156 tests pass.
