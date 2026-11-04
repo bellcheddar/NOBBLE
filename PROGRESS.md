@@ -57,7 +57,7 @@ Rewritten after every phase and at least every 30 minutes during long compute.
   2,360 jobs, and started it. Tier 2, the design scan, the atlas rebuild and
   the deploy follow (D-NOB-039). Each stage is resumable, so a kill anywhere
   is recovered by rerunning the script
-- **Main campaign: running**, 271 of 2,360 at 19:05 UTC on 4 November. The
+- **Main campaign: running**, 323 of 2,360 at 21:10 UTC on 4 November. The
   benchmark block is behind it and the Sievers arm began at job 100 as
   planned, so the first zinc-bearing jobs have now run: the paths they take
   were verified ahead of them in F82, F83 and F86, and F102 confirmed on a
@@ -651,3 +651,58 @@ and not something to do without saying so first. The exposure is a home
 directory name rather than a credential: the credential scan is clean, the
 deploy reads its four settings from the environment with `${VAR:?}`, and no
 key, `.env`, PEM block or address is tracked anywhere.
+
+## Review F124 to F131
+
+Four of these came from one question asked of the project's own checks: what
+does this check not look at. None of the four gaps had cost anything yet, and
+all four boundaries had been drawn with a tool one notch too blunt.
+
+**F124.** `test_shared_code` compares files at the same relative path and
+skips `app`. By content, twelve files are byte-identical to a peer's at a
+different path: nine vendored libraries the rule does not reach, and three
+that are project code. The largest is `molstar-bridge.js`, 991 lines of
+BINMAN's viewer under NOBBLE's `vendor/`, where the directory name keeps
+every sweep away. `depot.css` is BINMAN's stylesheet renamed, which defeats a
+same-path comparison outright. Named now, with the remedy: widen BINMAN's
+copy.
+
+**F125.** Every cutoff scan walked `nobble/`. `tools/`, `deploy/` and `qc/`
+hold preflight, the atlas build and the prediction scorer. The only float
+cutoffs there are `check_prediction`'s four, which are the one case where a
+literal is required: a prediction's thresholds are part of the prediction.
+
+**F126.** The house-style check omitted `.js` to keep the minified libraries
+out, which also omitted the project's own 343-line `nobble.js`.
+
+**F127.** `test_numeric_rule` stops at the package while `build_atlas`
+publishes scipy correlations. Python writes `NaN` and `JSON.parse` rejects
+it, so one non-finite number gives no page rather than a wrong figure. Every
+published file and API response is strict-parsed now.
+
+**F128, the only one that had already cost something.** The published bundle
+carried the build machine's absolute paths, 307 across four fields, and
+`origin/main` still does. F105's own leak test globbed `*.json` while the
+paths were mostly in `.jsonl`.
+
+**F129.** The same glob in two more tests written the same day. Fixed with
+one definition in `tests/conftest.py` rather than three corrected globs, and
+widening it turned out to be a parsing change: a `.jsonl` file is one
+document per line.
+
+**F130.** A NaN is truthy, so `if row.get("seconds")` admits one, and the
+numeric sweep looks for the type check rather than the truthy guard. Two
+modules filtered measured durations that way before taking a median by index.
+
+**F131.** Two of my own tests rewrote `data/throughput.json`, which the app
+reads. One put the benchmark's measurement where the running campaign's
+belongs. Caught by `tools/mutate.py`'s protected-file list rather than by the
+suite.
+
+**The chain re-run.** Eight modules changed since the last end-to-end check,
+so all ten non-GPU stages were run again: preflight, scoring, the three
+validation layers, compare, the design report, tier-2 selection, the atlas
+build, drift, provenance and the prediction scorer. All clean, and
+`check_prediction` now accounts for all three of its testable verdicts.
+
+Suite 909 passing.
