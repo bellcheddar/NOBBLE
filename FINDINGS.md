@@ -3044,3 +3044,49 @@ clustered copy and a one-sided copy in memory. Nothing on disk is involved,
 and the controls also close a gap the file mutation never covered: that the
 real queue passes says nothing about whether a clustered one would be
 caught.
+
+## F66. The safe path was harder to use than the unsafe one
+
+Two mutation checks of mine reached live state today. One removed the atlas
+build's stale-input refusal, to confirm the test caught its removal, and the
+test then ran the real build and rebuilt the published atlas from a campaign
+with 54 of 2360 jobs scored. The other rewrote a live campaign's
+`queue.jsonl` while the runner was reading it. Neither did lasting harm: the
+atlas is tracked and `git checkout` restored it, and the queue came back
+byte-identical with the results file still holding 72 unique jobs whose
+completed set was the queue's leading prefix. Both were luck rather than
+method.
+
+`tools/mutate.py` exists precisely to prevent this and was not used either
+time. The reason is worth being plain about: it only ran a fixed list of
+mutations, so a one-off check was faster to write as a shell loop with a
+`trap` than to add as an entry and run. The unsafe path was the convenient
+one, and that is a property of the tool rather than of the day. So the first
+fix is `--file/--find/--replace/--tests`, which runs an ad-hoc mutation
+under the same rails: the dirty-tree refusal, the signal handlers, the
+restore, and the clean-tree verification on exit.
+
+The second fix is the lesson the two share, and it is not "do not mutate
+live files". The atlas lapse mutated `deploy/build_atlas.py`, which is
+source and entirely legitimate to mutate. What was written was the atlas,
+by a test that was only safe while the code it tested was correct. Which
+file is edited does not predict what gets written, because a mutation
+removes a safety deliberately and the tests then run without it.
+
+So the harness fingerprints live state, 32 files on this checkout, before
+and after every run and reports any change with a non-zero exit. Campaign
+results, every queue, the state log, scores, the published atlas and the
+measured throughput. Size and mtime rather than a hash, because hashing
+hundreds of megabytes between every mutation would cost more than the
+failure mode is worth, and a rewrite preserving both is not a real one.
+
+It refuses to mutate live state at all, before touching anything, and
+refuses anything outside `nobble/`, `tools/`, `deploy/` and `qc/`. Not
+because editing a document is dangerous but because a mutation there is not
+testing code, and the sweep would report "not caught" for a change no test
+could have been expected to notice, which is a false negative dressed as a
+finding.
+
+Both guards are checked by mutating the harness with the harness, which
+refused on the first attempt because `mutate.py` had uncommitted changes:
+the entry guard doing its job on its own author.

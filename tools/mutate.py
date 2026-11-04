@@ -18,10 +18,30 @@ between writing a mutation and the `finally` that restores it, so
   * it restores on SIGINT and SIGTERM as well as on the normal path;
   * it verifies the tree is clean before it exits, and says loudly if not.
 
+Two later lapses came from not using it. Both were hand-rolled shell loops
+that mutated a file, ran pytest and restored with a trap, and both reached
+live state. One removed the atlas build's refusal, and the test that then
+ran rebuilt the published atlas from a campaign with 54 of 2360 jobs
+scored. The other rewrote a live campaign's `queue.jsonl` while the runner
+was reading it. Neither did lasting harm, because the atlas is tracked and
+the queue was restored byte-identically, but both were luck rather than
+method.
+
+The reason they were hand-rolled is that this tool only ran a fixed list,
+so a one-off check was easier to write in the shell than to add here. That
+is now the first thing fixed: `--file/--find/--replace` runs an ad-hoc
+mutation under the same rails. The second is that mutation testing removes
+a safety deliberately, so the tests run under it can reach things no test
+should touch. Live state is fingerprinted before and after every run and
+any change is reported, whatever caused it (F66).
+
 Usage:
     python tools/mutate.py                 # every mutation in MUTATIONS
     python tools/mutate.py --only msa      # those whose label matches
     python tools/mutate.py --list
+    python tools/mutate.py --file nobble/validate/inputs.py \
+        --find 'if sorted(on_disk) != sorted(wanted):' --replace 'if False:' \
+        --tests tests/test_stale_inputs.py
 """
 from __future__ import annotations
 
@@ -51,6 +71,27 @@ MUTATIONS: list[tuple[str, str, str, str]] = [
      "    selected = [by_id[pid] for pid in reduction.selected_ids if pid in by_id]",
      "    selected = list(by_id.values())"),
 ]
+
+# Where a mutation may be written. Everything else is either live state or
+# not source, and a sweep has no business in it.
+MUTABLE_ROOTS = ("nobble", "tools", "deploy", "qc")
+
+# Live state: campaign results and queues, the published atlas, measured
+# throughput. A test run under a mutation must leave every one of these
+# exactly as it found them. Fingerprinted rather than made read-only,
+# because the thing to detect is a test writing them at all, and a
+# permission error would be reported as a test failure and read as the
+# mutation having been caught.
+PROTECTED_GLOBS = (
+    "campaigns/*/results.jsonl",
+    "campaigns/*/queue*.jsonl",
+    "campaigns/*/state.jsonl",
+    "campaigns/*/campaign.json",
+    "campaigns/*/scores*.jsonl",
+    "deploy/atlas/*.json",
+    "deploy/atlas/*.jsonl",
+    "data/throughput.json",
+)
 
 _active: tuple[Path, str] | None = None     # (path, original text)
 
@@ -100,21 +141,83 @@ def _check(paths: set[str]) -> tuple[bool, str]:
     return (not dirty), "\n".join(sorted(dirty))
 
 
+def _fingerprint() -> dict[str, str]:
+    """Size and mtime of every protected file, keyed by relative path.
+
+    Hashing the campaign's results would mean reading hundreds of megabytes
+    between every mutation. Size and mtime detect a rewrite, which is what
+    a test writing live state does, and a rewrite that preserves both is
+    not a failure mode worth the cost of hashing.
+    """
+    out = {}
+    for pattern in PROTECTED_GLOBS:
+        for path in sorted(ROOT.glob(pattern)):
+            stat = path.stat()
+            out[str(path.relative_to(ROOT))] = f"{stat.st_size}:{stat.st_mtime_ns}"
+    return out
+
+
+def _live_state_changes(before: dict[str, str]) -> list[str]:
+    after = _fingerprint()
+    changed = []
+    for name in sorted(set(before) | set(after)):
+        if before.get(name) != after.get(name):
+            was = "absent" if name not in before else before[name]
+            now = "absent" if name not in after else after[name]
+            changed.append(f"  {name}: {was} -> {now}")
+    return changed
+
+
+def _refuse_protected(relative: str) -> str | None:
+    """Why this file may not be mutated, or None if it may."""
+    path = Path(relative)
+    if path.is_absolute() or ".." in path.parts:
+        return "outside the project"
+    for pattern in PROTECTED_GLOBS:
+        if path.match(pattern):
+            return "live state, not source"
+    if not path.parts or path.parts[0] not in MUTABLE_ROOTS:
+        return f"not under {'/, '.join(MUTABLE_ROOTS)}/"
+    return None
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--only", default=None,
                         help="run only mutations whose label contains this")
     parser.add_argument("--list", action="store_true")
+    parser.add_argument("--file", default=None,
+                        help="an ad-hoc mutation: the file to change")
+    parser.add_argument("--find", default=None, help="text to replace, once")
+    parser.add_argument("--replace", default=None, help="what to put there")
+    parser.add_argument("--tests", default=None,
+                        help="pytest target for an ad-hoc mutation "
+                             "(default: the whole suite)")
     args = parser.parse_args(argv)
 
-    chosen = [m for m in MUTATIONS
-              if args.only is None or args.only.lower() in m[1].lower()]
+    if args.file or args.find is not None or args.replace is not None:
+        if not (args.file and args.find is not None and args.replace is not None):
+            print("--file, --find and --replace go together", file=sys.stderr)
+            return 2
+        chosen = [(args.file, f"ad hoc: {args.find.strip()[:40]}",
+                   args.find, args.replace)]
+    else:
+        chosen = [m for m in MUTATIONS
+                  if args.only is None or args.only.lower() in m[1].lower()]
     if args.list:
         for path, label, _f, _r in chosen:
             print(f"  {path:32s} {label}")
         return 0
     if not chosen:
         print("no mutation matched", file=sys.stderr)
+        return 2
+
+    refused = {relative: reason for relative in
+               {r for r, _l, _f, _r in chosen}
+               if (reason := _refuse_protected(relative))}
+    if refused:
+        for relative, reason in sorted(refused.items()):
+            print(f"refusing to mutate {relative}: {reason}", file=sys.stderr)
         return 2
 
     touched = {relative for relative, _l, _f, _r in chosen}
@@ -129,6 +232,12 @@ def main(argv: list[str] | None = None) -> int:
     signal.signal(signal.SIGINT, _on_signal)
     signal.signal(signal.SIGTERM, _on_signal)
 
+    pytest_command = list(PYTEST)
+    if args.tests:
+        pytest_command = pytest_command[:-3] + ["-q", args.tests]
+    live_before = _fingerprint()
+    print(f"watching {len(live_before)} live-state file(s) for changes")
+
     global _active
     missed = 0
     try:
@@ -142,8 +251,9 @@ def main(argv: list[str] | None = None) -> int:
             _active = (path, original)
             path.write_text(original.replace(find, replace))
             try:
-                result = subprocess.run(PYTEST, cwd=ROOT, capture_output=True,
-                                        text=True, timeout=1800)
+                result = subprocess.run(pytest_command, cwd=ROOT,
+                                        capture_output=True, text=True,
+                                        timeout=1800)
             finally:
                 _restore()
             caught = result.returncode != 0
@@ -159,6 +269,14 @@ def main(argv: list[str] | None = None) -> int:
     if not clean:
         print(f"\nTHIS SWEEP LEFT A MUTATION BEHIND:\n{dirty}", file=sys.stderr)
         return 3
+
+    touched_live = _live_state_changes(live_before)
+    if touched_live:
+        print("\nTHIS SWEEP CHANGED LIVE STATE. A mutation removes a safety, "
+              "so a test run under it can reach things no test should touch:",
+              file=sys.stderr)
+        print("\n".join(touched_live), file=sys.stderr)
+        return 4
     print(f"\n{len(chosen) - missed} of {len(chosen)} caught; "
           f"the {len(touched)} file(s) it touched are clean")
     return 1 if missed else 0

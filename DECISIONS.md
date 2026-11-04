@@ -1612,3 +1612,25 @@ Kept deliberately: they are two jobs, they run under different settings, and
 collapsing them would hide which stage is affected.
 
 **Reversal.** Set `QUEUE_GLOB` back to `queue.jsonl`. Three tests fail.
+
+## D-NOB-056. Mutation checks go through the harness, and it watches live state
+
+**Decision.** `tools/mutate.py` takes `--file/--find/--replace/--tests` for
+one-off mutations, refuses to write anything outside `nobble/`, `tools/`,
+`deploy/` and `qc/`, refuses live state outright, and fingerprints the
+campaign results, queues, state log, scores, published atlas and throughput
+file before and after every run, exiting 4 if any changed.
+
+**Alternatives.** Make live state read-only for the duration. Rejected: a
+permission error surfaces as a test failure, which a sweep reads as the
+mutation having been caught, so a guard would manufacture false successes.
+Also considered running the suite in a copied tree: correct in principle and
+far more machinery, and it would not have caught the atlas lapse, whose test
+wrote to a path the copy would have carried with it.
+
+**Cost.** Size and mtime are a weaker fingerprint than a hash, so a rewrite
+preserving both would pass. Accepted deliberately: hashing hundreds of
+megabytes between every mutation in a sweep of twenty would dominate the run.
+
+**Reversal.** Drop the fingerprint calls from `main`. Four tests fail,
+including the two that feed it an appearing and a disappearing file.
