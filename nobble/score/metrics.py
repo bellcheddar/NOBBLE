@@ -68,6 +68,15 @@ class PairMetrics:
     ligand_key: str | None
     modality: str
     tier: str
+    # Design-arm linkage (DESIGN_ARM.md). Carried through scoring because
+    # design lift is computed from scores.jsonl, and a variant that cannot
+    # name its parent or its substitution cannot be paired with anything.
+    # Without these the lift step finds zero variants and says so quietly,
+    # after the campaign has already run.
+    peptide_sequence: str | None = None
+    parent_peptide_id: str | None = None
+    substitution: str | None = None
+    role: str | None = None
     iptm_min_binary: float | None = None
     iptm_min_ternary: float | None = None
     iptm_min_ternary_conditioned: float | None = None
@@ -239,6 +248,10 @@ def aggregate(results_path: Path, sampling_tier: int = 1) -> list[PairMetrics]:
             ),
             modality=first.get("modality", "none"),
             tier=first.get("tier", "unknown"),
+            peptide_sequence=first.get("peptide_sequence"),
+            parent_peptide_id=first.get("parent_peptide_id"),
+            substitution=first.get("substitution"),
+            role=first.get("role"),
         )
 
         records = [seed_record(job) for job in pair_jobs]

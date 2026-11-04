@@ -231,3 +231,13 @@
   critical", and been reporting the missing ion. A wrong answer that matches
   the prior is worse than an obviously broken one. Variants now inherit the
   parent's cofactor. 89 tests pass.
+- 2026-11-04T06:45Z Closed a gap that would only have surfaced after the
+  compute: PairMetrics carried no parent_peptide_id, substitution or role, so
+  a scored design campaign would have lost its linkage and lift.from_scores
+  would have found zero variants and said so quietly, 240 jobs too late. The
+  four fields now survive scoring, with a test that builds a design results
+  file and checks they reach the serialised row.
+- 2026-11-04T06:45Z tools/run_design.sh: waits for any GPU campaign to
+  finish, preflights, runs, scores and computes the scan profile. Preflight
+  runs before the queue rather than after, because the failure worth catching
+  is the silent one.

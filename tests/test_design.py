@@ -214,3 +214,46 @@ def test_design_variants_carry_no_experimental_label():
     assert all(p["peptide_label"] is None for p in variants)
     parent = next(p for p in manifest["pairs"] if p["role"] == "parent")
     assert parent["peptide_label"] == "degraded"
+
+
+def test_design_linkage_survives_scoring(tmp_path):
+    """A variant that cannot name its parent cannot be paired with one.
+
+    PairMetrics carries parent_peptide_id, substitution, role and the
+    sequence because lift is computed from scores.jsonl. Without them
+    from_scores finds zero variants and reports that quietly, after the
+    campaign has already spent its compute.
+    """
+    import json
+    from nobble.score import metrics
+
+    def _job(job_id, pair_id, complex_type, iptm, **extra):
+        row = {
+            "job_id": job_id, "pair_id": pair_id, "seed": 1,
+            "construct": "CRBN_CULT", "e3_gene": "CRBN",
+            "peptide_id": "design_abc", "peptide_sequence": "PFQANQCGASFTQKG",
+            "complex_type": complex_type, "conditioning": "unconstrained",
+            "tier": "design", "status": "done",
+            "parent_peptide_id": "benchmark_888fd2c63e",
+            "substitution": "C4A", "role": "variant",
+            "confidence": {"pair_chains_iptm": {"0": {"1": iptm}, "1": {"0": iptm}},
+                            "iptm": iptm},
+        }
+        row.update(extra)
+        return row
+
+    results = tmp_path / "results.jsonl"
+    results.write_text("".join(json.dumps(r) + "\n" for r in [
+        _job("j1", "design_C4A", "binary", 0.60),
+        _job("j2", "design_C4A", "ternary", 0.80),
+    ]))
+
+    pairs = metrics.aggregate(results)
+    assert len(pairs) == 1
+    pair = pairs[0]
+    assert pair.parent_peptide_id == "benchmark_888fd2c63e"
+    assert pair.substitution == "C4A"
+    assert pair.role == "variant"
+    assert pair.peptide_sequence == "PFQANQCGASFTQKG"
+    # And the linkage reaches the serialised row lift reads.
+    assert pair.to_dict()["parent_peptide_id"] == "benchmark_888fd2c63e"
