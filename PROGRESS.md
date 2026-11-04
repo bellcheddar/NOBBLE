@@ -57,7 +57,7 @@ Rewritten after every phase and at least every 30 minutes during long compute.
   2,360 jobs, and started it. Tier 2, the design scan, the atlas rebuild and
   the deploy follow (D-NOB-039). Each stage is resumable, so a kill anywhere
   is recovered by rerunning the script
-- **Main campaign: running**, 180 of 2,360 at 16:05 UTC on 4 November. The
+- **Main campaign: running**, 220 of 2,360 at 17:40 UTC on 4 November. The
   benchmark block is behind it and the Sievers arm began at job 100 as
   planned, so the first zinc-bearing jobs have now run: the paths they take
   were verified ahead of them in F82, F83 and F86, and F102 confirmed on a
@@ -489,3 +489,47 @@ protein with no parse step to fail at. All four writes go through
 Suite 779 passing. Atlas rebuilt and deployed three times today; the live
 site carries the corrected design caveat and the conclusion without the
 CSNK1A1 caveat, nine routes 200.
+
+## Review F111 to F116
+
+**F111, fixed.** Seven readers of append-only files would have raised on a
+torn final line, where the runner's own `state.jsonl` reader has always
+tolerated one. Between them they are every stage that runs after the compute.
+One shared `paths.read_jsonl`, with the six queue and manifest readers left
+strict on purpose.
+
+**F112, fixed.** The stall detector built after F20 was reachable only from
+`status.sh`, which the chain calls on its last line, so it spoke once when
+the answer could no longer matter. Armed in the chain now, keyed on its exit
+code, verified read-only first, and replaced by rename because the chain is
+running.
+
+**F113, fixed, and it was mine.** F100 and F107 were written under decision
+ids that already existed, twice over, because I inferred the highest from a
+grep that could not see past 039. They are D-NOB-060 and D-NOB-061 now, and
+`tests/test_decision_ids.py` holds that no number is used twice and every
+citation resolves.
+
+**F114, pinned.** The README's three headline numbers come out of the
+function F103 had just changed. Recomputed: 29.221 to 1.171, 19.235 to 1.711,
+and the IKZF1 control 5.357 in both campaigns, so 0.000 between them. Every
+figure holds, and nothing would have said so if it had not.
+
+**F115, verified.** A non-finite dSASA would be reported as bridge percentile
+0.0 rather than refused, on the primary signal. Unreachable, because BINMAN's
+bridging criterion rejects a NaN before it can get there. Pinned, because
+that line is in another repository and the equivalent rewrite accepts NaN.
+
+**F116, fixed.** Spec section 4 read against the code, which nobody had done.
+One clause failed, in the headline view: the Delta scatter drew a pair with no
+measurable bridge at percentile 0 and read the position back as a number.
+CDK12 is that pair. It now sits in a band below the axis labelled "none".
+
+Suite 820 passing. Atlas rebuilt and deployed four times today, browser QC
+clean at both viewports with no console errors, and the live Delta chart
+confirmed drawing CDK12 in the band.
+
+Six concerns this session turned out to be unreachable or already decided and
+were recorded rather than acted on: D-NOB-035's premise, pose recovery's
+measurement, the correlation's caveats, the LM's no-arithmetic contract, Gate
+G1's wiring and the bridge percentile's NaN path.
