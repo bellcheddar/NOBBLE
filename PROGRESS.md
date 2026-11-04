@@ -57,6 +57,10 @@ Rewritten after every phase and at least every 30 minutes during long compute.
   2,360 jobs, and started it. Tier 2, the design scan, the atlas rebuild and
   the deploy follow (D-NOB-039). Each stage is resumable, so a kill anywhere
   is recovered by rerunning the script
+- **Main campaign: running**, 82 of 2,360 at 12:50 UTC on 4 November, still
+  in the benchmark block. The Sievers arm starts at job 100, which is where
+  the first four-chain zinc jobs and the matched negatives both arrive; the
+  paths they take were verified ahead of them in F82, F83 and F86.
 - **Main campaign: running.** `campaigns/campaign_20261104T004632Z`, 158 pairs
   (7 benchmark, 120 Sievers, 31 scrambles), 2,360 jobs, 392,400 tokens.
   Measured on its own first jobs at 0.3363 s/token, which projects **36.7
@@ -216,6 +220,67 @@ These figures replace an earlier set that was optimistic by roughly a factor
 of two. `matched_control_roc` computes the curve over the Sievers arm alone
 and the first count included the seven benchmark pairs, which carry the
 label "degraded" and sit at the head of the queue (F73).
+
+## Scoring review, F74 to F90
+
+A day spent reading the scoring code for correctness rather than for a
+symptom. Seventeen findings, all mutation-checked, and the published atlas
+diffed leaf by leaf afterwards: 11,002 values, two moved, both deliberate.
+
+The largest group was one question asked four times. `isinstance(value,
+(int, float))` admits NaN, and NaN is neither greater than nor equal to
+anything, so code that treats "not a number" as a number fails silently and
+in the direction that flatters the result.
+
+- **F74** the matched-control ROC scored a NaN as a unanimous loss: one
+  among three positives takes the AUC from 1.0 to 0.667, towards the null.
+- **F76** the same idiom in fourteen places, including the one that directs
+  tier 2's refinement budget. One rule now, in `nobble/numeric.py`, with a
+  sweep against a fifteenth. A NaN inside `sorted()` leaves the whole list
+  unsorted, so a bridge percentile median read 10 where the answer was 70.
+- **F77** the composite's clamp turned a NaN into 1.0, the maximum score,
+  because `min(1.0, nan)` returns 1.0: an unmeasurable bridge would have
+  ranked as the best in the panel. `weights.py` also carried a second
+  Mann-Whitney estimator, never hardened when F74 hardened the first.
+- **F78** `_rmsd` could return NaN, and `pose_recovery` took best, median
+  and worst from a list a NaN leaves unsorted.
+
+No record in any campaign carries a non-finite value, from 22,500 floats
+checked, so all four were latent. They are guarded because the failure is
+silent, not because it had happened.
+
+Then the chain, the report layer and the published output:
+
+- **F79** `cost_of`'s token arguments, added by F45 and F61, were never
+  passed, so the design arm kept the fallback F45 exists to replace. Right
+  only by coincidence: remeasured on the corrected campaign the same scan
+  projects 11.5 hours against a real 4.4.
+- **F81** the PLIP chain-map fallback appended "treat this fingerprint as
+  unverified" to `notes` and set status "ok", and `run.py` reads the status
+  and never the notes. **F82** then found the four-chain path already
+  covered by a real prediction in `smoke_sievers`, correcting my claim that
+  it was not.
+- **F83** verified Delta-ipTM's chain arithmetic on that prediction before
+  the Sievers arm reaches it: 0.952 ternary and 0.856 binary, the
+  receptor-to-peptide values. The ion is a zero *target* and an ordinary
+  source, so the peptide index is the dangerous one, not the receptor set.
+- **F87** the convergence scale was a bare 10.0 inside the expression, the
+  same fifth place as F80's timeout multiple: arithmetic.
+- **F89** `build_atlas.py` never configured a campaign, so every atlas ever
+  published chose its design scan target by the length fallback that a
+  previous finding replaced. The site said GSPT1 and the chain assembles
+  IKZF1. **F90** then moved the fix from the symptom to the rule.
+
+And the tooling that found them. **F84**: `tools/mutate.py` counted a
+skipped mutation as caught, so a sweep with stale anchors reported "5 of 5
+caught" and exited zero. That is the tool behind every verification in this
+project, and the exact defect it exists to find. It paid for itself within
+the hour: the next skip it reported honestly was the one that showed F87's
+second half was wrong.
+
+Four false alarms of mine are recorded with the findings, all the same
+shape: comparing two numbers without first checking they answer the same
+question.
 
 ## Next action, once the chain exits
 
