@@ -5332,3 +5332,49 @@ the construct.
 One of the five is about the document rather than the data: it asserts the
 README still quotes those figures. A pinned number guarding a sentence that
 has been reworded is worse than no pin, because it keeps passing.
+
+## F115. Why the primary signal cannot report a confident zero, and where that lives
+
+`percentile_of` bisects the atlas distribution and returns
+`100 * position / len(reference)`. Every comparison against a NaN is false,
+so `bisect_left` walks left the whole way and returns 0. A non-finite dSASA
+would therefore be reported as bridge percentile **0.0**: not a refusal, the
+lowest real value, indistinguishable from a tiny interface. Bridge percentile
+is spec 4.1's primary signal and the key tier-2 selection ranks on, so such a
+pair would be pushed to the bottom of the ranking by an unmeasurable number
+wearing a plausible one's clothes. `max(bridges, key=...dsasa_total)` one line
+above has the same exposure, since a NaN in a `max` returns an arbitrary
+element.
+
+Neither is reachable, and that is the finding rather than a defect.
+
+BINMAN's `find_bridges` admits a half-interface only when
+`self.dsasa >= min_dsasa and self.contacts >= min_contacts`, and `NaN >= x`
+is false, so a non-finite half never qualifies. `dsasa_total` is the sum of
+two halves that did qualify, so it is finite by construction. Checked rather
+than argued: 0.0 is what bisection gives for NaN and for -inf, the criterion
+rejects both, and every bridge percentile in every scored campaign is finite
+and inside 0 to 100.
+
+Two things make this worth writing down rather than filing as "no action".
+
+The protection is structural but it is not NOBBLE's. It is one line in
+another repository, and the obvious equivalent rewrite, `not (dsasa <
+min_dsasa)`, reads identically and accepts NaN. D-NOB-007 says shared code is
+widened in BINMAN rather than forked, which is right, and it means NOBBLE
+depends on behaviour it does not own. So the dependency is pinned here, where
+it is depended on, with a control that the floor is applied at all: without
+it the NaN rejection would pass for the wrong reason on a criterion that
+rejected everything.
+
+And `percentile_of` does guard its one other failure, an empty reference
+distribution, and guards it the right way round: no distribution to compare
+against returns NaN rather than 0.0. The same function treats a missing
+reference as unmeasurable and would treat a missing value as the worst
+possible. That asymmetry is only safe because of a line in another
+repository, which is exactly the kind of thing that is true until someone
+tidies it.
+
+This is the sixth concern this build that turned out to be unreachable. The
+check cost ten minutes; a write-up claiming the primary signal could report
+NaN as zero would have cost more.
