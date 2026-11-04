@@ -57,18 +57,19 @@ Rewritten after every phase and at least every 30 minutes during long compute.
   2,360 jobs, and started it. Tier 2, the design scan, the atlas rebuild and
   the deploy follow (D-NOB-039). Each stage is resumable, so a kill anywhere
   is recovered by rerunning the script
-- **Main campaign: running**, 120 of 2,360 at 14:28 UTC on 4 November. The
+- **Main campaign: running**, 180 of 2,360 at 16:05 UTC on 4 November. The
   benchmark block is behind it and the Sievers arm began at job 100 as
   planned, so the first zinc-bearing jobs have now run: the paths they take
   were verified ahead of them in F82, F83 and F86, and F102 confirmed on a
   completed prediction that the cofactor really is in the binary arm, which
   is what D-NOB-034 requires and what preflight could only check in the YAML.
 
-  Throughput by band, remeasured on 120 timed jobs: 0.484 s/token under 200
-  tokens, 0.3501 in the 200 to 400 band and 0.7375 in the 800 to 1600 band.
-  The 2,240 jobs remaining project to **48.2 hours**, 0.2 hours over the
-  48-hour per-run target and 47.8 clear of Gate G1's 96-hour threshold, so
-  the gate stays closed. The overrun is a scheduling fact the priority
+  Throughput by band, remeasured on 180 timed jobs, 100 from the benchmark
+  block and 80 from the Sievers arm: 0.484 s/token under 200 tokens, 0.3501
+  in the 200 to 400 band, 0.3658 in the 400 to 800 band and 0.7375 in the
+  800 to 1600 band. The 2,175 jobs remaining project to **47.0 hours**,
+  inside the 48-hour per-run target and 49 clear of Gate G1's 96-hour
+  threshold, so the gate stays closed. The overrun is a scheduling fact the priority
   ordering absorbs rather than a budget problem: the run yields the
   benchmark panel first, then the Sievers split, and loses discovery off
   the tail.
@@ -437,3 +438,54 @@ Remaining open items are unchanged: `tools/rerun_pair.py bench02_BRD4_VHL`
 when the GPU frees, rerunning `tools/run_chain.sh` once the current chain
 exits, and removing the `KNOWN_DRIFT` entry in
 `tests/test_cross_campaign_reproducibility.py` when the F47 correction runs.
+
+## Review F104 to F110
+
+Seven more while the campaign runs. The pattern that produced most of them is
+the same one: a value computed in one place and read by another under a
+different name, order or assumption.
+
+**F104, fixed.** The throughput note read "Measured on the benchmark panel"
+as an unconditional literal, true for 100 jobs and false from job 100. It
+counts the arms now. And the weight fit was silent about `delta_iptm` being a
+minimum over ten ternary jobs against five binary ones; the ROC is unaffected
+and already refuses on uneven counts, and the measured effect is 0.0014
+against a delta of 0.179, so the fit reports its seed-shape composition
+rather than refusing.
+
+**F105, fixed.** The design page said the composite is not validated in three
+places and derived it in none: a field reading a path that has never existed,
+a Python literal, and a template that checked the field and then rendered its
+own sentence. It would have gone on saying so after the Sievers arm
+validated it.
+
+**F106, fixed.** Five components under two sets of names. The JavaScript
+resolved the one mismatch and the Jinja beside it did not, so the right
+answer was the one that ran second. One map in `data.py` now, with three
+tests holding the invariant rather than the instance.
+
+**F107, fixed, and it closes an open question.** Which CSNK1A1 domain is
+correct was listed here as unanswered. It was a defect: the substrate
+construct came from `domains[0]` of a list in InterPro's response order.
+IPR000719 17-285 is right, corroborated by CDD, SMART and PROSITE and by
+5FQD chain C resolving 10 to 303 with no gaps. One of seven constructs moves,
+to the 269 residues the campaign already ran, so the superseded-substrate
+caveat comes off the published conclusion.
+
+**F108, fixed.** The same defect on the receptor side, inside the function
+whose docstring describes F41 having fixed it: an occurrence "counted from the
+N-terminus" indexed the response list. Latent, because the two orders agree
+for FEM1B today.
+
+**F109, fixed.** `tools/rerun_pair.py --apply`, the pending F47 correction,
+had no test and rewrote a live campaign's `state.jsonl` in place. Ten tests
+and an atomic rename.
+
+**F110, fixed.** Three more caches written non-atomically. The sequence cache
+is the dangerous one: plain text, so a truncation is still a valid-looking
+protein with no parse step to fail at. All four writes go through
+`paths.write_atomic` now.
+
+Suite 779 passing. Atlas rebuilt and deployed three times today; the live
+site carries the corrected design caveat and the conclusion without the
+CSNK1A1 caveat, nine routes 200.
