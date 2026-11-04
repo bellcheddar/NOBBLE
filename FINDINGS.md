@@ -620,3 +620,40 @@ actually exists. PLIP was the one place it did not.
 The bridge metric is the one that mattered most: it is spec 4.1's primary
 signal, so a zinc quietly entering it would have moved the headline number
 on all 120 pairs rather than a secondary one.
+
+## F15. The throughput model is adequate here by luck, not by design
+
+Gate G1 is judged on `projected_hours`, which multiplies one median rate by
+a representative token count. Watching the corrected campaign's large jobs
+run at 0.749 s/token against a campaign median of 0.455 raised the question
+of whether that single number is good enough to gate on.
+
+Measured across all 176 timed jobs, the rate is not monotonic in size:
+
+| tokens | n | median s/token |
+|---|---|---|
+| <200 | 70 | 0.477 |
+| 200-400 | 60 | 0.362 |
+| 400-700 | 25 | 0.364 |
+| >=700 | 21 | **0.732** |
+
+Two effects pull in opposite directions. Below 200 tokens the fixed cost of
+loading the model and setting up is amortised over few tokens, so the rate
+per token rises. Above 700 the pairformer's superlinear cost in sequence
+length takes over. The flat middle is where neither dominates.
+
+**For the main campaign it does not matter.** Re-projecting with a
+size-aware rate gives 53.8 hours against the single-median 51.8: a 4 per
+cent difference, against a Gate G1 threshold of 96. The campaign is
+dominated by 120 Sievers pairs at 136 to 156 tokens, all in the first
+bucket, whose rate of 0.477 sits close to the median of 0.455. The single
+number is accurate here because the campaign is nearly one size class, not
+because the model is right.
+
+**Left unchanged deliberately.** A size-aware model would be more correct
+and would change no decision, while adding a second thing that can be wrong
+to the input of a gate. The condition under which it would matter is
+recorded instead: a campaign with a wide token spread, or one dominated by
+jobs above 700 tokens, would be underestimated by roughly a third. The
+corrected campaign is exactly that case, and its 27 remaining jobs project
+to 3.6 hours on the observed large-job rate against 2.4 on the median.
