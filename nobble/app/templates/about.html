@@ -301,6 +301,52 @@
 
 {% if throughput %}
 <section class="panel">
+  <h2>The design arm, and what it is not</h2>
+  <p class="panel__hint">
+    The <a href="{{ url_for('nobble.design') }}">Design</a> tab is the only
+    part of NOBBLE that proposes something rather than measuring something,
+    and it is deliberately not part of the build specification. Everything
+    else here asks whether a predicted interface is real; that tab asks which
+    positions a known degron depends on.
+  </p>
+  <p class="panel__hint">
+    It ships before the score it would rank by is validated, which is worth
+    stating on the page a sceptical reader opens. The matched-control ROC
+    above reports <span class="mono">not_computed</span> until the Sievers arm
+    runs, so a ranked list of invented peptides would be a recommendation
+    drawn from a scale whose discrimination has never been measured.
+  </p>
+  <table class="ntable">
+    <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>What is the number?</td>
+        <td>Design lift: <span class="mono">delta-ipTM(variant) minus
+            delta-ipTM(parent)</span>. A difference of differences, so the
+            receptor, the glue and the parent degron all cancel</td>
+      </tr>
+      <tr>
+        <td>What does it claim?</td>
+        <td>The <b>ordering</b> of positions. That survives a monotone
+            miscalibration of the scale; "this peptide will be degraded" does
+            not, and is not claimed</td>
+      </tr>
+      <tr>
+        <td>When does it refuse?</td>
+        <td>Different receptor, E3, ligand or modality between a variant and
+            its parent, fewer than three seeds on either side, or a
+            substitution of a residue for itself. No lift is returned at all,
+            rather than an approximate one</td>
+      </tr>
+      <tr>
+        <td>Why is nothing scored yet?</td>
+        <td>The scan runs after the main campaign. Running it first would
+            produce lifts against an unvalidated score that would have to be
+            rerun</td>
+      </tr>
+    </tbody>
+  </table>
+
   <h2>Measured throughput</h2>
   <p class="panel__hint">
     The campaign sizes itself from this measurement, not from the

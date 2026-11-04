@@ -300,3 +300,16 @@
   three campaigns were queued. The state word now carries it as a tooltip
   and the outstanding count shows inline as "+3 queued", because a caveat
   reachable only on hover is not a caveat. Live and verified.
+- 2026-11-04T08:50Z About tab documents the design arm. That page is where a
+  sceptical reader goes for caveats, and the arm carries the project's
+  sharpest one: it proposes rather than measures, and it ships before the
+  score it ranks by is validated. Four questions answered plainly, including
+  what it does not claim.
+- 2026-11-04T08:50Z Checked two things that turned out to be sound rather
+  than broken, and they are recorded so they are not re-checked. The
+  corrected comparison runs cleanly against a partially complete campaign
+  and reports "incomplete" rather than erroring, so the chain's `|| true` on
+  that step will not be hiding a crash. And `control_held: false` is a
+  two-state boolean over a three-state fact, but every consumer
+  disambiguates: benchmark.html renders held / not yet run / MOVED, and the
+  conclusion text has a separate branch for the control having no number.
