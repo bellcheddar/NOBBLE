@@ -97,15 +97,32 @@ def test_the_gpu_wait_does_not_wait_for_its_own_session():
         pytest.skip("tmux not available")
 
     session = "nobble-skiptest"
-    script = (
-        f"cd {ROOT} && source tools/wait_for_gpu.sh && "
-        f"NOBBLE_GPU_SESSIONS=({session}) && "
-        "nobble_wait_for_gpu && echo DID_NOT_WAIT_FOR_SELF"
+
+    # Written to a file rather than passed as `bash -c '...'`. The script
+    # has to narrow NOBBLE_GPU_PATTERN, because the guard grew a second half
+    # that waits for the runner process itself (F60) and on a machine with a
+    # campaign going that half never returns, which would hang this test on
+    # a behaviour it is not about. A pattern in a command line is matched by
+    # pgrep against the tmux process carrying it, which is a sibling and so
+    # not excluded, and quoting it inside `bash -c '...'` closes the outer
+    # quote. A file has neither problem.
+    import tempfile
+
+    handle = tempfile.NamedTemporaryFile("w", suffix=".sh", delete=False)
+    handle.write(
+        f"cd {ROOT}\n"
+        "source tools/wait_for_gpu.sh\n"
+        f"NOBBLE_GPU_SESSIONS=({session})\n"
+        "NOBBLE_GPU_PATTERN='^$'\n"
+        "nobble_wait_for_gpu && echo DID_NOT_WAIT_FOR_SELF\n"
+        "sleep 5\n"
     )
+    handle.close()
+
     subprocess.run(["tmux", "kill-session", "-t", session],
                    capture_output=True)
     subprocess.run(["tmux", "new-session", "-d", "-s", session,
-                    f"bash -c '{script}; sleep 5'"], capture_output=True)
+                    f"bash {handle.name}"], capture_output=True)
     try:
         import time
         deadline = time.time() + 15
@@ -121,3 +138,4 @@ def test_the_gpu_wait_does_not_wait_for_its_own_session():
     finally:
         subprocess.run(["tmux", "kill-session", "-t", session],
                        capture_output=True)
+        Path(handle.name).unlink(missing_ok=True)

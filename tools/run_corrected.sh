@@ -14,5 +14,9 @@ echo "=== benchmark queue finished, starting corrected campaign $(date -u +%H:%M
 
 CAMPAIGN="$(ls -d campaigns/corrected_* 2>/dev/null | tail -1)"
 if [[ -z "$CAMPAIGN" ]]; then echo "no corrected campaign to run" >&2; exit 2; fi
+# shellcheck source=tools/wait_for_gpu.sh
+source "$ROOT/tools/wait_for_gpu.sh"
+nobble_wait_for_gpu
+
 caffeinate -dimsu "$BENV/bin/python" -m nobble.execute.runner --campaign "$CAMPAIGN"
 echo "=== finished $(date -u +%Y-%m-%dT%H:%M:%SZ) exit=$? ==="

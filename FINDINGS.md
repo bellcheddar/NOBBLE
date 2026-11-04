@@ -2753,3 +2753,54 @@ overridable and the test writes to a temporary one, which was verified by
 removing the refusal again and confirming the published atlas was untouched.
 Mutation testing deliberately disables safeties, so a test that invokes a
 real destructive path is only as safe as the guard it is testing.
+
+## F60. The GPU guard waited on a name for the thing, not the thing
+
+There is one MPS device, so two campaigns sharing it halve each other's
+throughput and risk an out-of-memory on the larger jobs.
+`nobble_wait_for_gpu` enforced that by checking whether any of six tmux
+sessions existed.
+
+A session name is a proxy. Kill a chain and its `run_queue` child keeps
+running, outside every session the list knows, and the guard returns
+immediately. I nearly did exactly that: `run_chain.sh` needed editing while
+it was running, and killing it while leaving its queue alive was the first
+plan. The relaunched chain would have started a second campaign on a device
+already in use, and the guard would have said the device was free.
+
+Worse, `run_queue.sh` did not wait at all, though `wait_for_gpu.sh` opens by
+saying it is "sourced by every script that starts inference". It is the
+script that starts inference: the chain, tier 2 and the design scan all
+reach the device through it or beside it. A sweep for an *invocation* of the
+runner, rather than a mention of it, found `run_corrected.sh` in the same
+state and correctly left `status.sh` alone, which imports `disk_gate` and
+starts nothing.
+
+The guard now asks for the runner process itself. `--throughput` runs are
+excluded, because `refresh.sh` runs one after every campaign to rewrite a
+JSON from results already on disk and it never opens the device.
+
+**Three of my own tests were worth less than they looked.** Mutation
+testing caught all three, which is the only reason this entry can be
+specific about them.
+
+Removing the wait while keeping the detection passed everything: seven
+tests asserted that the guard could *tell* whether the device was busy and
+none that it then *waited*. The interval is now overridable so a test can
+sit through it, and the two halves are separate functions, because with a
+campaign in a tmux session on this machine the session half never returns
+and the process half could not otherwise be reached.
+
+Removing the ancestry exclusion also passed, and that one is not a missing
+test but a claim I could not make. macOS `pgrep -f` already omits its own
+ancestry, parent and grandparent alike, while reporting siblings, so the
+exclusion changes nothing observable here. It is kept, because it is what
+makes the guard correct rather than accidentally correct, and the test now
+checks the ancestry chain is computed rather than pretending to demonstrate
+an effect this platform hides.
+
+And the existing self-exclusion test broke in a way worth recording: a
+pattern named in a command line is matched by `pgrep` against the tmux
+process carrying it, which is a sibling and so not excluded, and quoting it
+inside `bash -c '...'` closes the outer quote. The script is written to a
+file now, which has neither problem.

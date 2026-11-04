@@ -1537,3 +1537,38 @@ testing being correct is not a test.
 
 **Reversal.** Hard-code `OUT`. The refusal test would then write to the real
 atlas whenever the refusal is absent, which is the state it exists to detect.
+
+## D-NOB-052. The GPU guard waits on processes, not on session names
+
+**Decision.** `nobble_wait_for_gpu` waits for tmux sessions and then for any
+`nobble.execute.runner` process outside its own ancestry, excluding
+`--throughput` runs. `run_queue.sh` and `run_corrected.sh` now wait before
+starting inference, which they did not.
+
+**Alternatives.** Extend the session list. Rejected: the list had already
+drifted once, and an orphaned process belongs to no session at all, which no
+list can fix. Also considered a lock file: rejected because a run killed with
+SIGKILL leaves the lock held and the next run blocked, which trades a false
+negative for a false positive that needs a human.
+
+**Cost.** `pgrep` is consulted every poll instead of `tmux has-session`, and
+the guard now depends on the runner's module path appearing in the process
+command line. Both are cheap; the second is why the pattern is in one place.
+
+**Reversal.** Delete `nobble_wait_for_runners` and its call. Two tests fail,
+one of them naming the script that stops waiting.
+
+## D-NOB-053. The poll interval and the process pattern are overridable
+
+**Decision.** `NOBBLE_GPU_POLL_SECONDS` and `NOBBLE_GPU_PATTERN` default to
+60 seconds and the runner's module path.
+
+**Alternatives.** Keep both fixed. Rejected on evidence: with a 60-second
+interval and a campaign running on the machine, no test could assert that
+the guard waits, and removing the wait altogether passed the whole file.
+A seam that exists only for a test is a cost; a guard nothing can prove
+waits is a larger one.
+
+**Reversal.** Hard-code both. The test that proves the guard waits would
+then either hang or be skipped on any machine that is actually busy, which
+is every machine where the guard matters.
