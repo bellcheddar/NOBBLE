@@ -41,10 +41,26 @@ def _known_good(yaml_name: str, exclude: Path) -> Path | None:
     Exactly one, because two copies that disagree with each other cannot
     both be the reference, and silently taking the first is how F41 and F42
     happened.
+
+    Both sides of the exclusion are resolved, and that is the whole of F145.
+    `ROOT.glob` yields absolute paths, so `candidate.parent.parent` is
+    absolute; `exclude` is whatever the caller passed, and the chain passes
+    `campaigns/campaign_<stamp>` because that is what `newest_complete`
+    prints. An absolute path never equals a relative one, so the campaign
+    being corrected was not excluded from its own search, every name was
+    found twice, and "exactly one" was never true: this returned None for
+    every job, on every invocation the chain has ever made.
+
+    The same comparison between two spellings of one path is F32, which this
+    file's own call site cites.
     """
+    try:
+        excluded = exclude.resolve()
+    except OSError:
+        excluded = exclude
     found = [
         candidate for candidate in sorted(ROOT.glob("campaigns/*/yaml/" + yaml_name))
-        if candidate.parent.parent != exclude
+        if candidate.parent.parent.resolve() != excluded
     ]
     if len(found) != 1:
         return None
@@ -132,12 +148,48 @@ def main(argv: list[str] | None = None) -> int:
     #
     # The comparison copy is independently trustworthy: it predates the bug,
     # and diffing the two showed one difference, the modifications block.
+    # Every YAML this is about to rewrite has to be inside the campaign
+    # named on the command line (F144).
+    #
+    # `--campaign` chooses which queue to read, and the writes follow the
+    # absolute path recorded in each queue row, which is absolute by
+    # construction since F32. So pointing this at a copy of a campaign
+    # rewrites the original's files, and the copy is left untouched. That is
+    # how anyone would test a destructive tool, and it is what I was about
+    # to do: a fixture assembled from `cp campaigns/<live>/*.jsonl` carries
+    # the live campaign's paths, and `--apply` against the fixture would
+    # have edited the running campaign's inputs.
+    #
+    # Refusing the whole run rather than skipping the offending rows. A
+    # queue whose paths point elsewhere is a campaign that has been copied
+    # or moved, and the right answer is to say so, not to correct part of
+    # something and part of something else.
+    outside = []
+    root = campaign.resolve()
+    for row in jobs:
+        resolved = Path(row["yaml"]).resolve()
+        if root not in resolved.parents:
+            outside.append(str(resolved))
+    if outside:
+        print(f"REFUSING: {len(outside)} of {len(jobs)} YAML path(s) in this "
+              f"queue are outside {root}:", file=sys.stderr)
+        for path in outside[:3]:
+            print(f"  {path}", file=sys.stderr)
+        if len(outside) > 3:
+            print(f"  and {len(outside) - 3} more", file=sys.stderr)
+        print("This campaign directory holds another campaign's paths, so "
+              "correcting it would rewrite that one's inputs. Re-assemble or "
+              "rewrite the queue's yaml paths first.", file=sys.stderr)
+        return 2
+
     corrected = 0
+    unverified = []
     for row in jobs:
         target = Path(row["yaml"])
         source = _known_good(target.name, campaign)
         if source is None:
             print(f"  ! no known-good copy of {target.name}; left alone")
+            unverified.append(target.name)
             continue
         if source.read_text() == target.read_text():
             continue
@@ -145,6 +197,35 @@ def main(argv: list[str] | None = None) -> int:
         shutil.copy(source, target)
         corrected += 1
     print(f"  corrected {corrected} YAML(s) from a known-good campaign")
+
+    # Dropping the results is what makes the jobs re-run, so it must not
+    # happen for a job whose input could not be verified (F146).
+    #
+    # The two halves of this tool are "regenerate the YAMLs" and "clear the
+    # results so they re-run", and the second only makes sense if the first
+    # worked. With no known-good copy the input is whatever it already was,
+    # so clearing the results re-runs the same jobs on the same bad YAML:
+    # the GPU time is spent, the campaign is exactly as stale as before, and
+    # `stale_inputs` refuses the publish either way.
+    #
+    # That is not hypothetical. Under F145 every job returned no known-good
+    # copy on every invocation, so the live chain's correction step would
+    # have dropped thirty state rows and re-run fifteen jobs on the
+    # hydroxyproline YAML it was meant to replace.
+    #
+    # A job skipped because its YAML already matched the reference is a
+    # different case and is not counted here: that input is verified, and
+    # re-running it is a legitimate request.
+    if unverified:
+        print(f"\nREFUSING to clear results: {len(unverified)} of {len(jobs)} "
+              "job(s) have no known-good reference, so their YAML is "
+              "unchanged and re-running them would repeat the same input.",
+              file=sys.stderr)
+        print("A reference is another campaign under campaigns/ holding "
+              "exactly one copy of the same job's YAML. Check that one "
+              "exists and that no scratch directory under campaigns/ is "
+              "adding a second.", file=sys.stderr)
+        return 2
 
     for name in ("state.jsonl", "results.jsonl", "scores.jsonl"):
         dropped = _rewrite_without(campaign / name, args.pair_id)
