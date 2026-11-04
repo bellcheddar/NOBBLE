@@ -563,3 +563,42 @@ the 15-mer already handled, which would make the corrected campaign a
 trade rather than an improvement and would weaken F12's "none got worse".
 
 Recorded at 71 of 100 jobs, with both pairs unrun.
+
+## F14. The zinc the arm needed to fold was also contaminating its fingerprint
+
+Adding a structural zinc to the Sievers arm (D-NOB-034) put a second het
+group into every one of its 120 structures, and PLIP perceives every het
+group as a ligand. A finger's interactions CSV therefore carries two:
+
+```
+Y70:D:1   SMALLMOLECULE   4 hydrogen bonds, 5 hydrophobic
+ZN:C:1    ION             4 metal complexes
+```
+
+The fingerprint counted every row. Measured on a real prediction, that gave
+10 receptor contacts and an interaction set including `metal complexes: 4`.
+Those four are the finger coordinating its own ion: the substrate holding
+itself together, not the glue holding the substrate. Spec 4.6 wants the
+glue-to-degron half of the bridge, and the arm's headline comparison is
+between fingers that a glue degrades and fingers it does not, so putting
+each finger's own fold into the measurement is the wrong variable on all
+120 pairs.
+
+Filtered to the glue's chain: 6 receptor contacts, hydrophobic and hydrogen
+bonds only, with a note naming what was dropped. A zinc-free benchmark job
+is unchanged, checked rather than assumed (7 hydrophobic, 4 hydrogen bonds,
+no exclusion note).
+
+**A second defect, not yet triggered.** When the chain map cannot be parsed
+from cif2plip's output the code falls back to `A/P/L to A/B/C`. That is
+correct for a three-chain job and wrong for a four-chain one: with a
+cofactor the order is A, P, Z, L, so the glue is D and the fallback would
+hand the ligand slot to the zinc, fingerprinting the ion and calling it the
+glue. The parse has worked every time so far, including on the zinc
+structure, so this has never fired. It now says it cannot be trusted rather
+than quietly producing a number.
+
+The general shape is the same as F11: adding something correct for one
+reason (the fold needs its ion) changed something unrelated (what PLIP
+thinks the ligand is), and the result was a plausible number rather than
+an error.

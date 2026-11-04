@@ -268,7 +268,15 @@ def fingerprint(job: dict, workdir: Path | None = None) -> Fingerprint:
             "chain map not parsed from cif2plip output: falling back to the "
             "documented A/P/L to A/B/C ordering"
         )
+        # Correct only for a three-chain job. With a structural ion the
+        # order is A, P, Z, L, so L is D and this map would hand the
+        # ligand slot to the zinc. Flagged rather than silently applied.
         chain_map = {"A": "A", "P": "B", "L": "C"}
+        result.notes.append(
+            "chain map was not parsed: the A/P/L fallback assumes three "
+            "chains, and a job carrying a structural ion has four. Treat "
+            "this fingerprint as unverified"
+        )
     peptide_chain = chain_map.get(PEPTIDE_SOURCE_CHAIN, "B")
     ligand_chain = chain_map.get(LIGAND_SOURCE_CHAIN, "C")
     result.notes.append(f"chain map {chain_map}: peptide is {peptide_chain} in the PLIP output")
@@ -277,6 +285,24 @@ def fingerprint(job: dict, workdir: Path | None = None) -> Fingerprint:
     # prot_chain, lig_restype, lig_chain, distance_A, prot_atom_idx,
     # lig_atom_idx, geometry. Every row is a ligand-to-protein contact, so the
     # peptide rows are precisely the glue-to-degron half of the bridge.
+    # Rows belong to whichever ligand PLIP perceived, and a structural zinc
+    # is one of them: on a Sievers finger the CSV carries Y70:D:1 beside
+    # ZN:C:1, and the zinc's rows are metal coordination to the receptor.
+    # Counting those as glue contacts would put the finger's own fold into
+    # a fingerprint that is supposed to measure the glue's grip on the
+    # degron, and would do it on all 120 pairs in the arm.
+    glue_rows = [r for r in rows if (r.get("lig_chain") or "").strip() == ligand_chain]
+    other = len(rows) - len(glue_rows)
+    if other:
+        dropped = sorted({(r.get("lig_restype") or "?").strip()
+                          for r in rows if r not in glue_rows})
+        result.notes.append(
+            f"{other} row(s) from {', '.join(dropped)} excluded: they are "
+            f"contacts of another perceived ligand (a structural ion), not "
+            f"of the glue in chain {ligand_chain}"
+        )
+    rows = glue_rows
+
     counts: dict[str, int] = {}
     receptor, peptide = set(), set()
     for row in rows:
