@@ -3961,3 +3961,47 @@ negatives; the Sievers arm supplies the negatives and starts in 21 jobs.
 This is the second thing today checked just before the campaign reaches it,
 after the four-chain chain map, and in both cases the cost of being wrong
 afterwards is a published number rather than a failed test.
+
+## F87. One real finding, one I claimed wrongly, and the harness told me which
+
+Reviewing spec 4.4's convergence component. Two candidate findings; one
+holds and one does not.
+
+**The scale, which holds.** `convergence_score` was
+`max(0.0, 1.0 - (result.mean_rmsd / 10.0))`. That 10 decides a published
+component of the composite, and it was written inside the expression. The
+cutoff sweep looks in comparisons, module constants, default arguments and
+templates, so this is the same fifth place as F80's timeout multiple:
+arithmetic. It is `scoring.convergence_scale_a` now, and the test that
+matters changes the configured value and requires the score to follow, since
+a scale that is read and ignored looks identical to one that is used.
+
+The clamp has F77's shape too. `max(0.0, 1.0 - nan/scale)` returns 0.0,
+because `nan > 0.0` is false, so a non-finite mean would have become the
+worst possible convergence rather than no convergence. That route is closed
+upstream by F78 and the filter is now `finite` rather than `is not None`, so
+the guarantee is local instead of a property of another function.
+
+**The ipTM minimum, which I claimed wrongly.** `_receptor_peptide_iptm`
+filters with `is not None` and takes a minimum, and `min` with a NaN present
+is order-dependent: `min([0.9, nan])` is 0.9, `min([nan, 0.9])` is nan. So
+the order of a construct's receptor segments would decide whether a NaN
+survived into Delta-ipTM. I wrote that up as a gap in the headline path.
+
+It is not a gap. `_pair_iptm` already requires `finite` on each cell, which
+was one of F76's fourteen sites, so a non-finite value becomes None one
+level up and the minimum never sees it.
+
+What found that was the mutation harness. Reverting the filter to
+`is not None` failed no test, which means my test was passing for a reason
+other than the one it claimed: the NaN was filtered before reaching the code
+under test. Without the mutation I would have published a finding about a
+hazard that F76 had already closed, with a test that appeared to prove it.
+
+The change stays, as defence in depth, with the comment saying it is
+redundant and why. The write-up says which half the harness confirmed.
+
+And F84 paid for itself inside the hour. The first attempt at this mutation
+was skipped, because F76 had made the anchor appear twice, and the harness
+said so instead of reporting "1 of 1 caught". Before that fix I would have
+read the skip as a pass and kept the wrong finding.

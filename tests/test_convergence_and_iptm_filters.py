@@ -5,13 +5,18 @@ sweep the other idiom, `value is not None`, which admits it too. Most sites
 are safe because F78 made `_rmsd` refuse a non-finite result, but that makes
 the guarantee a property of one upstream function rather than of the filter.
 
-One site was not safe. `_receptor_peptide_iptm` reads ipTM values straight
-from Boltz's confidence JSON, where Python's `json` round-trips a bare `NaN`
-literal, filters them with `is not None`, and takes the minimum. `min` with
-a NaN present is order-dependent: `min([0.9, nan])` is 0.9 and
-`min([nan, 0.9])` is nan. So the order of the construct's receptor segments
-would have decided whether a NaN survived into Delta-ipTM, the statistic the
-headline ROC is computed on.
+`_receptor_peptide_iptm` looked unsafe and is not. It filters ipTM values
+with `is not None` and takes the minimum, and `min` with a NaN present is
+order-dependent: `min([0.9, nan])` is 0.9 and `min([nan, 0.9])` is nan, so
+the order of the construct's receptor segments would decide whether a NaN
+survived into Delta-ipTM. But `_pair_iptm` already requires `finite` on
+each cell, which was one of F76's fourteen sites, so a NaN becomes None one
+level up and never reaches the minimum.
+
+I claimed that as a gap and the mutation harness disagreed: reverting the
+filter failed no test. What the tests below actually establish is F76's
+guarantee at the cell, and that a None segment is dropped from the minimum
+rather than making it None.
 
 The convergence score had the other shape from F80: `mean_rmsd / 10.0`, a
 scale deciding a published component of the composite, written inside the
@@ -52,9 +57,10 @@ def _confidence(values: dict[tuple[int, int], float]) -> dict:
     return {"pair_chains_iptm": matrix}
 
 
-def test_a_non_finite_iptm_is_dropped_from_the_minimum():
-    """A multi-segment construct, so there is more than one value to
-    minimise over and the order could have mattered."""
+def test_a_non_finite_cell_becomes_none_before_the_minimum():
+    """Where the guarantee actually lives: `_pair_iptm`, not the filter
+    below it. A multi-segment construct, so there is more than one value to
+    minimise over and the order would have mattered if it got that far."""
     from nobble.curate import constructs as C
 
     name = next((key for key, value in C.CONSTRUCTS.items()
@@ -74,6 +80,10 @@ def test_a_non_finite_iptm_is_dropped_from_the_minimum():
     # answer depends on which chain comes first.
     poisoned = dict(good)
     poisoned[(chains[0], peptide)] = NAN
+    # The poisoned cell becomes None in `_pair_iptm`, so the minimum is
+    # taken over the remaining segment. Reverting the filter below it does
+    # not change this, which is how the mutation harness caught my claim.
+    assert metrics._pair_iptm(_confidence(poisoned), chains[0], peptide) is None
     value, _used, _first = metrics._receptor_peptide_iptm(
         _confidence(poisoned), name)
     # approx, because the fixture builds 0.80 + 0.05 and that is not

@@ -174,12 +174,17 @@ def _receptor_peptide_iptm(confidence: dict, construct_name: str) -> tuple:
     chains = C.CONSTRUCTS[construct_name].substrate_receptor_chains()
     peptide = peptide_chain_index(construct_name)
     values = [_pair_iptm(confidence, chain, peptide) for chain in chains]
-    # `finite`, not `is not None`. These come straight from Boltz's
-    # confidence JSON, where Python's json round-trips a bare NaN literal,
-    # and `min` with a NaN present is order-dependent: min([0.9, nan]) is
-    # 0.9 and min([nan, 0.9]) is nan. So the receptor segment order would
-    # have decided whether a NaN survived into Delta-ipTM, which is the
-    # headline statistic (F87).
+    # Defence in depth, not a fix. `_pair_iptm` already requires `finite`
+    # on each cell (F76), so a non-finite value cannot reach this filter
+    # today and `is not None` was adequate. It is `finite_values` because
+    # the hazard if one ever did reach here is specific: `min` with a NaN
+    # present is order-dependent, min([0.9, nan]) being 0.9 and
+    # min([nan, 0.9]) being nan, so the order of the construct's receptor
+    # segments would decide whether it survived into Delta-ipTM.
+    #
+    # Recorded as redundant because I first claimed it as a gap, and the
+    # mutation harness disagreed: reverting this line failed no test,
+    # because the NaN never gets this far (F87).
     present = finite_values(values)
     return (
         min(present) if present else None,
