@@ -11,6 +11,7 @@ from pathlib import Path
 from nobble import paths
 from nobble.design import lift as lift_module
 from nobble.design import variants as variant_module
+from nobble.numeric import finite
 
 
 def candidate_parents() -> list[dict]:
@@ -84,7 +85,7 @@ def _default_parent(parents: list[dict]) -> dict:
         from nobble.app import data as app_data
         for row in app_data.scores():
             value = row.get("delta_iptm")
-            if isinstance(value, (int, float)) and row.get("peptide_id"):
+            if finite(value) and row.get("peptide_id"):
                 scored[row["peptide_id"]] = value
     except Exception:                                      # noqa: BLE001
         scored = {}

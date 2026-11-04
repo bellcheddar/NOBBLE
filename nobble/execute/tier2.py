@@ -22,6 +22,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from nobble import paths
+from nobble.numeric import finite
 
 # Ranking keys in order of preference. The first one with values on enough
 # pairs wins.
@@ -57,7 +58,7 @@ class Selection:
 def choose_ranking_key(rows: list[dict]) -> tuple[str | None, list[str]]:
     notes: list[str] = []
     for key in RANKING_PREFERENCE:
-        ranked = [row for row in rows if isinstance(row.get(key), (int, float))]
+        ranked = [row for row in rows if finite(row.get(key))]
         if len(ranked) >= MINIMUM_RANKED:
             if key != RANKING_PREFERENCE[0]:
                 notes.append(
@@ -93,7 +94,7 @@ def select_top_decile(campaign: Path, fraction: float | None = None) -> Selectio
         selection.status = "not_selected: no component has enough values to rank on"
         return selection
 
-    scorable = [row for row in rows if isinstance(row.get(key), (int, float))]
+    scorable = [row for row in rows if finite(row.get(key))]
 
     # Spec 4.7: "A pose that only appears under conditioning is flagged
     # `forced: true`. Forcing a binder into a site it did not choose reliably

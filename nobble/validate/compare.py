@@ -22,6 +22,7 @@ import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from nobble import paths
+from nobble.numeric import finite
 
 # The control: unchanged between campaigns by design.
 CONTROL_GENE = "IKZF1"
@@ -75,7 +76,7 @@ def _recovery_by_pair(campaign: Path) -> dict[str, dict]:
         job = record.get("job_id") or ""
         pair = job.split("__")[0] if "__" in job else None
         value = record.get("receptor_rmsd")
-        if pair and isinstance(value, (int, float)):
+        if pair and finite(value):
             anchors.setdefault(pair, []).append(value)
 
     out = {}

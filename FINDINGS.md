@@ -3488,3 +3488,59 @@ outputs to within six seconds, and the job running now is at 864s against
 the previous conditioned job's 902s. On schedule rather than hung, which is
 the question F20 answered wrongly by comparing a local timestamp against a
 UTC one and killing a healthy job at 80% completion.
+
+## F76. F74 fixed one of fourteen copies of the same rule
+
+F74 found that `isinstance(value, (int, float))` admits NaN, and that a NaN
+reaching a comparison is scored as a unanimous loss rather than as missing
+data. It fixed the site it was found at, in `matched_control_roc`.
+
+The idiom appeared in fourteen places. Fixing one copy of a rule is the
+shape this project keeps finding: three copies of a timestamp format, two
+theme colours, two binning rules, two queue files, and now this. The rule
+lives in `nobble/numeric.py` and the call sites import it, with a sweep that
+fails on a fifteenth.
+
+Two sites would have mattered more than the one that was found.
+
+`tier2.choose_ranking_key` decides which pairs tier 2 spends ten recycles
+and twenty-five diffusion samples on. A NaN bridge percentile counted as
+rankable, and then sorted, would have sent the refinement budget to the
+wrong pairs.
+
+And `score.run`'s bridge percentile median was taken by index from a sorted
+list, which is worse than it looks. A NaN does not merely get misplaced:
+every comparison against it is false, so `sorted` leaves the other elements
+unsorted too, and any index into the result is arbitrary. Measured:
+
+| seed values | median by index | correct |
+|---|---|---|
+| `[1.0, nan, 2.0]` | `nan` | 2.0 |
+| `[3.0, nan, 1.0, 2.0]` | 1.0 | 2.0 |
+| `[90.0, nan, 10.0, 50.0, 70.0]` | 10.0 | 70.0 |
+
+A bridge percentile median of 10 where the answer is 70, on what spec 4.1
+calls the primary signal.
+
+It does not always corrupt the answer, and that is recorded too, because the
+finding would otherwise overclaim: `[nan, 1.0, 2.0, 3.0]` still gives 2.0.
+Unspecified rather than reliably wrong is what makes it hard to notice.
+
+`percentile_of` is the route in that exists today. It returns NaN when the
+reference distribution is empty, which happens on a host without BINMAN's
+atlas, so such a host would have produced a NaN percentile for every pair
+and a median that was anybody's guess, rather than refusing.
+
+The refactor cannot move a published figure, which was checked rather than
+asserted. `median_of` keeps the lower median its call sites computed, and on
+data with no non-finite value the two are the same estimator: 0
+disagreements across 3,023 lists, 23 of them taken from the real scored
+records and 3,000 generated. And no record in any campaign carries a
+non-finite value, from 22,500 float values examined.
+
+Also reviewed and found sound, so recorded rather than changed:
+`percentile_of` uses `bisect_left`, which reports the proportion strictly
+below a value. Ties are immaterial at this scale, the heaviest being
+`buried_fraction = 1.0` at 802 of 285,996 rows, so the choice understates
+that one extreme by 0.28 points and every typical value by under 0.01. The
+distribution is cached once rather than queried per call.

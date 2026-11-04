@@ -26,6 +26,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from nobble import paths
+from nobble.numeric import finite
 
 # The fields that must match between a variant and its parent for the
 # subtraction to mean anything.
@@ -103,10 +104,10 @@ def compute(variant_row: dict, parent_row: dict) -> Lift:
     result.variant_delta_iptm = variant_delta
     result.parent_delta_iptm = parent_delta
 
-    if not isinstance(variant_delta, (int, float)):
+    if not finite(variant_delta):
         result.status = "not_computed: the variant has no delta_iptm"
         return result
-    if not isinstance(parent_delta, (int, float)):
+    if not finite(parent_delta):
         result.status = (
             "not_computed: the parent has no delta_iptm. A variant without its "
             "parent scored is not a design result, it is one number"

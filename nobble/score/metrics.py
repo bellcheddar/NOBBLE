@@ -31,6 +31,7 @@ from pathlib import Path
 
 from nobble.curate import constructs as C
 from nobble import paths
+from nobble.numeric import finite, finite_values
 
 COLLAPSE_MINIMUM_SEEDS = int(paths.thresholds()["scoring"]["collapse_minimum_seeds"])
 
@@ -199,7 +200,7 @@ def _pair_iptm(confidence: dict, first: int, second: int) -> float | None:
             value = row.get(str(b))
             if value is None:
                 value = row.get(b)
-            if isinstance(value, (int, float)):
+            if finite(value):
                 values.append(float(value))
     return min(values) if values else None
 
@@ -232,12 +233,12 @@ def seed_record(job: dict) -> SeedRecord:
 
 
 def _minimum(values: list[float | None]) -> float | None:
-    present = [value for value in values if isinstance(value, (int, float))]
+    present = finite_values(values)
     return min(present) if present else None
 
 
 def _median(values: list[float | None]) -> float | None:
-    present = sorted(value for value in values if isinstance(value, (int, float)))
+    present = sorted(finite_values(values))
     if not present:
         return None
     middle = len(present) // 2
@@ -271,7 +272,7 @@ def _collapsed_seeds(values: list[tuple[int, float | None]]) -> list[int]:
     sit beside it so the distinction is visible rather than silently folded into
     the headline. See D-NOB-023.
     """
-    present = [(seed, value) for seed, value in values if isinstance(value, (int, float))]
+    present = [(seed, value) for seed, value in values if finite(value)]
     if len(present) < COLLAPSE_MINIMUM_SEEDS:
         return []
     median = _median([value for _seed, value in present])
@@ -428,7 +429,7 @@ def aggregate(results_path: Path, sampling_tier: int = 1) -> list[PairMetrics]:
                 continue
             setter = [
                 item.seed for item in records
-                if isinstance(item.iptm_receptor_peptide, (int, float))
+                if finite(item.iptm_receptor_peptide)
                 and abs(item.iptm_receptor_peptide - minimum) < 1e-9
             ]
             if any(seed in collapsed for seed in setter):
@@ -458,7 +459,7 @@ def aggregate(results_path: Path, sampling_tier: int = 1) -> list[PairMetrics]:
 
         affinities = [
             item.affinity_pred_value for item in ternary
-            if isinstance(item.affinity_pred_value, (int, float))
+            if finite(item.affinity_pred_value)
         ]
         metrics.affinity_pred_value = (
             round(sum(affinities) / len(affinities), 4) if affinities else None

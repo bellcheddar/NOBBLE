@@ -24,6 +24,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from nobble import paths
+from nobble.numeric import finite
 
 if str(paths.BINMAN) not in sys.path:
     sys.path.insert(0, str(paths.BINMAN))
@@ -200,7 +201,11 @@ def validate(query: dict) -> tuple[bool, str]:
         expected = FIELD_TYPES[field_name]
         if operator in ORDERED_OPERATORS:
             if expected == "number":
-                if isinstance(_value, bool) or not isinstance(_value, (int, float)):
+                # `finite` rather than a type check: this value came from
+                # a model, and a NaN threshold would compare false against
+                # every record and return an empty result that reads as "no
+                # pair matches" rather than as a bad query (F76).
+                if not finite(_value):
                     return False, (
                         f"{field_name} holds a number, so {operator} needs a "
                         f"number, not {_value!r}"

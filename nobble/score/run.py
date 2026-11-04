@@ -22,6 +22,7 @@ from pathlib import Path
 from nobble import paths
 from nobble.execute.runner import tier_files
 from nobble.score import geometry, lysine, metrics, plip, poses, weights
+from nobble.numeric import finite_values, median_of
 
 # Was a literal at the call site. It decides the published `forced` flag,
 # so it is a cutoff and belongs in thresholds.toml (CLAUDE.md).
@@ -139,15 +140,22 @@ def score_campaign(campaign: Path, with_plip: bool = True, limit: int | None = N
             if entry["bridging_seeds_total"] else None
         )
         if found:
-            percentiles = sorted(item.bridge_percentile for item in found)
-            entry["bridge_percentile"] = percentiles[len(percentiles) // 2]
-            entry["bridge_percentile_range"] = [percentiles[0], percentiles[-1]]
-            entry["dsasa_total_median"] = sorted(item.dsasa_total for item in found)[
-                len(found) // 2
-            ]
-            entry["bridging_balance_median"] = sorted(
-                item.bridging_balance for item in found
-            )[len(found) // 2]
+            # median_of, not sorted(...)[len // 2]. A NaN inside sorted()
+            # settles wherever the sort leaves it, so an index into the
+            # result is not the median of anything, and percentile_of
+            # returns NaN when the reference distribution is empty: a host
+            # without BINMAN's atlas would have produced a NaN percentile
+            # for every pair rather than refusing (F76).
+            percentiles = sorted(finite_values(
+                item.bridge_percentile for item in found))
+            entry["bridge_percentile"] = median_of(
+                item.bridge_percentile for item in found)
+            entry["bridge_percentile_range"] = (
+                [percentiles[0], percentiles[-1]] if percentiles else None)
+            entry["dsasa_total_median"] = median_of(
+                item.dsasa_total for item in found)
+            entry["bridging_balance_median"] = median_of(
+                item.bridging_balance for item in found)
         else:
             entry["bridge_percentile"] = None
             entry["notes"] = (entry.get("notes") or []) + [

@@ -326,8 +326,9 @@ def _finite(value) -> bool:
     back, so a non-finite value can round-trip through scores.jsonl without
     anything objecting (F74).
     """
-    return (isinstance(value, (int, float)) and not isinstance(value, bool)
-            and math.isfinite(value))
+    from nobble.numeric import finite
+
+    return finite(value)
 
 
 def _auc(positives: list[float], negatives: list[float]) -> float:
