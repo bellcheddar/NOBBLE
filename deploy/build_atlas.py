@@ -262,7 +262,25 @@ def main() -> int:
     # The design arm (DESIGN_ARM.md). Built here rather than at request time
     # like everything else: the generator imports the curation stack, and the
     # droplet has no gemmi.
+    from nobble.app import data as app_data
     from nobble.design import report as design_report
+
+    # Configured before the report is built, which it was not.
+    #
+    # `_default_parent` ranks the candidate degrons by measured Delta-ipTM
+    # and falls back to the shortest glue parent when nothing is scored, so
+    # the tab has something to show before a campaign runs. With no
+    # campaign configured, `data.scores()` returns an empty list and the
+    # fallback fires unconditionally: every atlas ever published chose its
+    # scan target by peptide length, which is the tiebreak a previous
+    # finding replaced for landing on a PROTAC pair in an arm about glue
+    # dependence.
+    #
+    # The chain does configure before assembling the scan, so the published
+    # target was GSPT1 and the scan that runs is IKZF1: two answers to the
+    # design arm's headline question, one on the page and one in the queue
+    # (F89).
+    app_data.configure(str(campaign))
 
     design = design_report.build()
     (OUT / "design.json").write_text(json.dumps(design, indent=2, default=str))

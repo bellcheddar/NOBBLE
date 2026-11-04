@@ -117,7 +117,8 @@ def _default_parent(parents: list[dict]) -> dict:
 
 
 def cost_of(count: int, tokens_per_pair: int | None = None,
-            job_tokens: list[int] | None = None) -> dict:
+            job_tokens: list[int] | None = None,
+            parent_id: str | None = None) -> dict:
     """What a set of variants would cost, from the measured rate.
 
     `job_tokens` is the token count of each job the scan would actually
@@ -146,12 +147,21 @@ def cost_of(count: int, tokens_per_pair: int | None = None,
     total_tokens = sum(job_tokens) if job_tokens else None
     projection = projected_hours(count, total_tokens=total_tokens,
                                  job_tokens=job_tokens)
+    basis = projection.get("basis")
+    # The subject, not just the method. Two parents of the same length emit
+    # the same number of jobs and different token totals, so GSPT1's scan
+    # costs 4.7 hours and IKZF1's 4.4. I compared those two figures as
+    # though they described one scan, which they do not, and a basis that
+    # named its parent would have said so (F89).
+    if parent_id and basis:
+        basis = f"{parent_id}: {basis}"
     return {
         "variants": count,
         "jobs": projection.get("jobs"),
         "projected_hours": projection.get("projected_hours"),
         "status": projection.get("status"),
-        "basis": projection.get("basis"),
+        "basis": basis,
+        "parent": parent_id,
     }
 
 
@@ -195,7 +205,8 @@ def build(parent_id: str | None = None) -> dict:
             "generator": "alanine_scan",
             "variants": generated["variants"],
             "cost": cost_of(generated["count"],
-                            job_tokens=_scan_job_tokens(chosen["peptide_id"])),
+                            job_tokens=_scan_job_tokens(chosen["peptide_id"]),
+                            parent_id=chosen["peptide_id"]),
         }
 
     # Lifts, if a design campaign has actually run.
