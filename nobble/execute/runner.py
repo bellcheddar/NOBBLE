@@ -277,22 +277,47 @@ def run_job(job: dict, campaign: Path, settings: dict) -> JobOutcome:
     if settings["potentials"]:
         command.append("--use_potentials")
 
+    # The queue may carry a budget computed from this pair's measured tier-1
+    # cost; otherwise the tier's configured cap applies. See tier2.job_budget.
+    budget = float(job.get("timeout_seconds") or settings["job_timeout_seconds"])
+
     attempts = 0
     detail = ""
     started = time.monotonic()
     while attempts <= RETRIES:
+        # The budget is per job, not per attempt. It used to be per attempt,
+        # so a job that timed out spent the cap twice: RETRIES=1 meant two
+        # full attempts, and re-running an identical command against an
+        # identical input after a timeout is the one retry guaranteed to end
+        # the same way, because nothing about it changed. The project's own
+        # fallback ladder says retry once *with a fix*. Sizing the retry from
+        # what is left makes that automatic: a job that crashes after two
+        # minutes retries with the rest of its budget, and a job that
+        # exhausts the budget has nothing to retry with (F100).
+        remaining = budget - (time.monotonic() - started)
+        if remaining <= 0:
+            detail = detail or f"budget of {budget:.0f}s spent"
+            break
         attempts += 1
         status, returncode, stdout, stderr = _run_boltz(
-            command, boltz_environment(), settings["job_timeout_seconds"],
+            command, boltz_environment(), remaining,
         )
         if status == "timeout":
-            detail = f"timeout after {settings['job_timeout_seconds']}s"
-            continue
+            detail = (f"timeout after {remaining:.0f}s, with a total budget of "
+                      f"{budget:.0f}s")
+            # Not retried. A timeout consumed the whole of what it was given,
+            # so the remaining-budget rule below would stop the retry anyway,
+            # but saying it here states the reason rather than leaving it to
+            # be inferred from the clock: an identical command on an identical
+            # input, having been killed for taking too long, will be killed
+            # again. The "unkillable" branch already breaks for this reason.
+            # A crash is different and still retries, with what is left.
+            break
         if status == "unkillable":
             detail = (
-                f"timeout after {settings['job_timeout_seconds']}s, then survived "
-                f"SIGKILL for {KILL_GRACE_SECONDS}s: abandoned so the queue can "
-                "continue. The orphan may still hold GPU memory"
+                f"timeout after {remaining:.0f}s of a {budget:.0f}s budget, then "
+                f"survived SIGKILL for {KILL_GRACE_SECONDS}s: abandoned so the "
+                "queue can continue. The orphan may still hold GPU memory"
             )
             break
         if returncode == 0:

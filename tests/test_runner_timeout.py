@@ -80,8 +80,24 @@ def test_an_unkillable_job_fails_the_job_without_retrying_it(monkeypatch, tmp_pa
     assert outcome.attempts == 1
 
 
-def test_a_killable_timeout_is_still_retried(monkeypatch, tmp_path):
-    """The opposite case, so the fix does not quietly disable the retry."""
+def test_a_killable_timeout_spends_its_budget_rather_than_retrying(monkeypatch, tmp_path):
+    """This used to assert the opposite, as a guard that F20's unkillable
+    branch had not disabled the retry for ordinary timeouts. The guard is
+    still wanted and now lives in
+    `test_refinement_budget.test_a_crash_still_retries_and_gets_what_is_left_of_the_budget`,
+    which is the case a retry is actually for.
+
+    The budget is now per job rather than per attempt, so a timeout, having
+    consumed everything it was given, has nothing to retry with (F100). That
+    is a trade-off rather than a pure win, and worth stating: if a timeout
+    was caused by a transient stall then a retry might have recovered it,
+    and that recovery is now given up. It is given up because the budget is
+    no longer a guessed global cap. Each refinement is sized at the scaling
+    bound times what tier 1 measured for that same pair, around forty times
+    its observed cost, so a job that reaches the budget is not a job that
+    was running slightly slow. Against that, a retried timeout cost a second
+    full budget: at the old tier-2 setting, twelve hours per job over ten
+    jobs, for an outcome determined by the first attempt."""
     calls = []
 
     def always_times_out(command, env, timeout):
@@ -98,8 +114,13 @@ def test_a_killable_timeout_is_still_retried(monkeypatch, tmp_path):
     }
     outcome = runner.run_job(job, tmp_path, settings)
 
-    assert len(calls) == runner.RETRIES + 1
-    assert "timeout after 5400s" in outcome.status
+    assert len(calls) == 1, f"the timeout was retried: {len(calls)} attempts"
+    assert "timeout after 5400s" in outcome.status, outcome.status
+    assert "total budget of 5400s" in outcome.status, outcome.status
+    assert runner.RETRIES >= 1, (
+        "the retry itself must stay available for crashes, which is the "
+        "failure class a retry is for"
+    )
 
 
 def test_cleanup_is_bounded_when_the_child_cannot_be_fully_drained(monkeypatch):

@@ -41,6 +41,16 @@ tier2_potentials = true
 # and it is the quantity most likely to abandon a refinement that was
 # working. The first tier-2 campaign measures it.
 tier2_timeout_multiple = 4
+#
+# A floor, not the whole budget. tier2.py now sizes each refinement job from
+# what tier 1 actually measured for that same pair: worst tier-1 wall clock
+# times the scaling implied by the recycle and diffusion-sample ratios above,
+# times this allowance. The allowance covers what the ratios do not, chiefly
+# potentials, which steer the diffusion and are off at tier 1 and on at tier
+# 2, so their cost appears in no ratio. 1.5 is a margin rather than a
+# measurement and is the one number here that the first tier-2 run should
+# replace (F100).
+tier2_potentials_allowance = 1.5
 
 [gates]
 min_free_disk_gb = 50

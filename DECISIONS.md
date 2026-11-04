@@ -1690,3 +1690,65 @@ Recorded rather than hidden, and the sweep names it every time it runs.
 
 **Reversal.** Remove an entry from `ALLOWED_TO_DIFFER`. The sweep then
 reports that file as forked, which is the signal to decide again.
+
+## D-NOB-040: a refinement job gets one budget, and a timeout is not retried
+
+**Date:** 2026-11-04
+
+A tier-2 job's time limit was `job_timeout_seconds * tier2_timeout_multiple`,
+applied per attempt, with one retry. The multiple was 4 and the config
+comment called it a guess, since tier 2 has never run.
+
+It can be bounded from the campaign's own measurements rather than guessed.
+Boltz runs the trunk once per recycle and the structure module once per
+diffusion sample, so tier 2 against tier 1 is 10/3 on one part and 25/1 on
+the other. Applying both ratios to the whole tier-1 time and adding them
+double-counts, which makes the result an upper bound whatever the unknown
+split, and a configured allowance then covers potentials, which are off at
+tier 1 and on at tier 2 and so appear in neither ratio.
+
+Checked against the live campaign, the guess was adequate for the pair the
+decile selected and not for the heaviest one. Six of seven measured pairs
+had between 4.6 and 10 times the headroom they needed.
+`bench06_RBM39_DCAF15` had 0.83: the DCAF15 assembly is 1,223 tokens by
+construction, its worst tier-1 job took 918s, and its bound is 7.2 hours
+against a 6.0 hour cap.
+
+**Decided, two parts.**
+
+Each queued refinement carries a budget sized from its own pair's measured
+tier-1 cost, with the configured cap as a floor. A pair with no measured
+cost gets the floor.
+
+The budget is per job rather than per attempt, so a timeout is not retried.
+
+**Alternatives.** Raise the multiple to a larger constant: simpler, but
+leaves a global number standing in for a per-pair quantity and would need
+revisiting whenever the construct set changes. Refuse at queue-build time
+when a selected pair does not fit the cap: protects the compute but
+abandons the refinement, which is the outcome being avoided. Keep the
+per-attempt cap and accept the second attempt: that is what was there.
+
+**The second part is a trade-off and not a pure win.** A timeout caused by
+a transient stall might have been recovered by a retry, and that recovery
+is given up. It is given up because the budget is no longer a guessed
+global cap: a refinement is now allowed roughly forty times its measured
+tier-1 cost, so a job that reaches the budget is not one that was running
+slightly slow. Against the recovery, a retried timeout cost a second full
+budget, which at the old tier-2 setting was twelve hours per job across ten
+jobs for an outcome the first attempt had already determined. The retry
+itself stays available for crashes, which is the failure class a retry is
+for, and takes whatever is left of the budget.
+
+**Reversal.** Set `tier2_potentials_allowance` to 1.0 to drop the margin,
+or delete the `timeout_seconds` key from the tier-2 queue builder to return
+to the configured cap alone; the runner falls back to it when the key is
+absent. To restore the retried timeout, change the `break` in `run_job`'s
+timeout branch back to `continue` and pass `budget` rather than `remaining`
+to `_run_boltz`. `tests/test_runner_timeout.py` and
+`tests/test_refinement_budget.py` state the current rule in both
+directions.
+
+**Open.** The allowance of 1.5 is a margin rather than a measurement. The
+first tier-2 run should replace it with the ratio it observes, which is the
+one number here that real tier-2 timings would improve.

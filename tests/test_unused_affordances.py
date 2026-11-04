@@ -154,12 +154,40 @@ def test_the_roc_statistic_is_the_field_the_spec_names(tmp_path):
 
 
 def test_a_timed_out_job_names_the_number_that_killed_it():
-    """What makes an unvalidated multiple tolerable. Tier 2 has never run,
-    so the factor is a guess, and the guess is tolerable only because a job
-    it kills says so and says the value: the first tier-2 campaign reports
-    `timeout after 21600s` rather than quietly losing refinements."""
-    source = (ROOT / "nobble" / "execute" / "runner.py").read_text()
-    assert 'f"timeout after {settings[\'job_timeout_seconds\']}s"' in source, (
-        "a timed-out job no longer reports the timeout it exceeded, so an "
-        "unvalidated tier-2 multiple would fail silently"
-    )
+    """A job that is killed must say what killed it, so that a budget sized
+    too tightly is visible in the manifest rather than appearing as a lost
+    refinement. It now has two numbers to report, since the budget is per job
+    and an attempt gets what is left of it, and the detail names both
+    (F100). The assertion is on the behaviour rather than on the string: the
+    original pinned the exact f-string and so failed when the budget stopped
+    coming from `settings` alone, although a timed-out job still reported
+    its number."""
+    from nobble.execute import runner
+
+    calls = []
+
+    def fake_run_boltz(command, env, timeout):
+        calls.append(timeout)
+        return "timeout", None, "", ""
+
+    original = runner._run_boltz
+    runner._run_boltz = fake_run_boltz
+    try:
+        outcome = runner.run_job(
+            {"job_id": "j", "seed": 1, "yaml": "x.yaml", "tokens": 10,
+             "timeout_seconds": 90},
+            Path("/tmp"), {"recycles": 3, "diffusion_samples": 1,
+                           "potentials": False, "device": "mps",
+                           "job_timeout_seconds": 5400},
+        )
+    finally:
+        runner._run_boltz = original
+
+    assert outcome.status.startswith("failed:")
+    assert "timeout after" in outcome.detail
+    assert "90s" in outcome.detail, outcome.detail
+    assert outcome.confidence is None and outcome.structure is None
+    # One attempt, not two: the budget was spent by the timeout, so there
+    # was nothing left to retry with.
+    assert len(calls) == 1, calls
+    assert calls[0] == pytest.approx(90, abs=2)

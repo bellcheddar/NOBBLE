@@ -4478,3 +4478,69 @@ pipeline has not yet seen rather than waiting fifty hours to meet it, and
 asserts the property rather than the ordering: for every rank, the
 confidence returned is the one named after the structure returned, and the
 structure is the best rank still present.
+
+## F100. The one number sized for the smallest job and applied to the largest
+
+Tier 2 runs after the campaign and has never run. Its time limit was
+`job_timeout_seconds * tier2_timeout_multiple`, the multiple was 4, and the
+config comment said so plainly: "4 is a guess rather than a measurement, and
+it is the quantity most likely to abandon a refinement that was working. The
+first tier-2 campaign measures it." The first tier-2 campaign is the one that
+would be lost, so I tried to measure it without running it.
+
+BoltzMaker has 146,761 recorded runs with `recycling_steps`,
+`sampling_steps` and `duration_seconds` fields, which looked like exactly
+the data needed. Every one of them is null: BoltzMaker ran at defaults
+throughout, and the 146,749 rows in its web registry are upload records with
+no timings at all. There is no measurement of the scaling anywhere, which is
+worth writing down so the next person does not search for it twice.
+
+It can be bounded instead. Boltz runs the trunk once per recycle and the
+structure module once per diffusion sample, so tier 2 against tier 1 is 10/3
+on one part and 25/1 on the other. Applying both ratios to the whole tier-1
+time and adding them double-counts on purpose: the result is above the true
+weighted sum for any split between the two, which a test checks at five
+splits from all-trunk to all-diffusion. An allowance covers potentials,
+which are off at tier 1 and on at tier 2 and so appear in neither ratio.
+
+Against the live campaign the guess turned out adequate, and only because of
+which pair the decile happened to pick:
+
+| pair | tokens | worst tier 1 | bound | headroom |
+|---|---|---|---|---|
+| bench06_RBM39_DCAF15 | 1223 | 918s | 7.2h | 0.83x |
+| bench02_BRD4_VHL | 454 | 166s | 1.3h | 4.58x |
+| bench07_CDK12_DDB1 | 357 | 130s | 1.0h | 5.88x |
+| bench03_BRD4_CRBN | 173 | 81s | 0.6h | 9.42x |
+| bench01_GSPT1_CRBN | 155 | 76s | 0.6h | 10.00x |
+| bench05_CSNK1A1_CRBN | 143 | 74s | 0.6h | 10.28x |
+| bench04_IKZF1_CRBN | 144 | 74s | 0.6h | 10.35x |
+
+Six pairs have between 4.6 and 10 times the headroom they need. The seventh
+has 0.83, and it is not an outlier to be tuned away: DCAF15 is a declared
+exception to the token cap, 1,223 tokens by construction because the receptor
+has to be the DCAF15, DDB1 and DDA1 assembly, and it is in the benchmark by
+design. The selection currently holds `bench02_BRD4_VHL`, chosen from six
+scored pairs. It is reselected on the full campaign, and `bench06` is
+currently running its tier-1 jobs.
+
+Each refinement now carries a budget in the queue, sized from its own pair's
+measured tier-1 cost with the configured cap as a floor, and the runner reads
+it. `bench02` keeps the 6.0 hour floor because its bound is below it;
+`bench06` gets 10.8 hours instead of being killed at 6.0 while on course.
+A pair with no measured tier-1 cost gets the floor.
+
+The second half is the retry. A timeout was retried, so a job whose budget
+was too small spent it twice: at the old setting, twelve hours per job across
+ten jobs, for an outcome the first attempt had already decided. The budget is
+now per job rather than per attempt, which makes a crash retry with the
+remainder and leaves a timeout nothing to retry with. That is a trade-off
+rather than a pure win and is recorded as D-NOB-040 with the recovery it
+gives up.
+
+Two things are worth separating here. The budget is a correction. The retry
+is a judgement, and my first version of it was more confident than the
+evidence: I inferred "the budget is spent" from elapsed wall clock, which is
+true in practice and leaves the reason to be read off the clock. A test I
+wrote caught it, because a stubbed runner returns instantly and the retry
+fired. The timeout branch now breaks and says why.

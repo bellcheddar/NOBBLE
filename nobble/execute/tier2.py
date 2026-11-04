@@ -176,6 +176,85 @@ def select_top_decile(campaign: Path, fraction: float | None = None) -> Selectio
     return selection
 
 
+def tier1_worst_seconds(campaign: Path) -> dict[str, float]:
+    """Worst completed tier-1 wall clock per pair, from the campaign's own
+    results. Worst rather than median: the budget is an abandonment
+    threshold, and sizing it from a typical job abandons the slow ones.
+    """
+    worst: dict[str, float] = {}
+    results = campaign / "results.jsonl"
+    if not results.exists():
+        return worst
+    for line in results.read_text().splitlines():
+        if not line.strip():
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if record.get("status") != "done":
+            continue
+        seconds = record.get("seconds")
+        pair = record.get("pair_id")
+        if not pair or not finite(seconds):
+            continue
+        worst[pair] = max(worst.get(pair, 0.0), float(seconds))
+    return worst
+
+
+def scaling_bound(settings: dict | None = None) -> float:
+    """An upper bound on how much more a tier-2 job costs than a tier-1 one.
+
+    Boltz runs the trunk once per recycle and the structure module once per
+    diffusion sample, so the two settings scale different parts of the work
+    and the true cost is a weighted sum. The split is unknown without
+    instrumenting a run, so this applies both ratios to the whole tier-1
+    time and adds them, which double-counts deliberately: the result is a
+    bound rather than an estimate. The allowance then covers potentials,
+    which are off at tier 1 and on at tier 2 and so appear in no ratio.
+
+    Every term comes from config. Nothing here is a literal.
+    """
+    settings = settings or paths.tuning()["campaign"]
+    samples = (int(settings["tier2_diffusion_samples"])
+               / int(settings["tier1_diffusion_samples"]))
+    recycles = int(settings["tier2_recycles"]) / int(settings["tier1_recycles"])
+    return (samples + recycles) * float(settings["tier2_potentials_allowance"])
+
+
+def job_budget(worst_tier1: float | None, settings: dict | None = None) -> dict:
+    """Seconds to allow one refinement job, and the reasoning as data.
+
+    The configured cap is a floor. A pair whose measured tier-1 cost implies
+    more than the floor gets more, because abandoning a refinement that was
+    on course is the expensive failure: the compute is spent either way and
+    only the result is lost.
+
+    This is not hypothetical. On the campaign that selected the first tier-2
+    pair, six of seven measured pairs had between 4.6 and 10 times the
+    headroom they needed, and `bench06_RBM39_DCAF15` had 0.83: the DCAF15
+    assembly is 1,223 tokens by construction and its worst tier-1 job took
+    918s, so its bound is 7.2 hours against a 6.0 hour cap. The selected
+    pair happened to be a small one. Had the decile fallen the other way,
+    ten jobs would each have run for six hours and been killed while
+    working (F100).
+    """
+    settings = settings or paths.tuning()["campaign"]
+    floor = (int(settings["job_timeout_seconds"])
+             * int(settings["tier2_timeout_multiple"]))
+    bound = scaling_bound(settings)
+    implied = math.ceil(worst_tier1 * bound) if finite(worst_tier1) else None
+    return {
+        "seconds": max(floor, implied) if implied is not None else floor,
+        "floor_seconds": floor,
+        "implied_seconds": implied,
+        "worst_tier1_seconds": worst_tier1 if finite(worst_tier1) else None,
+        "scaling_bound": round(bound, 2),
+        "basis": "measured tier-1 cost" if implied and implied > floor
+                 else "configured floor",
+    }
+
+
 def build_tier2_queue(campaign: Path, selection: Selection) -> dict:
     """Emit a tier-2 queue reusing the tier-1 YAMLs, which do not change.
 
@@ -197,15 +276,23 @@ def build_tier2_queue(campaign: Path, selection: Selection) -> dict:
         if job["pair_id"] in chosen and job.get("complex_type") == "ternary"
     ]
 
+    settings = paths.tuning()["campaign"]
+    worst = tier1_worst_seconds(campaign)
+    budgets = {}
+
     target = campaign / "queue_tier2.jsonl"
     with target.open("w") as handle:
         for job in refine:
             record = dict(job)
             record["job_id"] = job["job_id"] + "__tier2"
             record["tier_setting"] = 2
+            # Sized from this pair's own measured tier-1 cost rather than
+            # from a global cap, so the largest construct is not abandoned
+            # on a factor guessed for the smallest (F100).
+            budget = job_budget(worst.get(job["pair_id"]), settings)
+            record["timeout_seconds"] = budget["seconds"]
+            budgets[job["pair_id"]] = budget
             handle.write(json.dumps(record) + "\n")
-
-    settings = paths.tuning()["campaign"]
     return {
         "status": "built",
         "queue": str(target),
@@ -216,6 +303,7 @@ def build_tier2_queue(campaign: Path, selection: Selection) -> dict:
             "diffusion_samples": settings["tier2_diffusion_samples"],
             "potentials": settings["tier2_potentials"],
         },
+        "budgets": budgets,
         "note": (
             "Ternary jobs only, because spec 1.2 gives tier 2 one purpose: "
             "pose refinement on the top decile. It is not a second, better "
