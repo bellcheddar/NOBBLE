@@ -92,14 +92,28 @@ def test_the_suite_size_is_a_command_not_a_number():
     )
 
 
-def test_the_session_range_covers_every_finding_it_claims():
-    """It said "F132 to F148, Seventeen findings" at F167."""
-    stated = re.search(r"F132 to F(\d+)\.\*\*", PROGRESS)
-    assert stated, "the session's finding range is no longer stated"
-    highest = max(
-        int(m.group(1)) for m in
-        re.finditer(r"^## F(\d+)\.", (ROOT / "FINDINGS.md").read_text(), re.M))
-    assert int(stated.group(1)) == highest, (
-        f"PROGRESS.md says this session runs to F{stated.group(1)} and "
-        f"FINDINGS.md reaches F{highest}"
+def test_the_session_range_does_not_quote_an_end():
+    """The third instance of F168, inside the commit that named it.
+
+    PROGRESS.md said "F132 to F167. Thirty-six findings". Writing F168 made
+    both wrong, and the test pinning them failed on that commit, which is
+    the same self-defeating shape as the unpushed count and the suite size.
+    I had applied the rule to those two and not to this one in the same
+    sitting.
+
+    The start of the range is a fact about when the session began and stays
+    put. The end is a property of the work and is a command.
+    """
+    stated = re.search(r"\*\*This session, F(\d+)([^*]*)\*\*", PROGRESS)
+    assert stated, "the session's starting finding is no longer stated"
+    assert stated.group(1) == "132", (
+        f"the session is recorded as starting at F{stated.group(1)}"
+    )
+    assert "onwards" in stated.group(2), (
+        "the session's range quotes an end, which the next finding makes "
+        "wrong"
+    )
+    section = PROGRESS[PROGRESS.index("**This session,"):]
+    assert "grep -c" in section[:400], (
+        "nothing says how to count the session's findings"
     )

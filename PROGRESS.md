@@ -805,8 +805,9 @@ validation layers, compare, the design report, tier-2 selection, the atlas
 build, drift, provenance and the prediction scorer. All clean, and
 `check_prediction` now accounts for all three of its testable verdicts.
 
-**This session, F132 to F167.** Thirty-six findings, written up in
-FINDINGS.md. Five themes.
+**This session, F132 onwards.** Written up in FINDINGS.md; the count and
+the highest number move with every finding, so they are not written here
+(F168). `grep -c '^## F' FINDINGS.md` for the total.
 
 *Specified and never run.* Tier B is selected, frozen and gate-passed and has
 no pairs in any campaign, though spec 3.3 says not to defer it: Gate G1 is

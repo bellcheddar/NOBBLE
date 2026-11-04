@@ -7742,3 +7742,19 @@ A third thing in the same test, smaller: the collect-only subprocess ran
 uses is in neither, so it failed with `FileNotFoundError` rather than a
 verdict. `sys.executable` now. That is the second time today I have had a
 check fail with an exception instead of an answer, after F162.
+
+**And then a third instance, inside the commit that named the pattern.**
+PROGRESS.md also said "This session, F132 to F167. Thirty-six findings".
+Writing this finding made both wrong, and the test pinning them failed on
+that commit. I had applied the rule to the commit count and the suite size
+and not to the finding range, in the same sitting, which says something about
+how partial a fix can be while feeling complete. The start of the range is a
+fact about when the session began and stays put; the end is a command.
+
+Worth recording plainly: I committed that on a failing test. The command was
+`pytest ... > /dev/null; echo exit=$?; git add -A && git commit`, and the
+`&&` binds to the `echo`, which always succeeds. This is the second time
+today the same shell habit has let a commit through on red, after the
+cutoffs in D-NOB-068, and on both occasions I had just written down that the
+habit was the problem. Noting it again is not the fix; the fix is to run the
+suite and read its status before the commit, as a separate step.
