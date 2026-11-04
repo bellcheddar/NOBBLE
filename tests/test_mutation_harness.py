@@ -43,6 +43,21 @@ def _run(*arguments):
                           timeout=600)
 
 
+def _needs_clean(completed, path: str):
+    """Skip rather than fail when the harness refuses a dirty baseline.
+
+    The harness will not start on a file with uncommitted changes, which is
+    correct: it reads that file as its baseline and a leftover mutation
+    would be carried forward. But a test that drives the success path then
+    fails for anyone with work in progress, which is most of the time
+    during development. The refusal is the harness working, so it is a skip
+    and it names the file.
+    """
+    if completed.returncode == 2 and "refusing to start" in completed.stderr:
+        pytest.skip(f"{path} has uncommitted changes, so the harness "
+                    "refuses to use it as a baseline")
+
+
 def test_a_live_campaign_file_may_not_be_mutated():
     """The second lapse, as a refusal."""
     reason = mutate._refuse_protected(
@@ -153,6 +168,7 @@ def test_an_ad_hoc_mutation_runs_and_restores(tmp_path):
                      "--replace", "if False:",
                      "--tests", "tests/test_stale_inputs.py")
     assert target.read_text() == before, "the mutation was left behind"
+    _needs_clean(completed, "nobble/validate/inputs.py")
     assert "caught" in completed.stdout, completed.stdout[-500:]
     assert "watching" in completed.stdout
     assert completed.returncode == 0, completed.stdout[-800:]
@@ -182,6 +198,7 @@ def test_a_skipped_mutation_is_not_counted_as_caught():
                      "--find", "PAIR_LEVEL_FIELDS",
                      "--replace", "PAIR_LEVEL_FIELDS",
                      "--tests", "tests/test_numeric_rule.py")
+    _needs_clean(completed, "nobble/score/metrics.py")
     assert "SKIPPED" in completed.stdout, completed.stdout
     assert "of 0 attempted caught" in completed.stdout, (
         "a skipped mutation is still being counted among the attempts"
@@ -200,6 +217,7 @@ def test_a_real_mutation_still_reports_and_exits_cleanly():
                      "--find", 'ROC_ARM = "sievers_zf"',
                      "--replace", 'ROC_ARM = "benchmark"',
                      "--tests", "tests/test_queue_priority.py")
+    _needs_clean(completed, "nobble/validate/layers.py")
     assert "1 of 1 attempted caught" in completed.stdout, completed.stdout
     assert "SKIPPED" not in completed.stdout
     assert completed.returncode == 0, completed.stdout[-600:]

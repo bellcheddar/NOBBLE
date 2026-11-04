@@ -3879,3 +3879,46 @@ Worth noting what did not catch this. The harness has fifteen tests,
 including ones that assert it refuses live state, cleans up on failure and
 records a traceback. None asserted anything about its arithmetic, because
 the summary line looked like reporting rather than logic.
+
+## F85. Counts inside report strings, and two tests of mine that were wrong
+
+F84's defect was arithmetic in a summary line, untested because the line
+read as output rather than as logic. Sweeping for the shape, arithmetic on a
+`len()` inside an f-string, gives four sites.
+
+Two are correct and are now pinned rather than re-derived. `runner.py`'s
+"N job(s) unrun" uses `enumerate(pending, start=1)` and breaks before
+running the job, so at index 1 of 10 it reports 10 unrun, which is right.
+`inputs.py`'s "and N more" is guarded by the comparison that keeps it
+positive, and a list of exactly the example count now has to say nothing
+rather than "and 0 more".
+
+One was wrong and it was mine. `pose_recovery` notes how many benchmark
+pairs have no recovery number and explains that their ternary jobs have not
+completed. F78 gave that sentence a second cause, by dropping any pair whose
+every RMSD was non-finite, and left the explanation asserting only the
+first. So a pair whose geometry could not be measured would have been
+reported as one that had not run, sending a reader to the queue instead of
+to the structure. The two are counted apart now, and a test against the live
+campaign checks the counts in the notes account for exactly the pairs
+missing.
+
+**Two of my own tests were wrong in the same batch**, both in ways this
+project has already named.
+
+The first grepped `layers.py` for the new sentence, which is split across
+two lines of an f-string and so never appears contiguously. That is the
+string-check failure F50 retired, written again by me in the test for a
+finding about untested report logic.
+
+The second was worse, because it failed for everyone rather than passing
+wrongly. F84's test drives the harness's success path, and the harness
+refuses to start on a file with uncommitted changes, which is correct: it
+reads that file as its baseline. So the test passed when I wrote it with a
+clean tree and failed in the next full suite run with work in progress. It
+skips on that refusal now, naming the file, because the refusal is the
+harness working rather than the test's subject failing.
+
+A test that depends on the working tree being clean is a test that fails for
+reasons unrelated to what it protects, which is the argument F75 used to
+decline writing one at all. I should have applied it here.
