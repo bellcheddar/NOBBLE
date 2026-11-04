@@ -241,6 +241,17 @@ def score_campaign(campaign: Path, with_plip: bool = True, limit: int | None = N
                 entry.setdefault("errors", []).append(
                     f"plip: {type(problem).__name__}: {problem}"
                 )
+        else:
+            # A reason rather than an absent key. --no-plip is a real path,
+            # and a pair scored without PLIP should say that instead of
+            # looking like a pair whose fingerprint failed (F43).
+            entry["plip_fingerprint_match"] = None
+            entry["plip_fingerprint_match_status"] = (
+                "not_computed: plip was not run for this campaign"
+                if not with_plip else
+                "not_computed: the pair has no ternary job to fingerprint"
+            )
+            entry["plip_glue_to_peptide_contacts"] = None
 
         # Spec 4.8. Left null until the weights are fitted (D-NOB-006): a
         # composite with invented weights is worse than no composite, because it
@@ -276,8 +287,14 @@ def score_campaign(campaign: Path, with_plip: bool = True, limit: int | None = N
             "iptm_min_binary", "iptm_min_ternary", "conditioning_disagreement",
             "seed_collapse_affects_delta", "peptide_label", "peptide_gene",
             "ligand_key", "modality", "tier", "e3_gene", "construct",
+            # Both of these are now set on every path above, so these two
+            # entries are a floor rather than the fix: removing them changes
+            # nothing today and catches the next branch that forgets. The
+            # fix was setting them where they are produced (F43).
+            "plip_fingerprint_match_status", "bridging_seeds_unmeasurable",
         ):
             entry.setdefault(key, None)
+        entry.setdefault("bridging_unmeasurable_reasons", {})
         entry.setdefault("undocked_seeds", [])
         entry.setdefault("notes", [])
         entry.setdefault("seed_records", [])

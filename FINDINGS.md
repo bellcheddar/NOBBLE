@@ -1956,3 +1956,54 @@ construction, and `ligand_key` is absent from the binary arm. A check that
 flagged those would fire on every pair in every campaign, which is the
 failure mode of a caveat that is always on: it would have been switched
 off within a day. There is a test that those five stay out of the set.
+
+## F43. Fields I added this session were absent from most records
+
+The schema-guarantee block in `score_campaign` carries its own history:
+
+    A pair whose PLIP or geometry has not run yet must still carry every
+    key, as null, rather than omitting it: a consumer that reaches for a
+    missing key gets an error instead of a "not computed", and the app's
+    Benchmark tab did exactly that on the first pair whose ternary arm had
+    not finished.
+
+It is right, it is maintained by hand, and it goes out of date exactly
+when something new is added. Three of the fields this session added were
+set only on the branch that computes them.
+
+`bridging_unmeasurable_reasons`, from F33, was written only when there
+were unmeasurable seeds, which is no pair in either campaign. So the key
+was absent from every healthy record, and the one state it describes is
+the state in which it appears.
+
+`plip_fingerprint_match_status`, from F32, was written only when PLIP ran.
+`--no-plip` is a real path and `refresh.sh` can take it, so a campaign
+scored that way produced records with no status at all: a consumer asking
+why the fingerprint was missing got a `KeyError` rather than an answer.
+That is the same failure the block's own comment describes, reintroduced
+four hours after I read it.
+
+Both now come with a reason rather than a null. A pair scored without PLIP
+says "plip was not run for this campaign", which is a different thing from
+a fingerprint that failed and from one that was refused, and all three had
+collapsed into an absent key.
+
+The third was my own misreading. `iptm_receptor_chains` looked absent from
+every pair, and it is a seed-record field, present in every seed record.
+Checking the right level took one command and I had already written the
+finding in my head.
+
+The test derives the key set from the records rather than restating it,
+and requires it to be the same whichever branches ran. A field added on
+one branch now fails there instead of on the first consumer that reaches
+for it. The two entries added to the hand-maintained list are a floor, not
+the fix: both fields are set on every path now, so removing those entries
+changes nothing today and catches the next branch that forgets.
+
+### The test cost 112 seconds and now costs 10
+
+The first version scored three full campaigns for real, geometry and PLIP
+included, which added 112 seconds to a 28-second suite. The file is about
+which keys a record carries and nothing else, so both stages are stubbed
+and the campaign trimmed to three pairs. A slow test is a test that gets
+skipped, which is the one way to make a schema guarantee worse than none.
