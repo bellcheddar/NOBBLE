@@ -627,3 +627,27 @@ seed-balance verdict are complete; the app returns no 5xx on unknown ids,
 encoded traversal, over-long parameters or a GET on a POST route.
 
 Suite 880 passing. Ten of today's fixes are mutation-verified.
+
+## The push is pending your decision
+
+`origin/main` is **150 commits behind** the local branch. PROGRESS records
+G4 as "closed, granted and used", so I attempted the push; the harness denied
+it as an out-of-place publication, and that is the right place for the
+decision to sit rather than somewhere I route around.
+
+**Why it is worth doing rather than leaving.** F128 found the build machine's
+absolute paths in the published bundle, 307 of them across four fields, and
+`origin/main` already carries 100 of those in `deploy/atlas/results.jsonl`.
+The fix is in the local commits. Until they are pushed, the public tree keeps
+the paths and the corrected bundle exists only here and on the droplet, which
+was redeployed and now serves none.
+
+    git push origin main
+
+**One thing a push does not fix.** The paths stay in the repository's history
+even after the current tree is clean, because they were committed. Removing
+them needs a history rewrite, which is destructive to a published repository
+and not something to do without saying so first. The exposure is a home
+directory name rather than a credential: the credential scan is clean, the
+deploy reads its four settings from the environment with `${VAR:?}`, and no
+key, `.env`, PEM block or address is tracked anywhere.
