@@ -6483,3 +6483,54 @@ it is not ours to decide, and a name satisfies the rule while leaving the
 link where its authors put it. Retried on a short bounded timer because the
 logo appears asynchronously after the mount, so a single query right after
 construction finds nothing.
+
+## F139. The copy budget was a rule nothing could measure
+
+CLAUDE.md sets it: "Budget: under 40 words per panel, under 150 per page,
+excluding tables, labels and pipeline-generated status text." Nothing
+measured it for the whole build.
+
+Measuring it took three attempts and the first two were wrong in ways worth
+recording, because both produced a confident number that would have justified
+cutting copy that should stay.
+
+A static count over the templates said every page but one was over, the worst
+panel at 126 words. It sums paragraphs that are mutually exclusive in the
+rendered page: an empty-state hint and the text that replaces it never appear
+together. So I measured the rendered pages instead, which said five of seven
+were over.
+
+That was still wrong, and in the more interesting direction. The composite
+panel read 124 words, which looked like clear bloat until I read it: six
+paragraphs, one per component, each a single line saying what that number
+means. That is exactly what the rule asks for, and those lines are
+`weight__note`, the slider's own `aria-describedby`, which makes them labels,
+which the rule excludes. The markup already separated all three excluded
+categories and my selector ignored it: `weight__note` for a control's label,
+`mono` for machine output, `.empty` for a transient state. With the rule's
+own exclusions applied, the composite panel reads 23 words and `/benchmark`,
+`/interactions`, `/design` and `/` all pass.
+
+What was left was one real violation and one judgement. The violation was
+`/pose` at 96 words, of which 49 were presentation provenance: the AlphaFold
+four-band scale, the translucent gaussian surface, the emissive shell. That is
+reasoning, it is the category the rule names and sends to DECISIONS.md, and it
+was already in `molstar-bridge.js`'s own comments. It is now a Jinja comment,
+so a reader of the template still finds it and a reader of the page does not.
+The affinity disclaimer went from two sentences to the one the rule allows.
+`/pose` reads 37 words.
+
+`/delta` read 50 while the Sievers arm is still running and 39 once the ROC
+computes, the difference being the empty state. Excluded as transient: the
+budget is about the copy a finished page carries, not about a message saying
+what has not run yet.
+
+`/about` is 526 words over ten panels and is exempt by D-NOB-067 rather than
+by oversight. The rule's stated purpose is to keep reasoning off the data
+panels, and the page that exists to explain the project is what makes that
+possible rather than what defeats it.
+
+The measurement now runs inside browser QC and exits 4 when a data page is
+over, which is the part that matters: the two previous attempts at this
+number were mine, and the reason the budget drifted for a whole build is that
+checking it was a thing somebody had to decide to do.

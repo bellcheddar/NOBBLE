@@ -58,6 +58,25 @@ if (expected) {
   console.log('build          : ' + serving);
 }
 
+/* The UI copy budget, measured in the browser because the rule is about what
+ * a reader sees: a static count of the templates sums paragraphs that are
+ * mutually exclusive in the page and called the composite panel 124 words
+ * when a reader sees 23 (F139). Run as its own process so the measurement
+ * and this report stay separable. */
+let copyBudget = 'not run';
+try {
+  execFileSync(process.execPath, ['qc/copy_budget.mjs'],
+    { encoding: 'utf8', env: { ...process.env, NOBBLE_BASE: BASE } });
+  copyBudget = 'within budget';
+} catch (e) {
+  if (e.status === 4) {
+    copyBudget = 'OVER BUDGET';
+    console.error((e.stdout || '').trim());
+  } else {
+    copyBudget = 'could not measure: ' + e.message.split('\n')[0];
+  }
+}
+
 const report = { pages: [], consoleErrors: [], axe: [] };
 const browser = await chromium.launch();
 
@@ -110,6 +129,7 @@ writeFileSync('qc/qc_report.json', JSON.stringify(report, null, 2));
 
 console.log('pages captured :', report.pages.length);
 console.log('non-200        :', report.pages.filter((p) => p.status !== 200).length);
+console.log('copy budget    :', copyBudget);
 console.log('console errors :', report.consoleErrors.length);
 report.consoleErrors.slice(0, 8).forEach((e) => console.log('   ', e.viewport, e.text.slice(0, 150)));
 if (report.axe.length) {

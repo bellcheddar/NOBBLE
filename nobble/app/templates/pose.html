@@ -47,12 +47,16 @@
       <div class="viewer__empty" data-role="empty">Nothing to show for this pair yet.</div>
       <div class="viewer__overlay mono" data-role="overlay" hidden></div>
     </div>
+    {# The presentation is BINMAN's, unchanged: the AlphaFold four-band
+       pLDDT scale, a translucent gaussian surface over the polymer, and the
+       ligand as sticks inside an emissive shell so it reads through the
+       surface. That was on screen as 49 words of provenance, which is the
+       reasoning CLAUDE.md's copy budget sends to DECISIONS.md: it is already
+       in molstar-bridge.js's own comments, where a reader who wants it will
+       look (F139). What stays is the accessibility affordance, because that
+       is a thing a reader needs rather than a thing I wanted to explain. #}
     <p class="panel__hint" style="margin-top:0.4rem">
-      Presentation is BINMAN's, unchanged: the AlphaFold four-band pLDDT scale,
-      a translucent gaussian surface over the polymer, and the ligand as sticks
-      inside an emissive shell so it reads through the surface. The per-seed
-      geometry below is the text alternative: every number the viewer can show
-      is in the table.
+      The geometry table below is the text alternative.
     </p>
 
     <p class="panel__hint" id="refined-note" hidden></p>
@@ -96,9 +100,11 @@
       </table>
     </div>
     <p class="panel__hint" style="margin-top:0.6rem">
+      {# One sentence, which is what the budget allows a disclaimer. The
+         second said there is no protein-protein affinity path in Boltz-2,
+         which explains why rather than preventing a misreading. #}
       Affinity is recorded for the small-molecule chain only and is never a
-      ranking key (spec 4.7). There is no protein-protein affinity path in
-      Boltz-2, so no peptide affinity is reported anywhere in this application.
+      ranking key (spec 4.7).
     </p>
   {% endif %}
 </section>

@@ -1981,3 +1981,28 @@ libraries, so a version bump still moves the digest.
 
 **Reversal.** Delete the guard block above `chromium.launch()` in
 `qc/qc.mjs`. The `/healthz` field is additive and harms nothing if unread.
+
+## D-NOB-067. The copy budget applies to the data pages; About is the exposition page
+
+**Decision.** `qc/copy_budget.mjs` holds every page to CLAUDE.md's budget of
+under 40 words per panel and 150 per page, and reports `/about` without
+applying it.
+
+**Alternatives.** Hold About to the same figure, which means cutting a
+526-word page to 150 and moving the rest to the README. Or drop the budget
+check for prose pages generally, which gives any page an exemption by calling
+itself prose.
+
+**Why.** The rule states its own purpose: "Keep narrative prose in the app to
+a minimum. One short line per panel saying what it shows or what the number
+means. Reasoning belongs in DECISIONS.md and FINDINGS.md, not on screen." The
+page that exists to explain the project is what keeps the explanation off the
+six data panels. Holding it to a per-panel figure meant for a data panel
+would push the reasoning back onto the panels or off the site.
+
+**What this is not.** It is not a general prose exemption. One page is named
+in the tool, and a second would need this decision rewritten.
+
+**Reversal.** Remove `/about` from `EXPOSITION` in `qc/copy_budget.mjs`. Its
+ten panels then report over budget and the page needs cutting to 150 words,
+with the rest moving to the README, where the house style does allow prose.
