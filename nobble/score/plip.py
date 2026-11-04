@@ -274,19 +274,28 @@ def fingerprint(job: dict, workdir: Path | None = None) -> Fingerprint:
         except Exception:                       # noqa: BLE001
             chain_map = {}
     if not chain_map:
-        result.notes.append(
-            "chain map not parsed from cif2plip output: falling back to the "
-            "documented A/P/L to A/B/C ordering"
+        # Refused, not flagged. This used to fall back to the documented
+        # A/P/L to A/B/C ordering, append two notes saying the result was
+        # unverified, and then set status "ok" at the end regardless. The
+        # warning went into `notes`, which nothing downstream reads, and
+        # `run.py` recorded the match as a measurement.
+        #
+        # The fallback is correct only for a three-chain job. A peptide
+        # carrying a structural zinc gives A, P, Z, L, so the ligand is D
+        # and this map hands the ligand slot to the ion: every "glue to
+        # degron" contact would be the zinc's coordination to the receptor.
+        # The Sievers arm is whole zinc fingers, which is 120 of the
+        # campaign's 158 pairs and the arm the headline ROC is computed on.
+        #
+        # A refusal costs one component on one pair. A silent mismap costs
+        # the component's meaning across the arm that matters most (F81).
+        result.status = (
+            "failed: chain map not parsed from cif2plip output. The A/P/L "
+            "fallback is correct for three chains and wrong for a job "
+            "carrying a structural ion, so the fingerprint is refused "
+            "rather than guessed"
         )
-        # Correct only for a three-chain job. With a structural ion the
-        # order is A, P, Z, L, so L is D and this map would hand the
-        # ligand slot to the zinc. Flagged rather than silently applied.
-        chain_map = {"A": "A", "P": "B", "L": "C"}
-        result.notes.append(
-            "chain map was not parsed: the A/P/L fallback assumes three "
-            "chains, and a job carrying a structural ion has four. Treat "
-            "this fingerprint as unverified"
-        )
+        return result
     peptide_chain = chain_map.get(PEPTIDE_SOURCE_CHAIN, "B")
     ligand_chain = chain_map.get(LIGAND_SOURCE_CHAIN, "C")
     result.notes.append(f"chain map {chain_map}: peptide is {peptide_chain} in the PLIP output")

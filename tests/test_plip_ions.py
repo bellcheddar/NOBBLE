@@ -53,14 +53,52 @@ def test_a_structural_ion_does_not_enter_the_glue_fingerprint():
                for note in result.get("notes") or []), result.get("notes")
 
 
-def test_the_fallback_chain_map_announces_that_it_may_be_wrong():
-    """The A/P/L fallback assumes three chains. A job carrying a structural
-    ion has four, so L is D and the fallback would hand the ligand slot to
-    the zinc. It fires only when the parse fails, so it must say so."""
+def test_an_unparsed_chain_map_refuses_rather_than_guessing():
+    """There is no fallback chain map any more, and that is the fix.
+
+    The A/P/L to A/B/C ordering is correct for three chains. A job carrying
+    a structural ion has four, A, P, Z and L, so the ligand is D and the
+    fallback handed the ligand slot to the zinc: every "glue to degron"
+    contact would have been the ion's coordination to the receptor.
+
+    It used to apply that map, append two notes saying the result was
+    unverified, and then set status "ok" regardless. Nothing downstream
+    reads `notes`, so `run.py` recorded the match as a measurement. The
+    guess is gone: an unparsed map is a refusal, which costs one component
+    on one pair instead of the component's meaning across the Sievers arm
+    (F81).
+    """
     source = (ROOT / "nobble" / "score" / "plip.py").read_text()
-    assert '"A": "A", "P": "B", "L": "C"' in source
-    assert "unverified" in source, (
-        "the fallback chain map must flag itself when it cannot be trusted"
+    assert '"A": "A", "P": "B", "L": "C"' not in source, (
+        "the guessed chain map is back"
+    )
+    assert "chain map not parsed from cif2plip output" in source
+
+
+def test_the_refusal_is_a_status_and_not_a_note():
+    """The wiring, not the string (F40).
+
+    `run.py` branches on `finger.status != "ok"` and knows nothing about
+    `notes`. The old code put its warning in notes and left the status
+    "ok", so the two disagreed and the reader of the two was the one that
+    did not see the warning. This checks the refusal is on the field that
+    is actually read.
+    """
+    from nobble.score import plip
+
+    refusal = plip.Fingerprint(
+        job_id="j",
+        status=("failed: chain map not parsed from cif2plip output. The "
+                "A/P/L fallback is correct for three chains"))
+    assert refusal.status != "ok"
+
+    scorer = (ROOT / "nobble" / "score" / "run.py").read_text()
+    assert 'if finger.status != "ok":' in scorer, (
+        "run.py no longer branches on the status, so where the refusal "
+        "lives would need rechecking"
+    )
+    assert "finger.notes" not in scorer, (
+        "run.py reads notes now, which would change where a refusal belongs"
     )
 
 
