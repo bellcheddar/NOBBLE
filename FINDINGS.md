@@ -5296,3 +5296,39 @@ headings. With both read, there is exactly one real gap, 45.
 Caught because the first version of the dangling-citation test failed,
 naming D-NOB-001, 005 and 007. A test written to catch an incomplete pattern
 failed on its own incomplete pattern, which is at least the right way round.
+
+## F114. The README's headline numbers were not pinned to anything
+
+F103 changed `recovery_against_crystal`, adding the residue-identity check
+that withholds an RMSD when the compared window is not the window the plan
+describes. Every one of the seven benchmark pairs passes it, so no number
+moved. I established that by rerunning the seven and reading the values.
+
+Then it occurred to me what those values are. The README leads with three of
+them:
+
+> submitting the whole domain instead of a 15-residue window moves GSPT1 /
+> CRBN from 29.22 A median pose RMSD to **1.17 A** and BRD4 / VHL from
+> 19.23 A to **1.71 A** [...] The IKZF1 control keeps its 15-mer in both runs
+> and moves by **exactly 0.00 A**, so the change tracks the construct and
+> nothing else.
+
+Recomputed from both campaigns' own results, over all ten seeds each:
+GSPT1 29.221 to 1.171, BRD4 / VHL 19.235 to 1.711, IKZF1 5.357 in both
+campaigns and therefore 0.000 between them. Every figure holds.
+
+So nothing was wrong. What was wrong is that nothing would have said so. The
+most-quoted numbers in the project came out of a function I had edited an
+hour earlier, and the only thing standing between a published claim and a
+silent change to it was my noticing.
+
+`tests/test_readme_figures.py` recomputes all three from the campaigns rather
+than asserting a stored value, so it checks the pipeline rather than a
+fixture. The control is its own test, because that is the claim the other two
+rest on: two pairs improving could be two pairs improving for any reason, and
+a control that does not move is what makes the improvement attributable to
+the construct.
+
+One of the five is about the document rather than the data: it asserts the
+README still quotes those figures. A pinned number guarding a sentence that
+has been reworded is worse than no pin, because it keeps passing.
