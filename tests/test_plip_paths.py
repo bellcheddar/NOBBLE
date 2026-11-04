@@ -152,3 +152,44 @@ def test_an_e3_with_no_canonical_fingerprint_reports_why(monkeypatch, tmp_path):
     assert row["plip_fingerprint_match"] == 0.0
     assert row["plip_fingerprint_match_status"] == "ok"
     assert json  and run_module          # keep the imports honest
+
+
+def test_recorded_paths_are_absolute_however_the_campaign_was_named(
+    monkeypatch, tmp_path
+):
+    """Closing the class, not just the instance.
+
+    Whether a record held a relative or an absolute path followed whichever
+    form the caller used: the benchmark campaign was started with an
+    absolute path and the corrected one with "campaigns/corrected_...", so
+    two campaigns in one project disagreed about what a structure path is.
+    Any consumer running from elsewhere reads one and fails on the other.
+    """
+    import json
+
+    from nobble.execute import runner
+
+    campaign = tmp_path / "campaign_rel"
+    campaign.mkdir()
+    (campaign / "queue.jsonl").write_text(json.dumps({
+        "job_id": "j1", "pair_id": "p1", "seed": 1, "tokens": 10,
+        "construct": "CRBN_CULT", "complex_type": "ternary",
+        "conditioning": "unconstrained", "yaml": "whatever.yaml",
+    }) + "\n")
+
+    # No Boltz: the question is only what paths are recorded.
+    monkeypatch.setattr(runner, "_run_boltz",
+                        lambda command, env, timeout: ("ok", 1, "", "no"))
+    monkeypatch.chdir(tmp_path)
+
+    runner.run_campaign(Path("campaign_rel"), limit=1)
+
+    records = [json.loads(line) for line
+               in (campaign / "state.jsonl").read_text().splitlines() if line.strip()]
+    recorded = [r["output_dir"] for r in records if r.get("output_dir")]
+    assert recorded, "no output_dir was recorded"
+    for path in recorded:
+        assert Path(path).is_absolute(), (
+            f"{path} is relative, so a consumer running from another "
+            "directory cannot open it"
+        )

@@ -300,6 +300,15 @@ def tier_files(campaign: Path, tier: int = 1) -> dict:
 
 
 def run_campaign(campaign: Path, limit: int | None = None, tier: int = 1) -> dict:
+    # Resolved here so every path written into state.jsonl and results.jsonl is
+    # absolute, whatever form the caller used. It used to follow the caller:
+    # the benchmark campaign was started with an absolute path and the
+    # corrected one with "campaigns/corrected_...", so the two campaigns'
+    # records disagreed about what a structure path is. Any consumer running
+    # from somewhere other than the project root then reads one and fails on
+    # the other, which is exactly what happened to cif2plip (F32). Fixing the
+    # consumer closed that instance; this closes the class.
+    campaign = Path(campaign).resolve()
     files = tier_files(campaign, tier)
     queue_path = files["queue"]
     state_path = files["state"]

@@ -1412,3 +1412,30 @@ that campaign when it finishes, which is where the chain picks it up.
 This is the sharpest instance yet of the theme at the top of this file. The
 compute failed, the pipeline caught it correctly, and the number that
 reached the record said the opposite of what had happened.
+
+### F32, continued: the class rather than the instance
+
+Fixing `plip.fingerprint` closed the live failure. It did not close the
+reason it was possible.
+
+Whether a campaign's records hold relative or absolute paths followed
+whichever form the caller happened to use. `run_campaign` took the
+campaign path as given and derived `output_dir` and `structure` from it, so
+the benchmark campaign, started with an absolute path, recorded absolute
+paths, and the corrected campaign, started with
+`campaigns/corrected_...`, recorded relative ones. Two campaigns in one
+project disagreed about what a structure path is, and nothing in either
+campaign said which kind it held.
+
+That is the condition under which a consumer can work on one campaign and
+fail on the next, which is exactly what happened. `run_campaign` now
+resolves the campaign path on entry, so every recorded path is absolute
+whatever the caller wrote.
+
+A sweep for other instances found none: the only two subprocess calls in
+the package that take a path are cif2plip and Boltz, and Boltz runs with
+the project root as its cwd, so relative paths resolve correctly there.
+Every other consumer reads the structure in-process. So this was a single
+instance of a class with one other member, which is the least comfortable
+kind of finding: the sweep that would have caught it had to be built from
+it.
