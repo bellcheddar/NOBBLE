@@ -1346,3 +1346,69 @@ assemblies, so this is not one piece of code agreeing with itself.
 A construct added with its scaffold first would previously have produced a
 headline number about an interface that does not exist. Now it fails a
 test.
+
+## F32. PLIP failed on an entire campaign, and reported it as a score of zero
+
+Two defects, one on top of the other, and the second is what made the
+first invisible.
+
+### The failure
+
+`cif2plip` is invoked with `cwd` set to its own directory so its sibling
+imports resolve. That is correct and the comment explains it. The
+structure path was passed through as the caller gave it, and the corrected
+campaign's records hold relative paths, so every conversion resolved
+against cif2plip's own directory and failed:
+
+    FileNotFoundError: unable to open() file
+    .../.plip_env/cif2plip/campaigns/corrected_.../outputs/...
+
+All six pairs. The benchmark campaign was run with an absolute campaign
+path and succeeded, which is the only reason this had not been noticed:
+one campaign's scoring worked and the next one's did not, for a reason
+that is nowhere in the campaign.
+
+`tools/run_chain.sh` builds the main campaign's path with
+`ls -d campaigns/campaign_*`, which is relative. All 158 pairs would have
+failed the same way, after the 52-hour run.
+
+### What made it invisible
+
+`score_campaign` computed the match as `len(canonical_matched) / expected`
+without looking at the fingerprint's status. A fingerprint that never ran
+has no matches, so five corrected pairs carry
+
+    plip_fingerprint_match: 0.0
+
+A number saying the prediction reproduced none of the canonical degron
+contacts, where the truth is that nothing was measured. The module's
+header is entirely about refusing rather than returning a plausible
+fingerprint: the CONECT gate exists because a dropped bond table yields
+"a plausible-looking fingerprint with wrong, sometimes invented,
+interactions". The gate worked. The consumer turned its refusal back into
+a figure.
+
+And not an idle figure. `plip_fingerprint_match` is one of five weight-fit
+candidates, so the fitter would have taken 158 zeros as observations of a
+component that had simply not been computed, and the Interactions tab
+would have shown zero canonical contacts for every pair in the campaign.
+
+### Both fixed
+
+Paths are resolved before the subprocess sees them, structure and output
+directory alike, since both are read by a process running elsewhere.
+Verified on the real data: `corr01_GSPT1_CRBN` now returns `ok` with 17
+interactions and all five canonical CRBN residues matched, from the same
+record whose stored path is relative.
+
+A fingerprint whose status is not `ok` now yields a null with the reason,
+and a `plip_fingerprint_match_status` field distinguishes the three cases
+that previously all read as a number or an unexplained null: refused,
+succeeded, and no canonical pattern exists for that E3.
+
+The stored corrected scores still carry the zeros; `refresh.sh` rescores
+that campaign when it finishes, which is where the chain picks it up.
+
+This is the sharpest instance yet of the theme at the top of this file. The
+compute failed, the pipeline caught it correctly, and the number that
+reached the record said the opposite of what had happened.

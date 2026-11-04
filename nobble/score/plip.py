@@ -209,11 +209,21 @@ def fingerprint(job: dict, workdir: Path | None = None) -> Fingerprint:
         result.status = f"failed: cif2plip not found at {CIF2PLIP}"
         return result
 
-    target = workdir or (Path(structure).parent / "plip")
+    # Absolute, because the subprocess below runs with cwd set to cif2plip's
+    # own directory so its sibling imports resolve. A relative structure path
+    # then resolves against *that* directory: with the campaign given as
+    # "campaigns/corrected_..." every conversion failed with
+    # FileNotFoundError on
+    # ".plip_env/cif2plip/campaigns/corrected_.../outputs/...". The benchmark
+    # campaign happened to be run with an absolute campaign path and worked,
+    # which is why this survived a whole campaign's scoring (F32).
+    structure_path = Path(structure).resolve()
+    target = (workdir or (structure_path.parent / "plip")).resolve()
     target.mkdir(parents=True, exist_ok=True)
 
     completed = subprocess.run(
-        [str(paths.PY_BOLTZ), str(CIF2PLIP), str(structure), "-o", str(target)],
+        [str(paths.PY_BOLTZ), str(CIF2PLIP), str(structure_path),
+         "-o", str(target)],
         capture_output=True, text=True, timeout=1800,
         # pdb_tidy and pdb_validate are console scripts found via PATH, so the
         # environment's bin has to be on it: without that the script fails at
@@ -224,7 +234,7 @@ def fingerprint(job: dict, workdir: Path | None = None) -> Fingerprint:
         cwd=str(CIF2PLIP.parent),
     )
 
-    stem = Path(structure).stem
+    stem = structure_path.stem
     converted = target / f"{stem}.pdb"
     if converted.exists():
         check = conect_integrity(converted)

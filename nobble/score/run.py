@@ -189,11 +189,31 @@ def score_campaign(campaign: Path, with_plip: bool = True, limit: int | None = N
                     plip.CANONICAL_FINGERPRINTS.get(representative.get("e3_gene"), {})
                     .get("receptor_residues", [])
                 )
-                entry["plip_fingerprint_match"] = (
-                    round(len(finger.canonical_matched) / expected, 3)
-                    if expected else None
-                )
-                entry["plip_glue_to_peptide_contacts"] = len(finger.peptide_contacts)
+                # A fingerprint that did not run has no canonical matches, and
+                # dividing that by the number expected gives 0.0: a number
+                # saying the prediction reproduced none of the canonical degron
+                # contacts, where the truth is that nothing was measured. The
+                # whole point of this module's CONECT gate is to refuse rather
+                # than return a plausible fingerprint, and this turned the
+                # refusal back into a figure, fed it to the weight fitter as an
+                # observation and showed it on the Interactions tab (F32).
+                if finger.status != "ok":
+                    entry["plip_fingerprint_match"] = None
+                    entry["plip_fingerprint_match_status"] = (
+                        f"not_computed: {finger.status}"
+                    )
+                    entry["plip_glue_to_peptide_contacts"] = None
+                else:
+                    entry["plip_fingerprint_match"] = (
+                        round(len(finger.canonical_matched) / expected, 3)
+                        if expected else None
+                    )
+                    entry["plip_fingerprint_match_status"] = (
+                        "ok" if expected else
+                        "not_computed: no canonical fingerprint for "
+                        f"{representative.get('e3_gene')}"
+                    )
+                    entry["plip_glue_to_peptide_contacts"] = len(finger.peptide_contacts)
             except Exception as problem:            # noqa: BLE001
                 entry.setdefault("errors", []).append(
                     f"plip: {type(problem).__name__}: {problem}"
