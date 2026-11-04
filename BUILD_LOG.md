@@ -760,3 +760,4 @@
   156 tests pass.
 - 2026-11-04T06:12:16Z  correction: no stall occurred. `stat` local time was compared against `date -u`, turning a healthy 13-minute job into an imagined 5h13m hang; I killed it at 80% done, costing one attempt. The unbounded post-kill wait in subprocess.run found while investigating is real and is fixed anyway; added nobble/execute/watchdog.py so elapsed time is computed, not eyeballed (F20, D-NOB-043). 165 tests.
 - 2026-11-04T06:22:16Z  test: droplet route coverage derived from app.url_map rather than a hand-kept tuple, which had silently stopped covering /design and four API routes; route count in PROGRESS pinned against deploy.sh (F21). 171 tests.
+- 2026-11-04T06:25:36Z  test: pinned the conditioned/unconstrained invariant at both the generator and on disk. Swept all 2,800 queued YAML across four campaigns: zero mismatches, so the control is sound; it was simply untested (conditioning appeared in tests only as fixture data). 177 tests.
