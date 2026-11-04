@@ -136,11 +136,18 @@ From the benchmark panel, at tier-1 triage settings, written up in `FINDINGS.md`
   glue reaching one chain rather than two, which is a placement failure rather
   than a weak interface.
 
-These are interim, triage-tier numbers, and the corrected-construct comparison
-is provisional while CDK12 is still running. They are published here because a
-pipeline that only reports its successes is not a benchmark, and because one of
-the two predictions recorded before those pairs ran has already turned out
-wrong (`FINDINGS.md`, F18).
+The corrected-construct comparison is now complete: 7 pairs compared, none
+incomplete, 6 improved by more than 2 A, the control held and none got worse.
+Bridge formation agrees and needs no crystal, with four pairs bridging in more
+seeds and none in fewer. CDK12 was the last to land, moving from 44.92 A to
+5.28 A and from 0 of 10 seeds bridging to 6 of 10.
+
+These remain triage-tier numbers from one arm of the campaign. They are
+published here because a pipeline that only reports its successes is not a
+benchmark, and because of the two predictions recorded before those pairs ran,
+one is supported and one turned out wrong (`FINDINGS.md`, F18;
+`tools/check_prediction.py` scores them mechanically rather than by a reading
+after the fact).
 
 ## 🧪 The design arm
 

@@ -7223,3 +7223,13 @@ README against `comparison.json` and fails either way: a provisional
 comparison described as complete, or a complete one still carrying the
 caveat. The second is what happened, and the first is what would happen if
 someone fixed this by deleting the sentence.
+
+The suite then caught me editing one copy of two.
+`test_the_polished_readme_is_in_step_with_the_readme` compares
+`README.polished.md` against what `tools/readme_forge.py` would produce from
+`README.md`, and the polished file is what the marcdeller.com house header
+and palette are applied to. So a correction to the README that stops at the
+README leaves the published version saying the old thing. Regenerated, and
+worth noting as the shape rather than the slip: a document with two
+representations has the same problem as a value with two spellings, and this
+project's answer in both cases is to derive one from the other and check it.
