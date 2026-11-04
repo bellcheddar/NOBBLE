@@ -3922,3 +3922,42 @@ harness working rather than the test's subject failing.
 A test that depends on the working tree being clean is a test that fails for
 reasons unrelated to what it protects, which is the argument F75 used to
 decline writing one at all. I should have applied it here.
+
+## F86. The caveat that has never rendered, driven before it has to
+
+Spec 4.8's composite includes `lysine_reach_exposed_fraction`, and
+`weights.py` marks it `NOT_VALIDATED`: BINMAN measured its reach window at
+Cb-Cb AUC 0.42 to 0.48 on 369 assayed lysines, at or below chance and
+slightly inverted (D-NOB-024).
+
+Reviewing spec 4.2's component for correctness found nothing to fix. The
+module is one of the more careful ones: the status defaults to
+`not_validated` and carries the AUC figures and the reason, `LYSINE_MAX_ASA`
+cites Tien 2013, the exposure threshold is configured, and a single
+`lysine_reach_fit` score is marked "deliberately absent" with a pointer to
+the decision that removed it.
+
+The fitter's handling is also right, and worth recording because the
+alternative looks tidier. It does not exclude the component. It lets the
+grid decide and appends a caveat if the component ends up carrying weight,
+on the reasoning that excluding a component by hand is a stronger claim
+than thirty labelled pairs support, and so is weighting it silently.
+
+That only works if the caveat is read, which is where F81 went wrong for a
+different field. This one is read: `about.html` iterates
+`weight_fit.caveats`. But the composite has never fitted, so the caveat has
+never rendered, and the path from the fitter to the page was established by
+inspection rather than by exercise.
+
+It renders. Driven with a synthetic fitted result carrying 0.25 on the
+unvalidated component, the About page shows "no validated discriminating
+power" and the decision reference. A clean fit shows no caveat block, which
+matters as much: a caveat on every fit reads as a disclaimer rather than a
+finding, and the UI budget in CLAUDE.md says so.
+
+Worth doing now rather than later because the condition is close. The
+composite refuses below eight labelled pairs and has seven positives with no
+negatives; the Sievers arm supplies the negatives and starts in 21 jobs.
+This is the second thing today checked just before the campaign reaches it,
+after the four-chain chain map, and in both cases the cost of being wrong
+afterwards is a published number rather than a failed test.
