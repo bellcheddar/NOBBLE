@@ -669,3 +669,20 @@
 - 2026-11-04T19:40Z The table makes F19 legible in one row: C4A shows lift
   +0.0988 with bridged "lost". A reader scanning the lift column alone
   would read that as an improvement. 134 tests, QC clean, deployed.
+- 2026-11-04T20:00Z Measured the post-inference scoring cost rather than
+  assuming it: PLIP 1.1 s per ternary, bridge geometry 0.04 s, contacts and
+  docking 0.01 s. Scoring the whole 2,360-job main campaign is about half
+  an hour, dominated by PLIP. No concern, and now known rather than hoped.
+- 2026-11-04T20:00Z Added tools/status.sh: campaigns with progress and
+  scored counts, gate states, what the published atlas holds, live site
+  reachability, and failure counts across the logs. A 60-hour chain leaves
+  its state spread over tmux, queue files, state files and logs, and
+  reading those by hand is what gets done wrongly when tired.
+- 2026-11-04T20:00Z Two of my own bugs while writing it. The failure
+  counter used `grep -c ... || echo 0`, and grep exits 1 on no matches, so
+  every clean log printed "0\n0" and read as failed; verified the fix by
+  planting a log with a Traceback and watching it appear and then vanish.
+  And tests/test_scripts.py's positional-argument check matched
+  "from nobble.execute.runner import disk_gate", a Python import rather
+  than a CLI call; narrowed to -m invocations and confirmed it still
+  catches the tier2.sh defect it was written for. 134 tests pass.

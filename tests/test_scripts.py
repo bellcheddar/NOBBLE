@@ -34,7 +34,10 @@ def test_the_runner_is_never_given_a_positional_campaign():
     """nobble.execute.runner takes --campaign. tier2.sh passed the campaign
     positionally, so tier 2 would have died on argparse the moment the chain
     reached it, after the main campaign's 52 hours."""
-    pattern = re.compile(r"nobble\.execute\.runner\s+(?!--)(?!\"\$@\")\S")
+    # Only module invocations, not Python imports. The first version
+    # matched "from nobble.execute.runner import disk_gate" in a script
+    # that reads the gate, which is not a CLI call at all.
+    pattern = re.compile(r"-m\s+nobble\.execute\.runner\s+(?!--)(?!\"\$@\")\S")
     offenders = []
     for script in _scripts():
         for number, line in enumerate(script.read_text().splitlines(), 1):

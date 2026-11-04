@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# Where everything stands, in one screen.
+#
+# A 60-hour chain across four campaigns leaves its state in tmux sessions,
+# queue files, state files and logs. Reading those by hand each time is
+# the kind of thing that gets done wrongly at 3am, so this reads them once
+# and says what is running, what is queued, which gates are open and
+# whether the published site matches the work.
+set -uo pipefail
+cd "$(dirname "$0")/.."
+ROOT="$(pwd)"
+SCI="$ROOT/../BINMAN/.pixi/envs/default/bin/python"
+export PYTHONPATH="$ROOT"
+
+echo "=== NOBBLE status $(date -u +%Y-%m-%dT%H:%M:%SZ) ==="
+echo
+
+echo "-- GPU sessions"
+tmux ls 2>/dev/null | sed 's/^/   /' || echo "   none"
+echo
+
+echo "-- campaigns"
+"$SCI" - <<'PY'
+import json, glob, os
+from pathlib import Path
+for d in sorted(glob.glob("campaigns/*")):
+    p = Path(d)
+    q = p / "queue.jsonl"
+    if not q.exists():
+        continue
+    total = sum(1 for line in q.read_text().splitlines() if line.strip())
+    done = set()
+    state = p / "state.jsonl"
+    if state.exists():
+        for line in state.read_text().splitlines():
+            try:
+                r = json.loads(line)
+            except Exception:
+                continue
+            if r.get("status") == "done":
+                done.add(r["job_id"])
+    scored = 0
+    s = p / "scores.jsonl"
+    if s.exists():
+        scored = sum(1 for line in s.read_text().splitlines() if line.strip())
+    pct = 100.0 * len(done) / total if total else 0.0
+    mark = "done" if len(done) >= total else "running" if done else "queued"
+    print(f"   {p.name:34s} {len(done):5d}/{total:<5d} {pct:5.1f}%  {mark:8s} scored {scored}")
+PY
+echo
+
+echo "-- gates"
+"$SCI" - <<'PY'
+import json
+from nobble.execute.runner import disk_gate
+from nobble.curate.diversity import projected_hours
+g = disk_gate()
+print(f"   G5 disk      {'OPEN' if g['open'] else 'closed'}  {g['free_gb']} GB free, floor {g['floor_gb']}")
+import glob
+from pathlib import Path
+camps = sorted(glob.glob("campaigns/campaign_*"))
+if camps:
+    q = Path(camps[-1]) / "queue.jsonl"
+    pairs = len({json.loads(l)["pair_id"] for l in q.read_text().splitlines() if l.strip()})
+    h = projected_hours(pairs)
+    print(f"   G1 compute   {'OPEN' if h.get('gate_g1_open') else 'closed'}  "
+          f"{h.get('projected_hours')} h projected, max {h.get('max_compute_hours')}")
+PY
+echo
+
+echo "-- published site"
+"$SCI" - <<'PY'
+import json
+from pathlib import Path
+a = Path("deploy/atlas/ATLAS.json")
+if a.exists():
+    d = json.loads(a.read_text())
+    out = d.get("outstanding") or []
+    print(f"   atlas holds  {d.get('campaign')}")
+    print(f"   outstanding  {len(out)} campaign(s) when built")
+else:
+    print("   no atlas built")
+PY
+curl -s -o /dev/null -w "   live         %{http_code} in %{time_total}s\n" https://nobble.mdeller.com/ 2>/dev/null || echo "   live         unreachable"
+echo
+
+echo "-- failures in the logs"
+# grep -c exits 1 when it finds nothing, so `|| echo 0` appends a second
+# zero and every clean log reads as a failure. Count without the fallback.
+found=0
+for f in logs/*.log; do
+  [[ -f "$f" ]] || continue
+  n=$(grep -cE "Traceback|failed:|OOM|Killed|NaN" "$f" 2>/dev/null) || n=0
+  if [[ "${n:-0}" -gt 0 ]]; then
+    echo "   $(basename "$f"): $n"
+    found=$((found + n))
+  fi
+done
+[[ "$found" -eq 0 ]] && echo "   none in $(ls logs/*.log 2>/dev/null | wc -l | tr -d ' ') log file(s)"
