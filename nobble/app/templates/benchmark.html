@@ -25,7 +25,9 @@
     <div><div class="chart chart--short" id="recovery-plot"></div></div>
     <div>
       <div class="card__grid">
-        <div class="stat {% if recovery_vs_bridge.get('pearson_p') and recovery_vs_bridge.pearson_p < 0.05 %}stat--good{% else %}stat--warn{% endif %}">
+        {# The only significance level this project applies, read from
+           thresholds.toml rather than written here (F55). #}
+        <div class="stat {% if recovery_vs_bridge.get('pearson_p') is not none and recovery_vs_bridge.pearson_p < significance_alpha %}stat--good{% else %}stat--warn{% endif %}">
           <span class="stat__label">Pearson r</span>
           <span class="stat__value">{{ recovery_vs_bridge.get('pearson_r', '—') }}</span>
           <span class="stat__sub">p = {{ recovery_vs_bridge.get('pearson_p', '—') }}</span>
@@ -230,6 +232,8 @@
 {% block scripts %}
 <script>
 (function () {
+  /* The loosest breakpoint the success-rate curve counts as recovered. */
+  const RECOVERED_A = {{ rmsd_recovered_a | tojson }};
   const DATA = {{ (recovery_vs_bridge or {}) | tojson }};
   if (!DATA.points || !DATA.points.length) { return; }
   const pts = DATA.points;
@@ -260,10 +264,17 @@
     marker: {
       size: 14,
       /* Banded on the success-rate breakpoints the curve already uses, with
-       * the near-miss band separated out: 5 A is recovered, under 10 is close
-       * enough to be worth refining, and beyond 15 is a different site. Amber
-       * and red were too alike at this size for the middle band to read. */
-      color: pts.map(p => p.median_rmsd <= 5 ? '#2C6D60'
+       * the near-miss bands separated out: recovered is the curve's loosest
+       * breakpoint, under 10 is close enough to be worth refining, and beyond
+       * 15 is a different site. Amber and red were too alike at this size for
+       * the middle band to read.
+       *
+       * The first band is read from thresholds.toml rather than written
+       * here, because the comment above claims it matches the curve and a
+       * literal beside a configured value is how that stops being true
+       * (F55). The two near-miss bands are the chart's own and have no twin
+       * in the configuration. */
+      color: pts.map(p => p.median_rmsd <= RECOVERED_A ? '#2C6D60'
                         : (p.median_rmsd <= 10 ? '#5b9bd5'
                         : (p.median_rmsd <= 15 ? '#A64708' : '#A33A2A'))),
       line: { width: 1, color: '#0c183c' }

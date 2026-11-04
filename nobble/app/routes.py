@@ -124,12 +124,25 @@ def benchmark():
         ((validation.get("layers") or {}).get("time_split") or {}).get("summary") or {}
     )
 
+    # The chart's first colour band is the success-rate curve's last
+    # breakpoint, which its own comment says it is "banded on". It was a
+    # literal 5 beside a configured [1, 2, 3, 5], so a changed breakpoint
+    # would have left the chart colouring recovered what the curve no longer
+    # counted (F55). The near-miss bands past it are the chart's own.
+    from nobble import paths
+
+    breakpoints = paths.thresholds()["scoring"]["rmsd_breakpoints"]
+
     return render_template(
         "benchmark.html", page_title="Benchmark", active="benchmark",
         cards=cards, meta=data.campaign_meta(),
         comparison=data.precomputed("comparison.json"),
         recovery_vs_bridge=data.precomputed("recovery_vs_bridge.json"),
         time_split=time_split,
+        rmsd_recovered_a=float(max(breakpoints)),
+        significance_alpha=float(
+            paths.thresholds()["scoring"]["significance_alpha"]
+        ),
     )
 
 

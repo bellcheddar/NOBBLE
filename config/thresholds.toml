@@ -80,6 +80,10 @@ campaign_change_margin_a = 2.0
 frame_poor_anchor_rmsd_a = 5.0
 # Pose recovery success-rate curve breakpoints, in angstrom.
 rmsd_breakpoints = [1.0, 2.0, 3.0, 5.0]
+# Below this p-value a reported correlation is shown as holding rather than
+# as provisional. The only significance level this project applies, and it
+# applies it to presentation rather than to any decision about the data.
+significance_alpha = 0.05
 seeds = 5
 
 [gates]

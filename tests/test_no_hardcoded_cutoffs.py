@@ -144,8 +144,8 @@ ALLOWED_INT_COMPARISONS = {
     # Identity, not magnitude.
     "tier == 2": "names the second sampling tier, it is not a threshold",
     # The definition of the domain class, not a choice about it.
-    "cysteines >= 2": "C2H2 means two cysteines and two histidines",
-    "histidines >= 2": "C2H2 means two cysteines and two histidines",
+    "cysteines < 2": "C2H2 means two cysteines and two histidines",
+    "histidines < 2": "C2H2 means two cysteines and two histidines",
     # Mathematical minima for the geometry to be defined at all.
     "len(moving_anchor) < 3": "three points are the fewest that fix a rigid body",
     "len(selected) < 2": "two points are the fewest that define a direction",

@@ -2585,3 +2585,61 @@ cutoffs and the template is not Python, so the sweep could not have seen
 it, and I did not think to look. Three sweeps found cutoffs in
 comparisons, in module constants and in default arguments; the fourth place
 was another language.
+
+## F55. Two more template cutoffs, one of which nothing could have caught
+
+F54's lesson was that a sweep for hard-coded cutoffs had looked in three
+places in Python and the fourth place was another language. The sweep that
+should have followed is now a test, and it found two more in the templates.
+
+The first is `benchmark.html`'s recovery band, a literal 5 beside a
+configured `rmsd_breakpoints = [1, 2, 3, 5]`, with the chart's own comment
+claiming it was "banded on the success-rate breakpoints the curve already
+uses". The same shape as F54 and caught by the same reasoning.
+
+The second is different in kind and is the reason this is a separate
+finding. The page styles its Pearson correlation on whether `p < 0.05`,
+and no Python anywhere applies a significance level. So there was nothing
+for it to diverge from: a grep for a value held in two places would never
+have found it, because it was held in one. It is a project-wide
+statistical threshold that happened to live in markup.
+
+A cutoff with a twin is a divergence risk. A cutoff with no twin is not
+safer, it is less visible: the twin is what makes the first kind
+findable. The alpha is now `scoring.significance_alpha`, and the test that
+holds it checks both ends, because a page that ignored the configured
+value entirely would pass a one-ended test by luck.
+
+## F56. The right answer with a false reason: IKZF1 is a zinc finger
+
+`requires_structural_zinc` decides whether a peptide is co-folded with the
+Zn(2+) its domain needs. Its docstring ends "The test is the complete
+motif, not the source", and the code tested the source: a curated class
+outside `zinc_finger` returned the reason "not a zinc-finger domain"
+without the motif being counted at all.
+
+For the one peptide this fired on, that reason is false. The design scan's
+parent is IKZF1's degron window, and IKZF1 is a zinc finger; the window is
+a fragment of finger 2 whose histidines fall outside it. The campaign's
+own `campaign.json` recorded "not a zinc-finger domain" against
+`PFQCNQCGASFTQKG`, which carries a CxxC pair, so the record contradicts
+both the protein and the sequence beside it.
+
+No number is wrong. The peptide gets no zinc either way, and that is the
+correct decision, reached through the absent histidines rather than
+through its provenance. What was wrong was the explanation, which is what
+a reader of the campaign metadata gets, and which would have been the
+starting point for anyone later asking why the design arm's parent folds
+without an ion.
+
+The gate also meant the motif test never ran for a peptide outside the
+domain classes. A complete coordination site submitted as a tile would
+have fallen through in silence, and the recorded reason would have denied
+it was a zinc finger at all. No such peptide exists in the library, which
+the fix checks over all 5670 rather than assumes, and the reorder is
+decision-neutral on exactly that premise.
+
+The motif is tested first now and the third case is reported rather than
+dropped. The family resemblance to F47 is close: both keyed a decision on
+the wrong attribute and produced a plausible output, and in both the
+plausibility is what kept them hidden.

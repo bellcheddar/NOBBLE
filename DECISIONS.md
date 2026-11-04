@@ -1440,3 +1440,41 @@ sensitive than the specification intended, and says so.
 **Reversal.** Acquire the Slabicki per-compound data into BINMAN, then
 correlate Delta-ipTM against the graded labels in `matched_control_roc`
 beside the binary curve. The field is where the result would go.
+
+## D-NOB-047. The significance level lives in the configuration
+
+**Decision.** `benchmark.html` styled its Pearson correlation on a literal
+`p < 0.05`. That value is now `scoring.significance_alpha` in
+`config/thresholds.toml` and is injected into the template.
+
+**Alternatives.** Allowlist it in the template sweep as the chart's own,
+the way the 10 and 15 angstrom near-miss bands are. Rejected: those two
+are presentation bands with no meaning outside the chart, whereas 0.05 is
+a statistical threshold that decides whether the project shows a
+correlation as holding. A reader changing what the project counts as
+significant should not have to know it is written in markup.
+
+**Reversal.** Put the literal back in the template and remove the key.
+The test that holds it would fail, which is the point.
+
+## D-NOB-048. The zinc motif is tested before the curated class
+
+**Decision.** `requires_structural_zinc` counts the coordination site
+before consulting `degron_class`, so the reason it records is true of the
+peptide it describes. A complete site in a peptide submitted as a tile is
+reported rather than silently declined.
+
+**Alternatives.** Leave the order and reword the reason to something
+vaguer, such as "not curated as a zinc-finger domain". Rejected: it is
+still an explanation built on the wrong attribute, and it would leave the
+motif untested for every peptide outside the domain classes. Also
+considered dropping the class gate entirely, since the docstring says the
+motif is the test: rejected because a non-domain peptide with two
+cysteines and two histidines would then gain an ion it never had, which
+changes numbers to fix a wording.
+
+**Cost.** None measured. The decision is unchanged for all 5670 peptides
+in the library, which is a test rather than a claim.
+
+**Reversal.** Restore the class gate ahead of the motif count. Three
+tests fail, one of them naming IKZF1 directly.

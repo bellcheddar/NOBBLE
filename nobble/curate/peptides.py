@@ -945,6 +945,12 @@ def benchmark_substrate_constructs() -> list[dict]:
 # coordinated by two cysteines and two histidines. The CCD code is ZN.
 STRUCTURAL_ZINC_CCD = "ZN"
 
+# The classes submitted as whole folding units, and so the only ones a
+# complete coordination site earns an ion in. Declared beside the function
+# that reads it, on the same reasoning as MEASUREMENT_FAILURES in
+# score/geometry.py: a tuple named far from its use drifts from it.
+DOMAIN_COFACTOR_CLASSES = ("zinc_finger", "scramble_of_zinc_finger")
+
 
 def requires_structural_zinc(peptide: "Peptide") -> dict:
     """Whether this peptide needs a Zn(2+) ion to fold as the domain it is.
@@ -955,11 +961,20 @@ def requires_structural_zinc(peptide: "Peptide") -> dict:
     a disordered 23-mer, and co-folding it against CRBN would measure the
     wrong thing in the arm that carries the headline ROC.
 
-    The 15-mer benchmark degrons are deliberately excluded even when they
-    happen to carry two cysteines. IKZF1's degron window is a fragment of
-    zinc finger 2 whose histidines fall outside it, so there is no
-    coordination site to complete, and bench04 scored the best Delta-ipTM in
-    the panel without one. The test is the complete motif, not the source.
+    The 15-mer benchmark degrons are excluded even when they happen to carry
+    two cysteines. IKZF1's degron window is a fragment of zinc finger 2 whose
+    histidines fall outside it, so there is no coordination site to complete,
+    and bench04 scored the best Delta-ipTM in the panel without one.
+
+    The test is the complete motif, not the source, and the order here is the
+    whole point of that sentence. This read the curated class first and
+    returned "not a zinc-finger domain" for anything outside it, which is
+    the right answer for IKZF1 reached by a false statement: IKZF1 is a zinc
+    finger, and its window declines on the absent histidines rather than on
+    its provenance. The motif is now tested first, so every recorded reason
+    is true of the peptide it describes. No decision changes: no peptide in
+    the library carries a complete site outside the domain classes, which is
+    checked rather than assumed (F56).
     """
     # A composition-matched scramble of a zinc finger carries the same two
     # cysteines and histidines in shuffled positions, so it cannot form a
@@ -977,25 +992,37 @@ def requires_structural_zinc(peptide: "Peptide") -> dict:
     if peptide.cofactor is not None:
         return dict(peptide.cofactor)
 
-    domain_classes = ("zinc_finger", "scramble_of_zinc_finger")
-    if peptide.degron_class not in domain_classes:
-        return {"required": False, "reason": "not a zinc-finger domain"}
     sequence = peptide.sequence or ""
     cysteines = sequence.count("C")
     histidines = sequence.count("H")
-    if cysteines >= 2 and histidines >= 2:
+    site = f"{cysteines} Cys, {histidines} His"
+    if cysteines < 2 or histidines < 2:
         return {
-            "required": True,
-            "ccd": STRUCTURAL_ZINC_CCD,
+            "required": False,
             "reason": (
-                f"complete C2H2 coordination site present ({cysteines} Cys, "
-                f"{histidines} His): the fold depends on the ion"
+                f"incomplete coordination site ({site}): no zinc added "
+                "rather than a zinc with nothing to hold it"
+            ),
+        }
+    # A complete site in something submitted as a tile is reported rather
+    # than declined in silence. It does not occur in the present library and
+    # the decision is unchanged if it ever does, but a 15-mer that could
+    # coordinate an ion and is folded without one is a thing to know about,
+    # not a branch to fall through.
+    if peptide.degron_class not in DOMAIN_COFACTOR_CLASSES:
+        return {
+            "required": False,
+            "reason": (
+                f"complete coordination site ({site}) in a peptide submitted "
+                f"as a tile rather than a domain ({peptide.degron_class}): no "
+                "ion added, because the window is not folded as a unit"
             ),
         }
     return {
-        "required": False,
+        "required": True,
+        "ccd": STRUCTURAL_ZINC_CCD,
         "reason": (
-            f"incomplete coordination site ({cysteines} Cys, {histidines} His): "
-            "no zinc added rather than a zinc with nothing to hold it"
+            f"complete C2H2 coordination site present ({site}): the fold "
+            "depends on the ion"
         ),
     }
