@@ -1723,3 +1723,48 @@ uncommitted work on the files it touches. I had noted that before starting
 it and then edited `app/data.py` while it ran, so the dead-branch removal
 was silently reverted. Caught by grepping for it afterwards rather than by
 assuming the edit held.
+
+## F38. A gate counted the wrong severity, and the data hid it
+
+The last three uncaught mutations from the third sweep, all in the same
+shape: logic whose right and wrong answers coincide on the data it
+currently runs on.
+
+Four places compute the same pair of sums over a validation run:
+
+    "errors":   sum(1 for issue in issues if issue.severity == "error")
+    "warnings": sum(1 for issue in issues if issue.severity == "warning")
+
+`errors` is a gate. `design/assemble.py` and `execute/campaign.py` both
+refuse to emit a campaign when it is non-zero, which is the right
+behaviour and the reason the count matters more than it looks.
+
+Swapping the two severities in the design manifest went unnoticed because
+that manifest carries no issues at all, and the existing assertion is
+`errors == 0`, which holds either way when both are zero. The same swap in
+the campaign manifest is the opposite kind of wrong: that manifest carries
+20 warnings and no errors, all of them "no CCD match: encoded as SMILES
+and flagged", so the swap would have made `errors` read 20 and refused a
+perfectly good 2,360-job campaign outright. One swap, two failure modes,
+in opposite directions, depending only on which manifest it lands in.
+
+Both are now pinned by injecting a known mix, two errors and three
+warnings, and requiring each count on its own key. The gate itself is
+pinned separately, because a correct count feeding a removed gate is no
+better.
+
+The design manifest's one-parent invariant is pinned too. The campaign
+writer builds the parent's peptide from its library row and carries its
+cofactor across, and builds each variant from the pair itself; conflating
+the two would drop a zinc finger's zinc, which D-NOB-034 says invalidates
+Delta-ipTM outright. The writer itself is left uncalled on purpose: it
+creates `campaigns/design_<stamp>`, and the chain selects its design
+campaign with `ls -d campaigns/design_*`, so a test that wrote one could
+hand the chain a scan nobody asked for.
+
+And the scramble ordering, which keeps each negative control immediately
+behind its positive so a truncated queue cannot separate them. Checked
+against the library manifest the pipeline actually wrote rather than by
+calling `reduce_library`, which loads an ESM checkpoint: a unit test
+should not need a language model to verify a sort order. My first version
+did, and took ten seconds to tell me so.
