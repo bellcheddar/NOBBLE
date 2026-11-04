@@ -31,10 +31,18 @@
   <p class="mono">{{ parent.sequence }}</p>
 
 
+  {# The chart below plots lifts from the profile; this column said
+     "not run" regardless, so after a scan the same page disagreed with
+     itself about whether the scan had run. Keyed on substitution, which
+     both sides carry. #}
+  {% set scanned = {} %}
+  {% for row in (design.profile.get('positions') if design.get('profile') else []) %}
+    {% if row.substitution %}{% set _ = scanned.update({row.substitution: row}) %}{% endif %}
+  {% endfor %}
   <table class="ntable">
     <thead>
       <tr><th>Substitution</th><th>Sequence</th><th>From</th><th>To</th>
-          <th>Crosses group</th><th>Lift</th></tr>
+          <th>Crosses group</th><th>Lift</th><th>Bridged</th></tr>
     </thead>
     <tbody>
       {% for variant in preview.variants %}
@@ -44,7 +52,18 @@
           <td>{{ variant.from_group }}</td>
           <td>{{ variant.to_group }}</td>
           <td>{% if variant.crosses_group %}yes{% else %}no{% endif %}</td>
-          <td class="mono">not run</td>
+          {% set hit = scanned.get(variant.substitution) %}
+          <td class="mono">
+            {%- if hit and hit.lift is not none -%}
+              {{ '%+.4f'|format(hit.lift) }}
+            {%- else -%}not run{%- endif -%}
+          </td>
+          <td class="mono">
+            {%- if hit and hit.bridge_lost -%}
+              <span class="flag flag--bad">lost</span>
+            {%- elif hit and hit.bridged -%}{{ hit.bridged }}
+            {%- else -%}&mdash;{%- endif -%}
+          </td>
         </tr>
       {% endfor %}
     </tbody>

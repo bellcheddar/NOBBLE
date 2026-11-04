@@ -658,3 +658,14 @@
   control held, none worse; bridge formation agrees with 3 pairs bridging
   in more seeds and none in fewer; provisional with CDK12 outstanding.
   132 tests pass.
+- 2026-11-04T19:40Z The planned-scan table's Lift column read "not run"
+  unconditionally, so once a scan completed the same page would have shown
+  lifts in the chart and "not run" in the table above it. Now keyed on
+  substitution against the profile, with a Bridged column beside it. The
+  existing guard holds: when the chosen parent is not the one that was
+  scored, the cells correctly stay empty rather than borrowing another
+  degron's numbers, which is what the first render showed before I made
+  the fixture consistent.
+- 2026-11-04T19:40Z The table makes F19 legible in one row: C4A shows lift
+  +0.0988 with bridged "lost". A reader scanning the lift column alone
+  would read that as an improvement. 134 tests, QC clean, deployed.
