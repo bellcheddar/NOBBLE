@@ -1312,7 +1312,7 @@ is where everything stands rather than the tail of a deploy.
 the deploy leaves the atlas built and unpublished, which is the previous
 behaviour.
 
-## D-NOB-043. Bound every wait after a kill; measure elapsed time in code
+## D-NOB-043: bound every wait after a kill, and measure elapsed time in code
 
 **Decision.** Two changes. `nobble/execute/runner.py` no longer uses
 `subprocess.run(timeout=...)`: it drives `Popen` through `_run_boltz`,
@@ -1352,7 +1352,7 @@ signal needs no tuning because its bound comes from the runner.
 `nobble/execute/watchdog.py` with its `[watchdog]` block in
 `config/thresholds.toml`.
 
-## D-NOB-044. The receptor-peptide ipTM is the substrate receptor's, not chain A's
+## D-NOB-044: the receptor-peptide ipTM is the substrate receptor's, not chain A's
 
 **Decision.** `metrics._receptor_peptide_iptm` takes the minimum of Boltz's
 `pair_chains_iptm` across the segments of the *substrate-recognition*

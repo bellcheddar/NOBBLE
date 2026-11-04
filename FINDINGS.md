@@ -1674,3 +1674,52 @@ invocations live in shell strings, so no import, no linter and no type
 checker sees them. `tier2.sh` passing a positional where `tier2.py` grew a
 named flag would be invisible until the stage started, and the mutation
 confirms it is now caught at once.
+
+## F37. The app's cache could have served numbers the pipeline had replaced
+
+A third mutation sweep, over the modules the first two did not reach.
+Two caught, five not. Two of the five matter.
+
+`app/data._cached` keys on (key, path, mtime) so a live campaign refreshes
+without a restart. Dropping the mtime comparison, so any cached entry is
+reused regardless, left the whole suite passing.
+
+The timing is what makes it serious. `refresh.sh` rewrites
+`scores.jsonl` in place after a campaign, and the chain calls it twice:
+once after the main run and again at the end with tier 2 and the design
+scan folded in. A cache that ignored mtime would serve the first version
+for the life of the gunicorn process, so the site would show numbers the
+pipeline had already replaced, with nothing anywhere saying so. Not stale
+in a way anyone could see: the page would render, every figure would look
+plausible, and the campaign would have moved on.
+
+The docstring already records a previous bug in the same function, where
+the entry was stored under the bare name so two campaigns sharing an mtime
+returned each other's rows. That is now pinned too, alongside a test that
+the cache is still a cache, because a test for freshness alone passes on a
+function that never caches at all.
+
+`degron_gate.check` prefers the glycine packing closest to the glue, both
+reference degrons being glycine degrons, and falls back to the closest
+contact of any kind so the test stays meaningful for another degron class.
+That note is the only record the fallback was taken, and it could be
+dropped with the suite still passing: the recurring shape here, a fallback
+taken and not recorded.
+
+Also removed: `return loader(path) if False else (...)`, whose first
+branch can never run, in the same function.
+
+### Two of my own mistakes, both the same one
+
+I read "42 references to decisions that are not defined" off my own
+checker and nearly wrote it up. `DECISIONS.md` lists D-NOB-001 to 042 as
+table rows and the rest as `##` headings; my regex knew only the second
+form. All 44 are defined, numbered 1 to 44 with no gaps. What the check did
+find was that my two appended entries used `## D-NOB-043. Capitalised`
+where the file's convention is `## D-NOB-008: lowercase`, now aligned.
+
+And the mutation script restores with `git checkout --`, which discards
+uncommitted work on the files it touches. I had noted that before starting
+it and then edited `app/data.py` while it ran, so the dead-branch removal
+was silently reverted. Caught by grepping for it afterwards rather than by
+assuming the edit held.

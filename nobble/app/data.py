@@ -75,7 +75,10 @@ def _cached(key: str, path: Path, loader):
     found.
     """
     if not path.exists():
-        return loader(path) if False else ([] if key != "campaign" else {})
+        # The empty shape each consumer expects: campaign.json is read as a
+        # mapping and everything else as a list. `loader(path) if False else
+        # (...)` stood here, whose first branch can never run.
+        return {} if key == "campaign" else []
     stamp = path.stat().st_mtime
     cache_key = (key, str(path))
     entry = _CACHE.get(cache_key)
