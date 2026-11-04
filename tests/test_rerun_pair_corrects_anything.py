@@ -225,3 +225,42 @@ def test_the_chain_handles_a_refusal():
         "the chain does not say what a failed correction means for the "
         "publish, so a refusal would scroll past"
     )
+
+
+def test_the_live_correction_has_exactly_one_reference():
+    """The precondition F145 restored, checked on the real layout (F169).
+
+    `_known_good` returns a reference only when exactly one other campaign
+    holds the same job's YAML. On this checkout that holds for all fifteen of
+    `bench02_BRD4_VHL`'s files: the benchmark campaign has them, the
+    corrected campaign does not because it prefixes its jobs `corr01_` rather
+    than `bench01_`, and the two scratch directories hold no `yaml/` at all.
+
+    Fragile in a nameable way. A future campaign that reused the `bench`
+    prefix would give three copies and the correction would find no
+    reference. F146 makes that a refusal rather than a silent no-op, so the
+    failure is visible, and this says so before the chain does.
+    """
+    module = _module()
+    main = ROOT / "campaigns" / "campaign_20261104T004632Z"
+    if not (main / "queue.jsonl").exists():
+        return
+
+    jobs = [json.loads(line) for line
+            in (main / "queue.jsonl").read_text().splitlines() if line.strip()]
+    pair = [job for job in jobs if job["pair_id"] == "bench02_BRD4_VHL"]
+    if not pair:
+        return
+    unresolved = []
+    for job in pair:
+        name = Path(job["yaml"]).name
+        if module._known_good(name, main) is None:
+            holders = sorted(
+                path.parent.parent.name
+                for path in ROOT.glob(f"campaigns/*/yaml/{name}"))
+            unresolved.append(f"{name} held by {holders}")
+    assert not unresolved, (
+        "the F47 correction has no unambiguous reference for these, so it "
+        f"will refuse when the chain reaches it: {unresolved[:3]}"
+    )
+    assert len(pair) == 15, f"{len(pair)} jobs for the pair, expected 15"

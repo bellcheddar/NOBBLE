@@ -7758,3 +7758,27 @@ today the same shell habit has let a commit through on red, after the
 cutoffs in D-NOB-068, and on both occasions I had just written down that the
 habit was the problem. Noting it again is not the fix; the fix is to run the
 suite and read its status before the commit, as a separate step.
+
+## F169. The correction's precondition, checked on the real layout
+
+F145 restored `_known_good`'s rule that a reference counts only when exactly
+one other campaign holds the same job's YAML, and F146 made a missing
+reference a refusal rather than a silent no-op. Neither checked whether the
+rule is satisfiable on the layout the chain will actually meet, which is the
+question that decides whether the F47 correction works when it runs.
+
+It is. For all fifteen of `bench02_BRD4_VHL`'s YAMLs exactly one other
+campaign holds the name, and the reason is worth writing down because it is
+not obvious: the corrected campaign has 100 YAML files for the same seven
+pairs and none of them collide, because it prefixes its jobs `corr01_`
+rather than `bench01_`. Across all four campaigns with a `yaml/` directory,
+2,700 distinct names and not one held by more than two campaigns. The two
+scratch directories, `smoke_sievers` and `zinc_probe`, hold no `yaml/` at
+all.
+
+So the rule holds for a reason that could change. A future campaign reusing
+the `bench` prefix, a second benchmark run for instance, would give three
+copies of every name and the correction would find no reference for any of
+them. That is now a hard refusal with a message naming the holders, so the
+failure is visible rather than a quiet fifteen jobs re-run on the same input,
+and this test says so before the chain gets there.
