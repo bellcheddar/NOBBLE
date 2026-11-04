@@ -12,7 +12,7 @@ residues, and a later resolution put PF00069 at 219 first. The caveat it put
 on the published conclusion was correct about the disagreement and wrong
 about its cause.
 
-Ordered now, by D-NOB-041: longest domain-level entry, InterPro preferred
+Ordered now, by D-NOB-061: longest domain-level entry, InterPro preferred
 over a PFAM member signature, accession last. These tests state what each
 term of that key is for, because a sort key is the kind of thing that gets
 simplified by someone who cannot see what it was holding (F107).
@@ -130,7 +130,7 @@ def test_a_longer_pfam_entry_still_beats_a_shorter_interpro_one(monkeypatch):
 
 
 def test_csnk1a1_resolves_to_the_integrated_kinase_domain():
-    """The case D-NOB-041 turns on. PF00069 gives 17-235 and IPR000719 gives
+    """The case D-NOB-061 turns on. PF00069 gives 17-235 and IPR000719 gives
     17-285 for the same domain name, and the shorter one was what the plan
     had come to specify."""
     chosen = domain_context(CSNK1A1, 33, 47)["domains"][0]

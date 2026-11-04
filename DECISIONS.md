@@ -1691,7 +1691,7 @@ Recorded rather than hidden, and the sweep names it every time it runs.
 **Reversal.** Remove an entry from `ALLOWED_TO_DIFFER`. The sweep then
 reports that file as forked, which is the signal to decide again.
 
-## D-NOB-040: a refinement job gets one budget, and a timeout is not retried
+## D-NOB-060: a refinement job gets one budget, and a timeout is not retried
 
 **Date:** 2026-11-04
 
@@ -1753,7 +1753,7 @@ directions.
 first tier-2 run should replace it with the ratio it observes, which is the
 one number here that real tier-2 timings would improve.
 
-## D-NOB-041: a substrate construct is the longest enclosing domain-level entry, InterPro preferred
+## D-NOB-061: a substrate construct is the longest enclosing domain-level entry, InterPro preferred
 
 **Date:** 2026-11-04
 

@@ -383,7 +383,7 @@ pairs have 4.6 to 10 times the headroom they need and
 `bench06_RBM39_DCAF15` has 0.83, because the DCAF15 assembly is 1,223 tokens
 by construction. Each refinement now carries a budget sized from its own
 pair's measured tier-1 cost, and the budget is per job rather than per
-attempt. D-NOB-040 records the retry trade-off.
+attempt. D-NOB-060 records the retry trade-off.
 
 **F101, fixed, and it was mine.** F97's drift check excluded `throughput` and
 not the values computed from it. Thirteen jobs later it reported 63 drifted
@@ -415,7 +415,7 @@ tier 2 not yet being selected.
 PROGRESS and F93 both listed this as open: whether the 269 residues the
 corrected campaign submitted or the 219 the plan specified is the correct
 CSNK1A1 domain. It is answered, and it was a code defect rather than a
-judgement about the kinase (F107, D-NOB-041).
+judgement about the kinase (F107, D-NOB-061).
 
 The plan's boundary came from `domains[0]` of an unsorted list in InterPro's
 response order, so it depended on how the API had ordered its records. The

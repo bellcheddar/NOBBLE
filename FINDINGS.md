@@ -4535,7 +4535,7 @@ was too small spent it twice: at the old setting, twelve hours per job across
 ten jobs, for an outcome the first attempt had already decided. The budget is
 now per job rather than per attempt, which makes a crash retry with the
 remainder and leaves a timeout nothing to retry with. That is a trade-off
-rather than a pure win and is recorded as D-NOB-040 with the recovery it
+rather than a pure win and is recorded as D-NOB-060 with the recovery it
 gives up.
 
 Two things are worth separating here. The budget is a correction. The retry
@@ -4943,7 +4943,7 @@ protein kinase is bilobal and 17-235 ends inside the C-lobe.
 So IPR000719 is right, the campaign submitted the correct construct, and the
 plan was what was wrong.
 
-**The fix is an ordering, recorded as D-NOB-041.** Longest domain-level entry
+**The fix is an ordering, recorded as D-NOB-061.** Longest domain-level entry
 first, InterPro preferred over a PFAM signature on a tie, accession last so
 the order is total. Seven substrates submit a domain and exactly one moves:
 CSNK1A1 to IPR000719 17-285. BRD4, GSPT1, RBM39, CDK12 and ZN346 keep what
@@ -5253,3 +5253,46 @@ inode. A separate watch is armed alongside it for the remainder of this
 campaign, polling the same read-only check every ten minutes and reporting
 only a stall, so silence means healthy. The chain that follows this one picks
 up the fix itself.
+
+## F113. I gave two decisions numbers that were already taken, twice
+
+Writing up F100 and F107 I needed two new decision ids. I grepped
+`^## D-NOB-03[0-9]`, saw 039 as the highest, and wrote D-NOB-040 and
+D-NOB-041.
+
+Both existed. D-NOB-040 is "the design scan picks its target after the main
+campaign, not before", cited in DESIGN_ARM.md. D-NOB-041 is "the site is not
+republished while a campaign is running", cited by name in `run_chain.sh`'s
+comment about why the atlas is rebuilt at the end. So for a few commits the
+record had two entries under each number, and a reader following either
+citation would have landed on whichever came first in the file.
+
+Renumbering to 050 and 051 collided again, because those exist too: "the
+atlas build refuses on an input the code would not emit" and "the atlas
+output directory is overridable".
+
+The cause is the same both times, and it is the cause of F107 and F108 as
+well: I inferred a fact about a collection from a pattern that did not cover
+it. `^## D-NOB-03[0-9]` cannot see 040, and after it has shown you 039 the
+answer looks obvious.
+
+Measured instead: 53 headings, 51 distinct numbers, highest 59. Mine are
+D-NOB-060 and D-NOB-061, above the highest rather than into a gap, because a
+gap exists where something was withdrawn or renumbered and reusing one makes
+an old citation point at a new decision.
+
+`tests/test_decision_ids.py` checks it now: no number used twice, and every
+number cited anywhere in the code or the logs resolves to a decision, since
+a citation pointing at nothing reads as a reason that was written down.
+
+**And the test made the same mistake in miniature.** It matched only
+`^## D-NOB-NNN` and so reported 1 to 7 as unused. They are not: D-NOB-001 to
+007 came from the spec and sit in a table at the top of DECISIONS.md, which
+is also where CLAUDE.md's citation of D-NOB-007 resolves. The test now reads
+both forms and asserts it can see each, with one case pinned at either end:
+D-NOB-007's "widened in place" from the table and D-NOB-061 from the
+headings. With both read, there is exactly one real gap, 45.
+
+Caught because the first version of the dangling-citation test failed,
+naming D-NOB-001, 005 and 007. A test written to catch an incomplete pattern
+failed on its own incomplete pattern, which is at least the right way round.
