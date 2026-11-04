@@ -58,3 +58,12 @@
   the reduction is not reproducible from a committed entry point and violates
   the CLAUDE.md rule that every stage writes a manifest. Assembly takes over
   20 minutes, which is the argument for persisting it. Entry point next.
+- 2026-11-04T01:35Z Added `nobble/curate/library.py`: the committed entry
+  point that assembles, reduces and persists the peptide library to
+  `data/manifests/library.jsonl` plus a summary carrying the reduction's own
+  account of itself and the Gate G1 projection. Idempotent, with `--force` to
+  rebuild. Measured the cost while writing it: assembly ran over 30 minutes
+  wall clock for 42 seconds of CPU, so it is network-bound on UniProt and
+  InterPro rather than compute-bound. That is the argument for persisting it,
+  and for the half-written case being treated as unbuilt rather than reloaded.
+  tests/test_library.py (4 tests). 52 tests pass.
