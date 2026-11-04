@@ -809,6 +809,8 @@ build, drift, provenance and the prediction scorer. All clean, and
 the highest number move with every finding, so they are not written here
 (F168). `grep -c '^## F' FINDINGS.md` for the total.
 
+Six themes.
+
 *Specified and never run.* Tier B is selected, frozen and gate-passed and has
 no pairs in any campaign, though spec 3.3 says not to defer it: Gate G1 is
 open on it and the cost is measured above. Its ligand set, `glue_recall_set`,
@@ -837,6 +839,22 @@ one the campaign scanned, and those are already apart. And the F47
 correction, which sits on the publish path, corrected nothing on every
 invocation the chain has made: an absolute glob result compared against the
 relative path the chain passes.
+
+*States nothing had been rendered in.* Browser QC had only ever seen the
+benchmark campaign, where the headline panels are empty. Rendered with a
+computed ROC the Delta tab was over the copy budget and its verdict was on
+the About tab rather than beside its curve; rendered with a scored scan the
+design tab named one peptide above another's profile. Both were states the
+campaign exists to reach.
+
+*My own work from the same day.* Seven of the nine revisions recorded in
+F164 are of fixes written earlier in this session, and two review passes over
+that code found a gate pricing an unmeasured campaign at zero and a deploy
+check aborting on a traceback. Four checks turned out narrower than their
+names, three documents quoted figures that move with the work, and twice a
+commit went in on red because a shell `&&` bound to an `echo`. The rate is
+recorded rather than tidied away, because it is the argument for the review
+passes rather than against them.
 
 Also: CLAUDE.md's copy budget was never measured and `/pose` had drifted to
 49 words of presentation provenance; `qc/copy_budget.mjs` measures it inside
