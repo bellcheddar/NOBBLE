@@ -254,3 +254,10 @@
   arm being an addition to it. README now documents the arm, including the
   two details that exist because the obvious implementation is wrong.
   90 tests pass, QC 14 captures clean, deployed.
+- 2026-11-04T07:25Z tools/run_chain.sh started in tmux `nobble-chain`,
+  waiting behind the corrected campaign. Runs the corrected comparison, then
+  the main campaign (2,360 jobs, 51.8 h), then tier 2, then the design scan.
+  The design scan is last deliberately: it is only 4.9 h and could be slotted
+  in early, but its own tab says the composite is untrustworthy until the
+  Sievers arm runs, so early lifts would need caveating into uselessness and
+  rerunning. Preflight gates the main campaign. D-NOB-039.

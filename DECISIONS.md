@@ -1169,3 +1169,52 @@ different and uninterpretable question.
 `requires_structural_zinc`. `tests/test_design.py` holds both halves: one
 test demonstrates the trap without inheritance, another pins that
 inheritance closes it.
+
+## D-NOB-039: the remaining campaigns run as one chain, in a deliberate order
+
+**Date:** 2026-11-04
+
+Four pieces of compute are outstanding and there is one MPS device, so they
+are strictly sequential: two campaigns sharing it halve each other's
+throughput and risk an out-of-memory on the larger jobs. `tools/run_chain.sh`
+runs them behind whatever is already on the GPU.
+
+**Order, and the reasoning.**
+
+1. **The corrected-construct comparison.** Cheap, and it answers a question
+   already paid for: the corrected campaign is running now, so scoring and
+   comparing it costs CPU rather than GPU.
+2. **The main campaign.** 158 pairs, 2,360 jobs, 51.8 projected hours. It
+   carries the matched-control ROC, which is the project's falsifiable test
+   and the thing every other number is waiting on.
+3. **Tier 2.** Refines the top decile, so it needs the ranking the main
+   campaign produces. Cannot go earlier.
+4. **The design scan.** Last, and this is the one worth justifying. It is
+   only 4.9 hours and it would be tempting to slot it in early for a quick
+   complete result. But the design tab's own caveat is that the composite is
+   not trustworthy until the Sievers arm has run, so running the scan first
+   would produce lifts that have to be caveated into uselessness, and then
+   rerun. Running it after the ROC means the lifts arrive against a score
+   whose discrimination has been measured.
+
+**Why this is started rather than proposed.** Unattended mode: Gate G1 is the
+only thing that would stop a run of this size, and it is closed. The main
+campaign projects to 51.8 hours against a 96-hour G1 threshold, measured
+mechanically rather than estimated (`projected_hours`). The 48-hour figure it
+exceeds is the per-run target, not a gate, and the queue is priority-ordered
+so a run cut short yields the benchmark panel and then the Sievers split
+before it loses anything.
+
+**Resumability is what makes a 60-hour chain reasonable.** Every stage skips
+completed job ids from its own `state.jsonl`, so a kill anywhere is recovered
+by rerunning the script rather than by working out where it stopped. Each
+stage also tolerates its successor failing: the chain uses `|| true` on the
+analysis steps so a scoring error cannot strand the compute behind it.
+
+**Preflight gates the expensive stage.** The main campaign does not start
+unless `tools/preflight.py` passes on it, because the failure worth catching
+there is the silent one: a cofactor present in one arm completes the run and
+reports itself as the glue.
+
+**Reversal.** `tmux kill-session -t nobble-chain`. Nothing is lost: each
+stage is resumable and the assembled campaigns stay on disk.
