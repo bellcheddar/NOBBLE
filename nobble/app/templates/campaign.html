@@ -212,7 +212,18 @@
       out.push('<span class="flag flag--bad" title="' + pair.undocked_seeds.length +
         ' seed(s) left the peptide off the receptor entirely">undocked ' + pair.undocked_seeds.length + '</span>');
     }
-    if (pair.forced) { out.push('<span class="flag flag--warn" title="Pose appears only under pocket conditioning">forced</span>'); }
+    if (pair.forced) {
+      /* The magnitude, not only the flag. CDK12's conditioned seeds sit at
+         0.75 to 0.85 and its unconstrained ones at 0.25 to 0.65, a gap of
+         0.49: "forced" is true of that and of a pair just over the 0.2
+         threshold, and the two are not the same result (F44). */
+      const gap = pair.conditioning_disagreement;
+      const detail = 'Pose appears only under pocket conditioning'
+        + (gap === null || gap === undefined ? ''
+           : ': the conditioned and unconstrained arms differ by '
+             + gap.toFixed(3) + ' ipTM');
+      out.push('<span class="flag flag--warn" title="' + detail + '">forced</span>');
+    }
     if (pair.furniture === null) { out.push('<span class="flag flag--pending" title="ProtCID was never acquired, so the packing veto is not computed">furniture n/c</span>'); }
     return out.join(' ');
   }

@@ -2007,3 +2007,59 @@ included, which added 112 seconds to a 28-second suite. The file is about
 which keys a record carries and nothing else, so both stages are stubbed
 and the campaign trimmed to three pairs. A slow test is a test that gets
 skipped, which is the one way to make a schema guarantee worse than none.
+
+## F44. CDK12 needs the pocket constraint to find its own glue site
+
+The first finding of this session that is about the science rather than
+the code, and the machinery surfaced it without being asked.
+
+CDK12 with CR8 on DDB1, folded kinase domain, eight of ten ternary seeds
+scored:
+
+    conditioned     0.826  0.745  0.779  0.767  0.851
+    unconstrained   0.252  0.281  0.653
+    binary minimum  0.273
+
+Delta-ipTM, the mandated difference of minima, is **-0.022**. The same
+quantity built on medians is **+0.449**. Those are not a disagreement about
+precision; they are two different answers, and both are correct readings of
+the same eight numbers.
+
+What separates them is the conditioning. Given the pocket, the model is
+confident about the ternary every time, 0.745 to 0.851. Made to find the
+glue site unaided, it mostly fails: two seeds at 0.25 and 0.28, one at
+0.65. `conditioning_disagreement` is 0.494, so the `forced` flag is true
+and true by a wide margin.
+
+The honest reading is that the glue's placement is doing the work rather
+than the prediction, and the headline number says so correctly for an
+uncomfortable reason: the mandated minimum lands on a collapsed
+unconstrained seed at 0.2515, which is *below* the binary minimum of
+0.2732, so the ternary looks no better than the binary.
+
+Every part of that is flagged rather than inferred.
+`collapsed_seeds_ternary` is `[1, 2]`, `seed_collapse_affects_delta` is
+true, and the pair carries the note "seed(s) [1, 2] collapsed well below
+the median of their condition and set the mandated min". D-NOB-023 added
+those diagnostics precisely so a minimum set by a collapse would not read
+as a measurement of the interface, and here they earn their place on the
+project's most-watched pair.
+
+Provisional: two unconstrained seeds are still running. The minimum can
+only fall, so Delta-ipTM can only become more negative and the direction
+of this is settled.
+
+What it means for F6 is not settled and is not mine to decide. The
+question F6 asks is whether the whole domain recovers poses the 15-mer
+could not, which is an RMSD question, and the comparison the chain runs
+next answers it. This is a separate observation about the same pair, and
+one the Delta-ipTM headline alone would have reported as "no glue
+dependence".
+
+### The flag said forced and not how forced
+
+`forced` was on the campaign table with the tooltip "Pose appears only
+under pocket conditioning", which is true of CDK12 at 0.494 and equally
+true of a pair at 0.21. The tooltip now carries the magnitude. A tooltip
+is pipeline-generated status text and outside the prose budget, which is
+the right place for a number that qualifies a flag rather than a figure.
