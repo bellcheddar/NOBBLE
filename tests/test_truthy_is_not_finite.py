@@ -108,9 +108,18 @@ def test_the_runner_uses_the_same_rule():
     assert "finite(item.get(\"seconds\"))" in source
 
 
-def test_the_live_measurement_is_unchanged():
+def test_the_live_measurement_is_unchanged(tmp_path, monkeypatch):
     """Behaviour-preserving on finite data, which is the whole of the real
-    data: 100 benchmark jobs at the median the README quotes."""
+    data: 100 benchmark jobs at the median the README quotes.
+
+    `paths.THROUGHPUT` is redirected, and that is not tidiness.
+    `write_throughput` writes it, `data.throughput()` reads it, and the app
+    shows it, so the first version of this test replaced the running
+    campaign's measurement with the benchmark's every time the suite ran.
+    `tools/mutate.py` lists `data/throughput.json` among the files it watches
+    for exactly this and said so on the next mutation run.
+    """
+    monkeypatch.setattr(paths, "THROUGHPUT", tmp_path / "throughput.json")
     campaign = ROOT / "campaigns" / "benchmark_20261103T192126Z"
     if not (campaign / "results.jsonl").exists():
         pytest.skip("no benchmark campaign")
@@ -132,3 +141,46 @@ def test_the_numeric_sweep_covers_the_type_check_and_not_this():
         "if the sweep now covers truthiness, this note is stale and the two "
         "named tests above can go"
     )
+
+
+def test_no_test_leaves_the_live_throughput_rewritten():
+    """The suite must not change state the app reads.
+
+    `write_throughput` writes `paths.THROUGHPUT`, `data.throughput()` reads
+    it and the Campaign page shows it. Two tests added today called it
+    without redirecting the path: one replaced the running campaign's
+    measurement with the benchmark's, which is the wrong campaign, and one
+    remeasured the same campaign, which is merely a side effect.
+
+    `tools/mutate.py` lists `data/throughput.json` among the files it
+    fingerprints before and after a mutation, and said so on the next run.
+    This asserts the property directly rather than relying on noticing it
+    there (F131).
+    """
+    import re
+
+    # This file is skipped, because it holds the pattern as a regex literal
+    # and counting it finds itself: five calls against four redirects, the
+    # fifth being the string on the next line. `test_house_style.py` has the
+    # same idiom for the same reason, as `THIS_FILE`.
+    this_file = Path(__file__).name
+    checked = 0
+    for path in sorted((ROOT / "tests").glob("test_*.py")):
+        if path.name == this_file:
+            continue
+        text = path.read_text()
+        if "write_throughput(" not in text:
+            continue
+        calls = len(re.findall(r"write_throughput\(", text))
+        # Both forms of redirect this suite uses.
+        redirects = len(re.findall(r'setattr\(\s*paths[a-z_]*\s*,\s*"THROUGHPUT"',
+                                   text))
+        # Every call redirected, not all but one. The first version of this
+        # allowed `redirects + 1`, which permits exactly the defect it is
+        # here to catch.
+        assert calls <= redirects, (
+            f"{path.name}: {calls} write_throughput call(s) against "
+            f"{redirects} redirect(s), so at least one writes the live file"
+        )
+        checked += 1
+    assert checked >= 2, checked

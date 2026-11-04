@@ -99,10 +99,19 @@ def test_the_counts_add_up_to_the_timed_jobs(tmp_path, monkeypatch):
     assert sum(payload["measured_on"].values()) == payload["jobs_timed"] == 2
 
 
-def test_the_live_campaign_note_names_the_arms_that_have_run():
-    """On the real campaign, which is the case that went stale."""
+def test_the_live_campaign_note_names_the_arms_that_have_run(tmp_path, monkeypatch):
+    """On the real campaign, which is the case that went stale.
+
+    Reading the campaign and writing somewhere else. `write_throughput`
+    writes `paths.THROUGHPUT`, which `data.throughput()` reads and the app
+    shows, so this rewrote live state on every suite run. Benign here,
+    because it remeasures the same campaign, and `tools/mutate.py` lists the
+    file among those it watches for exactly this reason (F131).
+    """
+    from nobble import paths as paths_module
     from nobble.execute.campaign import latest
 
+    monkeypatch.setattr(paths_module, "THROUGHPUT", tmp_path / "throughput.json")
     campaign = latest("campaign")
     if campaign is None or not (campaign / "results.jsonl").exists():
         pytest.skip("no campaign results")

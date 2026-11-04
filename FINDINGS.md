@@ -6060,3 +6060,46 @@ a sweep whose false positives outnumber its findings fifteen to two is not
 kept. The two instances are fixed, tested by name, and a test asserts that
 the numeric sweep still covers the type check and not this, so the note goes
 stale loudly if that changes.
+
+## F131. Two of my tests rewrote state the app reads
+
+`tools/mutate.py` fingerprints a list of files before and after every
+mutation, `PROTECTED_GLOBS`, and `data/throughput.json` is on it. Running a
+mutation for F130 printed it as changed, which is that list doing its job.
+
+The suite was writing it. `write_throughput` writes `paths.THROUGHPUT`,
+`data.throughput()` reads it, and the Campaign page shows it, so two tests
+that called `write_throughput` without redirecting the path were rewriting
+live state on every run.
+
+One was benign and one was not. `test_throughput_label`'s live-campaign test
+remeasured the same campaign, which only wastes the work. F130's
+`test_the_live_measurement_is_unchanged` measured the **benchmark** campaign
+into the shared file, so after any suite run the app reported 100 jobs at
+0.4551 seconds per token instead of the 317 the running campaign had done.
+Correctly labelled, because F104 made the file name its own campaign, and
+describing the wrong one.
+
+Both redirect to `tmp_path` now, and the file was restored by remeasuring the
+campaign it is supposed to describe.
+
+Checked the general case rather than those two: fingerprinting all thirty
+protected files across a full suite run leaves three changed, and two of them
+are the running campaign's `results.jsonl` and `state.jsonl`, which the runner
+appends to every thirty-five seconds while a 148-second suite runs. That is
+the runner, not the suite. After the fix the third stops changing.
+
+Three mistakes of mine inside one small test, each caught by the next thing I
+ran.
+
+The first assertion was `calls <= redirects + 1`, which permits exactly one
+unredirected call: the defect it exists to catch. The second counted its own
+regex literal, finding five calls against four redirects in the file holding
+the pattern as data, which `test_house_style.py` already solves with a
+`THIS_FILE` skip. And the test that started it wrote the live file while
+asserting that nothing should.
+
+That last one is worth saying plainly. I wrote a test that corrupted the
+state the application serves, in the same commit as a finding about a NaN
+reaching a measurement, and what caught it was not the suite but a list
+someone else had written down of files that must not change.
