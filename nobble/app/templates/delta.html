@@ -92,15 +92,31 @@
           p.delta_iptm_median === null || p.delta_iptm_median === undefined ? 'n/a' : p.delta_iptm_median,
           bridgedOf(p),
           lysineCount(p),
-          p.seed_collapse_affects_delta ? 'yes' : 'no'
+          p.seed_collapse_affects_delta ? 'yes' : 'no',
+          p.forced
+            ? ('yes, arms differ by '
+               + (p.conditioning_disagreement === null
+                  || p.conditioning_disagreement === undefined
+                  ? 'an unrecorded amount'
+                  : p.conditioning_disagreement.toFixed(3)))
+            : 'no'
         ]),
         mode: 'markers',
         type: 'scatter',
         marker: {
           size: rows.map(p => 9 + 3 * lysineCount(p)),
           color: LABEL_COLOUR[label] || LABEL_COLOUR.unknown,
-          line: { width: 1, color: 'rgba(0,0,0,0.35)' },
-          opacity: 0.85
+          /* Spec 4.7: a pose that only appears under conditioning is forced,
+             and forced hits are "shown separately and never in the headline
+             ranking". This is the headline view, so they are drawn hollow:
+             the position still carries the measurement, and the marker says
+             not to read it as a found pose (F48). */
+          line: {
+            width: rows.map(p => p.forced ? 2.5 : 1),
+            color: rows.map(p => p.forced
+              ? '#0c183c' : 'rgba(0,0,0,0.35)')
+          },
+          opacity: rows.map(p => p.forced ? 0.35 : 0.85)
         },
         hovertemplate:
           '<b>%{text}</b><br>' +
@@ -110,7 +126,8 @@
           'bridge percentile %{y:.1f}<br>' +
           'bridging seeds %{customdata[4]}<br>' +
           'peptide lysines %{customdata[5]}<br>' +
-          'seed collapse set the minimum: %{customdata[6]}' +
+          'seed collapse set the minimum: %{customdata[6]}<br>' +
+          'pose only under conditioning: %{customdata[7]}' +
           '<extra></extra>'
       };
     });

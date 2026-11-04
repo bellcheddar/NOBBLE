@@ -2270,3 +2270,47 @@ and the command that clears them, so the canary still catches new drift,
 and a second test fails once they agree again: an allowlist that outlives
 what it allows is a hole, and that test is the only reminder that the
 rerun is done.
+
+## F48. The forced flag was computed, published, displayed, and ignored
+
+F47 was found by reading one line of the spec against the code that
+implements it, so I read the rest. Spec 4.7:
+
+    A pose that only appears under conditioning is flagged `forced: true`.
+    Forcing a binder into a site it did not choose reliably produces the
+    right neighbourhood and the wrong pose, so forced hits are shown
+    separately and never in the headline ranking.
+
+The flag is computed correctly, carried into every scored record and shown
+on the campaign table. Nothing acted on either half of the instruction.
+
+**Never in the headline ranking.** `tier2.select_top_decile` ranks on the
+composite, or the bridge percentile, or the median Delta-ipTM, and takes
+the top tenth for refinement at twenty-five diffusion samples a job. A
+forced pair could take a place there, so the most expensive thing the
+pipeline does could be spent refining a pose the spec says is wrong.
+
+CDK12 is the live case and the reason this is not hypothetical. Its
+conditioned seeds sit at 0.745 to 0.851 and its unconstrained at 0.252 to
+0.653: a disagreement of 0.494, forced by a wide margin (F44).
+
+Forced pairs are now ranked separately rather than dropped, and the
+selection records which of them would have entered the decile. A forced
+pair that outranks every candidate is a finding, and the rule is the same
+one the arm reporting follows: report it, do not let it vote. If every
+scorable pair is forced the decile is empty and says so, rather than
+refining a forced pose because it was the only candidate left.
+
+**Shown separately.** The headline scatter drew forced pairs exactly like
+found ones. They are now hollow: the position still carries the
+measurement, and the marker says not to read it as a pose the model chose.
+The hover names it with the magnitude rather than a bare flag, because
+"forced" is true of CDK12 at 0.494 and equally true of a pair at 0.21.
+
+Three rules of the spec read against the code, and this is the one that
+had drifted. The other two had not. Spec 3.1's prohibition on applying a
+disorder prefilter to linear degron mimetics is satisfied vacuously: no
+such prefilter exists, ESMFold is not used for it, and no peptide is
+rejected on pLDDT anywhere, the `mean_plddt_min` floor being a Tier B
+receptor threshold. Spec 4.7's affinity rule, a column and never a ranking
+key, was already held by D-NOB-005 and by a test.

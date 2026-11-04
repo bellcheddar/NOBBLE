@@ -43,6 +43,10 @@ class Selection:
     pairs_selected: int
     selected: list = field(default_factory=list)
     arms: dict = field(default_factory=dict)
+    # Pairs kept out of the ranking because their pose only appears under
+    # conditioning. Reported rather than dropped: one that would have topped
+    # the decile is a finding (spec 4.7, F48).
+    forced_excluded: list = field(default_factory=list)
     status: str = "pending"
     notes: list = field(default_factory=list)
 
@@ -89,13 +93,46 @@ def select_top_decile(campaign: Path, fraction: float | None = None) -> Selectio
         selection.status = "not_selected: no component has enough values to rank on"
         return selection
 
-    ranked = sorted(
-        (row for row in rows if isinstance(row.get(key), (int, float))),
-        key=lambda row: row[key], reverse=True,
-    )
+    scorable = [row for row in rows if isinstance(row.get(key), (int, float))]
+
+    # Spec 4.7: "A pose that only appears under conditioning is flagged
+    # `forced: true`. Forcing a binder into a site it did not choose reliably
+    # produces the right neighbourhood and the wrong pose, so forced hits are
+    # shown separately and never in the headline ranking."
+    #
+    # The flag was computed and displayed and nothing acted on it, so a forced
+    # pair could take a place in the decile and twenty-five diffusion samples
+    # with it: refining a pose the spec says is wrong. CDK12 is the live case,
+    # its conditioned seeds at 0.75 to 0.85 against unconstrained at 0.25 to
+    # 0.65, a disagreement of 0.494 (F44, F48).
+    #
+    # Ranked separately rather than dropped. A forced pair that would have
+    # topped the decile is a result, and the arm reporting below exists for the
+    # same reason: report it, do not let it vote.
+    forced = [row for row in scorable if row.get("forced")]
+    ranked = sorted((row for row in scorable if not row.get("forced")),
+                    key=lambda row: row[key], reverse=True)
+
     # At least one pair, so a small campaign still refines something.
     take = max(1, math.ceil(len(ranked) * fraction))
     chosen = ranked[:take]
+
+    if forced:
+        forced_ranked = sorted(forced, key=lambda row: row[key], reverse=True)
+        selection.forced_excluded = [
+            {"pair_id": row["pair_id"], key: row[key],
+             "conditioning_disagreement": row.get("conditioning_disagreement")}
+            for row in forced_ranked
+        ]
+        would_have_entered = [
+            row["pair_id"] for row in forced_ranked
+            if not chosen or row[key] >= chosen[-1][key]
+        ]
+        selection.notes.append(
+            f"{len(forced)} pair(s) excluded from the ranking as forced "
+            f"(spec 4.7), of which {len(would_have_entered)} would have "
+            f"entered the decile: {', '.join(would_have_entered[:5]) or 'none'}"
+        )
 
     selection.selected = [
         {
