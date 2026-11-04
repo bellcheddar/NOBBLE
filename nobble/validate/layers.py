@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import random
+from collections import Counter
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -250,6 +251,66 @@ def time_split(campaign: Path) -> LayerResult:
 # 3. Matched-control ROC
 # --------------------------------------------------------------------------- #
 
+def _seed_balance(positive_rows: list[dict], negative_rows: list[dict]) -> dict:
+    """Did both groups contribute the same number of seeds per pair?
+
+    Returned rather than asserted: one lost job in a 2,360-job campaign
+    should qualify the curve, not withhold it.
+    """
+    def profile(rows: list[dict]) -> dict:
+        return {
+            arm: dict(sorted(Counter(
+                row.get(f"seeds_{arm}") for row in rows
+            ).items(), key=lambda item: (item[0] is None, item[0])))
+            for arm in ("ternary", "binary")
+        }
+
+    counts = {"positives": profile(positive_rows), "negatives": profile(negative_rows)}
+
+    # Compare the seed counts each pair contributed, not how many pairs
+    # contributed each. The groups are 24 degraded against 96 matched
+    # negatives by design, so comparing the tallies would call every arm
+    # uneven; what matters is whether a pair on one side was built like a
+    # pair on the other.
+    arms = ("ternary", "binary")
+    distinct = {
+        group: {arm: set(counts[group][arm]) for arm in arms}
+        for group in ("positives", "negatives")
+    }
+    uniform = all(len(distinct[group][arm]) == 1
+                  for group in ("positives", "negatives") for arm in arms)
+    same = distinct["positives"] == distinct["negatives"]
+    unknown = all(values == {None}
+                  for group in ("positives", "negatives")
+                  for values in distinct[group].values())
+    balanced = bool(uniform and same and not unknown
+                    and positive_rows and negative_rows)
+
+    if not positive_rows or not negative_rows:
+        # The curve is refused in this case anyway, but "uneven" would be a
+        # claim about data that does not exist.
+        return {"counts": counts, "balanced": False, "imbalanced": False,
+                "verdict": "not assessable: one or both groups have no scored pairs"}
+    if unknown:
+        # Score files written before seeds_ternary/seeds_binary existed.
+        return {"counts": counts, "balanced": False, "imbalanced": False,
+                "verdict": ("not assessable: these scores carry no per-pair "
+                            "seed counts, so comparability cannot be checked")}
+    if balanced:
+        ternary = next(iter(distinct["positives"]["ternary"]))
+        binary = next(iter(distinct["positives"]["binary"]))
+        verdict = (f"balanced: every pair on both sides contributed {ternary} "
+                   f"ternary and {binary} binary seeds")
+    elif not uniform:
+        verdict = ("uneven within a group: some pairs contributed fewer seeds "
+                   "than others, so their minima are not comparable")
+    else:
+        verdict = ("uneven between groups: the degraded and matched-negative "
+                   "sides contributed different numbers of seeds")
+    return {"counts": counts, "balanced": balanced,
+            "imbalanced": not balanced, "verdict": verdict}
+
+
 def _auc(positives: list[float], negatives: list[float]) -> float:
     """Mann-Whitney U as the ROC area, which handles ties correctly."""
     if not positives or not negatives:
@@ -296,12 +357,29 @@ def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerR
     arm = [row for row in rows if row.get("tier") == "sievers_zf"]
     excluded = len(rows) - len(arm)
 
-    positives = [row[statistic] for row in arm
-                 if row.get("peptide_label") == "degraded"
-                 and isinstance(row.get(statistic), (int, float))]
-    negatives = [row[statistic] for row in arm
-                 if row.get("peptide_label") == "not_degraded"
-                 and isinstance(row.get(statistic), (int, float))]
+    positive_rows = [row for row in arm
+                     if row.get("peptide_label") == "degraded"
+                     and isinstance(row.get(statistic), (int, float))]
+    negative_rows = [row for row in arm
+                     if row.get("peptide_label") == "not_degraded"
+                     and isinstance(row.get(statistic), (int, float))]
+    positives = [row[statistic] for row in positive_rows]
+    negatives = [row[statistic] for row in negative_rows]
+
+    # Delta-ipTM is a difference of minima, and a minimum is not robust to how
+    # many seeds it was taken over: a minimum of ten draws sits below a minimum
+    # of five for no reason to do with the interface. aggregate() already hard
+    # partitions by sampling tier for exactly this reason, but that says nothing
+    # about seeds lost within a tier, and a 2,360-job run is expected to lose
+    # some: the fallback ladder records a failure and carries on by design.
+    #
+    # Across the two groups this is a bias, not noise. If the degraded pairs
+    # finish more seeds than the matched negatives, their minima are pulled
+    # down relative to the negatives' and the AUC moves, with nothing in the
+    # curve to show it. So the seed counts are reported with the number, and
+    # an imbalance is named. No threshold: the comparison is structural, and
+    # the question is only whether every pair contributed alike.
+    balance = _seed_balance(positive_rows, negative_rows)
 
     layer.summary = {
         "statistic": statistic,
@@ -309,6 +387,8 @@ def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerR
         "matched_negatives": len(negatives),
         "pairs_outside_the_arm_excluded": excluded,
         "source": "Sievers zinc-finger screen: negatives assayed in the same screen",
+        "seed_counts": balance["counts"],
+        "seed_balance": balance["verdict"],
     }
 
     # Spec 5 is explicit that reporting a curve without the matched negatives is
@@ -334,6 +414,12 @@ def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerR
             else "not distinguishable from chance at 95 per cent confidence"
         ),
     }
+    if balance["imbalanced"]:
+        layer.summary["interpretation"] += (
+            ". Read with the seed imbalance in mind: Delta-ipTM is a difference "
+            "of minima, so groups that contributed different numbers of seeds "
+            "are not strictly comparable"
+        )
     return layer
 
 

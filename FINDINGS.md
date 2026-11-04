@@ -947,3 +947,55 @@ so its output there will read `final` rather than `PROVISIONAL`. The
 defect only showed because the scorer can be, and was, run by hand
 mid-campaign. A tool that is correct only when invoked at the right
 moment is a tool that will be invoked at the wrong one.
+
+## F24. The headline curve was safe by accident
+
+Delta-ipTM is a difference of minima, and a minimum is not robust to how
+many seeds it was taken over: a minimum of ten draws sits below a minimum
+of five for reasons that have nothing to do with the interface.
+`aggregate()` already hard partitions by sampling tier for exactly this
+reason, and says so. Nothing extended that care to seeds lost *within* a
+tier, and `matched_control_roc` never looked at seed counts at all.
+
+Across the two sides of the curve this is bias, not noise. If the
+degraded pairs finish more seeds than their matched negatives, their
+minima are pulled down relative to the negatives' and the AUC moves, with
+nothing in the curve to show it.
+
+The arm is in fact clean. All 120 Sievers pairs carry 10 ternary and 5
+binary jobs. The two pairs that do not are `bench03_BRD4_CRBN` and
+`scr_bench03_BRD4_CRBN`, at 5 ternary jobs each because their conditioned
+arm was dropped for want of a measurable pocket, and both sit outside
+this curve: one is benchmark tier, the other scramble.
+
+So the curve is protected, by a scoping rule added for a different reason
+entirely. Spec 5.3 scopes it to the Sievers split because benchmark pairs
+were chosen for having good co-crystals and would flatter the positive
+side. That it also excludes the only two pairs with a different job shape
+is luck. A 2,360-job run is expected to lose jobs, by design: the fallback
+ladder records a failure and carries on. The first lost ternary job in a
+Sievers pair would reintroduce the asymmetry with nothing to catch it.
+
+The curve now reports the seed counts beside the number and names an
+imbalance, rather than refusing: one lost job in 2,360 should qualify a
+result, not withhold it. There is no threshold, because the comparison is
+structural, and the only question is whether a pair on one side was built
+like a pair on the other.
+
+Visible in bench03 already: 5 ternary seeds against everyone else's 10,
+and a Delta-ipTM of 0.0021. It is not in the curve, but it is in the
+benchmark table, where it is the one number not comparable with its
+neighbours.
+
+### Two mistakes of mine inside the fix
+
+The first version compared how many pairs held each seed count rather
+than the seed counts themselves. The real arm is 24 degraded against 96
+matched negatives by design, so that read as an imbalance on every curve.
+An existing test caught it, which is the suite doing its job.
+
+The second attached the imbalance caveat to score files that predate the
+`seeds_ternary` field, where the counts are absent rather than uneven.
+"Cannot be checked" and "checked and found uneven" are different claims,
+and a caveat on the first is the sort of blanket qualifier CLAUDE.md
+warns reads as a lack of confidence rather than as rigour.
