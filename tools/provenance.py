@@ -32,6 +32,15 @@ else:
     else:
         print("   stale inputs  none; the atlas build has nothing to refuse")
 
+    superseded = inputs.superseded_substrates(campaign)
+    if superseded:
+        for row in superseded:
+            print(f"   superseded    {row['pair_id']}: {row['submitted_length']} aa "
+                  f"submitted, plan now says {row['planned_length']} "
+                  f"({row['accession']} {row['planned_range']})")
+    else:
+        print("   superseded    no substrate differs from the current plan")
+
 try:
     from nobble.app import data
     from nobble.design import report

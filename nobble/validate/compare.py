@@ -266,12 +266,36 @@ def compare(baseline: Path, corrected: Path) -> dict:
             f"have not finished in both campaigns ({missing})"
         )
 
+    # A pair whose corrected construct is not the domain the plan now
+    # specifies is still a measurement, of a different construct. The
+    # boundaries come from an InterPro lookup, so a fix to how an ambiguous
+    # entry is resolved moves them, and a campaign run before that fix holds
+    # an input the code would no longer emit.
+    #
+    # Said on the conclusion rather than only in the table, for the same
+    # reason the incomplete caveat is: the sentence is the line that gets
+    # quoted, and CSNK1A1 is one of the pairs in the improved list (F93).
+    from nobble.validate import inputs as input_check
+
+    superseded = input_check.superseded_substrates(corrected)
+    if superseded:
+        genes = ", ".join(sorted(
+            next((c.gene for c in comparisons
+                  if c.corrected_pair == row["pair_id"]), row["pair_id"])
+            for row in superseded))
+        conclusion += (
+            f". {len(superseded)} pair(s) used a substrate domain the plan no "
+            f"longer specifies ({genes}): the measurement stands and describes "
+            "a different construct from the one the plan beside it gives"
+        )
+
     return {
         "baseline": baseline.name,
         "corrected": corrected.name,
         "pairs_compared": len(comparisons) - len(incomplete),
         "pairs_incomplete": len(incomplete),
         "provisional": bool(incomplete),
+        "superseded_substrates": superseded,
         "control": control.to_dict() if control else None,
         "control_held": control_ok,
         "comparisons": [c.to_dict() for c in comparisons],

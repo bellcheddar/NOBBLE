@@ -147,3 +147,103 @@ def refusal(stale: list[dict]) -> str:
             f"  correct it with: python tools/rerun_pair.py {pair} "
             "--campaign <campaign> --apply, then rerun tools/run_queue.sh")
     return "\n".join(lines)
+
+
+# The chain the substrate occupies in every emitted YAML.
+SUBSTRATE_CHAIN = "P"
+CHAIN_BLOCK = re.compile(r"\n(?=- )")
+CHAIN_ID = re.compile(r"id:\s*([A-Za-z])\b")
+CHAIN_SEQUENCE = re.compile(r"sequence:\s*([A-Z]+)")
+
+
+def substrate_sequence(yaml_text: str) -> str | None:
+    """The sequence submitted as the substrate, by chain id rather than length.
+
+    By id because the receptor is usually the longest chain, so taking the
+    longest sequence reads the receptor for most pairs and the substrate for
+    the rest. That mistake made five of seven pairs look as though no
+    current domain matched them (F93).
+    """
+    for block in CHAIN_BLOCK.split(yaml_text):
+        found = CHAIN_ID.search(block)
+        if found and found.group(1) == SUBSTRATE_CHAIN:
+            sequence = CHAIN_SEQUENCE.search(block)
+            return sequence.group(1) if sequence else None
+    return None
+
+
+def superseded_substrates(campaign: Path) -> list[dict]:
+    """Pairs whose submitted substrate is not what the plan now specifies.
+
+    A campaign records which jobs it ran and, until F93, not which substrate
+    domain each one used. The boundaries come from an InterPro lookup, so a
+    fix to how an ambiguous entry is resolved moves them, and a campaign run
+    before that fix holds a different input from the one the code would emit
+    today.
+
+    `stale_inputs` cannot see this. It compares a YAML against the queue row
+    beside it, and both were written by the same assembly, so they agree
+    about a boundary that has since moved. This compares the YAML against
+    the plan instead.
+
+    Reported rather than refused. A moved boundary does not make the
+    campaign's number wrong, it makes it a measurement of something else,
+    and which of the two is right is a question about the domain rather than
+    about the code.
+    """
+    campaign = Path(campaign)
+    try:
+        from nobble.curate import numbering
+        from nobble.curate import peptides as peptide_module
+
+        wanted = []
+        for plan in peptide_module.benchmark_substrate_constructs():
+            substrate = plan["substrate"]
+            if substrate.get("mode") != "folded_domain":
+                continue
+            sequence = numbering.canonical_sequence(substrate["accession"])[
+                substrate["start"] - 1:substrate["end"]]
+            if sequence:
+                wanted.append((substrate, sequence))
+        # The fragment arm submits the curated 15-mer, and a degron is a
+        # slice of the domain it sits in, so every one of those is a
+        # substring of some planned domain and would be reported as
+        # superseded. They are not: they are the other arm of the
+        # experiment.
+        #
+        # Identified by matching the curated sequences rather than by a
+        # length threshold. The first version of this used `len < 30`,
+        # which the cutoff sweep caught on its next run: a number in an
+        # expression deciding what counts as a domain.
+        fragments = {item.sequence for item
+                     in peptide_module.benchmark_peptides() if item.sequence}
+    except Exception:                                   # noqa: BLE001
+        return []
+
+    seen: dict[str, dict] = {}
+    for path in sorted((campaign / "yaml").glob("*ternary*.yaml")):
+        pair = path.name.split("__")[0]
+        if pair in seen:
+            continue
+        submitted = substrate_sequence(path.read_text())
+        if not submitted or submitted in fragments:
+            continue        # the fragment arm, not a superseded domain
+        match = next((s for s, seq in wanted if seq == submitted), None)
+        if match is not None:
+            continue
+        overlap = next(((s, seq) for s, seq in wanted
+                        if seq in submitted or submitted in seq), None)
+        if overlap is None:
+            continue        # no plan entry describes this chain at all
+        substrate, sequence = overlap
+        seen[pair] = {
+            "pair_id": pair,
+            "submitted_length": len(submitted),
+            "planned_length": len(sequence),
+            "accession": substrate["accession"],
+            "planned_range": f"{substrate['start']}-{substrate['end']}",
+            "reason": ("the submitted substrate is not the domain the plan "
+                       "now specifies, so this pair measures a different "
+                       "construct from the one the plan describes"),
+        }
+    return sorted(seen.values(), key=lambda row: row["pair_id"])
