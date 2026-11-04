@@ -1635,3 +1635,42 @@ that do not exist, `Peptide` with the wrong fields and a
 `variants.substitute` that was never there. They failed immediately and
 loudly, which is the one failure mode this session has had no trouble
 with.
+
+## F36. The chain was ready, and nothing could have told me so
+
+With the corrected campaign half an hour from finishing, the chain was
+about to run seven stages unattended. A failure at stage three wastes the
+night, so I checked it end to end: every script it calls exists and passes
+`bash -n`; every Python entry point it names resolves, including
+`compare.run` as against `compare.compare`, which are different functions
+and the chain uses one while `check_prediction` uses the other; the one
+inline Python block's data shape matches what it indexes, down to
+`preview.parent.peptide_id`; the deploy prerequisites are all present, key,
+known_hosts entry, vendored assets and atlas; and all nine routes the
+deploy's final check verifies answer 200 on the live site.
+
+No defect. Which is the finding: nothing in the repository could have told
+me that, and checking it took four attempts to get right.
+
+Three of those four failures were mine, and each was the same mistake in a
+different costume. I guessed `--campaign` for `nobble.execute.tier2`, which
+takes a positional, and read argparse's exit 2 as a defect in the chain. I
+built a URL as `https://${PUBLIC_HOST}` when `PUBLIC_HOST` already carries
+the scheme, and read nine instant HTTP 000s as a dead site. I used `${!v}`
+indirect expansion under zsh and read six unset variables as a broken
+`.env`. Every one of those was a confident wrong conclusion from a correct
+observation of my own mistake, which is F20 again in miniature, three
+times in ten minutes.
+
+So the check is now `tests/test_chain_invocations.py`, which parses the
+shell for `-m nobble.<module> <args>` and hands each set of arguments to
+that module's own parser, intercepting it once accepted or rejected so
+nothing runs. Sixteen invocations across eight scripts, including a guard
+that fails if the chain ever stops using `-m nobble.…` and the file would
+otherwise pass by finding nothing to check.
+
+The reason this class deserves a test rather than a careful read: the
+invocations live in shell strings, so no import, no linter and no type
+checker sees them. `tier2.sh` passing a positional where `tier2.py` grew a
+named flag would be invisible until the stage started, and the mutation
+confirms it is now caught at once.
