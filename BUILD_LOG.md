@@ -375,3 +375,16 @@
   largest minimum-median gaps and states how many it left out. Also explained
   why the scatter legend counts 31 degraded while the ROC below uses 24: the
   ROC is the Sievers arm alone, and the two numbers differ on purpose.
+- 2026-11-04T10:50Z Capacity checked against the droplet rather than assumed:
+  154 G disk with 87 G free, 7.9 G RAM with 4 G available, NOBBLE using 62 M.
+  At full campaign size results.jsonl projects to 5 MB (about 16 MB as Python
+  objects) and scores to 3.2 MB, so there is no memory risk; structures reach
+  roughly 540 MB on disk, pushed once because rsync is incremental.
+- 2026-11-04T10:50Z D-NOB-040: the chain now re-assembles the design scan
+  after the main campaign scores. It had been reusing a campaign whose parent
+  was chosen from the seven benchmark pairs, which undid the reason for
+  queuing the scan last. Restarted tmux nobble-chain to pick up the change.
+- 2026-11-04T10:50Z Scored the corrected campaign at 64/100 for an early read
+  on F6. No verdict yet, and the machinery said so correctly: "not concluded,
+  the IKZF1 control has no number in both campaigns". The three-state control
+  logic behaving as intended rather than collapsing to a false negative.

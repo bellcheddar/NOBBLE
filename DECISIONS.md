@@ -1218,3 +1218,27 @@ reports itself as the glue.
 
 **Reversal.** `tmux kill-session -t nobble-chain`. Nothing is lost: each
 stage is resumable and the assembled campaigns stay on disk.
+
+## D-NOB-040: the design scan picks its target after the main campaign, not before
+
+**Date:** 2026-11-04
+
+The design scan was assembled against IKZF1/CRBN, chosen by the largest
+measured Delta-ipTM among the parents that had been scored. At the time that
+meant the seven benchmark pairs, because nothing else had run.
+
+The chain then ran that pre-assembled campaign last, which quietly undid the
+reason for putting it last. Queuing the scan behind the main campaign is
+meant to buy a validated score and a wider field: 31 scannable parents, of
+which 24 are Sievers fingers that will have been measured by then. Reusing a
+target chosen from seven benchmark pairs throws that away and keeps only the
+delay.
+
+**Decided.** The chain re-assembles the design campaign after the main
+campaign has scored, so the parent is chosen from 158 pairs rather than 7.
+IKZF1 may well still win: it is the canonical IMiD neosubstrate and it leads
+the benchmark at +0.316. The point is that it should win against the full
+field rather than by default.
+
+**Reversal.** The re-assembly block in `tools/run_chain.sh`. Remove it to
+scan whichever campaign `campaigns/design_*` last holds.

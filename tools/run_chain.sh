@@ -72,6 +72,29 @@ if [[ -n "${CAMPAIGN:-}" && -f "$CAMPAIGN/scores.jsonl" ]]; then
 fi
 
 # --- 4. the design scan --------------------------------------------------
+# Re-assembled here rather than reusing the campaign built before any of
+# this ran. The scan's parent is chosen by measured Delta-ipTM, and until
+# the main campaign scores, the only evidence is the seven benchmark pairs.
+# Picking the target from 158 pairs instead of 7 is the whole reason the
+# scan is queued last; reusing a parent chosen from the benchmark alone
+# would throw that away.
+say "re-assembling the design scan against the full campaign"
+"$SENV/bin/python" -c "
+import json, sys
+sys.path.insert(0, '$ROOT')
+from nobble.app import data
+from nobble.design import report, assemble
+data.configure('$CAMPAIGN' if '$CAMPAIGN' else None)
+parent = (report.build().get('preview') or {}).get('parent')
+if parent:
+    out = assemble.assemble(parent['peptide_id'])
+    print(json.dumps({k: out.get(k) for k in
+                      ('campaign_id', 'parent', 'pairs', 'jobs_emitted')}, indent=2))
+    print('chosen because:', parent.get('chosen_because'))
+else:
+    print('no scannable parent')
+" || true
+
 DESIGN="$(ls -d campaigns/design_* 2>/dev/null | tail -1)"
 if [[ -n "$DESIGN" ]]; then
   say "design scan"
