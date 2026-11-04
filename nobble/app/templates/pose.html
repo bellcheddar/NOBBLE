@@ -55,6 +55,8 @@
       is in the table.
     </p>
 
+    <p class="panel__hint" id="refined-note" hidden></p>
+
     <h3 style="margin-top:1.1rem;font-family:var(--display);font-size:0.9rem">Per-seed geometry</h3>
     <div class="table-wrap" tabindex="0" role="group" aria-label="Scrollable table" style="max-height:20rem">
       <table class="ntable">
@@ -209,12 +211,51 @@
 
   /* The conditioned ternary if there is one, because that is the arm the
    * pocket constraint applies to; otherwise any ternary; otherwise the
-   * binary. */
+   * binary.
+   *
+   * Tier 1 explicitly, not by accident of list order. The numbers on this
+   * page are tier 1, and a refined pose shown beside them would be a
+   * different structure from the one the scores describe. Tier 2 is
+   * offered in the picker instead. */
+  function tierOne(structures) {
+    const only = structures.filter(function (s) { return (s.sampling_tier || 1) === 1; });
+    return only.length ? only : structures;
+  }
+
   function representative(data) {
-    return data.structures.find(function (s) {
+    const pool = tierOne(data.structures);
+    return pool.find(function (s) {
       return s.complex_type === 'ternary' && s.conditioning === 'conditioned';
-    }) || data.structures.find(function (s) { return s.complex_type === 'ternary'; })
-      || data.structures[0];
+    }) || pool.find(function (s) { return s.complex_type === 'ternary'; })
+      || pool[0];
+  }
+
+  /* Say that a refined pose exists. Without this tier 2 is reachable only
+     by knowing the URL scheme, which is the same as not shipping it. */
+  function noteRefined(data) {
+    const refined = (data.structures || []).filter(function (s) {
+      return s.sampling_tier === 2;
+    });
+    const host = document.getElementById('refined-note');
+    if (!host) { return; }
+    if (!refined.length) { host.hidden = true; return; }
+    host.hidden = false;
+    host.innerHTML = '';
+    const label = document.createElement('span');
+    label.textContent = refined.length + ' refined pose(s) from tier 2: ';
+    host.appendChild(label);
+    refined.forEach(function (s, i) {
+      const a = document.createElement('a');
+      a.href = '#';
+      a.textContent = 'seed ' + (s.seed === null || s.seed === undefined ? '?' : s.seed);
+      a.addEventListener('click', function (event) {
+        event.preventDefault();
+        viewer.load({ url: s.url, format: 'mmcif', role: 'glue', plddt: false })
+          .then(colourByConfidence).then(showStructuralIons);
+      });
+      host.appendChild(a);
+      if (i < refined.length - 1) { host.appendChild(document.createTextNode(', ')); }
+    });
   }
 
   function loadDefault() {
@@ -224,6 +265,7 @@
         return;
       }
       const pick = representative(data);
+      noteRefined(data);
       return viewer.load({
         url: pick.url,
         format: 'mmcif',

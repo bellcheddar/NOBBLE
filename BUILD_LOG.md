@@ -597,3 +597,12 @@
   than not listing them. Fixed to search both tiers, with a test that
   fetches every URL the catalogue advertises rather than asserting on the
   implementation. 131 tests pass.
+- 2026-11-04T17:40Z Finished making tier 2 reachable from the viewer. The
+  default pose now selects tier 1 explicitly rather than landing on it by
+  accident of list order: the numbers on the page are tier 1, and showing a
+  refined pose beside them would be a different structure from the one the
+  scores describe. Refined poses are offered as per-seed links instead,
+  shown only when they exist, so tier 2 is reachable without knowing the
+  URL scheme. Verified both ways: with tier-2 data the note lists three
+  seeds as working links; without it the note stays hidden. 131 tests pass,
+  QC clean, deployed.
