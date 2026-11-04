@@ -43,6 +43,14 @@ class PairComparison:
     corrected_anchor_rmsd: float | None = None
     baseline_poses: int = 0
     corrected_poses: int = 0
+    # Bridge formation, which is independent evidence rather than a second
+    # view of the same thing: pose recovery compares a prediction to a
+    # deposited crystal, while bridge formation asks only whether the glue
+    # touches both chains inside the prediction. F17 found the two agree,
+    # and the comparison was reporting only the first.
+    baseline_bridged: str | None = None
+    corrected_bridged: str | None = None
+    bridge_rate_change: float | None = None
     is_control: bool = False
     verdict: str = "pending"
 
@@ -77,6 +85,28 @@ def _recovery_by_pair(campaign: Path) -> dict[str, dict]:
     return out
 
 
+def _bridging_by_pair(campaign: Path) -> dict[str, dict]:
+    """Seeds that produced a bridge, per pair, from the scored records."""
+    scores = campaign / "scores.jsonl"
+    if not scores.exists():
+        return {}
+    out: dict[str, dict] = {}
+    for line in scores.read_text().splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        total = row.get("bridging_seeds_total")
+        if not total:
+            continue
+        out[row["pair_id"]] = {
+            "with_bridge": row.get("bridging_seeds_with_bridge") or 0,
+            "total": total,
+            "rate": row.get("bridge_formation_rate"),
+            "reject_reasons": row.get("bridge_reject_reasons") or {},
+        }
+    return out
+
+
 def _gene_of(pair_id: str) -> tuple[str, str]:
     """bench01_GSPT1_CRBN or corr01_GSPT1_CRBN to (GSPT1, CRBN)."""
     parts = pair_id.split("_")
@@ -86,6 +116,8 @@ def _gene_of(pair_id: str) -> tuple[str, str]:
 def compare(baseline: Path, corrected: Path) -> dict:
     base_recovery = _recovery_by_pair(baseline)
     corr_recovery = _recovery_by_pair(corrected)
+    base_bridging = _bridging_by_pair(baseline)
+    corr_bridging = _bridging_by_pair(corrected)
 
     # The two campaign builders disagreed on one key: the benchmark one writes
     # `pairs` as a count with the records under `pair_detail`, the corrected one
@@ -108,6 +140,8 @@ def compare(baseline: Path, corrected: Path) -> dict:
 
     keyed_base = {_gene_of(p): (p, v) for p, v in base_recovery.items()}
     keyed_corr = {_gene_of(p): (p, v) for p, v in corr_recovery.items()}
+    bridge_base = {_gene_of(p): v for p, v in base_bridging.items()}
+    bridge_corr = {_gene_of(p): v for p, v in corr_bridging.items()}
 
     comparisons = []
     for key in sorted(set(keyed_base) | set(keyed_corr)):
@@ -121,6 +155,16 @@ def compare(baseline: Path, corrected: Path) -> dict:
             corrected_median_rmsd=cv.get("median_rmsd"),
             baseline_anchor_rmsd=bv.get("anchor_rmsd"),
             corrected_anchor_rmsd=cv.get("anchor_rmsd"),
+            baseline_bridged=(
+                f"{bridge_base[key]['with_bridge']}/{bridge_base[key]['total']}"
+                if key in bridge_base else None),
+            corrected_bridged=(
+                f"{bridge_corr[key]['with_bridge']}/{bridge_corr[key]['total']}"
+                if key in bridge_corr else None),
+            bridge_rate_change=(
+                round((bridge_corr[key].get("rate") or 0)
+                      - (bridge_base[key].get("rate") or 0), 3)
+                if key in bridge_base and key in bridge_corr else None),
             baseline_poses=bv.get("poses", 0),
             corrected_poses=cv.get("poses", 0),
             is_control=(gene == CONTROL_GENE),

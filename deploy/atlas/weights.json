@@ -1,9 +1,9 @@
 {
-  "status": "not_fitted: 6 positive(s) and 0 negative(s) scored, below the floor of 8 labelled pairs. Spec 4.8 fits on the benchmark panel and the Sievers matched set; the Sievers arm runs after the panel. A composite fitted on fewer pairs than it has components would be fitting noise",
+  "status": "not_fitted: 7 positive(s) and 0 negative(s) scored, below the floor of 8 labelled pairs. Spec 4.8 fits on the benchmark panel and the Sievers matched set; the Sievers arm runs after the panel. A composite fitted on fewer pairs than it has components would be fitting noise",
   "weights": {},
   "objective": null,
-  "labelled_pairs": 6,
-  "positives": 6,
+  "labelled_pairs": 7,
+  "positives": 7,
   "negatives": 0,
   "components_used": [],
   "caveats": [],

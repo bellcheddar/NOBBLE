@@ -49,6 +49,15 @@ except Exception as e:
     print('    throughput not updated:', e)
 "
 
-echo "--- atlas"
-"$SCI" deploy/build_atlas.py "$CAMPAIGN" 2>&1 | tail -4
+# Publishing is opt-out, because scoring a secondary campaign to look at
+# it should not change what the public site serves. Running
+# `refresh.sh campaigns/corrected_...` to inspect a half-finished run
+# republished the atlas from it, which is a side effect nobody asks for
+# when they say "score this".
+if [[ "${NOBBLE_NO_PUBLISH:-}" == "1" || "${2:-}" == "--no-publish" ]]; then
+  echo "--- atlas skipped (--no-publish): $CAMPAIGN scored but not published"
+else
+  echo "--- atlas"
+  "$SCI" deploy/build_atlas.py "$CAMPAIGN" 2>&1 | tail -4
+fi
 echo "=== refreshed. Deploy separately with deploy/deploy.sh ==="

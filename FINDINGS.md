@@ -726,3 +726,37 @@ differs between the two runs.
 0 of 10 in the 15-mer campaign, the worst pose in the panel at 44.92 A, and
 the subject of the prediction recorded in F13. RBM39 has three of ten
 seeds.
+
+## F18. The RBM39 half of the F13 prediction is wrong
+
+F13 recorded, before either pair ran, what F6 predicts for the two
+outstanding benchmark members. For RBM39 / DCAF15 it said:
+
+> RBM39 changes little in either direction, because at 6.08 A the 15-mer
+> was already roughly right and there is not much for the whole domain to
+> fix.
+
+That is wrong. With three of ten seeds scored:
+
+| | n | best | median | worst |
+|---|---|---|---|---|
+| 15-mer | 10 | 5.462 | **6.085** | 6.446 |
+| whole domain | 3 | 0.659 | **0.715** | 0.817 |
+
+The two ranges do not overlap. Every 15-mer seed lands between 5.4 and 6.4
+A; every whole-domain seed so far lands below 0.82. The median moves by
+-5.37 A, and the whole-domain poses are correct rather than improved.
+
+**The reasoning behind the prediction was the error, not the arithmetic.**
+I read 6.08 A as "roughly right, little room to improve". It is not
+roughly right: it is a pose that is consistently about six angstrom from
+the deposited one, which is a different placement rather than a slightly
+imprecise one. The 15-mer's seeds agreeing with each other at 6 A made it
+look converged, and convergence on the wrong answer reads like accuracy
+unless the deposited structure is in the comparison.
+
+Three seeds is not ten, so the exact median will move. The separation will
+not: the distributions are disjoint by more than four angstrom.
+
+The CDK12 half of F13 is still open and is the half the prediction was
+confident about.
