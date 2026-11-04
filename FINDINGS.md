@@ -3637,3 +3637,45 @@ clamp, F78 in the geometry that feeds all three. The pattern each time was
 not that a NaN appeared, because none ever has, but that the code treated
 "not a number" as a number and the failure was silent in a direction that
 flattered the result.
+
+## F79. F45 added a parameter and nobody ever passed it
+
+F45's finding was that sizing a campaign from a "representative job" taken
+from whichever campaign was measured last is wrong: the per-token rate
+transfers between campaigns and the job size does not. It opened Gate G1
+falsely at 104.3 hours against a real 54, which is the most expensive thing
+that function can do.
+
+The fix added `tokens_per_pair` to `cost_of` and `total_tokens` to
+`projected_hours`, and F61 later added `job_tokens` for per-band pricing.
+The design arm is the only caller of `cost_of`, in two places, and passed
+none of them. So the one surviving caller kept taking the fallback that the
+finding was about, with the basis string beside it saying so in full: "a
+144-token job, which is the median job of campaign_20261104T004632Z and not
+necessarily of the campaign being sized".
+
+It gave the right answer by coincidence. Throughput is currently measured on
+the main campaign, whose median job is 144 tokens, and the design scan's
+jobs are 144 and 124. Remeasure on the corrected campaign, whose median job
+is 397, and the same unchanged scan is projected at 11.5 hours against a
+real 4.4. The chain remeasures throughput after every campaign, so that was
+one `refresh.sh` away.
+
+The preview now prices the exact job list the assembler would emit, taken
+from `build_manifest` rather than recomputed: 240 jobs, 32,960 tokens, 4.4
+hours, which is the figure the assembled campaign gives because it is the
+same list. Recomputing the token formula in the report would have been a
+second copy of `construct.residue_count() + peptide.length + cofactor +
+ligand_atoms`, which is the shape this project keeps having to undo.
+
+Found by running the chain's stages against real data after a day of
+refactoring, to check nothing had regressed. Nothing had. What showed up was
+a basis string describing a weakness nobody had read, which is a reminder
+that this project's habit of writing the reason beside the number only
+works if someone looks.
+
+A correction to my own diagnosis on the way: the first reading of the design
+cost showed `None`, and I took it for a regression from the refactor. The
+cost lives under `preview.cost` and my probe read a top-level key that has
+never existed. The code was right and the probe was wrong, for the second
+time today after the `RECOVERED_A` grep in F64.
