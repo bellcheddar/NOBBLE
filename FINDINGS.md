@@ -7895,3 +7895,40 @@ sitting in the output of the finding I was writing. The pattern is not that
 these are hard to see. It is that having found one instance, I stopped
 looking, and the remedy is mechanical: when a fix names a category, make the
 test enumerate the category rather than assert the instance.
+
+## F173. My own `git add -A` published a file nothing references
+
+The full suite went red on F148's check that every published structure has a
+row naming it: 101 structures on disk, 100 named. The orphan was
+`bench01_GSPT1_CRBN__binary__unconstrained__seed5 2.cif`, byte-identical to
+the real `seed5.cif`, mode `-rw-------` against the real file's `-rw-r--r--`,
+and timestamped 12:57 where the rebuild wrote at 18:14.
+
+That is an iCloud sync-conflict copy, not something the build produced. The
+project root is iCloud-backed. `build_atlas.py` clears `deploy/atlas` before
+it writes, so the builder cannot leave a stale structure behind; iCloud can,
+by restoring a copy of the file the rebuild replaced, with its own earlier
+timestamp and its own permissions. It then sat in the bundle until `git add
+-A` in F171's commit tracked it, which is what published it.
+
+Two things worked. F148 caught it, and it caught it as the thing it is: a
+file on the droplet that no row names, which is exactly the failure that
+check exists for. And the owner-only mode would have been the next problem,
+because `deploy.sh` rsyncs modes verbatim and the service user cannot read a
+`-rw-------` file, so a requested structure would have come back 500. Nothing
+requests this one, so it would have sat there unread.
+
+The file is removed. The new check names the class rather than the instance:
+no tracked file and no file under `deploy/atlas` may carry a sync-conflict
+name, so the next one is read off a test name instead of diagnosed from a
+byte compare and a `git log` walk. Its third test pins the pattern against
+six names the project actually uses, because " 2.cif" is a suffix an
+ordinary name could plausibly carry and a check that fires on `_v2.html` or
+`icon_300.png` would be worse than none.
+
+What I will not do is stop using `git add -A`, which is the thing that
+actually went wrong. The build commits whole phases and an explicit file list
+would miss new outputs, which is a worse failure than publishing a duplicate
+that a test catches within one suite run. The lesson is narrower than my
+instinct: a sync-backed working tree puts files in the build's output
+directory, and the defence belongs in the checks rather than in the commit.
