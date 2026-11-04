@@ -70,7 +70,26 @@ Rewritten after every phase and at least every 30 minutes during long compute.
   whose median job is 124, at 104.3 hours and opened Gate G1 on a run that
   needs 37 (F45). The per-token rate transfers between campaigns; the job
   size does not. It now projects from the campaign's own token total and
-  reports which basis it used
+  reports which basis it used.
+
+  **Measured in flight at 09:34 UTC**: 54 jobs done, median 75 s per job,
+  0.366 s per token, 44 jobs per hour over a 1.21-hour window at a 101 per
+  cent duty cycle. The 2,306 remaining project to **46.8 hours** of compute.
+  Within the budget, so Gate G1 stays closed. The nine hours between
+  assembly and the first result are the chain waiting for the corrected
+  campaign to release the GPU, not lost throughput: the queue is at job 69
+  of 2,360 and has not re-run anything, which was checked for duplicate job
+  ids rather than assumed
+- **One pair is held back from publication.** `bench02_BRD4_VHL`'s fifteen
+  jobs ran on YAMLs carrying a hydroxyproline on BRD4 Pro379 that the fixed
+  modification rule no longer asks for (F47). The queue row says no
+  modification; the YAML on disk says HYP; nothing compared the two until
+  F59. The atlas build now refuses while any job's YAML disagrees with its
+  queue row, so the site stays on the previously published atlas rather
+  than showing a figure measured on a residue BRD4 does not have. The chain
+  corrects and re-runs the pair between the campaign and the publish. The
+  currently running chain was launched before that change and will not do
+  it, which the refusal makes safe rather than silent
 - **Tier 2**: built, wired and partitioned (D-NOB-032), not yet run. Queued
   behind the main campaign in the chain, because the decile it refines is
   chosen from the ranking that campaign produces
