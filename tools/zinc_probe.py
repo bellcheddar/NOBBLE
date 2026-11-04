@@ -73,22 +73,34 @@ def _peptide_plddt(output_dir: Path) -> float | None:
 
 
 def main() -> int:
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Fold zinc fingers with and without the ion.")
+    parser.add_argument("--per-class", type=int, default=1,
+                        help="how many fingers from each class (default 1)")
+    args = parser.parse_args()
+
     library = LM.load()
     if library is None:
         print("no library manifest: run nobble.curate.library first", file=sys.stderr)
         return 2
 
     fingers = [r for r in library["peptides"] if r["source"] == "sievers_zf"]
-    degraded = next(r for r in fingers if r["label"] == "degraded")
-    control = next(r for r in fingers if r["label"] == "not_degraded")
+    # Deterministic selection, so a rerun probes the same fingers.
+    degraded = sorted((r for r in fingers if r["label"] == "degraded"),
+                      key=lambda r: r["peptide_id"])[:args.per_class]
+    controls = sorted((r for r in fingers if r["label"] == "not_degraded"),
+                      key=lambda r: r["peptide_id"])[:args.per_class]
 
     PROBE.mkdir(parents=True, exist_ok=True)
     settings = runner.settings_from_config(tier=1)
 
     results = []
-    for row, role in ((degraded, "degraded"), (control, "not_degraded")):
+    roster = ([(r, "degraded") for r in degraded]
+              + [(r, "not_degraded") for r in controls])
+    for row, role in roster:
         for with_zinc in (True, False):
-            tag = f"{role}_{'zinc' if with_zinc else 'nozinc'}"
+            tag = f"{role}_{row['peptide_id'][-6:]}_{'zinc' if with_zinc else 'nozinc'}"
             yaml_path = PROBE / f"{tag}.yaml"
             yaml_path.write_text(Y.to_yaml_text(_document(row["sequence"], with_zinc)))
             job = {"job_id": tag, "yaml": str(yaml_path), "seed": 1,
@@ -108,16 +120,31 @@ def main() -> int:
             print(f"    {outcome.status}, peptide pLDDT {plddt}", flush=True)
 
     verdict = {"results": results}
-    paired = {}
+    per_finger: dict = {}
     for item in results:
-        paired.setdefault(item["role"], {})[item["zinc"]] = item["peptide_plddt"]
-    deltas = {
-        role: (round(values[True] - values[False], 2)
-               if values.get(True) is not None and values.get(False) is not None
-               else None)
-        for role, values in paired.items()
+        key = (item["role"], item["gene"])
+        per_finger.setdefault(key, {})[item["zinc"]] = item["peptide_plddt"]
+
+    gains: dict = {"degraded": [], "not_degraded": []}
+    for (role, gene), values in sorted(per_finger.items()):
+        if values.get(True) is None or values.get(False) is None:
+            continue
+        gains[role].append({"gene": gene,
+                            "with_zinc": values[True],
+                            "without_zinc": values[False],
+                            "gain": round(values[True] - values[False], 2)})
+
+    def _mean(items):
+        numbers = [i["gain"] for i in items]
+        return round(sum(numbers) / len(numbers), 2) if numbers else None
+
+    verdict["per_finger"] = gains
+    verdict["mean_gain"] = {role: _mean(items) for role, items in gains.items()}
+    verdict["no_zinc_mean_plddt"] = {
+        role: (round(sum(i["without_zinc"] for i in items) / len(items), 2)
+               if items else None)
+        for role, items in gains.items()
     }
-    verdict["plddt_gain_from_zinc"] = deltas
     verdict["note"] = (
         "Positive gain means the ion improved the fold and D-NOB-034 is "
         "load-bearing. A gain near zero means Boltz already predicts the "

@@ -928,12 +928,31 @@ finger fragment.** Its histidines fall outside the window, so there is no
 site to complete, and bench04 scored the best Delta-ipTM in the panel
 without one. The test is the complete motif, not the source.
 
-**Not yet validated empirically.** This is reasoning from the chemistry, not
-a measurement. Boltz-2 may well predict a canonical finger from sequence
-alone, as AlphaFold2 generally does. The cheap test is two jobs, one finger
-folded with and without the ion, comparing peptide-chain pLDDT, and it
-should run before the main campaign rather than after. Recorded as a
-pending check rather than claimed as settled.
+**Measured, and the strong form of the claim above is wrong.**
+`tools/zinc_probe.py` folded one degraded finger and one control, each with
+and without the ion, peptide chain only:
+
+| finger | with zinc | without zinc | gain |
+|---|---|---|---|
+| ZEP2 (degraded) | 95.66 | 95.37 | 0.29 |
+| ZN346 (not degraded) | 87.79 | 85.99 | 1.80 |
+
+A chain predicted at pLDDT 95.37 is not "a disordered 23-mer", so that
+sentence is simply false as applied to what Boltz-2 actually predicts. It
+reproduces the canonical fold from sequence alone, as AlphaFold2 does,
+having learned the mapping from structures that did contain the ion.
+
+The decision to include the zinc stands, but as **cheap insurance rather
+than a fix**: it is chemically correct, it costs one token, and it does not
+hurt. What does not stand is the claim that the arm "would have measured
+noise without it". That was reasoning from chemistry asserted as a result,
+and the measurement contradicts it.
+
+**One caveat worth keeping.** The gain was larger for the control (1.80)
+than for the degraded finger (0.29). At one finger per class that is well
+inside noise, but a zinc effect that correlated with the label would be
+exactly the kind of confounder D-NOB-035 refuses MSAs to avoid, so it is
+worth more than one sample before being dismissed.
 
 **Reversal.** `requires_structural_zinc` in `nobble/curate/peptides.py`;
 return `{"required": False}` to go back. `tests/test_zinc.py` fails first,

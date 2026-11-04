@@ -107,3 +107,22 @@
   window). Not yet validated empirically: a two-job with/without test should
   run before the main campaign. D-NOB-034. tests/test_zinc.py (5 tests).
   68 tests pass. Campaign manifest rewritten: 158 pairs, 2,370 jobs, 0 errors.
+- 2026-11-04T03:30Z Zinc probe run, and it falsified the strong form of
+  D-NOB-034. Peptide-only folds: ZEP2 (degraded) pLDDT 95.66 with zinc vs
+  95.37 without; ZN346 (control) 87.79 vs 85.99. A chain at 95.37 is not
+  "a disordered 23-mer", so that claim was wrong as applied to what Boltz-2
+  predicts: it reproduces the canonical C2H2 fold from sequence alone. The
+  zinc stays as cheap insurance (chemically right, one token, does not hurt)
+  but the claim that the arm "would have measured noise without it" is
+  withdrawn. D-NOB-034 corrected in place with the table. One caveat kept:
+  the gain was larger for the control (1.80) than the degraded finger (0.29),
+  and a zinc effect correlated with the label would be the same confounder
+  D-NOB-035 refuses MSAs to avoid, so it is being rerun at 6 fingers per class.
+- 2026-11-04T03:30Z D-NOB-035: the Sievers fingers get no MSA. Not for cost
+  (the 120 queries are network-bound and would not contend with the GPU) but
+  because alignment depth would not be evenly distributed across the two
+  classes the ROC separates: 24 degraded fingers from 24 genes against 96
+  controls from 86, matched on length and composition and not on how well
+  studied the parent is. Depth correlating with the label would put homology
+  into the headline ROC. Giving none to any removes it by construction. The
+  confounder is asserted, not measured, and the decision records that.
