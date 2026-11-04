@@ -45,19 +45,32 @@ Rewritten after every phase and at least every 30 minutes during long compute.
 ## Phase 2 in flight
 
 - **Benchmark panel: complete.** 99/99 jobs, exit 0, no failures at any point.
-  Final measured throughput over 100 timed jobs: median 0.4551 s/token, giving
-  146 affordable pairs in the 48-hour target
-- **Corrected-construct campaign**: running in tmux `nobble-corrected`, chained
-  automatically behind the benchmark queue (D-NOB-030)
-- **The chain**: `tools/run_chain.sh` is armed in tmux `nobble-chain`,
-  waiting for the GPU. It runs the corrected comparison, then the main
-  campaign, then tier 2, then the design scan (D-NOB-039). Each stage is
-  resumable, so a kill anywhere is recovered by rerunning the script
-- **Main campaign**: assembled and ready, not yet started.
-  `campaigns/campaign_20261104T004632Z`, 158 pairs (7 benchmark, 120 Sievers,
-  31 scrambles), 2,360 jobs. Projects to 51.8 hours at the measured rate: over
-  the 48-hour per-run target by 3.8, far under the 96-hour Gate G1 threshold,
-  so no gate opens and the priority ordering absorbs the overrun
+  Measured throughput over 100 timed jobs: median 0.4551 s/token. Throughput
+  has since been remeasured on the corrected campaign (0.3991 s/token over a
+  different job-size mix), which is what surfaced F45
+- **Corrected-construct campaign: complete.** 100/100 jobs. One job was lost
+  to a kill of mine, on a healthy job misread as hung (F20); its retry
+  succeeded and nothing else was affected
+- **The chain: running.** `tools/run_chain.sh` released from `wait_for_gpu` at
+  08:35 UTC when the corrected campaign finished. It scored and compared the
+  corrected campaign, preflighted the main campaign with `ok: true` on all
+  2,360 jobs, and started it. Tier 2, the design scan, the atlas rebuild and
+  the deploy follow (D-NOB-039). Each stage is resumable, so a kill anywhere
+  is recovered by rerunning the script
+- **Main campaign: running.** `campaigns/campaign_20261104T004632Z`, 158 pairs
+  (7 benchmark, 120 Sievers, 31 scrambles), 2,360 jobs, 392,400 tokens.
+  Measured on its own first jobs at 0.3363 s/token, which projects **36.7
+  hours**: inside the 48-hour per-run target and 59 hours clear of the
+  96-hour Gate G1 threshold.
+
+  That number had to be fixed to be trusted. `projected_hours` sized a
+  campaign by multiplying its job count by a "representative job" taken from
+  whichever campaign was measured last. Throughput remeasured on the
+  corrected campaign, whose median job is 397 tokens, projected this one,
+  whose median job is 124, at 104.3 hours and opened Gate G1 on a run that
+  needs 37 (F45). The per-token rate transfers between campaigns; the job
+  size does not. It now projects from the campaign's own token total and
+  reports which basis it used
 - **Tier 2**: built, wired and partitioned (D-NOB-032), not yet run. Queued
   behind the main campaign in the chain, because the decile it refines is
   chosen from the ranking that campaign produces
@@ -154,6 +167,14 @@ QC: `npx node qc/qc.mjs` with the app running.
 ## Gates open
 
 - **No gate is currently open.** All six are closed.
+- **G1 compute: closed, and was briefly reported open in error.** When the
+  chain remeasured throughput on the corrected campaign, `projected_hours`
+  applied that campaign's 397-token representative job to the main campaign's
+  124-token jobs and returned 104.3 hours against the 96-hour threshold. The
+  main campaign is measuring 0.3363 s/token on its own jobs, which is 36.7
+  hours. The projection, not the campaign, was wrong (F45). Recorded here
+  because a Gate reported open stops an unattended build, so a false one is
+  as costly as a missed one.
 - **G5 Disk**: closed and now actually enforced. The 50 GB floor had sat in
   `thresholds.toml` since Phase 1 with nothing reading it, so the gate
   existed on paper. `runner.disk_gate()` checks it before every job and
