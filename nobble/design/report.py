@@ -116,11 +116,21 @@ def _default_parent(parents: list[dict]) -> dict:
     return fallback
 
 
-def cost_of(count: int, tokens_per_pair: int | None = None) -> dict:
+def cost_of(count: int, tokens_per_pair: int | None = None,
+            job_tokens: list[int] | None = None) -> dict:
     """What a set of variants would cost, from the measured rate.
 
-    `tokens_per_pair` lets the caller project from real job sizes rather than
-    from a representative job of whichever campaign was measured last (F45).
+    `job_tokens` is the token count of each job the scan would actually
+    emit, which is what the projection wants. `tokens_per_pair` is the older
+    way of saying the same thing when every job is the same size.
+
+    Both were optional and neither was ever passed, so this always took the
+    fallback that F45's whole finding was about: a representative job from
+    whichever campaign was measured last. It gave the right answer only
+    because throughput happened to be measured on a campaign whose median
+    job is 144 tokens, the same as the design scan's. Measured on the
+    corrected campaign instead, whose median job is 397, the same unchanged
+    scan would have been projected at 11.5 hours against a real 4.4 (F79).
     A design scan's variants are the parent's length, so one number covers
     them all, and that is exactly the case the banded projection prices
     correctly: every job is the same size, so it belongs in one band, and a
@@ -131,8 +141,9 @@ def cost_of(count: int, tokens_per_pair: int | None = None) -> dict:
     from nobble.curate.manifest import jobs_per_pair
 
     jobs = count * jobs_per_pair()
-    job_tokens = [tokens_per_pair] * jobs if tokens_per_pair else None
-    total_tokens = jobs * tokens_per_pair if tokens_per_pair else None
+    if job_tokens is None and tokens_per_pair:
+        job_tokens = [tokens_per_pair] * jobs
+    total_tokens = sum(job_tokens) if job_tokens else None
     projection = projected_hours(count, total_tokens=total_tokens,
                                  job_tokens=job_tokens)
     return {
@@ -142,6 +153,29 @@ def cost_of(count: int, tokens_per_pair: int | None = None) -> dict:
         "status": projection.get("status"),
         "basis": projection.get("basis"),
     }
+
+
+def _scan_job_tokens(parent_id: str) -> list[int] | None:
+    """Token count of every job the scan would emit, from the assembler.
+
+    Taken from `build_manifest`, which is what will actually emit them, so
+    the preview's cost is the cost of the thing being previewed rather than
+    an estimate built beside it. `build_manifest` writes nothing, and the
+    design report is produced at atlas-build time rather than per request.
+
+    Recomputing the token formula here instead would be a second copy of
+    `construct.residue_count() + peptide.length + cofactor + ligand_atoms`,
+    which is the shape this project keeps having to undo (F79).
+    """
+    try:
+        from nobble.design import assemble as assemble_module
+
+        manifest = assemble_module.build_manifest(parent_id)
+    except Exception:                               # noqa: BLE001
+        return None
+    jobs = manifest.get("jobs") or []
+    tokens = [job.tokens for job in jobs if getattr(job, "tokens", None)]
+    return tokens or None
 
 
 def build(parent_id: str | None = None) -> dict:
@@ -160,7 +194,8 @@ def build(parent_id: str | None = None) -> dict:
             "parent": chosen,
             "generator": "alanine_scan",
             "variants": generated["variants"],
-            "cost": cost_of(generated["count"]),
+            "cost": cost_of(generated["count"],
+                            job_tokens=_scan_job_tokens(chosen["peptide_id"])),
         }
 
     # Lifts, if a design campaign has actually run.
