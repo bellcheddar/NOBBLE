@@ -4133,7 +4133,7 @@ The count is not an incidental number. Delta-ipTM is a difference of minima
 over seeds, and a minimum is not robust to how many draws it was taken
 over, which is the reasoning behind the hard partition by sampling tier and
 behind the seed-balance report beside the headline curve. It also sets the
-campaign's size: 158 pairs times 5 seeds times 3 arms is 2,360 jobs.
+campaign's size: 158 pairs times 5 seeds times 3 arms is 2,370, and the queue holds 2,360 because two pairs carry two arms rather than three.
 
 Two copies made it worse than one. A corrected campaign emitted with a
 different seed count from the benchmark it is compared against would break
@@ -6308,3 +6308,38 @@ different file. Accounting over the directory the campaign being priced lives
 in fixes it for both the real case and the fixture. And with that fixed, the
 two fixtures turned out not to exceed the budget at all, so the assertions
 had been passing on live state rather than on the thing they name.
+
+## F136. The progress report's library figures were from an earlier build
+
+PROGRESS.md's phase table said "25,567-peptide library reduced to 220". The
+manifest says 25,519 candidates reduced to 158. Both of the stated numbers
+were real once: the candidate pool before a deduplication, and a budget from
+before the hardware probe measured the real one.
+
+Nobody would act on a wrong reduction ratio, which is why it sat there
+through every rewrite of that table. It is now recomputed from
+`library.summary.json` by a test, along with the one sentence in that cell a
+reader would actually challenge.
+
+That sentence is the part worth having found. The manifest records
+`"diverse": 0` and says why: the mandatory benchmark and Sievers members plus
+their composition-matched scrambles cost 158 against a budget of 156, so the
+diversity selection had no headroom and selected nothing. Spec 3.4 names five
+peptide sources and the campaign's library holds three. Curated UbiBrowser
+degrons, Koren C-degrons and ProtCID packing-only epitopes are built as
+candidates and then squeezed out entirely.
+
+That is not a defect. The manifest states it in two notes, the mandatory
+members are deliberately not trimmed because the Sievers split is the
+headline ROC's control set, and the queue is priority-ordered so a run cut
+short loses discovery from the tail rather than a control from the middle.
+What was missing is that the progress report said "library reduced to 220"
+and nothing on the way to it said "and this campaign is calibration only".
+The cell now says so, and a test fails if `diverse` stops being zero, which
+is the right moment to rewrite the sentence rather than leave a stale one
+standing.
+
+Also corrected: a finding that computed the campaign's size as "158 pairs
+times 5 seeds times 3 arms is 2,360 jobs". That product is 2,370. The queue
+holds 2,360 because two pairs carry two arms rather than three, which is the
+fact the sentence was reaching for and had rounded into the arithmetic.
