@@ -92,8 +92,31 @@ def score_campaign(campaign: Path, with_plip: bool = True, limit: int | None = N
                     f"geometry {job['job_id']}: {type(problem).__name__}: {problem}"
                 )
         found = [item for item in bridge_scores if item is not None and item.found]
-        entry["bridging_seeds_total"] = len([item for item in bridge_scores if item])
+        # A seed whose geometry could not run is not a seed that did not
+        # bridge. Both used to land in the denominator, so a pair with five
+        # usable ternaries of which four bridged, and five whose output had no
+        # ligand chain, reported a formation rate of 0.4 rather than 0.8 with
+        # five seeds unmeasurable. Latent so far: the only reason seen in any
+        # campaign is BINMAN's own single_chain verdict, which is a real
+        # negative and still counts.
+        unmeasurable = [
+            item for item in bridge_scores
+            if item is not None and not item.found
+            and item.reject_reason in geometry.MEASUREMENT_FAILURES
+        ]
+        measured = [
+            item for item in bridge_scores
+            if item is not None and item not in unmeasurable
+        ]
+        entry["bridging_seeds_total"] = len(measured)
         entry["bridging_seeds_with_bridge"] = len(found)
+        entry["bridging_seeds_unmeasurable"] = len(unmeasurable)
+        if unmeasurable:
+            counts: dict[str, int] = {}
+            for item in unmeasurable:
+                key = item.reject_reason or "unknown"
+                counts[key] = counts.get(key, 0) + 1
+            entry["bridging_unmeasurable_reasons"] = counts
 
         # Why the seeds that did not bridge did not bridge. The per-seed
         # reason was computed and then aggregated away, so a pair with no
@@ -103,8 +126,8 @@ def score_campaign(campaign: Path, with_plip: bool = True, limit: int | None = N
         # that the bridge was weak, it is that there was no bridge to
         # measure. That distinction is the whole of spec 4.1.
         reasons: dict[str, int] = {}
-        for item in bridge_scores:
-            if item is None or item.found:
+        for item in measured:
+            if item.found:
                 continue
             reason = item.reject_reason or "unknown"
             reasons[reason] = reasons.get(reason, 0) + 1

@@ -31,6 +31,21 @@ if str(paths.BINMAN) not in sys.path:
 PEPTIDE_CHAIN = "P"
 LIGAND_CHAIN = "L"
 
+# Reject reasons that mean the bridge was not measured, as against measured
+# and absent. BINMAN's filter returns its own reasons for a real negative
+# ("single_chain:1_qualifying_of_1" means the glue buried surface against one
+# chain rather than two, which is a finding). These four are assigned here,
+# before any geometry runs, and say the input was unusable. The difference
+# matters to bridge_formation_rate: counting an unmeasurable seed in the
+# denominator reports a prediction that could not be assessed as one that
+# failed to bridge.
+MEASUREMENT_FAILURES = (
+    "structure_missing",
+    "binary_complex_has_no_bridge",
+    "no_ligand_chain_in_output",
+    "no_peptide_chain_in_output",
+)
+
 
 @dataclass
 class BridgeScore:

@@ -1439,3 +1439,49 @@ Every other consumer reads the structure in-process. So this was a single
 instance of a class with one other member, which is the least comfortable
 kind of finding: the sweep that would have caught it had to be built from
 it.
+
+## F33. An unmeasurable seed counted as a seed that failed to bridge
+
+A sweep built from F32: where else does a consumer turn a refusal into a
+number? One place, and it is latent rather than live, which is the only
+reason it reads as a near miss.
+
+`bridge_formation_rate` is bridged over total, and the total counted every
+`BridgeScore` the geometry returned. Most reject reasons belong there.
+BINMAN's `single_chain:1_qualifying_of_1` means the glue buried surface
+against one chain rather than two, which is a finding and the whole of
+spec 4.1: CDK12 rejects that way on all ten seeds and the rate of 0.0 is
+correct and informative.
+
+Four reasons are not findings. `structure_missing`,
+`no_ligand_chain_in_output`, `no_peptide_chain_in_output` and
+`binary_complex_has_no_bridge` are assigned in `geometry.score_structure`
+before any geometry runs, and say the input was unusable. A pair with four
+usable ternaries that all bridged and four whose output carried no ligand
+chain would have reported a formation rate of 0.5, when the honest answer
+is 1.0 of what could be measured, with four seeds unassessable.
+
+Latent because no campaign has produced any of the four. Every reject
+reason recorded to date, 24 of them, is the single_chain verdict. The main
+campaign is 1,573 ternary jobs and the fallback ladder is designed to let
+individual jobs fail, so the four become reachable there, which is why
+this is fixed before the run rather than after it.
+
+The denominator now counts measured seeds only, with
+`bridging_seeds_unmeasurable` and its own reason breakdown beside it, and
+a pair with nothing measurable reports no rate rather than a rate of zero.
+The reject-reason summary describes real negatives and no longer mixes
+failures in with them.
+
+The list of failure reasons lives in `geometry.py` next to the code that
+assigns them, and a test asserts each one is still assigned there, because
+a list of strings in another module drifts the moment a reason is renamed.
+
+The rest of the sweep came back clean, which is worth recording so it is
+not re-walked. `bridge_percentile` takes the median over bridged seeds
+only and is null when none bridged. Exceptions from the geometry are
+already excluded from both numerator and denominator. Only ternary jobs
+are passed to the bridge filter at all, so `binary_complex_has_no_bridge`
+cannot arise, and it is in the list defensively. `convergence_score` and
+the docking counts read through `.get` and come back null rather than
+zero.
