@@ -23,7 +23,10 @@
   </p>
 
   <h2>The confidence caveat, stated plainly</h2>
-  <p class="panel__hint">Boltz-2 on 519 therapeutic antibodies separates cognate from non-cognate antigens poorly. ipTM is enrichment, not a verdict.</p>
+  {# Spec 4.5 and the Phase 4 list both ask for this caveat on the About page,
+     and it was here with "poorly" where the spec gives a number. A measured
+     range beats an adjective, and it is five words (F49). #}
+  <p class="panel__hint">Boltz-2 on 519 therapeutic antibodies separates cognate from non-cognate antigens at ROC-AUC 0.5 to 0.60, with ipTM-min the strongest of the confidence metrics. ipTM is enrichment, not a verdict.</p>
   <p class="panel__hint">On the first benchmark pair a bridging pose scored below a non-bridging one, so geometry leads the ranking.</p>
 </section>
 

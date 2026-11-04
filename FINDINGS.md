@@ -2314,3 +2314,55 @@ such prefilter exists, ESMFold is not used for it, and no peptide is
 rejected on pLDDT anywhere, the `mean_plddt_min` floor being a Tier B
 receptor threshold. Spec 4.7's affinity rule, a column and never a ranking
 key, was already held by D-NOB-005 and by a test.
+
+## F49. Reading the rest of the spec against the code
+
+F47 and F48 both came from comparing one line of the specification with
+the code that implements it, so I read section 4 through. Four rules, one
+small gap, and two readings of mine that were wrong before they were
+right.
+
+**4.1, the bridge percentile against 285,996 observed bridges.** Clean,
+and already pinned by a test against the live store count.
+
+**4.2, the lysine reach window.** The spec says to apply BINMAN's
+reach-window fit, "already calibrated against 976 observed diGly sites",
+and report `lysine_reach_fit`. The field is deliberately absent, and
+D-NOB-024 explains why at length: BINMAN's reach window carries
+`fitted = false`, and its own measurements on 369 assayed lysines give
+AUCs of 0.42 to 0.48, at or below chance and inverted. The spec's premise
+is factually wrong, so the project reports the geometry and derives no
+score. The other two things 4.2 asks for, the count inside the window and
+the relative SASA, are both there per lysine and in aggregate. A deviation
+from the spec, argued and logged, which is what CLAUDE.md asks for.
+
+**4.4, pose convergence, "report mean and spread".** Clean: `mean_rmsd`
+0.789 and `spread` 0.801 on the first pair, with `max_rmsd` and the full
+pairwise matrix beside them.
+
+**4.5, the ipTM calibration caveat.** The one gap, and a small one. The
+About page carried the conclusion, "separates cognate from non-cognate
+antigens poorly", without the measurement behind it. The spec gives a
+number, ROC-AUC 0.5 to 0.60, and names ipTM-min as the strongest of the
+confidence metrics. A reader asking how weak got an adjective. Both now
+sit in the same two short sentences, five words longer.
+
+### Two wrong readings, and a shell mistake
+
+I grepped the About page for "Thera-SAbDab" and "0.60", found neither,
+and concluded the caveat was missing altogether. It was there in
+different words, naming 519 antibodies and stating the conclusion. That
+is F20's mistake in a smaller place: a test for the wrong string read as
+absence of the thing.
+
+I then asserted the caveat was two sentences by counting full stops, and
+got four, because "0.5" and "0.60" each contain one. Counting dots
+followed by whitespace is correct and obvious afterwards. That is the
+third naive string check of mine to be wrong today, after the regex over
+a multi-fragment f-string in F26 and the pLDDT column name in F46.
+
+And a stray `cat >` with no heredoc swallowed the rest of my own script as
+its standard input, so the test file was never written, an empty `.go`
+file appeared in a Python project, and a blocked shell sat in the
+background looking like a slow test run. Diagnosed by reading what the
+background process was actually doing rather than waiting longer for it.
