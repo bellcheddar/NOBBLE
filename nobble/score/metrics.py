@@ -53,6 +53,11 @@ class SeedRecord:
     confidence_score: float | None
     affinity_pred_value: float | None
     structure: str | None
+    # Which chains the receptor-peptide ipTM was taken over, and what the
+    # previous definition (chain 0 alone) gave, so the change is auditable
+    # from the record rather than only from the commit (D-NOB-044).
+    iptm_receptor_chains: list = field(default_factory=list)
+    iptm_receptor_peptide_first_chain_only: float | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -114,6 +119,42 @@ def peptide_chain_index(construct_name: str) -> int:
     return len(C.CONSTRUCTS[construct_name].segments)
 
 
+def _receptor_peptide_iptm(confidence: dict, construct_name: str) -> tuple:
+    """Interface confidence between the substrate receptor and the peptide.
+
+    Spec 4.3 defines Delta-ipTM as a difference of ipTM minima and does not
+    say which chain pair the ipTM is. For a single-chain receptor there is no
+    question. For a receptor submitted as several chains there is, and it was
+    being answered silently: the pair was chain 0 against the peptide, which
+    for DCAF15_DDB1_DDA1 means the N-terminal domain of DCAF15 alone while
+    its C-terminal domain, which the substrate also binds, was ignored.
+
+    Taking the minimum across the substrate receptor's own segments is the
+    same rule this module already applies twice: across the two directions of
+    Boltz's asymmetric matrix, and across seeds (spec 4.3, minimum not mean).
+    The scaffolding chains are deliberately excluded. A minimum over all five
+    would be dominated by DDB1, which the peptide is not supposed to touch, so
+    the statistic would measure how well the degron fails to engage the
+    scaffold.
+
+    Measured effect of the change: one pair in one campaign, RBM39/DCAF15,
+    whose Delta-ipTM moved from +0.1872 to +0.1937. No other pair in any
+    campaign moved at all, and no verdict changed (D-NOB-044).
+
+    Returns (value, chains_used, first_chain_only) so the number is auditable
+    and the previous definition stays recoverable from the record.
+    """
+    chains = C.CONSTRUCTS[construct_name].substrate_receptor_chains()
+    peptide = peptide_chain_index(construct_name)
+    values = [_pair_iptm(confidence, chain, peptide) for chain in chains]
+    present = [value for value in values if value is not None]
+    return (
+        min(present) if present else None,
+        list(chains),
+        _pair_iptm(confidence, 0, peptide),
+    )
+
+
 def _pair_iptm(confidence: dict, first: int, second: int) -> float | None:
     """One cell of Boltz's pair_chains_iptm matrix, symmetrised.
 
@@ -141,13 +182,18 @@ def seed_record(job: dict) -> SeedRecord:
     confidence = job.get("confidence") or {}
     affinity = job.get("affinity") or {}
     index = peptide_chain_index(job["construct"])
+    receptor_peptide, chains_used, first_only = _receptor_peptide_iptm(
+        confidence, job["construct"]
+    )
     return SeedRecord(
         job_id=job["job_id"],
         seed=int(job["seed"]),
         complex_type=job["complex_type"],
         conditioning=job["conditioning"],
         iptm_global=confidence.get("iptm"),
-        iptm_receptor_peptide=_pair_iptm(confidence, 0, index),
+        iptm_receptor_peptide=receptor_peptide,
+        iptm_receptor_chains=chains_used,
+        iptm_receptor_peptide_first_chain_only=first_only,
         ptm=confidence.get("ptm"),
         complex_plddt=confidence.get("complex_plddt"),
         ligand_iptm=confidence.get("ligand_iptm"),

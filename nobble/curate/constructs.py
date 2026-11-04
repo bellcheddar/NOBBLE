@@ -54,6 +54,27 @@ class Construct:
     def sequences(self) -> list[str]:
         return [segment.sequence() for segment in self.segments]
 
+    def substrate_receptor_chains(self) -> tuple[int, ...]:
+        """Chain indices belonging to the substrate-recognition protein.
+
+        A construct is several chains in the YAML and one of them, or a few,
+        is the protein the degron actually binds. DCAF15 is submitted as two
+        segments, an N-terminal and a C-terminal domain, with DDB1's two beta
+        propellers and DDA1 behind them: five chains, of which the substrate
+        sees two.
+
+        Identified by accession rather than by label, because the labels are
+        domain names and do not all carry the gene: CRBN_CULT's only segment
+        is labelled "CULT domain". The substrate receptor is the protein the
+        construct is named for and is submitted first, which
+        `tests/test_iptm_chains.py` holds to.
+        """
+        first = self.segments[0].accession
+        return tuple(
+            index for index, segment in enumerate(self.segments)
+            if segment.accession == first
+        )
+
     def residue_count(self) -> int:
         return sum(len(sequence) for sequence in self.sequences())
 

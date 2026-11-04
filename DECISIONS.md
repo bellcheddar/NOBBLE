@@ -1351,3 +1351,52 @@ signal needs no tuning because its bound comes from the runner.
 **Reversal.** `_run_boltz` in `nobble/execute/runner.py`, and deleting
 `nobble/execute/watchdog.py` with its `[watchdog]` block in
 `config/thresholds.toml`.
+
+## D-NOB-044. The receptor-peptide ipTM is the substrate receptor's, not chain A's
+
+**Decision.** `metrics._receptor_peptide_iptm` takes the minimum of Boltz's
+`pair_chains_iptm` across the segments of the *substrate-recognition*
+protein against the peptide, rather than chain 0 against the peptide.
+Scaffolding chains are excluded. Each seed record now carries the chains
+used and the previous chain-0 value, so the change is auditable from the
+data and not only from this file.
+
+**Why.** Spec 4.3 defines the headline as
+`iptm_min_ternary - iptm_min_binary` and specifies the minimum across
+seeds. It does not say which chain pair the ipTM is. For a single-chain
+receptor there is nothing to decide. For `DCAF15_DDB1_DDA1`, which is five
+chains, the code was deciding silently: chain 0, the N-terminal domain of
+DCAF15, while DCAF15's C-terminal domain, which the substrate also binds,
+was ignored. Measuring one arbitrary half of a two-segment protein is not
+a definition anyone would have written down on purpose.
+
+The minimum is the rule this module already applies twice: across the two
+directions of Boltz's asymmetric matrix, and across seeds. Applying it to
+the receptor's own segments is consistent rather than new. It also matches
+`score/geometry.py`, which already merges receptor segments because "for a
+multi-segment receptor the relevant side is the receptor as a whole".
+
+**Alternatives.** The minimum across *all* receptor chains was rejected: it
+would be dominated by DDB1 at 0.05 to 0.66 in the real data, a chain the
+peptide is not supposed to touch, so the statistic would measure how well
+the degron fails to engage the scaffold. Leaving chain 0 and only
+documenting it was the safer option and was rejected because the number is
+the project's headline and "chain A of five" is not a defensible reading of
+spec 4.3.
+
+**Measured effect, before deciding.** Across all 183 scored jobs in both
+finished campaigns, 9 seed values change, all RBM39/DCAF15, by at most
+0.0103. At the pair level exactly one Delta-ipTM moves:
+`corr06_RBM39_DCAF15`, from +0.1872 to +0.1937. The benchmark campaign is
+unchanged in every pair. No verdict, threshold or published conclusion
+turns on 0.0065, which is why this was a safe correction rather than a
+Gate G6 question.
+
+**Cost.** The two finished campaigns' `scores.jsonl` were written under the
+old definition. The corrected campaign is still running and the chain
+rescores it on completion; the benchmark campaign's numbers are identical
+either way, so nothing needs republishing.
+
+**Reversal.** `_receptor_peptide_iptm` in `nobble/score/metrics.py`. Every
+record also carries `iptm_receptor_peptide_first_chain_only`, so the old
+series can be recovered without rerunning anything.

@@ -1296,3 +1296,53 @@ My first version of that note fired when the decile spanned more than one
 arm, which is ordinary, and stayed silent on a decile made entirely of
 controls, which is the alarming case. Inverted, it now says how many of
 the refined pairs are controls and where the budget went.
+
+## F31. The headline metric did not say which interface it meant
+
+Delta-ipTM is the project's headline, and spec 4.3 defines it as
+`iptm_min_ternary - iptm_min_binary` with the minimum taken across seeds.
+It does not say which chain pair the ipTM is, and for most of the panel
+that does not matter: a single-chain receptor has one answer.
+
+`DCAF15_DDB1_DDA1` is five chains. DCAF15 is submitted as two segments, an
+N-terminal and a C-terminal domain, behind them DDB1's two beta propellers
+and DDA1. The code took chain 0 against the peptide, so the headline for
+RBM39 was the ipTM between the N-terminal domain of DCAF15 and the degron,
+with DCAF15's other half ignored. Nothing said so. The number was correct
+arithmetic over an arbitrary choice.
+
+The real data says the choice was nearly harmless. Peptide against chain 0
+is 0.7274 and against chain 1 is 0.7329 on the first binary seed: two
+views of one interface split by a domain boundary. Across all 183 scored
+jobs, 9 values change, all this pair, by at most 0.0103, and exactly one
+Delta-ipTM moves, from +0.1872 to +0.1937.
+
+So this is a finding about the definition rather than the numbers, and
+measuring that first is what made it safe to correct rather than a
+question for Marc.
+
+Taking the minimum over the substrate receptor's own segments is not a new
+rule. This module already takes a minimum across the two directions of
+Boltz's asymmetric matrix, and spec 4.3 takes one across seeds, both for
+the same stated reason. `score/geometry.py` had already reached the same
+conclusion about the receptor, merging its segments because "for a
+multi-segment receptor the relevant side is the receptor as a whole".
+Geometry treated the receptor as a whole and the headline metric did not.
+
+The scaffolding is excluded, which the data makes obvious. DDB1 sits at
+0.66 and DDA1 at 0.69 against the peptide, so a minimum over all five
+chains would be a measurement of how well the degron avoids the scaffold.
+
+### The invariant nobody had written down
+
+Either rule depends on the substrate receptor being the construct's first
+segment. It is, in all six constructs, and no test said so. Identifying it
+by label does not work, because the labels are domain names: `CRBN_CULT`'s
+only segment is "CULT domain", carrying no gene. It is identified by
+accession instead, and the invariant is now cross-checked against
+`yaml_gen.RECEPTOR_CHAINS_BY_PDB`, which was read off the deposited
+assemblies, so this is not one piece of code agreeing with itself.
+
+A construct added with its scaffold first would previously have produced a
+headline number about an interface that does not exist. Now it fails a
+test.
