@@ -94,3 +94,47 @@ def test_the_zinc_is_present_in_both_arms_not_just_the_ternary():
     # And the glue is still only in the ternary arm.
     assert pair["ligand"]["ccd"] in _ccds("ternary")
     assert pair["ligand"]["ccd"] not in _ccds("binary")
+
+
+def test_the_cofactor_does_not_shift_the_peptide_chain_index():
+    """Scoring finds the peptide by position, not by name.
+
+    `metrics.peptide_chain_index` returns len(construct.segments), and
+    `_pair_iptm` reads pair_chains_iptm at (receptor_index, peptide_index).
+    So the peptide must stay immediately after the receptor segments. Insert
+    the zinc before it and every ipTM lookup in the Sievers arm silently
+    reads a different pair: receptor-to-zinc instead of receptor-to-peptide.
+    Nothing raises, and the number stays in range.
+
+    Confirmed against a real Boltz output during the smoke test: chains came
+    back A, P, Z, L with pair (0, 1) the receptor-peptide pair, which is what
+    scoring assumes.
+    """
+    from nobble.curate import constructs as C, ligands as L, manifest as M
+    from nobble.curate import library as LM
+    from nobble.curate import peptides as P
+    from nobble.execute import yaml_gen as Y
+    from nobble.score.metrics import peptide_chain_index
+
+    lib = LM.load()
+    assert lib is not None
+    rows = {r["peptide_id"]: r for r in lib["peptides"]}
+
+    manifest = M.build_campaign_manifest(library=lib["peptides"])
+    pair = next(p for p in manifest["pairs"] if p["tier"] == "sievers_zf")
+    job = next(j for j in manifest["jobs"] if j.pair_id == pair["pair_id"]
+               and j.complex_type == "ternary")
+    peptide = P.Peptide(**{k: v for k, v in rows[pair["peptide_id"]].items()
+                           if k != "length"})
+    ligand = L.by_ccd(pair["ligand"]["ccd"], modality="glue")
+
+    document = Y.build_yaml(job, peptide, ligand, None)
+    ids = [entry[next(iter(entry))]["id"] for entry in document["sequences"]]
+
+    expected = peptide_chain_index(pair["construct"])
+    assert ids[expected] == Y.PEPTIDE_CHAIN, (
+        f"peptide is at {ids.index(Y.PEPTIDE_CHAIN)} but scoring looks at "
+        f"{expected}: chain order {ids}"
+    )
+    # And the cofactor sits after it, not before.
+    assert ids.index(Y.COFACTOR_CHAIN) > ids.index(Y.PEPTIDE_CHAIN)

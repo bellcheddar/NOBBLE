@@ -186,3 +186,18 @@
   ignored declared exceptions, flagging the 1,223-token DCAF15 jobs the
   manifest deliberately allows: a checker stricter than the rule it checks is
   just a false alarm.
+- 2026-11-04T05:20Z Sievers arm smoke-tested end to end on two real jobs from
+  the assembled queue, because static validation cannot prove Boltz accepts a
+  four-chain job with a metal ion and a glue. Both completed: binary 38.2 s
+  (chains A receptor, P peptide, Z zinc), ternary conditioned 112.9 s (plus L
+  pomalidomide). Confidence JSON parses and the receptor-peptide pair ipTM
+  reads out of pair_chains_iptm at (0, 1), which is where scoring looks.
+  Not a result: the ternary here is conditioned against an unconstrained
+  binary and it is one seed, so the difference between them is not Delta-ipTM.
+- 2026-11-04T05:20Z The smoke test exposed a silent break worth pinning.
+  Scoring locates the peptide by position, len(construct.segments), not by
+  name. The cofactor is appended after the peptide so the index is unchanged,
+  confirmed against the real output (A, P, Z, L). Had it gone in before, every
+  ipTM lookup in the Sievers arm would have read receptor-to-zinc instead of
+  receptor-to-peptide, in range and without raising. Now tested, and the test
+  verified to fail when the cofactor is moved. 72 tests pass.
