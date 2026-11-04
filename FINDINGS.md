@@ -3817,3 +3817,65 @@ and that the test therefore had to construct a four-chain structure. The
 first clause is true and the conclusion does not follow: `smoke_sievers`
 holds the real thing. Checking one campaign and generalising to all of them
 is how a fixture gets built for a case that already had one.
+
+## F83. The ion is a zero target, not a zero source
+
+Delta-ipTM is the receptor-to-peptide ipTM, minimised across the substrate
+receptor's segments. Which chain index the peptide occupies is derived from
+the construct: receptor segments take 0 upward, then the peptide, then the
+structural ion, then the glue.
+
+A three-chain job cannot get that wrong in an interesting way. A four-chain
+one can, and the Sievers arm is 2,160 zinc-bearing jobs beginning at queue
+position 100.
+
+Checked against the real thing rather than reasoned about.
+`campaigns/smoke_sievers` holds both arms of `sv_neg_ZN346_d5063d`, and the
+aggregated pair gives `iptm_min_ternary` 0.952 and `iptm_min_binary` 0.856:
+the receptor-to-peptide values, not the ion's. The arithmetic is right.
+
+The matrix is asymmetric and that is the part worth recording.
+`pair_chains_iptm[i]["2"]` is 0.0 for every row, the ion being a target no
+chain has an interface with, while row "2" carries ordinary values, 0.995 to
+the receptor and 0.953 to the peptide. So reading the ion where a receptor
+segment belongs gives a plausible 0.99 and reading it where the peptide
+belongs gives 0.0. The catastrophic direction is the peptide index, not the
+receptor set, which is the opposite of where I would have put the guard.
+
+My first version of the test asserted the ion's row was zero as well. It is
+not, and the test failed rather than passing on a wrong premise, which is
+the one time today that getting it wrong cost nothing.
+
+The arithmetic holds because every zinc-bearing job uses a one-segment
+construct, so the peptide is chain 1 and the ion chain 2. That is a property
+of this queue and not of the code: all 2,160 are CRBN_CULT, and no
+multi-segment construct carries an ion. Asserted, so a Sievers pair on VHL
+or DCAF15 fails the test rather than silently moving both indices.
+
+## F84. The mutation harness reported a false all-clear
+
+Found by accident, while mutating something else. An identical find and
+replace pair printed "1 of 1 caught".
+
+A mutation whose anchor does not appear exactly once is skipped: the file is
+never changed and the suite never runs. That `continue` fell through to a
+summary computed as `len(chosen) - missed`, and `missed` was incremented
+only for a mutation that actually ran. So a sweep whose anchors had all gone
+stale printed "5 of 5 caught" and exited zero.
+
+This is the tool from F66, built because two hand-rolled mutation checks
+reached live state, and used for every verification in this project since.
+It is also the exact defect it exists to find: correct and incorrect
+behaviour producing the same observable result. A sweep that tests nothing
+is indistinguishable from a sweep that catches everything.
+
+Skips are counted separately now, named in the summary, and exit non-zero,
+because a stale anchor is an unverified mutation rather than a passing one.
+The five fixed anchors were checked and none is stale, so no earlier result
+in this project rests on it. That is luck: the anchors are string literals
+in a file that has been edited all day.
+
+Worth noting what did not catch this. The harness has fifteen tests,
+including ones that assert it refuses live state, cleans up on failure and
+records a traceback. None asserted anything about its arithmetic, because
+the summary line looked like reporting rather than logic.

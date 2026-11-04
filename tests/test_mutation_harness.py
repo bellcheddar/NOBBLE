@@ -162,3 +162,44 @@ def test_the_fixed_list_still_lists():
     completed = _run("--list")
     assert completed.returncode == 0
     assert "nobble/" in completed.stdout
+
+
+def test_a_skipped_mutation_is_not_counted_as_caught():
+    """The harness reported a false all-clear.
+
+    A mutation whose anchor does not appear exactly once is skipped: the
+    file is never changed and the suite is never run. That `continue` fell
+    through to a summary computed as `len(chosen) - missed`, and `missed`
+    was only incremented for a mutation that actually ran. So a sweep whose
+    anchors had all gone stale printed "N of N caught" and exited zero.
+
+    That is a false all-clear from the tool whose entire purpose is to find
+    false all-clears, and it is the exact shape it exists to catch: correct
+    and incorrect behaviour producing the same observable result. Found when
+    an identical find/replace pair reported itself caught (F84).
+    """
+    completed = _run("--file", "nobble/score/metrics.py",
+                     "--find", "PAIR_LEVEL_FIELDS",
+                     "--replace", "PAIR_LEVEL_FIELDS",
+                     "--tests", "tests/test_numeric_rule.py")
+    assert "SKIPPED" in completed.stdout, completed.stdout
+    assert "of 0 attempted caught" in completed.stdout, (
+        "a skipped mutation is still being counted among the attempts"
+    )
+    assert "nothing was tested" in completed.stdout
+    assert completed.returncode != 0, (
+        "a sweep that tested nothing exited zero, which is the all-clear it "
+        "has no basis for"
+    )
+
+
+def test_a_real_mutation_still_reports_and_exits_cleanly():
+    """The other side: a mutation that runs and is caught must still be a
+    success, or the fix above would make every sweep look broken."""
+    completed = _run("--file", "nobble/validate/layers.py",
+                     "--find", 'ROC_ARM = "sievers_zf"',
+                     "--replace", 'ROC_ARM = "benchmark"',
+                     "--tests", "tests/test_queue_priority.py")
+    assert "1 of 1 attempted caught" in completed.stdout, completed.stdout
+    assert "SKIPPED" not in completed.stdout
+    assert completed.returncode == 0, completed.stdout[-600:]

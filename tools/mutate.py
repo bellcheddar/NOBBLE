@@ -248,11 +248,20 @@ def main(argv: list[str] | None = None) -> int:
 
     global _active
     missed = 0
+    skipped = 0
     try:
         for relative, label, find, replace in chosen:
             path = ROOT / relative
             original = path.read_text()
             if original.count(find) != 1:
+                # Counted, not just printed. A skipped mutation used to fall
+                # through to the summary as though it had been caught,
+                # because `missed` was the only counter and `continue`
+                # skipped it: a sweep whose anchors had all gone stale
+                # reported "N of N caught". That is a false all-clear from
+                # the tool whose whole purpose is to find false all-clears,
+                # and it is exactly the shape it exists to catch (F84).
+                skipped += 1
                 print(f"  {label:52s} SKIPPED (anchor appears "
                       f"{original.count(find)} times)")
                 continue
@@ -285,9 +294,15 @@ def main(argv: list[str] | None = None) -> int:
               file=sys.stderr)
         print("\n".join(touched_live), file=sys.stderr)
         return 4
-    print(f"\n{len(chosen) - missed} of {len(chosen)} caught; "
-          f"the {len(touched)} file(s) it touched are clean")
-    return 1 if missed else 0
+    attempted = len(chosen) - skipped
+    summary = (f"\n{attempted - missed} of {attempted} attempted caught; "
+               f"the {len(touched)} file(s) it touched are clean")
+    if skipped:
+        summary += (f"\n{skipped} of {len(chosen)} SKIPPED: the anchor did "
+                    "not appear exactly once, so nothing was tested. A stale "
+                    "anchor is an unverified mutation, not a passing one")
+    print(summary)
+    return 1 if (missed or skipped) else 0
 
 
 if __name__ == "__main__":
