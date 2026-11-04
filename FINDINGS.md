@@ -1812,3 +1812,51 @@ correct and incorrect behaviours produce the same observable result on the
 data at hand: a count that is zero either way, a minimum that equals the
 median, a guard for a condition that has not yet arisen, an MSA whose
 absence makes predictions worse rather than absent.
+
+## F40. An alignment for the wrong protein would have passed every check
+
+F39 showed that losing the receptor's MSA degrades every prediction
+silently. This is the other half, and the worse one.
+
+The cache is content-addressed: `sequence_key` is a SHA1 of the sequence,
+so a file's *name* matches its sequence by construction. Its *contents*
+are written by a separate step, `tools/run_msa.sh`, and nothing anywhere
+checked that the alignment inside a given file is the alignment of the
+sequence it is filed under.
+
+Preflight already checked three things, and checked them well: the
+peptide carries no MSA, every receptor chain has one, and the file the
+YAML names is actually on disk. All three pass for an a3m that exists, is
+non-empty, is correctly named, and holds another protein's alignment. That
+job does not fail. It folds, confidently, against the wrong evolutionary
+signal, and every number downstream inherits it.
+
+The live cache is correct. Seventeen files, every query line matching its
+key, none empty or truncated, and all eleven sequences the constructs need
+usably present. Six files are left over from construct definitions that
+have since changed, which costs disk and nothing else.
+
+Preflight now compares each receptor chain's alignment query against the
+chain's own sequence, gaps and insertions stripped, cached by path because
+a 2,360-job campaign references the same eleven alignments repeatedly and
+some run to thirty thousand lines. It still reports `ok: true` on all
+2,360 jobs, so the check was added without moving anything.
+
+### I tested the helper and not the wiring
+
+The first mutation I tried was removing the call from preflight's own
+loop. Seven tests passed. Every one of them exercised
+`_msa_query_mismatch` directly, so a correct helper that nobody calls
+satisfied all of them.
+
+That is F32's shape exactly: a value computed correctly and carried
+nowhere. I had written the finding for it four hours earlier and then
+reproduced it in my own tests. The fix is two tests that run `preflight`
+itself over a synthetic campaign, one whose alignment is wrong and one
+whose alignment is right, so the second cannot be satisfied by preflight
+rejecting everything.
+
+A same-length substitution is covered separately, because a length
+comparison alone would miss a different protein of exactly the same size,
+which is the one case where the error message has to say something other
+than a count.

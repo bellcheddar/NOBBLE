@@ -29,6 +29,51 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from nobble import paths
 
 
+_MSA_QUERY_CACHE: dict[str, str | None] = {}
+
+
+def _msa_query_mismatch(msa_path: str, sequence: str) -> str | None:
+    """The a3m's query sequence, against the chain it is attached to.
+
+    Cached by path: a 2,360-job campaign references the same eleven
+    alignments over and over, and these files run to thirty thousand lines.
+    """
+    if msa_path not in _MSA_QUERY_CACHE:
+        query = None
+        try:
+            with open(msa_path, errors="replace") as handle:
+                seen_header = False
+                for line in handle:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    if line.startswith(">"):
+                        if seen_header:
+                            break
+                        seen_header = True
+                        continue
+                    if seen_header:
+                        query = line
+                        break
+        except OSError as problem:
+            return f"cached MSA unreadable: {msa_path}: {problem}"
+        _MSA_QUERY_CACHE[msa_path] = query
+
+    query = _MSA_QUERY_CACHE[msa_path]
+    if query is None:
+        return f"cached MSA has no query sequence: {msa_path}"
+    gapless = query.replace("-", "").replace(".", "").upper()
+    if gapless != sequence.upper():
+        return (
+            f"cached MSA is not this chain's alignment: {msa_path} queries "
+            f"{len(gapless)} residues, the chain has {len(sequence)}"
+            if len(gapless) != len(sequence) else
+            f"cached MSA is not this chain's alignment: {msa_path} queries a "
+            f"different sequence of the same length"
+        )
+    return None
+
+
 def preflight(campaign: Path) -> dict:
     import yaml
 
@@ -86,6 +131,17 @@ def preflight(campaign: Path) -> dict:
                     errors.append({"job": job_id,
                                    "problem": f"cached MSA missing on disk: "
                                               f"{body['msa']}"})
+                elif cached:
+                    # And the file being there is not the same as it being
+                    # this chain's alignment. The name is content-addressed,
+                    # so it matches by construction; the contents are written
+                    # by a separate step and could belong to another protein.
+                    # An a3m for the wrong receptor is worse than none: Boltz
+                    # would fold confidently against someone else's
+                    # conservation (F40).
+                    problem = _msa_query_mismatch(body["msa"], body["sequence"])
+                    if problem:
+                        errors.append({"job": job_id, "problem": problem})
             elif body.get("ccd") == "ZN":
                 has_zinc = True
 
