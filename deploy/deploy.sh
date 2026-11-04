@@ -70,6 +70,28 @@ rsync -rlpt --delete \
   --exclude '*.duckdb' --exclude '*.sqlite*' \
   ./ "$DROPLET_SSH:$REMOTE_DIR/"
 
+# Is the bundle about to be published what the current code builds?
+#
+# F93's superseded-substrate caveat was written, tested and committed, and
+# was not on the page: comparison.json is built by the atlas and the atlas
+# had not been rebuilt, so the published conclusion ended before the
+# caveat and a deploy carried it to the droplet unchanged. Nothing noticed,
+# because nothing compared the two (F96).
+#
+# Refusing rather than rebuilding here. A deploy that silently rebuilds is
+# a deploy that publishes something nobody looked at, and the rebuild is
+# one command whose output the operator should see.
+echo "==> is the atlas in step with the code"
+# deploy.sh has no interpreter variable of its own: it is a shell script
+# that rsyncs and restarts, and this is the one Python it needs.
+ATLAS_PY="${ATLAS_PY:-../BINMAN/.pixi/envs/default/bin/python}"
+if ! PYTHONPATH=. KMP_DUPLICATE_LIB_OK=TRUE "$ATLAS_PY" tools/atlas_drift.py; then
+  echo "    REFUSING TO DEPLOY: the published atlas is not what the current" >&2
+  echo "    code builds. Rebuild it first:" >&2
+  echo "      PYTHONPATH=. python deploy/build_atlas.py <campaign>" >&2
+  exit 1
+fi
+
 echo "==> sync the published atlas"
 # Built and redacted by deploy/build_atlas.py: PROTAC-DB chemistry is withheld,
 # because publishing to a public site is redistribution.

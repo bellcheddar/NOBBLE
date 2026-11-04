@@ -41,6 +41,24 @@ else:
     else:
         print("   superseded    no substrate differs from the current plan")
 
+# Whether the published bundle is what the code builds. Reported here as
+# well as gated in deploy.sh, because a drift noticed at deploy time is a
+# refused deploy and a drift noticed in status is a rebuild (F97).
+try:
+    sys.path.insert(0, "tools")
+    import atlas_drift
+
+    report_ = atlas_drift.drift()
+    moved = report_.get("moved") or []
+    if moved:
+        print(f"   atlas         DRIFTED from the code: {len(moved)} value(s), "
+              f"first is {moved[0]['key']}")
+    else:
+        print(f"   atlas         {report_['status']}"
+              f"{', ' + str(report_.get('compared')) + ' leaves' if report_.get('compared') else ''}")
+except Exception as problem:                        # noqa: BLE001
+    print(f"   atlas         drift not checked: {type(problem).__name__}")
+
 try:
     from nobble.app import data
     from nobble.design import report
