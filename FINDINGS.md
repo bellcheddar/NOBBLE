@@ -6685,3 +6685,76 @@ Also corrected: `run_chain.sh` described the deploy check as "refuses to
 report success unless all nine routes answer 200", which was the whole of it
 until F140 added the build comparison. A comment a reader relies on to know
 what the chain guarantees.
+
+## F144. A correction tool whose scope argument did not scope its writes
+
+`tools/rerun_pair.py --campaign <dir>` reads that campaign's queue and
+rewrites the YAMLs it names. The paths in a queue row are absolute by
+construction, since F32 made them so, and the tool writes to
+`Path(row["yaml"])` with nothing comparing it to the campaign on the command
+line.
+
+So pointing it at a copy of a campaign rewrites the original's files and
+leaves the copy untouched. That is how anyone would test a destructive tool,
+and it is what I was about to do: a fixture assembled with
+`cp campaigns/<live>/*.jsonl` carries the live campaign's paths, and
+`--apply` against it would have edited the running campaign's inputs.
+
+No harm has been done, because the chain passes the campaign it means. The
+hazard is in the shape of the interface: an argument that looks like a scope
+and only selects a source.
+
+Every target is now required to be inside the campaign named on the command
+line, and the whole run refuses rather than correcting part of one campaign
+and part of another. The structure route in the app has had the same check
+since it was written, which is what made its absence here recognisable.
+
+## F145. It found no reference, on every invocation the chain has made
+
+`_known_good` returns the same job's YAML from another campaign, "if exactly
+one has it", excluding the campaign being corrected:
+
+    if candidate.parent.parent != exclude
+
+`ROOT.glob` yields absolute paths, so the left side is absolute.
+`newest_complete` prints `campaigns/campaign_<stamp>` and the chain passes
+that, so the right side is relative. An absolute path never equals a relative
+one. The campaign being corrected was therefore not excluded from its own
+search, every YAML name was found twice, "exactly one" was never true, and
+the function returned None for every job.
+
+This is the comparison between two spellings of one path that F32 is about,
+and F32 is cited in this file, at the call site, eighty lines below.
+
+Measured rather than reasoned: with the chain's own spelling the function
+returns None; with both sides resolved it returns the benchmark campaign's
+copy, and all three spellings of the same directory now agree. The
+"exactly one" rule is unchanged and still refuses two candidates, which is
+the part of it that was right.
+
+## F146. And then it cleared the results anyway
+
+The two halves of the tool are "regenerate the YAMLs" and "clear the results
+so they re-run", and the second only means anything if the first worked. With
+no known-good copy the input is whatever it already was, so clearing the
+results re-runs the same jobs on the same bad YAML.
+
+Under F145 that was every job, every time. The chain's correction step would
+have printed "no known-good copy" fifteen times, dropped thirty state rows
+and fifteen results rows, re-run fifteen jobs on the hydroxyproline YAML they
+were meant to replace, and left `stale_inputs` refusing the publish exactly
+as before. The GPU time is the smaller loss; the larger one is that the
+publish blocker would have looked addressed.
+
+It now refuses, with a non-zero exit, for any job whose input it could not
+verify. A job skipped because its YAML already matched the reference is a
+different case and is not counted: that input is verified and re-running it
+is a legitimate request.
+
+One of my own tests for F144 then passed for the wrong reason. It put the
+queue's target inside `campaigns/`, which gave `_known_good` two candidates,
+so this refusal fired first and the containment check could be disabled
+without the test noticing. The mutation sweep said so. The target now sits
+outside `campaigns/` altogether, which is what a relocated campaign looks
+like, so exactly one reference exists and containment is the only thing that
+can stop the write.
