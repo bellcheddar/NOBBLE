@@ -163,3 +163,12 @@
   0 serious axe violations. Deployed.
 - 2026-11-04T04:25Z Benchmark queue finished: 99/99, exit 0, zero failures
   across the whole run. The corrected campaign started automatically.
+- 2026-11-04T04:45Z Zinc class-asymmetry caveat closed. Rerun at 6 fingers
+  per class: degraded mean gain -0.07 (baseline 95.22), not-degraded +1.40
+  (baseline 92.38). The apparent asymmetry is headroom, not label: gain
+  correlates with the starting score at r = -0.704, and the class difference
+  is t = 1.64 at n = 12 with within-class sd of 1.74 and 1.34. The ion cannot
+  bias the ROC toward either class. Noted separately and not acted on: the
+  degraded fingers fold better than their controls before any zinc (95.22 vs
+  92.38), which cancels in a difference-of-arms statistic but would be a
+  duller explanation than the glue if the ROC comes out strong.

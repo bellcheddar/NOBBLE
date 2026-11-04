@@ -948,11 +948,36 @@ hurt. What does not stand is the claim that the arm "would have measured
 noise without it". That was reasoning from chemistry asserted as a result,
 and the measurement contradicts it.
 
-**One caveat worth keeping.** The gain was larger for the control (1.80)
-than for the degraded finger (0.29). At one finger per class that is well
-inside noise, but a zinc effect that correlated with the label would be
-exactly the kind of confounder D-NOB-035 refuses MSAs to avoid, so it is
-worth more than one sample before being dismissed.
+**The caveat was chased down and is closed.** The first pass showed a
+larger gain for the control (1.80) than for the degraded finger (0.29). A
+zinc effect correlated with the label is exactly the confounder D-NOB-035
+refuses MSAs to avoid, so dismissing it at one sample per class would have
+been inconsistent. Rerun at six per class:
+
+| | mean gain | mean pLDDT without zinc |
+|---|---|---|
+| degraded (n=6) | -0.07 | 95.22 |
+| not degraded (n=6) | +1.40 | 92.38 |
+
+The difference looks like the feared effect and is not. Gain correlates
+with the starting score at **r = -0.704**: the lower a finger scores
+without zinc, the more the ion helps it. The controls simply start lower,
+so they have more room. Treating the two classes as groups instead, the
+difference is +1.47 with a standard error of 0.90, t = 1.64 at n = 12,
+which is not a difference. Within-class scatter (sd 1.74 and 1.34) dwarfs
+it.
+
+So the zinc effect tracks headroom, not label, and the ion cannot bias the
+ROC toward either class.
+
+**A separate observation, noted and not acted on.** The degraded fingers
+fold better than the controls before any zinc is added (95.22 against
+92.38). That is a property of the peptides rather than of the ion, and
+because Delta-ipTM is a difference between two arms that both contain the
+same peptide, a constant per-peptide fold quality largely cancels. Worth
+revisiting if the ROC comes out suspiciously strong, because "the positives
+were easier to fold" is a duller explanation than "the glue changed the
+interface" and would look the same from the AUC alone.
 
 **Reversal.** `requires_structural_zinc` in `nobble/curate/peptides.py`;
 return `{"required": False}` to go back. `tests/test_zinc.py` fails first,
