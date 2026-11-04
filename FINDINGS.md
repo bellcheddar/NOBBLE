@@ -4005,3 +4005,40 @@ And F84 paid for itself inside the hour. The first attempt at this mutation
 was skipped, because F76 had made the anchor appear twice, and the harness
 said so instead of reporting "1 of 1 caught". Before that fix I would have
 read the skip as a pass and kept the wrong finding.
+
+## F88. A day of scoring changes, diffed against the published atlas
+
+F74 through F87 changed the ipTM selection, the Mann-Whitney estimator, the
+composite's clamp, the RMSD guard, four median sites, the convergence scale
+and fourteen numeric type checks. Each was argued to be behaviour-preserving
+on finite data and several were checked individually. This checks all of
+them at once, against the thing that matters: what the published atlas says.
+
+Rebuilt from the same campaign into a scratch directory and compared leaf by
+leaf. 10,969 values. Two moved, both deliberate:
+
+    design.json.preview.cost.projected_hours   4.2 -> 4.7
+    design.json.preview.cost.basis             representative job -> banded
+
+That is F79, the design preview no longer taking the fallback F45 exists to
+replace. Everything else is identical, including every RMSD, every ipTM,
+every bridge percentile and the whole comparison report.
+
+Three fields are in the published atlas and absent from the rebuild, all
+build-time: byte counts and the outstanding-campaign list, which moves as
+the queue advances.
+
+**One false alarm, recorded because the reasoning was the useful part.** The
+new figure totals 34,720 tokens where I had measured the assembled design
+campaign at 32,960, and two token counts for one scan would be the F59 shape
+exactly. They are different parents. The atlas's preview is for GSPT1,
+chosen from the benchmark campaign's own scores, and the assembled scan is
+IKZF1, chosen later from the main campaign. Both are 15-mers and both emit
+240 jobs, so the numbers looked comparable and are not: GSPT1 gives 34,720
+tokens and 4.7 hours, IKZF1 32,960 and 4.4.
+
+Checking that took one command and the alternative was a finding about a
+discrepancy that does not exist. Four of those today, after the
+`RECOVERED_A` grep, the `preview.cost` key and `plip_notes`, and the pattern
+is the same each time: I compare two numbers without first checking they are
+answers to the same question.
