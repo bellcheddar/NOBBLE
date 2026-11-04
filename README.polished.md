@@ -122,8 +122,25 @@ From the benchmark panel, at tier-1 triage settings, written up in `FINDINGS.md`
   from the receptor in free solvent. A confidence aggregate cannot tell that
   apart from a weak interface, so NOBBLE checks docking explicitly.
 
-These are interim, single-pair, triage-tier numbers. They are published here
-because a pipeline that only reports its successes is not a benchmark.
+- **The 15-mers failed because a fragment cannot fold, and the fix is
+  measurable twice.** Submitting each substrate as its whole folded domain
+  instead of a 15-residue window moves GSPT1 / CRBN from 29.22 A median pose
+  RMSD to **1.17 A** and BRD4 / VHL from 19.23 A to **1.71 A**: correct poses,
+  not improved ones. The IKZF1 control keeps its 15-mer in both runs and moves
+  by **exactly 0.00 A**, so the change tracks the construct and nothing else.
+- **A second, independent measurement agrees.** Bridge formation asks only
+  whether the glue touches both chains inside the prediction, with no crystal
+  involved. GSPT1 goes from 3 of 10 seeds bridging to 10 of 10, BRD4 / VHL from
+  4 of 10 to 10 of 10, and not one seed in the corrected campaign fails to
+  bridge. Every failed bridge in the original panel failed the same way: the
+  glue reaching one chain rather than two, which is a placement failure rather
+  than a weak interface.
+
+These are interim, triage-tier numbers, and the corrected-construct comparison
+is provisional while CDK12 is still running. They are published here because a
+pipeline that only reports its successes is not a benchmark, and because one of
+the two predictions recorded before those pairs ran has already turned out
+wrong (`FINDINGS.md`, F18).
 
 ## 🧪 The design arm
 

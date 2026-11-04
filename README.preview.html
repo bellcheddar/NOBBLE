@@ -293,12 +293,32 @@ in <code>DECISIONS.md</code> with the measurements behind them.</p>
   is placed correctly and reproducibly, while only 3 of 10 ternary trajectories
   bring the degron into contact with it. The PLIP fingerprint and the buried
   surface filter reach that verdict independently.</li>
-<li><strong>One trajectory in five failed to dock the peptide at all</strong>, leaving it 81 A
+<li>
+<p><strong>One trajectory in five failed to dock the peptide at all</strong>, leaving it 81 A
   from the receptor in free solvent. A confidence aggregate cannot tell that
-  apart from a weak interface, so NOBBLE checks docking explicitly.</li>
+  apart from a weak interface, so NOBBLE checks docking explicitly.</p>
+</li>
+<li>
+<p><strong>The 15-mers failed because a fragment cannot fold, and the fix is
+  measurable twice.</strong> Submitting each substrate as its whole folded domain
+  instead of a 15-residue window moves GSPT1 / CRBN from 29.22 A median pose
+  RMSD to <strong>1.17 A</strong> and BRD4 / VHL from 19.23 A to <strong>1.71 A</strong>: correct poses,
+  not improved ones. The IKZF1 control keeps its 15-mer in both runs and moves
+  by <strong>exactly 0.00 A</strong>, so the change tracks the construct and nothing else.</p>
+</li>
+<li><strong>A second, independent measurement agrees.</strong> Bridge formation asks only
+  whether the glue touches both chains inside the prediction, with no crystal
+  involved. GSPT1 goes from 3 of 10 seeds bridging to 10 of 10, BRD4 / VHL from
+  4 of 10 to 10 of 10, and not one seed in the corrected campaign fails to
+  bridge. Every failed bridge in the original panel failed the same way: the
+  glue reaching one chain rather than two, which is a placement failure rather
+  than a weak interface.</li>
 </ul>
-<p>These are interim, single-pair, triage-tier numbers. They are published here
-because a pipeline that only reports its successes is not a benchmark.</p>
+<p>These are interim, triage-tier numbers, and the corrected-construct comparison
+is provisional while CDK12 is still running. They are published here because a
+pipeline that only reports its successes is not a benchmark, and because one of
+the two predictions recorded before those pairs ran has already turned out
+wrong (<code>FINDINGS.md</code>, F18).</p>
 <h2>🧪 The design arm</h2>
 <p>A seventh tab, scoped in <a href="DESIGN_ARM.md"><code>DESIGN_ARM.md</code></a> and deliberately not
 part of the build specification. Everything else in NOBBLE measures whether a
