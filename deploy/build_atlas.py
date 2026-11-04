@@ -18,6 +18,7 @@ Two jobs, and the second is the one that matters.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -28,7 +29,13 @@ sys.path.insert(0, str(ROOT))
 from nobble import paths  # noqa: E402
 from nobble.execute.campaign import latest  # noqa: E402
 
-OUT = ROOT / "deploy" / "atlas"
+# The published atlas, overridable so a test can exercise this script
+# without writing to it. A test that runs the real build against the real
+# atlas is safe only while the build refuses: mutating the refusal away to
+# check that the test catches it let the build run, and it rebuilt the
+# published atlas from a campaign with 54 of 2360 jobs scored. Recoverable,
+# because the atlas is tracked, but a check should not be able to do that.
+OUT = Path(os.environ.get("NOBBLE_ATLAS_OUT") or ROOT / "deploy" / "atlas")
 
 # Ligand records whose chemistry came from PROTAC-DB. Keyed by the encoding the
 # resolver recorded, so a CCD-sourced ligand is never touched.
@@ -86,6 +93,21 @@ def main() -> int:
         print("no campaign to publish", file=sys.stderr)
         return 2
     print(f"publishing {campaign.name}")
+
+    # Before anything is written or removed. A campaign holds two
+    # descriptions of every job, the queue row and the YAML Boltz actually
+    # reads, and a disagreement between them is invisible from either side:
+    # the results look like results for the job the queue describes. Fifteen
+    # of the main campaign's jobs ran on a YAML carrying a hydroxyproline
+    # the fixed rule no longer asks for (F47), and nothing compared the two
+    # until this did. Refusing leaves the previously published atlas in
+    # place, which is stale rather than wrong (F59).
+    from nobble.validate import inputs as input_check
+
+    stale = input_check.stale_inputs(campaign)
+    if stale:
+        print(input_check.refusal(stale), file=sys.stderr)
+        return 1
 
     if OUT.exists():
         shutil.rmtree(OUT)

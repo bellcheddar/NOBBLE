@@ -2708,3 +2708,48 @@ the recorder's `except OSError` was too narrow. A `FAILED_ASSEMBLIES` path
 that pathlib rejects raises `ValueError` before any I/O, so the diagnostic
 would have replaced the error it exists to describe. Its own comment says
 that must not happen, which is how the test came to look for it.
+
+## F59. Two descriptions of every job, and nothing compared them
+
+A campaign holds the queue row, which says what a job is and which
+everything downstream reads, and the YAML, which is what Boltz is actually
+given. One assembly writes both, so they normally agree.
+
+They disagree in the main campaign. F47 fixed a modification rule that had
+put a hydroxyproline on BRD4 Pro379, and the queue was reassembled: the
+fifteen `bench02_BRD4_VHL` rows correctly record that no modification is
+required. The fifteen YAML files were already on disk and were not
+regenerated, so they still carry `ccd: HYP`. All fifteen have now run.
+
+Nothing compared the two, and a disagreement between them is invisible from
+either side. Boltz reads the YAML and cannot know what the queue says; the
+scorer reads the queue row and the results, which look exactly like results
+for the job the queue describes. The number would have been published as
+BRD4 against VHL, and it is a measurement of a hydroxyproline BRD4 does not
+have.
+
+The comparison is now a module, and the atlas build refuses on it before
+writing or removing anything, so a refusal leaves the previously published
+atlas in place: stale rather than wrong. It asks whether the two agree
+rather than looking for a hydroxyproline, so it covers the reverse case too,
+which is the one a reassembly actually causes. Across all four campaigns it
+reports exactly those fifteen jobs and nothing else.
+
+The chain now runs the correction itself, between the main campaign and the
+publish, where the GPU is free and nothing has been published. It also had
+`ls -d campaigns/design_* | tail -1` in four places, which is F57's
+skeleton-shadowing bug in the other language: both now require the
+completion marker. That is twice in one session that a rule fixed in Python
+was still wrong in a different file type, after F54 and F55 made the same
+point about the templates.
+
+**And a mistake of mine in testing it.** The wiring test runs the real
+`build_atlas.py`, which is safe while the build refuses. Mutating the
+refusal away, to confirm the test catches its removal, let the build run and
+rebuild the published atlas from a campaign with 54 of 2360 jobs scored.
+Recoverable, because the atlas is tracked, and `git checkout` restored it.
+But a check should not be able to do that: the output directory is now
+overridable and the test writes to a temporary one, which was verified by
+removing the refusal again and confirming the published atlas was untouched.
+Mutation testing deliberately disables safeties, so a test that invokes a
+real destructive path is only as safe as the guard it is testing.

@@ -1501,3 +1501,39 @@ exception that caused it is still raised.
 **Reversal.** Replace the `with fresh_campaign(prefix) as directory:` lines
 with the original two mkdir calls. Five tests fail, two of them sweeps that
 name the file that regressed.
+
+## D-NOB-050. The atlas build refuses on an input the code would not emit
+
+**Decision.** `nobble/validate/inputs.py` compares every job's YAML against
+the queue row describing it, and `deploy/build_atlas.py` refuses to publish
+while any disagree. The chain corrects the known case itself, after the main
+campaign and before the publish.
+
+**Alternatives.** Exclude the affected pair from the atlas and caption it.
+Rejected: silently dropping a benchmark pair from a seven-pair panel is its
+own misreport, and the pair is one of the two the comparison report cites.
+Also considered checking only for the known hydroxyproline: rejected because
+it would not catch the reverse case, a YAML missing a modification the queue
+requires, which is what a reassembly actually causes.
+
+**Cost.** A disagreement blocks the whole publish rather than part of it,
+so a single stale pair keeps the site on its previous atlas. Accepted: the
+previous atlas is stale, and stale is recoverable in a way that a wrong
+number presented as a measurement is not.
+
+**Reversal.** Remove the check from `main()`. One test fails, and it names
+the file and the pair.
+
+## D-NOB-051. The atlas output directory is overridable
+
+**Decision.** `build_atlas.py` takes `NOBBLE_ATLAS_OUT`, and the test that
+exercises its refusal writes to a temporary directory.
+
+**Alternatives.** Leave the test pointing at the real atlas, since the build
+refuses and writes nothing. Rejected on evidence: mutating the refusal away
+is a normal step in checking that test, and it rebuilt the published atlas
+from a part-scored campaign. A test whose safety depends on the code it is
+testing being correct is not a test.
+
+**Reversal.** Hard-code `OUT`. The refusal test would then write to the real
+atlas whenever the refusal is absent, which is the state it exists to detect.

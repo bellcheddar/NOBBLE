@@ -27,13 +27,29 @@ export PYTHONPATH="$ROOT"
 
 say() { echo "=== $* $(date -u +%Y-%m-%dT%H:%M:%SZ) ==="; }
 
+# The newest *complete* campaign with a prefix. Complete means it wrote
+# campaign.json, which every assembler writes last.
+#
+# `ls -d campaigns/design_* | tail -1` picked the newest directory, and a
+# failed assembly leaves one holding an empty yaml/ and an empty outputs/.
+# Three of those sat in campaigns/ from a failing design scan, and the
+# newest of them was what this would have handed to run_design.sh. The
+# Python side learned this in campaign.latest(); this is the same rule in
+# the other language, which is where F54 and F55 both ended up (F57).
+newest_complete() {
+  local prefix="$1" directory
+  for directory in campaigns/"$prefix"_*; do
+    [[ -f "$directory/campaign.json" ]] && echo "$directory"
+  done | sort | tail -1
+}
+
 # shellcheck source=tools/wait_for_gpu.sh
 source "$ROOT/tools/wait_for_gpu.sh"
 nobble_wait_for_gpu
 
 # --- 1. the corrected-construct comparison -------------------------------
-CORRECTED="$(ls -d campaigns/corrected_* 2>/dev/null | tail -1)"
-BASELINE="$(ls -d campaigns/benchmark_* 2>/dev/null | tail -1)"
+CORRECTED="$(newest_complete corrected)"
+BASELINE="$(newest_complete benchmark)"
 if [[ -n "$CORRECTED" && -n "$BASELINE" ]]; then
   say "scoring the corrected campaign"
   "$SENV/bin/python" -m nobble.score.run --campaign "$CORRECTED" || true
@@ -49,7 +65,7 @@ print(json.dumps(report, indent=2, default=str)[:3000])
 fi
 
 # --- 2. the main campaign ------------------------------------------------
-CAMPAIGN="$(ls -d campaigns/campaign_* 2>/dev/null | tail -1)"
+CAMPAIGN="$(newest_complete campaign)"
 if [[ -z "$CAMPAIGN" ]]; then
   echo "no main campaign assembled: run nobble.execute.campaign first" >&2
 else
@@ -57,6 +73,25 @@ else
   if "$SENV/bin/python" tools/preflight.py "$CAMPAIGN"; then
     say "running the main campaign"
     bash tools/run_queue.sh --campaign "$CAMPAIGN" || true
+
+    # F47: bench02_BRD4_VHL's fifteen jobs were emitted with a
+    # hydroxyproline on BRD4 Pro379, because the modification rule keyed on
+    # the E3 rather than on the degron class. The rule is fixed; the YAMLs
+    # on disk are not. Correcting it mid-run would have left one pair
+    # holding two different inputs, so it waits until here: the GPU is free
+    # and nothing has been published. The run_queue call that follows skips
+    # every job already in state, so it runs exactly the fifteen this
+    # clears and nothing else.
+    say "correcting the F47 pair"
+    if "$SENV/bin/python" tools/rerun_pair.py bench02_BRD4_VHL \
+         --campaign "$CAMPAIGN" --apply; then
+      bash tools/run_queue.sh --campaign "$CAMPAIGN" || true
+    else
+      echo "the F47 correction failed: bench02_BRD4_VHL still holds results" \
+           "run on a YAML the current code would not emit. The atlas build" \
+           "refuses while that is true, so nothing wrong is published." >&2
+    fi
+
     say "scoring, validating and publishing the main campaign"
     bash tools/refresh.sh "$CAMPAIGN" || true
   else
@@ -95,7 +130,7 @@ else:
     print('no scannable parent')
 " || true
 
-DESIGN="$(ls -d campaigns/design_* 2>/dev/null | tail -1)"
+DESIGN="$(newest_complete design)"
 if [[ -n "$DESIGN" ]]; then
   say "design scan"
   bash tools/run_design.sh "$DESIGN" || true

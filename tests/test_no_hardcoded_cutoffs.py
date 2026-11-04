@@ -71,6 +71,9 @@ ALLOWED_CONSTANTS = {
     "LYSINE_MAX_ASA": "the reference accessible surface area of a free lysine "
                       "side chain, a physical constant rather than a choice",
     "RETRIES": "runtime control flow, not a threshold applied to data",
+    "REFUSAL_EXAMPLES": "how many offending jobs a refusal message lists "
+                        "before summarising the rest: every stale job "
+                        "refuses the publish whether or not it is printed",
     "KILL_GRACE_SECONDS": "runtime control flow: how long to wait for a child "
                           "to die before abandoning it",
     "KILL_ATTEMPTS": "runtime control flow: how many kills to send inside that "
