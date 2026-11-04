@@ -61,6 +61,32 @@ deliberate choice of scale: one scan is affordable, a saturation scan of every
 position (285 variants, 4,275 jobs) is not, which is why saturation follows
 the scan rather than replacing it.
 
+## What was learned building it
+
+Three defects were found by constructing the failure rather than waiting for
+it. All three produce a plausible number instead of an error, and two agree
+with what a structural biologist expects, which is what makes them expensive.
+Recorded in full as F11.
+
+| Defect | Why it mattered |
+|---|---|
+| A scan of a zinc finger dropped the ion at its coordinating cysteines | Those are the positions the scan exists to interrogate. The lift would have been large, negative, and read as "this position is critical" |
+| A substitution of a residue for itself ranked as the most sensitive position | Its two runs differ only by seed, so its lift is the noise floor, and it sorts into the ranking like any other number |
+| The scan chart never drew | The script ran before Plotly loaded. Routine QC passed because with no data the script returns early, so it would have failed only after a scan had run |
+
+Three decisions followed, beyond the scope above:
+
+- **A variant inherits its parent's cofactor** rather than re-deriving it
+  (D-NOB-038). A finger variant keeps a zinc it cannot properly hold, which is
+  correct for a control: the variant differs in the residue, not in the
+  chemical system around it.
+- **Lift requires equal seed depth**, not merely sufficient depth. Both sides
+  normally match, coming from one campaign with one seed tuple; they stop
+  matching when a job fails, which is exactly when nobody is checking.
+- **The scan picks its target after the main campaign** (D-NOB-040), so the
+  parent is chosen from 158 scored pairs rather than the 7 that happened to
+  exist when the arm was built.
+
 ## Symmetry, again
 
 A variant and its parent must be run under identical conditions: same
