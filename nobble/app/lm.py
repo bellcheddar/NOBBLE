@@ -18,6 +18,7 @@ not to answer from the pairs that happen to be present.
 """
 from __future__ import annotations
 
+import os
 import sys
 from dataclasses import asdict, dataclass, field
 from typing import Any
@@ -145,7 +146,31 @@ class Answer:
         return asdict(self)
 
 
+# BINMAN gates its own model on this variable: `enabled()` is
+# `bool(endpoint())` and `endpoint()` reads it. Named here so the import
+# below can be skipped when it is unset, which is the same answer by a
+# cheaper route. Checked against BINMAN's own source by a test, because two
+# copies of a variable name is how they come to differ.
+LM_URL_VARIABLE = "BINMAN_LM_URL"
+
+
 def available() -> bool:
+    """Whether BINMAN-LM is configured and importable.
+
+    The configuration is checked before the import, not after, and the
+    order matters for a reason that has nothing to do with speed. Importing
+    `app.lm` binds a real `lm` attribute on the `app` package, and
+    `from app import lm` then prefers that attribute over anything a test
+    has placed in `sys.modules`. So one unconfigured render anywhere in a
+    test session permanently defeated every later attempt to substitute a
+    fake model, and two tests that passed alone failed in the suite.
+
+    Without the variable `enabled()` would return False anyway, so this is
+    the same answer reached without the side effect. It also saves the
+    droplet importing a package it does not have (F70).
+    """
+    if not os.environ.get(LM_URL_VARIABLE, "").strip():
+        return False
     try:
         from app import lm as binman_lm
         return binman_lm.enabled()

@@ -125,3 +125,53 @@ def test_no_explanation_is_model_authored():
             f"explanation assigned from {type(value).__name__}, which could "
             "carry model text"
         )
+
+
+def test_an_unconfigured_check_does_not_import_binman(monkeypatch):
+    """Checking availability must not change what a later test can fake.
+
+    `from app import lm` binds a real `lm` attribute on the `app` package,
+    and that attribute then wins over anything in `sys.modules`. So a
+    single unconfigured availability check anywhere in a session
+    permanently defeated `monkeypatch.setitem(sys.modules, "app.lm", ...)`,
+    and two tests that passed alone failed in the suite once the campaign
+    page started asking whether a model was configured (F70).
+    """
+    monkeypatch.delenv(lm.LM_URL_VARIABLE, raising=False)
+    monkeypatch.delitem(sys.modules, "app", raising=False)
+    monkeypatch.delitem(sys.modules, "app.lm", raising=False)
+
+    assert lm.available() is False
+    assert "app.lm" not in sys.modules, (
+        "an unconfigured availability check imported BINMAN's model module, "
+        "which binds app.lm for the rest of the session"
+    )
+
+
+def test_a_configured_check_still_consults_binman(monkeypatch):
+    """The guard must not become the whole answer: with the variable set,
+    the real check still runs and its verdict is what counts."""
+    import types
+
+    monkeypatch.setenv(lm.LM_URL_VARIABLE, "http://127.0.0.1:9/v1")
+    fake = types.SimpleNamespace(enabled=lambda: False)
+    monkeypatch.setitem(sys.modules, "app", types.SimpleNamespace(lm=fake))
+    monkeypatch.setitem(sys.modules, "app.lm", fake)
+    assert lm.available() is False
+
+    fake.enabled = lambda: True
+    assert lm.available() is True
+
+
+def test_the_variable_name_matches_binmans():
+    """Two copies of a name is how they come to differ. BINMAN gates its
+    model on this variable and NOBBLE skips the import when it is unset,
+    so a rename there would silently disable the feature here."""
+    from nobble import paths
+
+    source = (paths.BINMAN / "app" / "lm.py")
+    if not source.exists():
+        pytest.skip("BINMAN is not checked out beside this project")
+    assert lm.LM_URL_VARIABLE in source.read_text(), (
+        f"BINMAN no longer mentions {lm.LM_URL_VARIABLE}"
+    )

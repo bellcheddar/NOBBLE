@@ -68,6 +68,13 @@ AMERICAN_ANYWHERE = {
 AMERICAN_IN_PROSE = {"color": "colour", "colors": "colours",
                      "center": "centre", "centers": "centres"}
 
+# Identifiers that contain an American spelling and cannot be respelled:
+# `theme-color` is an HTML attribute and `color-scheme` a CSS property, and
+# both are named in prose when writing about them. Masked before the
+# spelling sweep runs, the same way a quoted word is a citation.
+TECHNICAL_IDENTIFIERS = ("theme-color", "color-scheme", "background-color",
+                         "text-align: center", "accent-color")
+
 
 def _files(suffixes=SUFFIXES):
     for path in sorted(ROOT.rglob("*")):
@@ -139,6 +146,8 @@ def banned_words(text: str) -> list[str]:
 
 def american_spellings(text: str, prose: bool) -> list[str]:
     lowered = text.lower()
+    for identifier in TECHNICAL_IDENTIFIERS:
+        lowered = lowered.replace(identifier, " " * len(identifier))
     checks = dict(AMERICAN_ANYWHERE)
     if prose:
         checks.update(AMERICAN_IN_PROSE)
@@ -299,3 +308,18 @@ def test_an_unquoted_use_beside_a_citation_is_still_caught():
     not license the word in the prose around it."""
     assert banned_words(
         'the list forbids "delve", and this delves into it') == ["delve"]
+
+
+def test_a_technical_identifier_is_not_an_americanism():
+    """`theme-color` is an HTML attribute name. F68's entry discusses it,
+    and a sweep that cannot tell an attribute from a spelling would force
+    the prose to avoid naming the thing it is about."""
+    assert american_spellings('the <meta name="theme-color"> tag', prose=True) == []
+    assert american_spellings("color-scheme: dark", prose=True) == []
+
+
+def test_masking_an_identifier_does_not_hide_a_real_americanism():
+    """The loophole: masking must not swallow the word elsewhere in the
+    same line."""
+    assert american_spellings(
+        'the theme-color tag sets the color of the bar', prose=True)

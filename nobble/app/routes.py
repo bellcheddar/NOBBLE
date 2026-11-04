@@ -38,6 +38,7 @@ def campaign():
         meta=data.campaign_meta(),
         throughput=data.throughput(),
         weight_fit=data.weight_fit(),
+        lm_available=_lm_available(),
     )
 
 
@@ -330,6 +331,22 @@ def api_pair_structures(pair_id: str):
             for row, tier in rows if row.get("structure")
         ],
     })
+
+
+def _lm_available() -> bool:
+    """Whether a question can be asked at all.
+
+    Asked at render time rather than left to the browser, so the panel says
+    what it can do before anyone types into it. An unconfigured model is a
+    normal state: the droplet serves a precomputed atlas and has no model
+    behind it at all.
+    """
+    try:
+        from nobble.app import lm as lm_module
+
+        return bool(lm_module.available())
+    except Exception:                       # noqa: BLE001
+        return False
 
 
 @bp.route("/api/ask", methods=["POST"])

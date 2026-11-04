@@ -3181,3 +3181,60 @@ are the two ways the allowance could become a loophole.
 Two passages were reworded rather than exempted. Exempting FINDINGS.md and
 BUILD_LOG.md would have excused the two files most likely to drift, since
 they are where almost all of this project's prose is written.
+
+## F69. The natural-language component had no way to reach it
+
+Spec 1.2 lists BINMAN-LM as a component: Head A translates a campaign
+question into a query object, Head C abstains when the campaign has not run
+the pair in question. Both are implemented in `nobble/app/lm.py`, both are
+tested, and `/api/ask` serves them.
+
+Nothing called it. The app's only fetch targets were `/api/pair/` and
+`/api/status`, so no reader could ask a question. PROGRESS.md described the
+query head as part of a complete Phase 4, which was true of the backend and
+of nothing a user could reach: the recurring shape, a component whose output
+nothing reads.
+
+The Campaign tab now carries an ask panel, beside the ledger the questions
+are about. It renders the count and the matched pair identifiers, both
+computed by the executor in Python, and the translated query labelled as
+the model's reading of the question and placed after the figures rather
+than among them. That separation is the no-arithmetic contract at its edge:
+a threshold in a query was chosen by the model, and a reader must be able
+to see what was filtered without the number reading as a measurement.
+
+Where no model is configured the panel says so in one sentence and adds
+that the figures do not depend on it, because a panel that reads as broken
+would make a reader doubt the numbers beside it. That is the droplet's
+normal state.
+
+## F70. Asking whether a model exists imported one, and broke two tests
+
+Adding the panel made `/campaign` ask whether BINMAN-LM is configured, and
+that question was answered by importing it.
+
+`from app import lm` binds a real `lm` attribute on the `app` package, and
+`from app import lm` thereafter prefers that attribute over anything in
+`sys.modules`. The LM tests substitute a fake model with
+`monkeypatch.setitem(sys.modules, "app.lm", fake)`, which works only while
+no real `app.lm` has been imported. So one unconfigured render anywhere in a
+test session permanently defeated every later substitution, and two tests
+that passed alone failed in the suite.
+
+The symptom was misleading in a way worth recording. Both tests had patched
+`lm.available` to return True, so the obvious reading was that the patch had
+not taken. The locals showed `fake = <module 'app.lm'>` and an error of
+"BINMAN_LM_URL is not set", which is BINMAN's own message: the fake was
+being bypassed rather than ignored.
+
+Two bisections went wrong before that. The first matched the candidate
+files' own unrelated failures rather than the LM ones, and the second
+excluded `test_lm_contract.py` by a pattern meant to exclude only
+`test_lm.py`. Reading the failure's locals took one command and should have
+been the first step rather than the fourth.
+
+`available()` now checks the configuration before the import rather than
+after. Without `BINMAN_LM_URL` the answer is False either way, so this is
+the same verdict reached without the side effect, and it saves the droplet
+importing a package it does not have. The variable name is checked against
+BINMAN's own source, because NOBBLE now knows it in a second place.

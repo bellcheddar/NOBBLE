@@ -1652,3 +1652,21 @@ exceptions is not enforced, it is ignored.
 **Reversal.** Delete `PLACEHOLDER` from the sweep. 33 em dashes are then
 reported, which is the signal to decide this question again rather than a
 defect.
+
+## D-NOB-058. The model's query is shown, labelled, and kept after the figures
+
+**Decision.** The ask panel renders the translated query as "read as a
+filter", after the count and the matched pairs.
+
+**Alternatives.** Hide it. Rejected: results filtered by an unseen threshold
+are worse than a visible one, and the reader cannot otherwise tell whether
+the question was understood. Show it first, as the interpretation: rejected
+because the first figure on the panel would then be one the model chose,
+which is what the no-arithmetic contract is about however it is labelled.
+
+**Cost.** A number the model selected does appear on screen. It is a filter
+parameter rather than a measurement, it is never formatted like the computed
+figures, and the panel says whose it is.
+
+**Reversal.** Drop the `answer.query` branch from `askPanel`. One test
+fails, and it is the one asserting the label is present.

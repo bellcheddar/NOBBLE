@@ -129,8 +129,83 @@
         <p class="panel__hint">Not measured yet. Phase 2 writes it from the benchmark panel.</p>
       {% endif %}
     </section>
+
+    {# Spec 1.2's natural-language component. Head A translates the question
+       into a query object; the executor runs it in Python. The model never
+       emits a figure, so the count and every cell below come from the
+       scored records (F69, D-NOB-058). #}
+    <section class="panel">
+      <h3>Ask the ledger</h3>
+      {% if lm_available %}
+      <p class="panel__hint">A question becomes a filter. The model proposes it; Python runs it.</p>
+      <form id="ask-form" autocomplete="off">
+        <label class="visually-hidden" for="ask-input">Question</label>
+        <input id="ask-input" type="text" name="question"
+               placeholder="pairs with delta-ipTM above 0.3">
+        <button type="submit" class="btn">Ask</button>
+      </form>
+      <div id="ask-result" aria-live="polite"></div>
+      {% else %}
+      <p class="panel__hint">
+        No model is configured, so questions are unavailable. Every figure on
+        this page is computed in Python and does not depend on it.
+      </p>
+      {% endif %}
+    </section>
   </aside>
 </div>
+
+{% if lm_available %}
+<script>
+  // Builds the answer panel from an /api/ask response. Named and pure so it
+  // runs under node in the tests rather than being matched as source (F50).
+  const askPanel = answer => {
+    const parts = [];
+    const status = answer.status || 'rejected';
+    if (status === 'answered') {
+      parts.push(`<p class="ask__count"><strong>${answer.row_count}</strong> pair(s) matched.</p>`);
+      const rows = (answer.rows || []).slice(0, 10).map(row =>
+        `<li><code class="mono">${row.pair_id}</code></li>`).join('');
+      if (rows) parts.push(`<ul class="ask__rows">${rows}</ul>`);
+    }
+    // The query is the model's reading of the question, labelled as such and
+    // kept away from the figures. Any threshold in it was chosen by the
+    // model, so it is shown as what was asked and never as a measurement.
+    if (answer.query) {
+      const q = answer.query;
+      const shown = [q.field, q.op, JSON.stringify(q.value)].filter(Boolean).join(' ');
+      if (shown) parts.push(`<p class="ask__query">Read as a filter: <code class="mono">${shown}</code></p>`);
+    }
+    if (answer.explanation) parts.push(`<p class="ask__why">${answer.explanation}</p>`);
+    if (status !== 'answered' && !answer.explanation) {
+      parts.push(`<p class="ask__why">${status}</p>`);
+    }
+    return parts.join('');
+  };
+
+  (function () {
+    const form = document.getElementById('ask-form');
+    if (!form) return;
+    const output = document.getElementById('ask-result');
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      const question = document.getElementById('ask-input').value.trim();
+      if (!question) return;
+      output.innerHTML = '<p class="ask__why">Asking…</p>';
+      try {
+        const response = await fetch('/api/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question }),
+        });
+        output.innerHTML = askPanel(await response.json());
+      } catch (problem) {
+        output.innerHTML = '<p class="ask__why">The question could not be sent.</p>';
+      }
+    });
+  })();
+</script>
+{% endif %}
 
 <style>
   .ledger-filters { display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.6rem; font-size: 0.74rem; }
