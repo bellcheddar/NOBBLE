@@ -53,6 +53,11 @@ print(json.dumps({k: v for k, v in report.items() if k != 'lifts'}, indent=2))
 if report.get('lifts'):
     objects = [L.Lift(**item) for item in report['lifts']]
     profile = L.scan_profile(objects, meta['parent_sequence'])
+    # Beside the campaign, for inspection. Not the published copy:
+    # report.build() recomputes the profile into design.json, which is what
+    # the atlas ships and the page reads. Both now take the parent and the
+    # sequence from this campaign's own campaign.json, so the two agree by
+    # construction rather than by coincidence (F147).
     (campaign / 'scan_profile.json').write_text(json.dumps(profile, indent=2))
     print('most sensitive position:', json.dumps(profile.get('most_sensitive')))
 "

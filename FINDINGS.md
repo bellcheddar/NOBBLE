@@ -6758,3 +6758,52 @@ without the test noticing. The mutation sweep said so. The target now sits
 outside `campaigns/` altogether, which is what a relocated campaign looks
 like, so exactly one reference exists and containment is the only thing that
 can stop the write.
+
+## F147. The scan profile belonged to the ranked parent, not the scanned one
+
+The design arm's one durable claim is the ordering of positions in an
+alanine scan: `scan_profile`'s own docstring says so, because an ordering
+survives a monotone miscalibration of the scale in a way "this peptide will
+be degraded" does not.
+
+`report.build()` chooses a parent from the current scores and then asked the
+newest design campaign about that parent's variants:
+
+    lifts = lift_module.from_scores(scored[-1], chosen["peptide_id"])
+
+A design campaign is assembled for whichever parent led when it was
+assembled. The chain keeps the two in step at that moment, because stage 4
+re-assembles the scan from this report's own preview, and nothing makes them
+stay in step afterwards.
+
+They are already apart. The assembled design campaign records
+`benchmark_888fd2c63e`; `report.build()` now ranks `benchmark_83c557c3dc`
+first, because the main campaign has scored more pairs since the scan was
+assembled. So this was not a hypothetical: the scan would have run its 240
+jobs, scored them, and shown no profile at all. `from_scores` matches
+variants by `parent_peptide_id`, finds none for a parent the campaign is not
+about, and returns "parent not scored", which on the page is indistinguish-
+able from the scan not having run.
+
+The failure is graceful, which is why it would have been hard to notice. No
+number is misattributed; the panel is simply empty after seven hours of GPU.
+
+`campaign.json` records `parent` and `parent_sequence`, written by the
+assembler, so the profile now comes from the campaign's own record of what it
+scanned. Where that disagrees with the ranking, the report says so rather
+than leaving a reader to wonder why the profile is of a different peptide
+from the one at the top of the list. Reading the artefact's own record rather
+than re-deriving it is F137's lesson in a second place.
+
+The fallback matters too. A design campaign with no recorded parent falls
+back to the ranked one, because older campaigns predate the field, and that
+is exactly what the old code did unconditionally: the fallback is pinned by a
+test so it cannot quietly become the normal path again.
+
+Also noted while reading: `run_design.sh` writes `scan_profile.json` beside
+the campaign and nothing reads it. The published profile is the one
+`report.build()` recomputes into `design.json`. Two computations of one
+value is the shape this project keeps finding, and after this fix both take
+the parent and the sequence from the same `campaign.json`, so they agree by
+construction rather than by coincidence. The file is kept and labelled rather
+than deleted, since it is the only per-campaign copy.
