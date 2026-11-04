@@ -2988,3 +2988,59 @@ it. The pattern was an alternation with `stat--good`, and `head -4` consumed
 four class matches before reaching the constant. The template was correct
 and the check was wrong, which is the same shape as the string checks F50
 retired, arriving this time in a shell pipeline.
+
+## F65. What a truncated run actually keeps, as a number
+
+`projected_hours` says that overrunning the 48-hour target is "a scheduling
+fact the priority ordering absorbs: the run yields the benchmark panel, then
+the Sievers split, and loses discovery off the tail". Gate G1's whole
+argument rests on that sentence, and it had never been checked.
+
+The tier ordering holds: benchmark jobs 0 to 99, Sievers 100 to 1899,
+scrambles 1900 to 2359. So a run cut short loses scrambles first, which is
+what the sentence claims.
+
+The tier ordering is not sufficient, though, and that is the part worth
+recording. The matched-control ROC needs degraded and not_degraded pairs
+together. A Sievers block that ran all 24 degraded pairs first and all 96
+not_degraded after would satisfy the tier ordering exactly and still leave
+a truncated run holding one side of a comparison and no curve at all.
+
+It interleaves. The block runs at a constant four not_degraded to one
+degraded, in every quarter. So, against the configured floor of three pairs
+a side:
+
+| complete pairs per side | job | share of campaign | projected hours |
+|---|---|---|---|
+| 3 (the floor) | 145 | 6.1% | 6.2 |
+| 5 | 190 | 8.1% | 7.1 |
+| 10 | 400 | 16.9% | 11.2 |
+| 20 | 1255 | 53.2% | 28.1 |
+| 24 (every degraded pair) | 1495 | 63.3% | 32.8 |
+
+The project's falsifiable test is therefore computable six hours in and
+fully populated on the positive side at 33 of the 51 hours remaining. The
+last 37% of the campaign deepens the negative side and runs the scramble
+control, which is what "discovery off the tail" means in jobs.
+
+Computable is not powered, and the two must not be conflated: three pairs a
+side is a curve that the About page's own 0.5 to 0.60 caveat exists for.
+Both rows are in the table for that reason.
+
+**A lapse of mine in checking this.** The first version of the interleaving
+test was mutation-checked by rewriting the live campaign's `queue.jsonl`,
+clustering the labels, running the test, and restoring the file. It came
+back byte-identical, the results file held 72 unique jobs with no
+duplicates, every result was still a queue job and the completed set was
+still the queue's leading prefix, so the campaign was unharmed. That is
+luck, not method: the runner reads that file.
+
+It is the second time a mutation check of mine has reached live state, after
+the published atlas earlier today, and the shape is the same both times.
+Mutation testing deliberately removes a safety, so the thing being mutated
+has to be something a test is allowed to break. The check is now a pure
+function over a list of jobs, with two negative controls that feed it a
+clustered copy and a one-sided copy in memory. Nothing on disk is involved,
+and the controls also close a gap the file mutation never covered: that the
+real queue passes says nothing about whether a clustered one would be
+caught.

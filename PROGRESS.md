@@ -194,6 +194,24 @@ the executor runs it in Python, so the model never emits a number. With
 Run locally: `PYTHONPATH=. python -c "from nobble.app import create_app; create_app().run(port=5055)"`.
 QC: `npx node qc/qc.mjs` with the app running.
 
+## What a truncated run keeps
+
+The priority ordering is benchmark (jobs 0-99), Sievers (100-1899),
+scrambles (1900-2359), and the Sievers block interleaves its labels at a
+constant four not_degraded to one degraded. So the matched-control ROC, the
+project's falsifiable test, does not need the whole campaign:
+
+| complete pairs per side | job | share | projected hours |
+|---|---|---|---|
+| 3 (the configured floor) | 145 | 6.1% | 6.2 |
+| 10 | 400 | 16.9% | 11.2 |
+| 24 (every degraded pair) | 1495 | 63.3% | 32.8 |
+
+Computable at 6 hours, fully populated on the positive side at 33. The last
+37% of the campaign deepens the negative side and runs the scramble control.
+Checked rather than asserted, with negative controls, because Gate G1's
+reasoning rests on it (F65).
+
 ## Next action, once the chain exits
 
 The chain running now (PID tracked in `logs/chain.log`) was launched at
