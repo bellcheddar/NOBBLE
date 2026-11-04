@@ -2366,3 +2366,50 @@ its standard input, so the test file was never written, an empty `.go`
 file appeared in a Python project, and a blocked shell sat in the
 background looking like a slow test run. Diagnosed by reading what the
 background process was actually doing rather than waiting longer for it.
+
+## F50. String checks of mine fail; executed ones have not
+
+Three naive string checks of mine were wrong today, in three different
+places, and each looked right until it ran:
+
+  * F26: a regex over the source matched only the first fragment of a
+    multi-part f-string, so the check would have passed with the hard-coded
+    value it existed to forbid sitting in any later fragment.
+  * F46: the Tier B pLDDT floor asserted against `mean_plddt`, the
+    whole-model mean, rather than `best_window_mean_plddt`, the criterion.
+    Seven of fifteen frozen ligases came back "below the floor" and none
+    was.
+  * F49: the About page grepped for "Thera-SAbDab" and "0.60", neither
+    present, the caveat present in other words. Then two sentences asserted
+    by counting full stops, which came to four because "0.5" and "0.60"
+    each contain one.
+
+Nothing executed was wrong. The `bridgedOf` helper run under node, the
+monkeypatched scorers, the synthetic campaigns through `preflight` and
+`score_campaign`, the AST walks: all of those either passed for the right
+reason or failed for one.
+
+The difference is not carefulness. A string check asserts that some text
+looks a particular way, and the thing it is standing in for is a
+behaviour, so every one of them carries an unstated assumption about how
+that behaviour is spelled. Three of mine had the spelling wrong.
+
+So the newest of them is converted. `test_forced_exclusion` matched a
+regex over `delta.html` to check that the headline view draws a forced
+pair differently. The two decisions are now named helpers, `forcedStyle`
+and `forcedLabel`, lifted out by name and run under node against real
+inputs: a forced pair must come back more transparent, more heavily
+outlined and differently coloured than a found one; a record from before
+the flag existed must render as found; and two different disagreements
+must not read the same. Mutation-checked by drawing forced pairs solid and
+by dropping the magnitude from the hover, both caught.
+
+Naming them is the part that made it possible. Written inline in a Plotly
+trace, the logic could only be grepped for; given a name, it can be
+called. That is the same reason the other executable helper exists, and it
+is worth preferring on its own.
+
+The source checks that remain are the ones whose subject really is the
+text: the AST sweeps for hard-coded cutoffs, the shell parse that feeds
+each chain invocation to its own argparse, and the documents-against-code
+tests. Those assert about source because source is what they are about.

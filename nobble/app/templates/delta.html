@@ -62,6 +62,27 @@
      reads as a perfect rate. The denominator is deliberately the measured
      seeds only (F33), so the unmeasurable ones have to be said rather than
      left out. Silent when there are none, which is every pair so far. */
+  /* Spec 4.7: a pose that only appears under conditioning is forced, and
+     forced hits are "shown separately and never in the headline ranking".
+     This is the headline view, so they are drawn hollow: the position still
+     carries the measurement and the marker says not to read it as a pose the
+     model chose (F48).
+
+     Named rather than written inline in the trace, so a test can run it
+     instead of matching the template's source. Three string checks of mine
+     were wrong today and none of the executed ones were (F50). */
+  const forcedStyle = p => p.forced
+    ? { width: 2.5, colour: '#0c183c', opacity: 0.35 }
+    : { width: 1, colour: 'rgba(0,0,0,0.35)', opacity: 0.85 };
+
+  const forcedLabel = p => p.forced
+    ? ('yes, arms differ by '
+       + (p.conditioning_disagreement === null
+          || p.conditioning_disagreement === undefined
+          ? 'an unrecorded amount'
+          : p.conditioning_disagreement.toFixed(3)))
+    : 'no';
+
   const bridgedOf = p => (p.bridging_seeds_with_bridge || 0) + '/'
     + (p.bridging_seeds_total || 0)
     + ((p.bridging_seeds_unmeasurable || 0)
@@ -93,30 +114,18 @@
           bridgedOf(p),
           lysineCount(p),
           p.seed_collapse_affects_delta ? 'yes' : 'no',
-          p.forced
-            ? ('yes, arms differ by '
-               + (p.conditioning_disagreement === null
-                  || p.conditioning_disagreement === undefined
-                  ? 'an unrecorded amount'
-                  : p.conditioning_disagreement.toFixed(3)))
-            : 'no'
+          forcedLabel(p)
         ]),
         mode: 'markers',
         type: 'scatter',
         marker: {
           size: rows.map(p => 9 + 3 * lysineCount(p)),
           color: LABEL_COLOUR[label] || LABEL_COLOUR.unknown,
-          /* Spec 4.7: a pose that only appears under conditioning is forced,
-             and forced hits are "shown separately and never in the headline
-             ranking". This is the headline view, so they are drawn hollow:
-             the position still carries the measurement, and the marker says
-             not to read it as a found pose (F48). */
           line: {
-            width: rows.map(p => p.forced ? 2.5 : 1),
-            color: rows.map(p => p.forced
-              ? '#0c183c' : 'rgba(0,0,0,0.35)')
+            width: rows.map(p => forcedStyle(p).width),
+            color: rows.map(p => forcedStyle(p).colour)
           },
-          opacity: rows.map(p => p.forced ? 0.35 : 0.85)
+          opacity: rows.map(p => forcedStyle(p).opacity)
         },
         hovertemplate:
           '<b>%{text}</b><br>' +

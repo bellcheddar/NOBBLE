@@ -98,17 +98,64 @@ def test_excluding_forced_pairs_cannot_empty_the_decile(tmp_path):
     assert len(selection.forced_excluded) == 16
 
 
-def test_the_headline_view_draws_forced_pairs_differently():
-    """Spec 4.7's "shown separately". The position still carries the
-    measurement; the marker says not to read it as a found pose."""
-    source = (ROOT / "nobble" / "app" / "templates" / "delta.html").read_text()
-    scatter = source[source.index("function buildScatter"):]
-    scatter = scatter[:scatter.index("function buildMarginal")]
+def _run_template_helper(name: str, rows: list[dict]):
+    """Execute one of delta.html's named helpers under node.
 
-    assert "p.forced" in scatter, "the headline scatter does not look at forced"
-    # Distinguished by the marker, not only in the tooltip.
-    assert re.search(r"opacity:\s*rows\.map\(p => p\.forced", scatter), scatter[-400:]
-    assert re.search(r"width:\s*rows\.map\(p => p\.forced", scatter)
-    # And named in the hover, with the magnitude rather than a bare flag.
-    assert "pose only under conditioning" in source
-    assert "conditioning_disagreement" in scatter
+    Three string checks of mine were wrong today and none of the executed
+    ones were, so the headline view's forced styling is run rather than
+    matched. The helper is lifted out of the template by name, which is why
+    it is a named arrow function rather than written inline in the Plotly
+    trace (F50).
+    """
+    import json
+    import re
+    import subprocess
+
+    source = (ROOT / "nobble" / "app" / "templates" / "delta.html").read_text()
+    match = re.search(
+        r"const " + name + r" = p =>.*?;\n", source, re.S
+    )
+    assert match, f"{name} is no longer a named helper in delta.html"
+    script = match.group(0) + "console.log(JSON.stringify(" \
+        + json.dumps(rows) + f".map({name})));"
+    completed = subprocess.run(["node", "-e", script], capture_output=True,
+                               text=True, timeout=30)
+    assert completed.returncode == 0, completed.stderr
+    return json.loads(completed.stdout)
+
+
+def test_the_headline_view_draws_a_forced_pair_hollow():
+    """Spec 4.7's "shown separately", executed. The position still carries
+    the measurement; the marker says not to read it as a found pose."""
+    found, forced = _run_template_helper("forcedStyle", [
+        {"forced": False},
+        {"forced": True, "conditioning_disagreement": 0.494},
+    ])
+    assert forced["opacity"] < found["opacity"], (forced, found)
+    assert forced["width"] > found["width"]
+    assert forced["colour"] != found["colour"]
+
+
+def test_a_pair_with_no_forced_field_is_drawn_as_found():
+    """A record from before the flag existed must not render as forced."""
+    (plain,) = _run_template_helper("forcedStyle", [{}])
+    (found,) = _run_template_helper("forcedStyle", [{"forced": False}])
+    assert plain == found
+
+
+def test_the_hover_gives_the_magnitude_not_a_bare_flag():
+    """"forced" is true of CDK12 at 0.494 and of a pair at 0.21, and the
+    two are not the same result."""
+    labels = _run_template_helper("forcedLabel", [
+        {"forced": False},
+        {"forced": True, "conditioning_disagreement": 0.494},
+        {"forced": True, "conditioning_disagreement": 0.21},
+        {"forced": True},
+    ])
+    assert labels[0] == "no"
+    assert "0.494" in labels[1]
+    assert "0.210" in labels[2]
+    assert labels[1] != labels[2], "two different disagreements read the same"
+    # A forced pair whose magnitude was never recorded says so rather than
+    # printing a number it does not have.
+    assert "unrecorded" in labels[3], labels[3]
