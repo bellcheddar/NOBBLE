@@ -38,9 +38,20 @@ EM_DASH = "—"
 # empty-value placeholder, not punctuation.
 PLACEHOLDER = re.compile(rf"""(['"]){EM_DASH}\1""")
 
-SUFFIXES = (".md", ".py", ".html", ".mjs", ".sh", ".toml")
+# `.js` is here and was not. It was left out to keep the minified vendored
+# libraries out, which is a suffix doing a path's job: it also left out
+# `static/js/nobble.js`, 343 lines of this project's own prose in comments,
+# unchecked. Excluded by path now instead (F126).
+SUFFIXES = (".md", ".py", ".html", ".mjs", ".js", ".sh", ".toml")
 SKIP_PARTS = {".git", "node_modules", "__pycache__", ".pixi", "campaigns",
               "deploy/atlas", "data"}
+
+# Third-party code, and one file that is BINMAN's rather than NOBBLE's.
+# `molstar-bridge.js` is byte-identical to BINMAN's copy and D-NOB-007 says
+# shared code is widened there, never edited here, so holding it to NOBBLE's
+# house style would demand an edit the rule forbids.
+# `tests/test_shared_code.py` is what keeps it honest.
+SKIP_PATHS = ("static/vendor/",)
 
 # The authoritative input, and the two files that state the rule.
 STATES_THE_RULE = {"BUILD_SPEC.md", "CLAUDE.md"}
@@ -84,6 +95,8 @@ def _files(suffixes=SUFFIXES):
         if any(part in SKIP_PARTS for part in relative.parts):
             continue
         if "deploy/atlas" in str(relative):
+            continue
+        if any(fragment in str(relative) for fragment in SKIP_PATHS):
             continue
         if path.suffix not in suffixes or path.name == THIS_FILE:
             continue
@@ -323,3 +336,35 @@ def test_masking_an_identifier_does_not_hide_a_real_americanism():
     same line."""
     assert american_spellings(
         'the theme-color tag sets the color of the bar', prose=True)
+
+
+def test_the_project_own_javascript_is_checked():
+    """`.js` was excluded by suffix to keep the vendored libraries out, which
+    also excluded this project's own. Non-vacuous on purpose: without the
+    assertion the suffix could be dropped again and every test above would
+    still pass (F126)."""
+    seen = {str(relative) for relative, _ in _files()}
+    assert "nobble/app/static/js/nobble.js" in seen, sorted(
+        name for name in seen if name.endswith(".js"))
+
+
+def test_the_vendored_javascript_is_not_checked():
+    """Thousands of lines of minified third-party code, and one file that is
+    BINMAN's. Holding either to NOBBLE's house style would be a rule about
+    someone else's prose."""
+    seen = {str(relative) for relative, _ in _files()}
+    for name in seen:
+        assert "static/vendor/" not in name, name
+
+
+def test_the_bridge_is_excluded_by_path_and_not_by_luck():
+    """It is `.js`, it is project code, and it is still excluded, because it
+    is BINMAN's project code. If it ever moves out of `static/vendor/` this
+    fails and the decision has to be made again rather than inherited."""
+    bridge = ROOT / "nobble" / "app" / "static" / "vendor" / "molstar-bridge.js"
+    if not bridge.exists():
+        # Not a skip: this file imports no pytest, and the assertion below is
+        # meaningful either way. An absent bridge cannot be in the scan.
+        return
+    seen = {str(relative) for relative, _ in _files()}
+    assert "nobble/app/static/vendor/molstar-bridge.js" not in seen

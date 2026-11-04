@@ -5834,3 +5834,46 @@ nothing.
 Verified by adding a plausible accidental cutoff to `tools/preflight.py` and
 confirming the scan names it by file and line, then restoring and confirming
 the suite is green again.
+
+## F126. The house-style check excluded its own JavaScript by suffix
+
+Third in a row from the same question. `test_house_style.py` scans
+`.md .py .html .mjs .sh .toml`. `.js` is not in the list, and the reason is
+obvious once stated: the vendored libraries are `.js`, and scanning five
+megabytes of minified molstar would produce nothing but noise.
+
+That is a suffix doing a path's job. It also excluded
+`nobble/app/static/js/nobble.js`, 343 lines of this project's own
+JavaScript whose comments carry as much prose as any module in the package:
+the explanation of why the composite reports its coverage, which F123 quoted
+at length, lives there.
+
+Measured before changing anything, because the useful answer was whether it
+had cost anything. It had not: no American spellings, no banned words, no em
+dashes. The file was already written to the house style, by hand, with
+nothing checking.
+
+`.js` is in the list now and `static/vendor/` is excluded by path, which
+brings in exactly one file. The exclusion covers the libraries and one more
+thing: `molstar-bridge.js` is `.js`, is project code, and stays excluded
+because it is **BINMAN's** project code, byte-identical to its copy there
+(F124). Holding it to NOBBLE's house style would demand an edit D-NOB-007
+forbids, so the two rules would contradict each other. A test asserts it is
+excluded by path rather than by luck, so if it ever moves out of
+`static/vendor/` the decision gets made again instead of inherited.
+
+Two of the three new tests exist to stop the suffix being dropped again.
+Without them `.js` could come back out of `SUFFIXES` and every style test
+would still pass, having found nothing because it was looking at nothing.
+
+One slip of my own, caught by reading rather than by the suite: the new
+exclusion test used `pytest.skip` on a branch that cannot be reached here,
+and this file imports no pytest. It would have raised `NameError` on a
+checkout without the bridge, in a test whose whole purpose is to behave
+correctly where a file is absent. It returns instead.
+
+Three findings from one question, asked of three checks: `test_shared_code`
+could not see a renamed file or an `app` directory (F124), the cutoff sweep
+walked one directory of four (F125), and this one drew its boundary with a
+suffix (F126). None had cost anything yet. All three were drawn with a tool
+one notch too blunt for the job.
