@@ -7636,3 +7636,32 @@ It captures the whole first line now.
 The current bullet also points at what would close the gate, which it did not
 before: `config/tier_b_constructs.toml` and D-NOB-068, so a reader learns
 that G1 closes on fifteen lines of config rather than on code.
+
+## F166. The sweep for unreached assertions could not see 33 of them
+
+F165's lesson, applied to the tool F152 built: a check narrower than the
+thing it is named for. `tools/vacuous_tests.py` reports "the assertions no
+run reached", and it walked only functions called `test_*`.
+
+Thirty-three assertions live elsewhere in `tests/`: in module-level helpers
+like `_published_names`, `_run_panel`, `_page` and `check`. Those are often
+where a test's real check sits, which is the point of a helper, and a helper
+that is never called because every caller skips has assertions that never
+run. That is precisely what the sweep exists to find, and it could not see
+them.
+
+So F152's figure was wrong in the reassuring direction. It reported 2,063
+assertions with 14 unreached; the count was never the whole set, and the
+unreached ones among those 33 were invisible rather than absent. The sweep
+now attributes every assertion to its enclosing function whatever that
+function is called, and anything outside a function to the module, since an
+assertion at import time runs or the file does not load.
+
+Worth being plain about the pattern rather than only the fix. Four of this
+session's tools and checks have turned out narrower than their names: F139's
+copy budget missed a class its own filter named, F158's consistency check
+compared a blanket claim and not two bullets, F161's unpriced-job test
+covered the partial case and not the empty one, and now this. In each case
+the check passed, which is what made the narrowness invisible, and in each
+case the thing that found it was running the check against a state nobody
+had put it in before.

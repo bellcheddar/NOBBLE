@@ -39,19 +39,34 @@ TESTS = ROOT / "tests"
 
 
 def assertion_lines() -> dict[str, dict[int, str]]:
-    """Every assert in tests/, by file and line, with the test it is in."""
+    """Every assert in tests/, by file and line, with the function it is in.
+
+    Every function, not only the ones called `test_*`. The first version of
+    this walked `test_*` definitions alone, and 37 assertions live in
+    module-level helpers: `_published_names`, `_run_panel`, `_page`,
+    `check`. Those are where a test's real check often sits, and a helper
+    that is never called because every caller skips has assertions that
+    never run, which is exactly what this exists to find. It could not see
+    them (F166).
+
+    Assertions outside any function are attributed to the module, since one
+    at import time runs or the file does not load.
+    """
     found: dict[str, dict[int, str]] = {}
     for path in sorted(TESTS.glob("test_*.py")):
         tree = ast.parse(path.read_text())
         owner: dict[int, str] = {}
-        for node in ast.walk(tree):
-            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                continue
-            if not node.name.startswith("test_"):
-                continue
+
+        def claim(node: ast.AST, name: str) -> None:
             for inner in ast.walk(node):
                 if isinstance(inner, ast.Assert):
-                    owner[inner.lineno] = node.name
+                    owner.setdefault(inner.lineno, name)
+
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                claim(node, node.name)
+        # Anything left is at module level or inside a class body.
+        claim(tree, "(module level)")
         if owner:
             found[str(path)] = owner
     return found
