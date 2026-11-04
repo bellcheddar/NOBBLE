@@ -14,6 +14,7 @@ from pathlib import Path
 
 from flask import Blueprint, abort, jsonify, render_template, request
 
+from nobble import sampling
 from nobble.app import data
 
 bp = Blueprint("nobble", __name__)
@@ -340,9 +341,21 @@ def api_pair_structures(pair_id: str):
     # (D-NOB-032).
     rows = [(row, 1) for row in data.results() if row.get("pair_id") == pair_id]
     rows += [(row, 2) for row in data.results_tier2() if row.get("pair_id") == pair_id]
+
+    # What the refined pose measured, beside what the coarse one did. Only
+    # the quantities whose shape survives a change of sample count: a
+    # minimum over seeds falls as samples are added, so showing one here
+    # would present arithmetic as an improvement (`nobble.sampling`).
+    refined = next((row for row in data.scores_tier2()
+                    if row.get("pair_id") == pair_id), None)
+    coarse = next((row for row in data.scores()
+                   if row.get("pair_id") == pair_id), None)
+    refinement = sampling.compare(coarse, refined) if refined else None
+
     return jsonify({
         "pair_id": pair_id,
         "crystal": crystal_map.get(pair_id),
+        "refinement": refinement,
         "structures": [
             {
                 "job_id": row["job_id"],

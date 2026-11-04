@@ -117,6 +117,22 @@ def results_tier2() -> list[dict]:
     return _cached("results_tier2", path, _read_jsonl)
 
 
+def scores_tier2() -> list[dict]:
+    """Scores of the refined poses, if tier 2 has run and been scored.
+
+    The atlas has published this file since tier 2's output was made
+    visible, and nothing read it: the pose catalogue offered the refined
+    coordinates and no page showed what they measured, so there was no way
+    to tell whether refinement had improved anything (F137).
+    """
+    if _CAMPAIGN is None:
+        return []
+    path = _CAMPAIGN / "scores_tier2.jsonl"
+    if not path.exists():
+        return []
+    return _cached("scores_tier2", path, _read_jsonl)
+
+
 def campaign_meta() -> dict:
     if _CAMPAIGN is None:
         return {}
