@@ -695,3 +695,15 @@
   Both fixed: one rebuild after the last stage, then a deploy, then a
   status print. D-NOB-042. Restarted tmux nobble-chain to pick up the
   change, since editing a running script is read by byte offset.
+- 2026-11-04T20:45Z Swept for modules no test references. The first sweep
+  said 28 of 38, which was wrong: it matched "nobble.design" from
+  "from nobble.design import lift" and never saw the submodule. Corrected
+  with an AST walk: 4 modules, about 480 lines, chiefly execute.msa.
+- 2026-11-04T20:45Z Tested the MSA cache key, which every job rides on.
+  build_yaml writes the a3m path into each receptor chain, so two
+  sequences sharing a key would align one protein against another's
+  homologues with nothing to say so, and one sequence producing two keys
+  would make the campaign call the server mid-run, which spec 1.3 exists
+  to prevent. Checked against the real constructs as well as invented
+  strings: 11 segments, 11 keys, no collisions. Also pinned that a
+  zero-byte a3m is a failed fetch rather than a cache hit. 140 tests pass.
