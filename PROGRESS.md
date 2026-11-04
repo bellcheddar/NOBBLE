@@ -183,6 +183,23 @@ the executor runs it in Python, so the model never emits a number. With
 Run locally: `PYTHONPATH=. python -c "from nobble.app import create_app; create_app().run(port=5055)"`.
 QC: `npx node qc/qc.mjs` with the app running.
 
+## Next action, once the chain exits
+
+The chain running now (PID tracked in `logs/chain.log`) was launched at
+01:02 UTC and bash reads a running script by byte offset, so the corrected
+`tools/run_chain.sh` was put in place by rename and the running instance is
+still executing the old copy from its open file descriptor. It will not run
+the F47 correction, and the atlas build refuses while that correction is
+pending, so it will finish having published nothing new.
+
+**Rerun `bash tools/run_chain.sh` once the current one exits.** It is
+idempotent: every stage skips what is already done, so it corrects
+`bench02_BRD4_VHL`, runs the fifteen jobs that clears, scores, runs tier 2
+and the design scan if they have not run, rebuilds the atlas and deploys.
+`run_queue.sh` now waits for the GPU itself (F60), so launching it early
+blocks rather than competing, but waiting for the old chain to exit avoids
+two chains interleaving their later stages.
+
 ## Gates open
 
 - **No gate is currently open.** All six are closed.
