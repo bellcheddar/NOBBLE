@@ -5797,3 +5797,40 @@ The content of the bridge, read while there, is sound. Its numeric literals
 are the standard AlphaFold four-band pLDDT scale, documented as such, and a
 block of ligand presentation tuning gathered in one place with a comment
 saying that is why. The finding is where the file lives, not what it says.
+
+## F125. The cutoff sweep walked one directory of four
+
+F124 was a check that could not see a file. This is the same question asked
+of the check that has found the most: every scan in
+`test_no_hardcoded_cutoffs.py` walks `ROOT / "nobble"`.
+
+`tools/`, `deploy/` and `qc/` hold pipeline logic too. Preflight refuses a
+52-hour run. `build_atlas` decides what is published and what is withheld.
+`check_prediction` scores the recorded predictions. `rerun_pair` clears a
+campaign's memory. A cutoff added to any of them was invisible to the rule
+the project states in CLAUDE.md and enforces here.
+
+Measured before being written up, because the interesting answer was that it
+had not yet cost anything. The only float cutoffs in those three directories
+are four in `check_prediction.py`, and they are the one case where a literal
+is not merely acceptable but required:
+
+> So the thresholds live here, taken verbatim from F13, and the verdict is
+> [...] the point: a scorer that cannot return "wrong" is not scoring
+> anything.
+
+A prediction's thresholds are part of the prediction. Moving 20.0 and 2.0
+into `thresholds.toml` would make the verdict tunable after the result is
+known, which is the opposite of what the scorer exists for. That is the
+strongest reason a literal can have and it is already written down.
+
+So the sweep now covers all four directories with that one file allowlisted
+and the reason recorded. Three tests: nothing else hides a cutoff, the
+allowlist is not stale, since an entry for a file with no cutoff left reads
+as evidence that one was considered which is F119's lesson, and the scan
+finds something to judge, so neither of the first two passes by scanning
+nothing.
+
+Verified by adding a plausible accidental cutoff to `tools/preflight.py` and
+confirming the scan names it by file and line, then restoring and confirming
+the suite is green again.

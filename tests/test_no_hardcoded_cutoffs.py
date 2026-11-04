@@ -416,3 +416,79 @@ def test_the_conclusion_quotes_the_configured_margin_not_a_fixed_two(monkeypatch
     assert conclusion.startswith("F6 supported"), conclusion
     assert "3 A" in conclusion, conclusion
     assert "2 A" not in conclusion, conclusion
+
+
+# --------------------------------------------------------------------------- #
+# The directories the sweep above does not look at.
+# --------------------------------------------------------------------------- #
+#
+# Every scan in this file walks `ROOT / "nobble"`. `tools/`, `deploy/` and
+# `qc/` hold pipeline logic too: preflight, the atlas build, the prediction
+# scorer, the correction step. A cutoff added to any of them would have been
+# invisible to the rule this file exists to enforce, which is F124's shape,
+# a check that cannot see a file.
+#
+# Measured before being written: the only float cutoffs in those three
+# directories are `check_prediction.py`'s four, and they are the one case
+# where a literal is right.
+TOOLS_ALLOWED = {
+    "tools/check_prediction.py":
+        "the F13 prediction's own bounds, recorded before either pair ran. A "
+        "prediction's thresholds are part of the prediction: moving them into "
+        "config would make the verdict tunable after the result is known, "
+        "which is the opposite of what the scorer is for. Its docstring says "
+        "so, and `tests/test_check_prediction.py` holds the verdicts",
+}
+
+
+def _float_cutoffs_outside_the_package() -> dict[str, list[str]]:
+    import ast
+
+    ordered = (ast.Lt, ast.LtE, ast.Gt, ast.GtE)
+    found: dict[str, list[str]] = {}
+    for root in ("tools", "deploy", "qc"):
+        base = ROOT / root
+        if not base.exists():
+            continue
+        for path in sorted(base.rglob("*.py")):
+            relative = str(path.relative_to(ROOT))
+            if any(part in {"__pycache__"} for part in path.parts):
+                continue
+            try:
+                tree = ast.parse(path.read_text())
+            except SyntaxError:
+                continue
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Compare):
+                    continue
+                for op, comparator in zip(node.ops, node.comparators):
+                    if (isinstance(op, ordered)
+                            and isinstance(comparator, ast.Constant)
+                            and isinstance(comparator.value, float)):
+                        found.setdefault(relative, []).append(
+                            f"{path.name}:{node.lineno}: {ast.unparse(node)[:60]}")
+    return found
+
+
+def test_no_tool_or_deploy_script_hides_a_cutoff():
+    """The same rule, applied where the sweep was not looking (F125)."""
+    offenders = {name: hits for name, hits
+                 in _float_cutoffs_outside_the_package().items()
+                 if name not in TOOLS_ALLOWED}
+    assert not offenders, offenders
+
+
+def test_the_tools_allowlist_is_not_stale():
+    """An entry for a file that no longer holds a cutoff reads as evidence
+    that one was considered, which F119 is about."""
+    present = set(_float_cutoffs_outside_the_package())
+    stale = sorted(set(TOOLS_ALLOWED) - present)
+    assert not stale, f"TOOLS_ALLOWED names files with no cutoff left: {stale}"
+
+
+def test_the_scan_finds_something_to_judge():
+    """Otherwise both tests above pass by scanning nothing, which is the
+    vacuous shape that has caught me three times today."""
+    found = _float_cutoffs_outside_the_package()
+    assert found, "no float cutoff found in tools, deploy or qc at all"
+    assert "tools/check_prediction.py" in found, sorted(found)
