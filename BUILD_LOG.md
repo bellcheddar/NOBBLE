@@ -126,3 +126,15 @@
   studied the parent is. Depth correlating with the label would put homology
   into the headline ROC. Giving none to any removes it by construction. The
   confounder is asserted, not measured, and the decision records that.
+- 2026-11-04T03:50Z Main campaign assembled:
+  campaigns/campaign_20261104T004632Z. 158 pairs (7 benchmark, 120 Sievers,
+  31 scrambles), 2,360 jobs, 2,360 YAMLs, queue written, 0 unroutable.
+  Pockets are measured once per (construct, ligand) rather than per pair:
+  120 Sievers pairs share CRBN_CULT with one of two IMiDs, so two
+  measurements serve them all, taken from the benchmark depositions 6H0F
+  (Y70) and 5FQD (LVY). The two agree on 12 of 13 residues, measured
+  independently from different structures, which is a free consistency check
+  on the pocket the whole arm is conditioned on. 10 conditioned jobs dropped
+  for want of a pocket: bench03 and its scramble, whose dBET57 is
+  SMILES-encoded because 6BNB assembly 1 carries no PROTAC. Positive and
+  control lose the conditioned arm together, so they stay symmetric.
