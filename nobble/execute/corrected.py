@@ -105,102 +105,99 @@ def build_yaml(construct, substrate: dict, ligand, pocket, complex_type: str,
 
 def assemble() -> dict:
     """Emit the corrected campaign. Same axes as tier 1: 15 jobs per pair."""
-    directory = paths.CAMPAIGNS / (
-        "corrected_" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    )
-    (directory / "yaml").mkdir(parents=True, exist_ok=True)
-    (directory / "outputs").mkdir(parents=True, exist_ok=True)
+    from nobble.execute.campaign import fresh_campaign
 
-    ligand_map = L.benchmark_ligands()
-    member_by_index = {item["index"]: item for item in P.BENCHMARK_CHAINS}
-    cap = int(paths.thresholds()["manifest"]["token_cap_tier1"])
+    with fresh_campaign("corrected") as directory:
+        ligand_map = L.benchmark_ligands()
+        member_by_index = {item["index"]: item for item in P.BENCHMARK_CHAINS}
+        cap = int(paths.thresholds()["manifest"]["token_cap_tier1"])
 
-    pairs, written = [], 0
-    with (directory / "queue.jsonl").open("w") as queue:
-        for plan in P.benchmark_substrate_constructs():
-            member = member_by_index[plan["member"]]
-            construct_name = M.E3_TO_CONSTRUCT.get(member["e3"])
-            if not construct_name:
-                continue
-            construct = C.CONSTRUCTS[construct_name]
-            ligand = ligand_map.get(member["index"])
-            substrate = substrate_chain(plan)
-            if not substrate["sequence"]:
-                continue
-
-            ccd = ligand.ccd if ligand and ligand.encoding == "ccd" else None
-            pocket = Y.derive_pocket(construct, member["pdb_id"], ccd, member["e3"])
-            pair_id = f"corr{member['index']:02d}_{member['gene']}_{member['e3']}"
-
-            for complex_type in ("binary", "ternary"):
-                if complex_type == "ternary" and ligand is None:
+        pairs, written = [], 0
+        with (directory / "queue.jsonl").open("w") as queue:
+            for plan in P.benchmark_substrate_constructs():
+                member = member_by_index[plan["member"]]
+                construct_name = M.E3_TO_CONSTRUCT.get(member["e3"])
+                if not construct_name:
                     continue
-                conditions = (("conditioned", "unconstrained")
-                              if complex_type == "ternary" else ("unconstrained",))
-                for conditioning in conditions:
-                    if conditioning == "conditioned" and pocket is None:
+                construct = C.CONSTRUCTS[construct_name]
+                ligand = ligand_map.get(member["index"])
+                substrate = substrate_chain(plan)
+                if not substrate["sequence"]:
+                    continue
+
+                ccd = ligand.ccd if ligand and ligand.encoding == "ccd" else None
+                pocket = Y.derive_pocket(construct, member["pdb_id"], ccd, member["e3"])
+                pair_id = f"corr{member['index']:02d}_{member['gene']}_{member['e3']}"
+
+                for complex_type in ("binary", "ternary"):
+                    if complex_type == "ternary" and ligand is None:
                         continue
-                    for seed in SEEDS:
-                        job_id = f"{pair_id}__{complex_type}__{conditioning}__seed{seed}"
-                        document = build_yaml(construct, substrate, ligand, pocket,
-                                              complex_type, conditioning)
-                        path = directory / "yaml" / f"{job_id}.yaml"
-                        path.write_text(Y.to_yaml_text(document))
+                    conditions = (("conditioned", "unconstrained")
+                                  if complex_type == "ternary" else ("unconstrained",))
+                    for conditioning in conditions:
+                        if conditioning == "conditioned" and pocket is None:
+                            continue
+                        for seed in SEEDS:
+                            job_id = f"{pair_id}__{complex_type}__{conditioning}__seed{seed}"
+                            document = build_yaml(construct, substrate, ligand, pocket,
+                                                  complex_type, conditioning)
+                            path = directory / "yaml" / f"{job_id}.yaml"
+                            path.write_text(Y.to_yaml_text(document))
 
-                        tokens = (construct.residue_count() + len(substrate["sequence"])
-                                  + ((ligand.heavy_atoms or 0)
-                                     if complex_type == "ternary" and ligand else 0))
-                        queue.write(json.dumps({
-                            "job_id": job_id, "pair_id": pair_id, "tier": "corrected",
-                            "construct": construct.name, "e3_gene": construct.e3_gene,
-                            "peptide_id": f"{member['gene']}_{substrate['mode']}",
-                            "peptide_sequence": substrate["sequence"],
-                            "peptide_gene": member["gene"],
-                            "peptide_label": "degraded",
-                            "peptide_accession": plan["substrate"]["accession"],
-                            "peptide_start_res": substrate["start"],
-                            "peptide_end_res": substrate["end"],
-                            "ligand_key": ligand.key if (ligand and complex_type == "ternary") else None,
-                            "ligand_encoding": (ligand.encoding if (ligand and complex_type == "ternary") else None),
-                            "modality": ligand.modality if ligand else "none",
-                            "complex_type": complex_type, "conditioning": conditioning,
-                            "seed": seed, "tokens": tokens,
-                            "affinity_available": bool(
-                                ligand and complex_type == "ternary" and ligand.affinity_available),
-                            "required_modification": None,
-                            "substrate_mode": substrate["mode"],
-                            "substrate_msa_cached": substrate["msa_cached"],
-                            "flags": (["token_cap_declared_exception"]
-                                      if tokens > cap else []),
-                            "yaml": str(path),
-                            "pocket_residues": pocket.positions if pocket else None,
-                        }) + "\n")
-                        written += 1
+                            tokens = (construct.residue_count() + len(substrate["sequence"])
+                                      + ((ligand.heavy_atoms or 0)
+                                         if complex_type == "ternary" and ligand else 0))
+                            queue.write(json.dumps({
+                                "job_id": job_id, "pair_id": pair_id, "tier": "corrected",
+                                "construct": construct.name, "e3_gene": construct.e3_gene,
+                                "peptide_id": f"{member['gene']}_{substrate['mode']}",
+                                "peptide_sequence": substrate["sequence"],
+                                "peptide_gene": member["gene"],
+                                "peptide_label": "degraded",
+                                "peptide_accession": plan["substrate"]["accession"],
+                                "peptide_start_res": substrate["start"],
+                                "peptide_end_res": substrate["end"],
+                                "ligand_key": ligand.key if (ligand and complex_type == "ternary") else None,
+                                "ligand_encoding": (ligand.encoding if (ligand and complex_type == "ternary") else None),
+                                "modality": ligand.modality if ligand else "none",
+                                "complex_type": complex_type, "conditioning": conditioning,
+                                "seed": seed, "tokens": tokens,
+                                "affinity_available": bool(
+                                    ligand and complex_type == "ternary" and ligand.affinity_available),
+                                "required_modification": None,
+                                "substrate_mode": substrate["mode"],
+                                "substrate_msa_cached": substrate["msa_cached"],
+                                "flags": (["token_cap_declared_exception"]
+                                          if tokens > cap else []),
+                                "yaml": str(path),
+                                "pocket_residues": pocket.positions if pocket else None,
+                            }) + "\n")
+                            written += 1
 
-            pairs.append({
-                "pair_id": pair_id, "member": member["index"], "gene": member["gene"],
-                "e3": member["e3"], "substrate_mode": substrate["mode"],
-                "substrate_length": len(substrate["sequence"]),
-                "substrate_msa_cached": substrate["msa_cached"],
-                "tokens": plan["tokens"], "within_cap": plan["within_cap"],
-                "declared_exception": plan["declared_exception"],
-            })
+                pairs.append({
+                    "pair_id": pair_id, "member": member["index"], "gene": member["gene"],
+                    "e3": member["e3"], "substrate_mode": substrate["mode"],
+                    "substrate_length": len(substrate["sequence"]),
+                    "substrate_msa_cached": substrate["msa_cached"],
+                    "tokens": plan["tokens"], "within_cap": plan["within_cap"],
+                    "declared_exception": plan["declared_exception"],
+                })
 
-    summary = {
-        "campaign_id": directory.name,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "purpose": (
-            "Tests FINDINGS.md F6: whether submitting a domain-mediated "
-            "substrate as its whole domain recovers the crystal pose that a "
-            "15-mer cut from the same domain did not. IKZF1 keeps its 15-mer "
-            "as the internal control and its number should not move."
-        ),
-        # Both keys, matching the benchmark builder: `pairs` as a count and
-        # the records under `pair_detail`, plus the records under `pairs` for
-        # anything already reading that.
-        "pairs": pairs, "pair_count": len(pairs), "pair_detail": pairs,
-        "jobs_emitted": written,
-        "compare_against": "the tier-1 benchmark campaign, same deposited structures",
-    }
-    (directory / "campaign.json").write_text(json.dumps(summary, indent=2, default=str))
-    return {"path": str(directory), **summary}
+        summary = {
+            "campaign_id": directory.name,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "purpose": (
+                "Tests FINDINGS.md F6: whether submitting a domain-mediated "
+                "substrate as its whole domain recovers the crystal pose that a "
+                "15-mer cut from the same domain did not. IKZF1 keeps its 15-mer "
+                "as the internal control and its number should not move."
+            ),
+            # Both keys, matching the benchmark builder: `pairs` as a count and
+            # the records under `pair_detail`, plus the records under `pairs` for
+            # anything already reading that.
+            "pairs": pairs, "pair_count": len(pairs), "pair_detail": pairs,
+            "jobs_emitted": written,
+            "compare_against": "the tier-1 benchmark campaign, same deposited structures",
+        }
+        (directory / "campaign.json").write_text(json.dumps(summary, indent=2, default=str))
+        return {"path": str(directory), **summary}

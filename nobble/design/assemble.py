@@ -170,92 +170,90 @@ def assemble(parent_id: str, generator: str = "alanine_scan",
             "describe them, so the campaign is not assembled"
         )
 
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    directory = paths.CAMPAIGNS / f"design_{stamp}"
-    (directory / "yaml").mkdir(parents=True, exist_ok=True)
-    (directory / "outputs").mkdir(parents=True, exist_ok=True)
+    from nobble.execute.campaign import fresh_campaign
 
-    pair_by_id = {pair["pair_id"]: pair for pair in manifest["pairs"]}
-    peptide_by_id: dict[str, P.Peptide] = {}
-    for pair in manifest["pairs"]:
-        if pair["role"] == "parent":
-            peptide_by_id[pair["peptide_id"]] = _peptide_from_row(
-                manifest["peptides"][pair["peptide_id"]])
-            peptide_by_id[pair["peptide_id"]].cofactor = dict(pair["cofactor"])
-        else:
-            peptide_by_id[pair["peptide_id"]] = P.Peptide(
-                peptide_id=pair["peptide_id"], sequence=pair["peptide_sequence"],
-                source="design", label=None, accession=None,
-                gene=pair["peptide_gene"], start_res=None, end_res=None,
-                degron_class="design", e3_hint=pair["e3_gene"],
-                parent_peptide_id=pair.get("parent_peptide_id"),
-                cofactor=dict(pair["cofactor"]),
-            )
-
-    first = manifest["pairs"][0]
-    ccd = (first.get("ligand") or {}).get("ccd")
-    pdb_id = None
-    from nobble.execute.campaign import IMID_POCKET_SOURCE
-    member = next((m for m in P.BENCHMARK_CHAINS
-                   if m["ligand"] == ccd), None)
-    if member:
-        pdb_id = member["pdb_id"]
-    elif ccd:
-        pdb_id = IMID_POCKET_SOURCE.get(ccd)
-    pocket = None
-    if pdb_id and ccd:
-        pocket = Y.derive_pocket(C.CONSTRUCTS[first["construct"]], pdb_id, ccd,
-                                 first["e3_gene"])
-
-    queue_path = directory / "queue.jsonl"
-    written = 0
-    dropped = 0
-    with queue_path.open("w") as queue:
-        for job in manifest["jobs"]:
-            pair = pair_by_id[job.pair_id]
-            peptide = peptide_by_id[job.peptide_id]
-            ligand_dict = pair["ligand"]
-            if ligand_dict.get("ccd"):
-                ligand = L.by_ccd(ligand_dict["ccd"],
-                                  modality=ligand_dict.get("modality", "glue"))
+    with fresh_campaign("design") as directory:
+        pair_by_id = {pair["pair_id"]: pair for pair in manifest["pairs"]}
+        peptide_by_id: dict[str, P.Peptide] = {}
+        for pair in manifest["pairs"]:
+            if pair["role"] == "parent":
+                peptide_by_id[pair["peptide_id"]] = _peptide_from_row(
+                    manifest["peptides"][pair["peptide_id"]])
+                peptide_by_id[pair["peptide_id"]].cofactor = dict(pair["cofactor"])
             else:
-                ligand = L.by_smiles(ligand_dict["smiles"],
-                                     key=ligand_dict.get("key", "parent"),
-                                     modality=ligand_dict.get("modality", "glue"))
-            if job.conditioning == "conditioned" and pocket is None:
-                dropped += 1
-                continue
-            document = Y.build_yaml(job, peptide, ligand, pocket)
-            yaml_path = directory / "yaml" / f"{job.job_id}.yaml"
-            yaml_path.write_text(Y.to_yaml_text(document))
-            record = job.to_dict()
-            record["yaml"] = str(yaml_path)
-            record["role"] = pair["role"]
-            record["substitution"] = pair.get("substitution")
-            record["position"] = pair.get("position")
-            record["parent_peptide_id"] = pair.get("parent_peptide_id")
-            record["pocket_residues"] = pocket.positions if pocket else None
-            queue.write(json.dumps(record) + "\n")
-            written += 1
+                peptide_by_id[pair["peptide_id"]] = P.Peptide(
+                    peptide_id=pair["peptide_id"], sequence=pair["peptide_sequence"],
+                    source="design", label=None, accession=None,
+                    gene=pair["peptide_gene"], start_res=None, end_res=None,
+                    degron_class="design", e3_hint=pair["e3_gene"],
+                    parent_peptide_id=pair.get("parent_peptide_id"),
+                    cofactor=dict(pair["cofactor"]),
+                )
 
-    summary = {
-        "campaign_id": directory.name,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "parent": parent_id,
-        "parent_sequence": manifest["parent_sequence"],
-        "generator": generator,
-        "pairs": len(manifest["pairs"]),
-        "variants": len(manifest["pairs"]) - 1,
-        "jobs_emitted": written,
-        "conditioned_jobs_dropped_no_pocket": dropped,
-        "pocket": pocket.positions if pocket else None,
-        "cofactor": first.get("cofactor"),
-        "note": (
-            "The parent is re-run here rather than reused from an earlier "
-            "campaign, so design lift subtracts two numbers measured under "
-            "identical settings. Every variant inherits the parent's "
-            "cofactor decision (D-NOB-038)."
-        ),
-    }
-    (directory / "campaign.json").write_text(json.dumps(summary, indent=2, default=str))
-    return {"path": str(directory), **summary}
+        first = manifest["pairs"][0]
+        ccd = (first.get("ligand") or {}).get("ccd")
+        pdb_id = None
+        from nobble.execute.campaign import IMID_POCKET_SOURCE
+        member = next((m for m in P.BENCHMARK_CHAINS
+                       if m["ligand"] == ccd), None)
+        if member:
+            pdb_id = member["pdb_id"]
+        elif ccd:
+            pdb_id = IMID_POCKET_SOURCE.get(ccd)
+        pocket = None
+        if pdb_id and ccd:
+            pocket = Y.derive_pocket(C.CONSTRUCTS[first["construct"]], pdb_id, ccd,
+                                     first["e3_gene"])
+
+        queue_path = directory / "queue.jsonl"
+        written = 0
+        dropped = 0
+        with queue_path.open("w") as queue:
+            for job in manifest["jobs"]:
+                pair = pair_by_id[job.pair_id]
+                peptide = peptide_by_id[job.peptide_id]
+                ligand_dict = pair["ligand"]
+                if ligand_dict.get("ccd"):
+                    ligand = L.by_ccd(ligand_dict["ccd"],
+                                      modality=ligand_dict.get("modality", "glue"))
+                else:
+                    ligand = L.by_smiles(ligand_dict["smiles"],
+                                         key=ligand_dict.get("key", "parent"),
+                                         modality=ligand_dict.get("modality", "glue"))
+                if job.conditioning == "conditioned" and pocket is None:
+                    dropped += 1
+                    continue
+                document = Y.build_yaml(job, peptide, ligand, pocket)
+                yaml_path = directory / "yaml" / f"{job.job_id}.yaml"
+                yaml_path.write_text(Y.to_yaml_text(document))
+                record = job.to_dict()
+                record["yaml"] = str(yaml_path)
+                record["role"] = pair["role"]
+                record["substitution"] = pair.get("substitution")
+                record["position"] = pair.get("position")
+                record["parent_peptide_id"] = pair.get("parent_peptide_id")
+                record["pocket_residues"] = pocket.positions if pocket else None
+                queue.write(json.dumps(record) + "\n")
+                written += 1
+
+        summary = {
+            "campaign_id": directory.name,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "parent": parent_id,
+            "parent_sequence": manifest["parent_sequence"],
+            "generator": generator,
+            "pairs": len(manifest["pairs"]),
+            "variants": len(manifest["pairs"]) - 1,
+            "jobs_emitted": written,
+            "conditioned_jobs_dropped_no_pocket": dropped,
+            "pocket": pocket.positions if pocket else None,
+            "cofactor": first.get("cofactor"),
+            "note": (
+                "The parent is re-run here rather than reused from an earlier "
+                "campaign, so design lift subtracts two numbers measured under "
+                "identical settings. Every variant inherits the parent's "
+                "cofactor decision (D-NOB-038)."
+            ),
+        }
+        (directory / "campaign.json").write_text(json.dumps(summary, indent=2, default=str))
+        return {"path": str(directory), **summary}

@@ -1478,3 +1478,26 @@ in the library, which is a test rather than a claim.
 
 **Reversal.** Restore the class gate ahead of the motif count. Three
 tests fail, one of them naming IKZF1 directly.
+
+## D-NOB-049. A campaign directory does not outlive a failed assembly
+
+**Decision.** All four assemblers build inside `fresh_campaign()`, which
+removes the directory if the block exits by exception or without writing
+`campaign.json`. `latest()` additionally requires that marker, so a
+directory left by a killed process is never returned as a campaign.
+
+**Alternatives.** Stage under a dot-prefixed name and rename into place on
+success. Rejected as more machinery for the same outcome: the rename is
+atomic but `campaign_id` is derived from the directory name in all four
+assemblers, so the staging name would have had to be threaded through each
+of them. Also considered a tool that reports and clears incomplete
+directories: useful, but it treats the litter rather than the cause, and
+the cause is three lines long.
+
+**Cost.** A failed assembly no longer leaves its partial YAMLs for
+inspection. Acceptable: nothing diagnosed a failure from them, and the
+exception that caused it is still raised.
+
+**Reversal.** Replace the `with fresh_campaign(prefix) as directory:` lines
+with the original two mkdir calls. Five tests fail, two of them sweeps that
+name the file that regressed.

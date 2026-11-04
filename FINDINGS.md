@@ -2643,3 +2643,41 @@ The motif is tested first now and the third case is reported rather than
 dropped. The family resemblance to F47 is close: both keyed a decision on
 the wrong attribute and produced a plausible output, and in both the
 plausibility is what kept them hidden.
+
+## F57. Three directories that looked like campaigns that found nothing
+
+`campaigns/` held `design_20261104T075843Z`, `design_20261104T081815Z` and
+`design_20261104T081927Z`. Each contained an empty `yaml/`, an empty
+`outputs/` and nothing else: three failed attempts at assembling the design
+scan, 20 minutes apart, from a run that raised after creating its directory.
+
+Every assembler creates those two subdirectories and then does work that
+can raise, so the skeleton outlives the failure under a campaign name. A
+skeleton is not distinguishable from a campaign that ran and produced no
+results, which is the project's recurring shape: a state that reads as an
+answer.
+
+`latest()` sorts by name and returns the newest match, so the newest
+skeleton was "the latest design campaign". Nothing calls `latest("design")`
+today, which is the only reason this had not yet produced a wrong answer.
+Four of that function's seven callers use what it returns without checking
+anything further.
+
+Both reuse guards had the same defect in miniature. They tested
+`queue.jsonl` and then read `campaign.json` unconditionally, so the one
+state they were written to detect, an assembly that died part way through,
+would have raised `FileNotFoundError` rather than been handled.
+
+Two fixes, because there are two failures. An assembly that raises now
+removes its own directory, which covers the failure that actually happened.
+A process killed between the mkdir and the manifest cannot clean up after
+itself, so `latest()` also requires the completion marker, which every
+assembler writes last. The first is the cause, the second is the one that
+cannot be caught at the source.
+
+Collapsing the four assemblers onto one helper removed something I had not
+gone looking for: three independent copies of the timestamp format, one per
+assembler, all matched against a single regex in `latest()`. A copy drifting
+from that regex would not have failed anything. The campaign would simply
+have stopped being found, which is the same silence the skeletons produced,
+arrived at from the other direction.
