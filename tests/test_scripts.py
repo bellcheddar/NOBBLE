@@ -59,3 +59,18 @@ def test_refresh_passes_its_campaign_to_the_atlas():
     assert 'build_atlas.py "$CAMPAIGN"' in text, (
         "build_atlas is being called without the campaign refresh.sh just scored"
     )
+
+
+def test_no_gpu_runner_aborts_before_scoring_what_ran():
+    """The runner exits 1 when any job failed. A script with `set -e` then
+    dies before its scoring step, throwing away the jobs that succeeded to
+    report a failure the log already shows. tier2.sh did this."""
+    runners = ["run_queue.sh", "run_corrected.sh", "run_design.sh", "tier2.sh",
+               "run_chain.sh"]
+    offenders = []
+    for name in runners:
+        text = (ROOT / "tools" / name).read_text()
+        for line in text.splitlines():
+            if line.strip().startswith("set -") and "e" in line.split()[1].lstrip("-"):
+                offenders.append(f"{name}: {line.strip()}")
+    assert not offenders, "set -e in a runner that must score partial work:\n" + "\n".join(offenders)

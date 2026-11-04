@@ -475,3 +475,8 @@
   which point the compute is spent or skipped. The tests parse the scripts
   rather than executing them, because these are GPU entry points and running
   them to find out is exactly what is being avoided. 115 tests pass.
+- 2026-11-04T13:45Z tools/tier2.sh ran under `set -e`, alone among the
+  runners. The runner exits 1 when any job failed, so one failure out of ten
+  would have aborted the script before its scoring step, discarding the nine
+  that ran to report a failure the log already showed. Dropped to
+  `set -uo pipefail` like every other runner, with a test that pins it.

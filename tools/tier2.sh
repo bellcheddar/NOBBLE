@@ -9,7 +9,11 @@
 # Tier 2 writes queue_tier2.jsonl, state_tier2.jsonl and results_tier2.jsonl.
 # Tier 1's three files are never touched, so a tier-2 run cannot corrupt the
 # measurement that selected it.
-set -euo pipefail
+# No -e. The runner exits 1 when any job failed, and a refinement run that
+# loses one job of ten should still score the nine that ran: aborting here
+# would throw away the compute to report a failure the log already shows.
+# Every other runner in tools/ does the same.
+set -uo pipefail
 cd "$(dirname "$0")/.."
 
 ROOT="$(pwd)"
