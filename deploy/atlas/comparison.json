@@ -1,8 +1,8 @@
 {
   "baseline": "benchmark_20261103T192126Z",
   "corrected": "corrected_20261103T214331Z",
-  "pairs_compared": 5,
-  "pairs_incomplete": 2,
+  "pairs_compared": 6,
+  "pairs_incomplete": 1,
   "provisional": true,
   "control": {
     "gene": "IKZF1",
@@ -122,25 +122,26 @@
       "gene": "RBM39",
       "e3": "DCAF15",
       "baseline_pair": "bench06_RBM39_DCAF15",
-      "corrected_pair": null,
+      "corrected_pair": "corr06_RBM39_DCAF15",
       "substrate_mode": "folded_domain",
       "baseline_median_rmsd": 6.085,
-      "corrected_median_rmsd": null,
-      "delta_rmsd": null,
+      "corrected_median_rmsd": 0.659,
+      "delta_rmsd": -5.426,
       "baseline_anchor_rmsd": 0.756,
-      "corrected_anchor_rmsd": null,
+      "corrected_anchor_rmsd": 0.714,
       "baseline_poses": 10,
-      "corrected_poses": 0,
+      "corrected_poses": 1,
       "is_control": false,
-      "verdict": "incomplete: one campaign has no recovery number yet"
+      "verdict": "improved"
     }
   ],
   "improved": [
     "BRD4",
     "BRD4",
     "CSNK1A1",
-    "GSPT1"
+    "GSPT1",
+    "RBM39"
   ],
   "worse": [],
-  "conclusion": "F6 supported: 4 pair(s) improved by more than 2 A with the whole domain, the control held, and none got worse. Provisional: 2 of 7 pair(s) have not finished in both campaigns (CDK12, RBM39)"
+  "conclusion": "F6 supported: 5 pair(s) improved by more than 2 A with the whole domain, the control held, and none got worse. Provisional: 1 of 7 pair(s) have not finished in both campaigns (CDK12)"
 }

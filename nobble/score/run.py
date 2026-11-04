@@ -257,7 +257,8 @@ def score_campaign(campaign: Path, with_plip: bool = True, limit: int | None = N
         for entry in scored:
             entry["nobble_score"] = weights.apply(entry, fit.weights)
             entry["nobble_score_status"] = (
-                f"fitted on {fit.labelled_pairs} labelled pairs, AUC {fit.objective}"
+                f"fitted on {fit.labelled_pairs} labelled pairs, "
+                f"in-sample AUC {fit.objective}"
             )
             entry["nobble_score_weights"] = fit.weights
             entry["nobble_score_caveats"] = fit.caveats

@@ -526,3 +526,16 @@
   the A P Z L layout) and preflighted clean with 0 asymmetric cofactors, then
   removed so the chain's target stays the IKZF1 campaign. Pinned as a test
   against a real library parent rather than a synthetic one. 123 tests pass.
+- 2026-11-04T15:40Z Exercised the composite weight fitter at full campaign
+  scale for the first time. It has never actually fitted: every campaign so
+  far had too few labelled pairs and it refused, so the fitting path runs for
+  real only after the main campaign. On 158 synthetic pairs shaped like the
+  real queue it fits cleanly (AUC 0.8918) and correctly gives zero weight to
+  the two components fed pure noise.
+- 2026-11-04T15:40Z That exposed an overclaim. The reported AUC is in-sample
+  by construction: the grid search maximises it on the same labelled pairs
+  the composite then ranks. It was published as "AUC 0.89" on every scored
+  row and in the About panel, which reads as performance on unseen pairs,
+  which is what the matched-control ROC is for. The fit now carries an
+  explicit in-sample caveat and the row status says "in-sample AUC".
+  124 tests pass.

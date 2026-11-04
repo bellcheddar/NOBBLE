@@ -202,6 +202,18 @@ def fit(campaign: Path) -> FitResult:
     result.objective = round(auc, 4)
     result.status = "fitted"
 
+    # The objective is in-sample: the grid search maximised this AUC on the
+    # same labelled pairs the composite is then used to rank. It is a
+    # description of the fit, not an estimate of how the composite performs
+    # on a pair it has not seen, and it is the number most likely to be
+    # quoted as if it were the latter. The matched-control ROC is the held
+    # -out measurement; this is not a second opinion on it.
+    result.caveats.append(
+        f"AUC {result.objective} is in-sample: the grid maximised it on the "
+        f"same {len(labelled)} labelled pairs. It describes the fit, not "
+        "performance on unseen pairs"
+    )
+
     if len(labelled) < 25:
         result.caveats.append(
             f"fitted on only {len(labelled)} labelled pairs: treat the weights as "

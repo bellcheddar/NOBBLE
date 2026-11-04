@@ -101,3 +101,49 @@ def test_apply_is_bounded_and_handles_missing_components(tmp_path):
                                 "convergence_score": 0.5})
     assert value is not None
     assert 0.0 <= value <= 1.0
+
+
+def test_the_fitter_works_at_full_campaign_scale_and_says_the_auc_is_in_sample():
+    """The fitter has never actually fitted: every campaign so far has had
+    too few labelled pairs and it refused. Its fitting path first runs for
+    real after the main campaign, so it is exercised here at that size.
+
+    The AUC it reports is in-sample by construction, because the grid
+    maximised it on the pairs it is reported over. That is the number most
+    likely to be quoted as if it measured performance on unseen pairs,
+    which is what the matched-control ROC is for.
+    """
+    import json
+    import random
+    import tempfile
+    from pathlib import Path
+
+    from nobble.score import weights
+
+    random.seed(21)
+    rows = []
+    for index in range(158):
+        degraded = index < 31
+        edge = 0.18 if degraded else 0.0
+        rows.append({
+            "pair_id": f"p{index}",
+            "peptide_label": "degraded" if degraded else "not_degraded",
+            "delta_iptm": round(random.gauss(0.05 + edge, 0.18), 4),
+            "bridge_percentile": round(min(100, max(0, random.gauss(50 + edge * 90, 22))), 2),
+            "convergence_score": round(random.random(), 3),
+            "plip_fingerprint_match": round(random.random(), 3),
+        })
+
+    with tempfile.TemporaryDirectory() as work:
+        campaign = Path(work)
+        (campaign / "scores.jsonl").write_text(
+            "".join(json.dumps(r) + "\n" for r in rows))
+        fit = weights.fit(campaign).to_dict()
+
+    assert fit["fitted"] is True, fit["status"]
+    assert fit["labelled_pairs"] == 158
+    assert 0.0 <= fit["objective"] <= 1.0
+    assert abs(sum(fit["weights"].values()) - 1.0) < 1e-6, "weights must normalise"
+    assert any("in-sample" in caveat for caveat in fit["caveats"]), fit["caveats"]
+    # The components given pure noise should not carry the fit.
+    assert fit["weights"]["delta_iptm"] > 0, fit["weights"]
