@@ -38,7 +38,18 @@ E3_TO_CONSTRUCT = {
     "FEM1B": "FEM1B_ANK",
 }
 
-SEEDS = (1, 2, 3, 4, 5)
+# From config, not written here. `config/tuning.toml` declares
+# `campaign.seeds = 5` and nothing read it: two hard-coded copies of
+# (1, 2, 3, 4, 5), here and in execute/corrected.py, decided the real
+# behaviour, so changing the configured value changed nothing.
+#
+# The count matters more than most. Delta-ipTM is a difference of minima
+# over seeds and a minimum is not robust to how many draws it was taken
+# over, which is the reasoning behind the hard partition by sampling tier
+# and behind the seed-balance report on the headline curve. It also sets
+# the campaign's size: 158 pairs times 5 seeds times 3 arms is 2,360 jobs
+# (F91).
+SEEDS = tuple(range(1, int(paths.tuning()["campaign"]["seeds"]) + 1))
 CONDITIONS = ("conditioned", "unconstrained")
 COMPLEXES = ("binary", "ternary")
 

@@ -31,7 +31,11 @@ from nobble.curate import peptides as P
 from nobble.execute import msa as msa_module
 from nobble.execute import yaml_gen as Y
 
-SEEDS = (1, 2, 3, 4, 5)
+# The manifest's, not a second copy. Two tuples drifting apart would have
+# emitted a corrected campaign with a different seed count from the
+# benchmark it is compared against, and the comparison's whole point is
+# that one variable changed (F91).
+from nobble.curate.manifest import SEEDS
 
 
 def substrate_chain(plan: dict) -> dict:
