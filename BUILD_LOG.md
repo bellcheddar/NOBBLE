@@ -606,3 +606,14 @@
   URL scheme. Verified both ways: with tier-2 data the note lists three
   seeds as working links; without it the note stays hidden. 131 tests pass,
   QC clean, deployed.
+- 2026-11-04T17:55Z Verified the design arm end to end through the real
+  path, not a synthetic injection: scored a real design campaign, let
+  report.build() find it, let build_atlas publish it, and measured the
+  rendered chart. 15 lifts computed, 0 refused, 15 bars plotted, no console
+  errors. Then removed the synthetic scores and rebuilt the atlas before
+  deploying: that test had put fabricated lifts into design.json, and
+  deploying them would have published invented numbers as results.
+- 2026-11-04T17:55Z The rebuild also removed 11 duplicate structure files
+  with macOS " 2.cif" suffixes. I introduced them in efc1699 with a
+  cp -r backup and restore of deploy/atlas while testing which campaign
+  build_atlas publishes. 100 structures remain, matching the 100 jobs.
