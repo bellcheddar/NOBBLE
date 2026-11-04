@@ -127,7 +127,11 @@ def main() -> int:
     # JSONL records. results.jsonl carries absolute structure paths from the
     # build machine, which are meaningless on the droplet, so they are
     # rewritten to the flattened names published beside them.
-    for name in ("scores.jsonl", "results.jsonl"):
+    # Tier 2 refines the top decile and writes its own three files. Without
+    # publishing them the refinement is invisible: hours of compute whose
+    # only product is a better set of coordinates nobody can open.
+    for name in ("scores.jsonl", "results.jsonl",
+                 "scores_tier2.jsonl", "results_tier2.jsonl"):
         source = campaign / name
         if not source.exists():
             continue

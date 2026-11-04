@@ -571,3 +571,22 @@
   component lysine_reach_exposed_fraction while the UI slider is
   lysine_reach, so the fitted weight landed on no slider and the default
   stood silently. Aliased. 128 tests, QC clean, deployed.
+- 2026-11-04T17:10Z Tier 2's output was invisible. It writes scores_tier2
+  and results_tier2, and nothing read either: not the atlas, not the app. A
+  refinement run would have spent hours producing a better set of
+  coordinates that no page could open. The atlas now publishes the tier-2
+  slice, the app exposes it, and the pose catalogue offers refined
+  structures marked as such rather than merged with tier 1, which were
+  sampled differently (D-NOB-032).
+- 2026-11-04T17:10Z Found a real cache bug on the way. data._cached
+  documented itself as keyed by (path, mtime) and was keyed by (name,
+  mtime), so two campaigns whose files shared an mtime returned each
+  other's rows. In production _CAMPAIGN is set once and it never fires; it
+  fires the moment anything reconfigures. The path is now in the key, as
+  the docstring always claimed.
+- 2026-11-04T17:10Z The two new tests passed alone, passed against every
+  other test file pairwise, and failed only in the full run. The product
+  code was correct throughout: printing the HTTP payload showed the right
+  structures every time. A test that depends on accumulated global state
+  measures the suite rather than the code, so they now run in a subprocess.
+  Stable across three consecutive full runs. 130 tests pass.

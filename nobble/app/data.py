@@ -65,15 +65,24 @@ def _read_jsonl(path: Path) -> list[dict]:
 
 
 def _cached(key: str, path: Path, loader):
-    """Cache by (path, mtime) so a live campaign refreshes without a restart."""
+    """Cache by (path, mtime) so a live campaign refreshes without a restart.
+
+    The path really is part of the key. It said so and was not: the entry
+    was stored under the bare name, so pointing the app at a different
+    campaign returned the previous one's rows whenever the two files shared
+    an mtime. In production _CAMPAIGN is set once and this never fires;
+    it fires immediately when anything reconfigures, which is how it was
+    found.
+    """
     if not path.exists():
         return loader(path) if False else ([] if key != "campaign" else {})
     stamp = path.stat().st_mtime
-    entry = _CACHE.get(key)
+    cache_key = (key, str(path))
+    entry = _CACHE.get(cache_key)
     if entry and entry[0] == stamp:
         return entry[1]
     value = loader(path)
-    _CACHE[key] = (stamp, value)
+    _CACHE[cache_key] = (stamp, value)
     return value
 
 
@@ -93,6 +102,16 @@ def results() -> list[dict]:
     if _CAMPAIGN is None:
         return []
     return _cached("results", _CAMPAIGN / "results.jsonl", _read_jsonl)
+
+
+def results_tier2() -> list[dict]:
+    """Refined poses, if tier 2 has run. Empty is the normal state."""
+    if _CAMPAIGN is None:
+        return []
+    path = _CAMPAIGN / "results_tier2.jsonl"
+    if not path.exists():
+        return []
+    return _cached("results_tier2", path, _read_jsonl)
 
 
 def campaign_meta() -> dict:

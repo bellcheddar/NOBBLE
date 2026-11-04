@@ -21,7 +21,7 @@
     },
     {
       "campaign": "corrected_20261103T214331Z",
-      "jobs_done": 76,
+      "jobs_done": 77,
       "jobs_total": 100
     },
     {
@@ -34,5 +34,5 @@
   "jobs_total": 100,
   "pairs_total": 7,
   "structures": 100,
-  "bytes": 25739532
+  "bytes": 25739531
 }

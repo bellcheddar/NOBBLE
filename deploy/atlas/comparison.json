@@ -125,12 +125,12 @@
       "corrected_pair": "corr06_RBM39_DCAF15",
       "substrate_mode": "folded_domain",
       "baseline_median_rmsd": 6.085,
-      "corrected_median_rmsd": 0.659,
-      "delta_rmsd": -5.426,
+      "corrected_median_rmsd": 0.715,
+      "delta_rmsd": -5.37,
       "baseline_anchor_rmsd": 0.756,
-      "corrected_anchor_rmsd": 0.714,
+      "corrected_anchor_rmsd": 0.747,
       "baseline_poses": 10,
-      "corrected_poses": 1,
+      "corrected_poses": 2,
       "is_control": false,
       "verdict": "improved"
     }

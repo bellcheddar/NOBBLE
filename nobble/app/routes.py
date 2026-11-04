@@ -268,7 +268,14 @@ def api_pair_structures(pair_id: str):
         except Exception:                           # noqa: BLE001
             crystal_map = {}
 
-    rows = [row for row in data.results() if row.get("pair_id") == pair_id]
+    # Tier 1 and, where it has run, tier 2. The refined pose is the whole
+    # product of a refinement run, and the viewer is the only place it can
+    # be read: without this the catalogue offers the coarse pose only and
+    # the refinement may as well not have happened. Marked, not merged:
+    # they were sampled differently and are not interchangeable
+    # (D-NOB-032).
+    rows = [(row, 1) for row in data.results() if row.get("pair_id") == pair_id]
+    rows += [(row, 2) for row in data.results_tier2() if row.get("pair_id") == pair_id]
     return jsonify({
         "pair_id": pair_id,
         "crystal": crystal_map.get(pair_id),
@@ -278,9 +285,11 @@ def api_pair_structures(pair_id: str):
                 "complex_type": row.get("complex_type"),
                 "conditioning": row.get("conditioning"),
                 "seed": row.get("seed"),
+                "sampling_tier": tier,
+                "label": "refined" if tier == 2 else "tier 1",
                 "url": f"/structure/{row['job_id']}.cif",
             }
-            for row in rows if row.get("structure")
+            for row, tier in rows if row.get("structure")
         ],
     })
 
