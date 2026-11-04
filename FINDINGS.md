@@ -7115,3 +7115,43 @@ thing spelled twice, which is this project's most common defect and the
 reason the first version of the fix looked like it worked.
 
 The suite now leaves both published files untouched.
+
+## F155. The untested choice could not be tested, and the one beside it could
+
+F153's sweep left one mutation uncaught: in `curate/plddt.py`, CA atoms stop
+being preferred for the per-residue pLDDT profile. I went looking for the
+missing test and found there is nothing to test.
+
+AlphaFold writes one per-residue confidence into every atom's B-factor.
+Across 200 cached models and 106,983 residues: no residue has atoms that
+disagree about `b_iso`, every residue has a CA, and not one has the CA first.
+So `[atom for atom in residue if atom.name == "CA"] or list(residue)` and
+`list(residue)` select different atoms and the same number, the fallback
+never fires, and removing the preference has no observable effect. The sweep
+was right and the entry was a false positive.
+
+The preference stays. It states which atom the number is meant to come from,
+and a model storing genuine per-atom confidence would make the difference
+real. What changed is that it is no longer claimed as load-bearing, and the
+invariant it rests on is a test: if AFDB ever ships per-atom values, that
+test fails, which is the moment the preference starts deciding the profile.
+
+The entry is replaced rather than left in. A mutation with no observable
+effect is a false positive, and keeping one trains the reader to shrug at a
+miss, which is the opposite of what a sweep is for.
+
+In its place, the thing the same function's docstring is actually about: the
+explicit `CoorFormat.Mmcif`. BINMAN's fetcher stores every cached body under
+a `.bin` suffix, gemmi infers format from the extension, and without the
+argument it raises "Unknown format" on a perfectly good mmCIF. That was
+caught silently once and turned 20,279 usable models into a uniform "no
+model" answer.
+
+That one was not caught either, which is the part worth recording. The
+invariant test I had just written reads models with gemmi directly and
+passes the format itself, so it cannot see the bug: a test can sit next to a
+defect, exercise the same data, and be blind to it because it takes a
+different route in. The new test goes through `plddt_profile`, and through
+`summary()`, which swallows the exception into the status that was reported
+20,279 times. Both mutations are now accounted for: one removed as
+unobservable, one caught.
