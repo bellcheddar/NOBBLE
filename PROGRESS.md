@@ -435,10 +435,21 @@ reading as indistinguishable from chance.
   and the main campaign still running. See the section above and F134. The
   other five gates are closed.
 
+  The mechanism for closing it is in place and the judgement is not:
+  `config/tier_b_constructs.toml` ships empty with the 59 InterPro
+  candidates that fit the token cap listed per ligase, and
+  `nobble/curate/tier_b_constructs.py` validates whatever is filled in and
+  reports blocked until every gene has an entry (D-NOB-068). So the gate
+  closes on fifteen lines of config, not on code.
+
   This cell used to say "No gate is currently open. All six are closed",
   which stayed true until F134 and then contradicted the section above it
-  for as long as nobody read both (F158).
-- **G1 compute: closed, and was briefly reported open in error.** When the
+  for as long as nobody read both (F158). The bullet below it then said G1
+  was closed, which F158's own test did not catch because it compared a
+  blanket claim against named gates and never two bullets about one gate
+  (F165).
+- **G1 compute, history: the false open of 2026-11-04.** Not a statement
+  of the current state, which is the bullet above. When the
   chain remeasured throughput on the corrected campaign, `projected_hours`
   applied that campaign's 397-token representative job to the main campaign's
   124-token jobs and returned 104.3 hours against the 96-hour threshold. The

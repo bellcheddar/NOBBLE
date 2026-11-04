@@ -77,3 +77,54 @@ def test_the_gates_section_accounts_for_all_six():
         f"the Gates open section names only {accounted} of six and does not "
         "say what the rest are"
     )
+
+
+def _gate_bullets() -> dict[str, list[str]]:
+    """Each gate's bullets in the Gates open section."""
+    start = PROGRESS.index("## Gates open")
+    section = PROGRESS[start:]
+    following = section.find("\n## ", 3)
+    if following > 0:
+        section = section[:following]
+    found: dict[str, list[str]] = {}
+    # The whole first line, not just the bold heading: G3 and G5 put their
+    # state after the closing asterisks, so a shorter capture reported them
+    # as stating nothing.
+    for match in re.finditer(r"^- \*\*(G\d).*$", section, re.M):
+        found.setdefault(match.group(1), []).append(match.group(0))
+    return found
+
+
+# A bullet that says it is history is not a claim about now.
+HISTORY = re.compile(r"history|formerly|was briefly|used to", re.I)
+
+
+def test_each_gate_makes_one_claim_about_the_present():
+    """Two bullets about one gate, saying opposite things (F165).
+
+    The section carried "G1 Compute is open, on Tier B" and, four bullets
+    down, "G1 compute: closed, and was briefly reported open in error". The
+    second was F45's history and read as a statement of the current state
+    because it was in the same list in the same form.
+
+    F158's test did not catch it: that one compares a blanket "no gate is
+    open" against gates named as open, and never two bullets about the same
+    gate. A check narrower than the defect it is named for is the thing this
+    project keeps finding.
+    """
+    for gate, bullets in sorted(_gate_bullets().items()):
+        current = [b for b in bullets if not HISTORY.search(b)]
+        assert len(current) <= 1, (
+            f"{gate} has {len(current)} bullets claiming a present state: "
+            f"{current}. A historical note must say so in its heading."
+        )
+
+
+def test_every_gate_bullet_says_open_or_closed_or_history():
+    """A bullet that says neither leaves a reader to infer."""
+    for gate, bullets in sorted(_gate_bullets().items()):
+        for bullet in bullets:
+            assert re.search(r"open|closed", bullet, re.I) or HISTORY.search(bullet), (
+                f"{gate} has a bullet stating neither a state nor that it is "
+                f"history: {bullet}"
+            )

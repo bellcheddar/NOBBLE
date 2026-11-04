@@ -7599,3 +7599,40 @@ The relation is maintained in the test rather than inferred from the prose.
 would either miss revisions or invent them; what the test guarantees is that
 a recorded relation stays symmetric, points at findings that exist, and
 never points backwards.
+
+## F165. The gates section contradicted itself again, past my own check
+
+F158 found PROGRESS.md saying "No gate is currently open. All six are
+closed" while a section above recorded Gate G1 open on Tier B, and added a
+test. The section still contradicted itself, four bullets lower down, and the
+test did not notice.
+
+Two bullets, both headed G1. The first, written for F134, says it is open on
+Tier B. The second, written much earlier for F45, says "G1 compute: closed,
+and was briefly reported open in error" and describes a false open that was
+corrected the same day. That second one is worth keeping: a Gate reported
+open stops an unattended build, so a false one is as costly as a missed one
+and the record matters. What it is not is a statement about now, and it sat
+in the same list in the same form as the bullets that are.
+
+F158's test compared a blanket claim against gates named as open. It never
+compared two bullets about one gate, so the narrower contradiction passed
+straight through a check written for exactly this defect. A check narrower
+than the thing it is named for is the shape this project keeps turning up,
+and finding one in my own fix from two hours earlier is the clearest
+instance of it yet.
+
+The historical bullet now says so in its heading, and the check counts
+present-tense claims per gate and requires at most one, treating a bullet
+headed "history", "formerly", "was briefly" or "used to" as a record rather
+than a claim. Verified by restoring the contradiction, watching it fail, and
+restoring the file byte for byte.
+
+Writing that test turned up a second, smaller thing: my first version
+captured only each bullet's bold heading, and G3 and G5 put their state
+after the closing asterisks, so it reported them as stating nothing at all.
+It captures the whole first line now.
+
+The current bullet also points at what would close the gate, which it did not
+before: `config/tier_b_constructs.toml` and D-NOB-068, so a reader learns
+that G1 closes on fifteen lines of config rather than on code.
