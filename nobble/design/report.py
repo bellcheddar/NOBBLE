@@ -325,11 +325,50 @@ def build(parent_id: str | None = None,
     campaigns_root = paths.CAMPAIGNS
     scored = (sorted(campaigns_root.glob("design_*/scores.jsonl"))
               if campaigns_root.exists() else [])
-    if scored and chosen:
-        lifts = lift_module.from_scores(scored[-1], chosen["peptide_id"])
-        if lifts.get("lifts"):
-            objects = [lift_module.Lift(**item) for item in lifts["lifts"]]
-            profile = lift_module.scan_profile(objects, chosen["sequence"])
+    if scored:
+        # The parent the scan actually ran on, from the campaign's own
+        # record, not the one this report happens to rank first (F147).
+        #
+        # `chosen` is selected here and now, from the current scores. The
+        # design campaign was assembled for whichever parent led when it was
+        # assembled. Those agree in the chain, which re-assembles the scan
+        # from this report's own preview, and they do not have to: a report
+        # run after more pairs score, or with an explicit `parent_id`, asks
+        # a campaign built for one parent about the variants of another.
+        # `from_scores` then matches no variant and returns "parent not
+        # scored", so the profile silently does not appear and nothing says
+        # the campaign was about something else.
+        #
+        # campaign.json carries `parent` and `parent_sequence`, written by
+        # the assembler. Reading the artefact's own record rather than
+        # re-deriving is the same lesson as F137.
+        design_dir = scored[-1].parent
+        recorded = {}
+        meta_path = design_dir / "campaign.json"
+        if meta_path.exists():
+            try:
+                recorded = json.loads(meta_path.read_text())
+            except (OSError, json.JSONDecodeError):
+                recorded = {}
+        scan_parent = recorded.get("parent")
+        scan_sequence = recorded.get("parent_sequence")
+        if not scan_parent and chosen:
+            scan_parent = chosen["peptide_id"]
+            scan_sequence = chosen["sequence"]
+
+        if scan_parent:
+            lifts = lift_module.from_scores(scored[-1], scan_parent)
+            lifts["scan_parent"] = scan_parent
+            lifts["scan_campaign"] = design_dir.name
+            if chosen and chosen["peptide_id"] != scan_parent:
+                lifts["note"] = (
+                    f"the scan ran on {scan_parent} and this report ranks "
+                    f"{chosen['peptide_id']} first, so the profile below is "
+                    "the scan's parent and not the ranking's"
+                )
+            if lifts.get("lifts") and scan_sequence:
+                objects = [lift_module.Lift(**item) for item in lifts["lifts"]]
+                profile = lift_module.scan_profile(objects, scan_sequence)
 
     # The validation state of the score the arm would rank by. Reported
     # next to the rankings rather than buried: a ranked list reads as a
