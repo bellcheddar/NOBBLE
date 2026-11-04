@@ -871,9 +871,14 @@ thalidomide-significant row in the screen is also pomalidomide-significant,
 so including it would change no assignment while widening the claim past what
 the spec predicts.
 
-**Consequence.** The arm shrinking to 120 brings the mandatory set to 127
-against a measured budget of 156, so the over-budget condition of D-NOB-021
-resolves itself and there is headroom for discovery again.
+**Consequence, measured after the rebuild rather than predicted.** The arm
+shrinking to 120 brings the *mandatory* set to 127 against a measured budget
+of 156, but the selection is 158 once each kept positive's scramble is paid
+for, so it is still 2 over and there is still no headroom for discovery. The
+campaign remains calibration-only. What did change is the projection: 2,370
+jobs at 48.4 hours against the 63.1 hours the 160-peptide arm would have
+cost, which lands within half an hour of the 48-hour per-run target. Getting
+the drug assignment right paid for itself in compute as well as in validity.
 
 **Also fixed.** `screen_drugs` is now a structured field on `Peptide`. The
 first version of the assignment parsed the drug list back out of the prose in

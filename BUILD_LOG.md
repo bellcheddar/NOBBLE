@@ -75,6 +75,10 @@
   peptide and each control inherits its positive's. Eight positives dropped
   (significant only for CC-122/CC-220, no CCD in the ligand table), before
   matching so they cannot consume a kept positive's controls. Arm is 24
-  positives + 96 controls = 120 peptides, down from 160, which brings the
-  mandatory set to 127 against a budget of 156 and resolves the D-NOB-021
-  over-budget condition. D-NOB-033. 58 tests pass.
+  positives + 96 controls = 120 peptides, down from 160. Rebuilt the library
+  manifest on it: 158 selected (7 benchmark, 120 Sievers, 31 scrambles),
+  2,370 jobs, 48.4 h projected against 63.1 h for the 160-peptide arm, so it
+  now lands within half an hour of the 48 h target. Mandatory is 127, under
+  the 156 budget, but the selection is still 2 over once scrambles are paid
+  for, so the campaign stays calibration-only with no discovery headroom.
+  D-NOB-033. 58 tests pass.
