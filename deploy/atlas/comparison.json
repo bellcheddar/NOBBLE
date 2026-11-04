@@ -4,16 +4,7 @@
   "pairs_compared": 7,
   "pairs_incomplete": 0,
   "provisional": false,
-  "superseded_substrates": [
-    {
-      "pair_id": "corr05_CSNK1A1_CRBN",
-      "submitted_length": 269,
-      "planned_length": 219,
-      "accession": "P48729",
-      "planned_range": "17-235",
-      "reason": "the submitted substrate is not the domain the plan now specifies, so this pair measures a different construct from the one the plan describes"
-    }
-  ],
+  "superseded_substrates": [],
   "control": {
     "gene": "IKZF1",
     "e3": "CRBN",
@@ -178,5 +169,5 @@
     "RBM39"
   ],
   "worse": [],
-  "conclusion": "F6 supported: 6 pair(s) improved by more than 2 A with the whole domain, the control held, and none got worse. Bridge formation agrees and is independent of the crystal: 4 pair(s) bridged in more seeds and none in fewer. 1 pair(s) used a substrate domain the plan no longer specifies (CSNK1A1): the measurement stands and describes a different construct from the one the plan beside it gives"
+  "conclusion": "F6 supported: 6 pair(s) improved by more than 2 A with the whole domain, the control held, and none got worse. Bridge formation agrees and is independent of the crystal: 4 pair(s) bridged in more seeds and none in fewer"
 }

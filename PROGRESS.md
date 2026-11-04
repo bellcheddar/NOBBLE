@@ -408,3 +408,32 @@ equality and refused CDK12 over 293 of 294 identical residues.
 
 Suite 707 passing, 2 skipped, both conditional on a campaign running and on
 tier 2 not yet being selected.
+
+## The CSNK1A1 domain question, answered
+
+PROGRESS and F93 both listed this as open: whether the 269 residues the
+corrected campaign submitted or the 219 the plan specified is the correct
+CSNK1A1 domain. It is answered, and it was a code defect rather than a
+judgement about the kinase (F107, D-NOB-041).
+
+The plan's boundary came from `domains[0]` of an unsorted list in InterPro's
+response order, so it depended on how the API had ordered its records. The
+library manifest records IPR000719 and the same call today returns PF00069
+first.
+
+IPR000719 17-285 is correct. CDD gives 16-281, SMART 17-283 and the PROSITE
+profile 17-285 for the same domain; PF00069's 17-235 is the lone outlier. And
+5FQD chain C resolves residues 10 to 303 continuously with no unmodelled
+gaps, so the 50 residues PF00069 drops are ordered structure rather than a
+disordered tail.
+
+The list is ordered now. One of seven substrate constructs moves, CSNK1A1 to
+269, which is what the campaign already ran, so the superseded-substrate
+caveat comes off the published conclusion instead of being reworded. The
+running main campaign submits 15-mers for its benchmark pairs and is
+unaffected.
+
+Remaining open items are unchanged: `tools/rerun_pair.py bench02_BRD4_VHL`
+when the GPU frees, rerunning `tools/run_chain.sh` once the current chain
+exits, and removing the `KNOWN_DRIFT` entry in
+`tests/test_cross_campaign_reproducibility.py` when the F47 correction runs.

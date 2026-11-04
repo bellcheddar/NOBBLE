@@ -4904,3 +4904,94 @@ one and renders `{{ roc.get('status') }}`, `{{ split.get('status') }}` and
 the one remaining literal, ProtCID's veto being not computed, is a permanent
 fact rather than a state. So F105 was a single instance and not a class, and
 this is what the sweep turned up instead.
+
+## F107. The open question was a bug, and the evidence was in the crystal
+
+PROGRESS listed one question as explicitly unanswered: which CSNK1A1 domain
+is scientifically correct, the 269 residues the corrected campaign submitted
+or the 219 the plan specifies. F93 recorded it as a boundary that moved and
+said so plainly: "which of the two domains is right is a question about the
+kinase rather than about the code, and this finding does not answer it." It
+put a caveat on the published conclusion and left it there.
+
+It is a question about the code.
+
+`domain_context()` returns every annotation enclosing a degron, and
+`benchmark_substrate_constructs` submits `domains[0]` as the substrate when
+the 15-mer cannot fold alone. That list arrived in InterPro's response order
+and was never sorted. So the submitted construct depended on how the API had
+ordered its records, and the proof is in the repository: the library manifest
+records CSNK1A1's note naming **IPR000719**, and the same call today returns
+**PF00069** first. The boundary did not move because anyone changed a lookup.
+It moved because an unordered list was read by index.
+
+**The kinase question has an answer, and three independent lines agree.**
+
+PF00069 gives 17-235 and IPR000719 gives 17-285 for a domain both of them
+call "Protein kinase domain". PFAM is one member signature of the InterPro
+entry that integrates it, and its boundaries are where the HMM alignment ends.
+
+Every other signature on P48729 agrees with the longer extent: CDD's
+catalytic domain at 16-281, SMART at 17-283, the PROSITE profile at 17-285.
+PF00069's 17-235 is the lone outlier.
+
+And 5FQD chain C, the deposited CSNK1A1 in the lenalidomide ternary, resolves
+residues **10 to 303 continuously, 294 residues with no unmodelled gaps**.
+The 50 residues PF00069 drops are ordered structure, not a disordered tail. A
+protein kinase is bilobal and 17-235 ends inside the C-lobe.
+
+So IPR000719 is right, the campaign submitted the correct construct, and the
+plan was what was wrong.
+
+**The fix is an ordering, recorded as D-NOB-041.** Longest domain-level entry
+first, InterPro preferred over a PFAM signature on a tie, accession last so
+the order is total. Seven substrates submit a domain and exactly one moves:
+CSNK1A1 to IPR000719 17-285. BRD4, GSPT1, RBM39, CDK12 and ZN346 keep what
+they had, and CDK12 was already on IPR000719.
+
+Four things close together. The construct is deterministic. CSNK1A1 agrees
+with the campaign again, so the superseded-substrate discrepancy is gone and
+the caveat comes off the published conclusion rather than being reworded. No
+substrate resolves from a PFAM accession, which is the convention
+`constructs.py` has always followed for receptors, and which
+`test_superseded_substrates` had pinned as a standing anomaly: "the set of
+PFAM-sourced domains has changed... The one superseded boundary was the only
+member, which is why this is pinned". It was pinning the bug.
+
+The running main campaign submits 15-mers for its benchmark pairs, so it is
+unaffected and needs no restart.
+
+**A second defect in the same function.** `max_coverage` is the maximum of
+`window / length` over all enclosing domains, which is the *smallest* of
+them, and the note and the plan's reason both quoted it beside
+`domains[0]`'s accession. On 7 of 121 substrates those are different
+domains, so the sentence paired one domain's name with another's percentage:
+BRD4 read "inside IPR001487 and covers only 17%" where IPR001487's own
+coverage is 13%. Both now quote the domain they name. `max_coverage` keeps
+its job unchanged, because deciding whether a window can fold alone is
+answered most conservatively by the domain it fills most of, and a 23-residue
+zinc finger covering all of a 23-residue annotation is self-sufficient
+however many larger domains contain it. Two questions were sharing one
+ordering, which is what made the first defect possible.
+
+**Three near-misses of my own.**
+
+The first sweep reported 94 substrates changing and I almost wrote that down.
+88 of them are zinc fingers where `inside_folded_domain` is false, so
+`domains[0]` never becomes a construct: I had measured "the annotation
+changes" and called it "the construct changes". Restricted to the 7 that
+actually submit a domain, the answer is one.
+
+The rule I first tried was "prefer InterPro, then highest coverage", which
+reads naturally and is wrong: highest coverage is the shortest domain, so it
+would have kept CSNK1A1 on PF00069 and moved BRD4 from the 111-residue
+bromodomain to a 102-residue repeat-specific sub-entry. Shortest is right for
+asking whether a degron fills its domain and wrong for asking what to fold.
+A test now holds that length outranks the database preference.
+
+And two of the tests I wrote for this were vacuous: they looped over the
+plans reading `plan["peptide_start"]` and `plan["peptide_length"]`, neither of
+which exists, so every iteration hit `continue` and the assertions never ran.
+Found by printing the plan's keys rather than by the tests failing, which is
+the eighth field-name guess of this build. Both take the degron window from
+the peptide library now and assert they checked all six.

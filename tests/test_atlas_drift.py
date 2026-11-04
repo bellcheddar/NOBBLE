@@ -57,11 +57,21 @@ def test_it_detects_the_drift_that_f96_was():
 
     original = comparison.read_text()
     payload = json.loads(original)
-    if "no longer specifies" not in payload.get("conclusion", ""):
-        pytest.skip("the published conclusion carries no caveat to remove")
+    conclusion = payload.get("conclusion") or ""
+    if len(conclusion) < 40:
+        pytest.skip("no published conclusion to perturb")
+    # Truncated at its last sentence boundary rather than at a named caveat.
+    # This used to cut at ". 1 pair(s) used a substrate" and skip when that
+    # phrase was absent, so when F107 removed the superseded-substrate
+    # caveat by fixing the plan it described, the control for this whole
+    # check went quiet instead of continuing to run. A test that skips is
+    # not a test that passes, and the F96 case is the one it exists to
+    # catch.
+    cut = conclusion.rfind(". ")
+    if cut < 20:
+        cut = len(conclusion) // 2
     try:
-        payload["conclusion"] = payload["conclusion"].split(
-            ". 1 pair(s) used a substrate")[0]
+        payload["conclusion"] = conclusion[:cut]
         comparison.write_text(json.dumps(payload, indent=2))
         report = atlas_drift.drift()
         assert report["status"] == "drifted", report

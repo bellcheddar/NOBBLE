@@ -87,7 +87,7 @@
         "start": 348,
         "end": 459,
         "length": 112,
-        "reason": "the 15-mer covers only 17% of IPR001487 and cannot fold alone"
+        "reason": "the 15-mer covers only 13% of IPR001487 and cannot fold alone"
       },
       "ligand_heavy_atoms": 69,
       "tokens": 551,
@@ -110,7 +110,7 @@
         "start": 56,
         "end": 166,
         "length": 111,
-        "reason": "the 15-mer covers only 18% of IPR001487 and cannot fold alone"
+        "reason": "the 15-mer covers only 14% of IPR001487 and cannot fold alone"
       },
       "ligand_heavy_atoms": 49,
       "tokens": 269,
@@ -151,14 +151,14 @@
       "substrate": {
         "mode": "folded_domain",
         "accession": "P48729",
-        "interpro": "PF00069",
+        "interpro": "IPR000719",
         "start": 17,
-        "end": 235,
-        "length": 219,
-        "reason": "the 15-mer covers only 7% of PF00069 and cannot fold alone"
+        "end": 285,
+        "length": 269,
+        "reason": "the 15-mer covers only 6% of IPR000719 and cannot fold alone"
       },
       "ligand_heavy_atoms": 19,
-      "tokens": 347,
+      "tokens": 397,
       "cap": 400,
       "within_cap": true,
       "declared_exception": false,
@@ -178,7 +178,7 @@
         "start": 250,
         "end": 328,
         "length": 79,
-        "reason": "the 15-mer covers only 21% of IPR000504 and cannot fold alone"
+        "reason": "the 15-mer covers only 19% of IPR000504 and cannot fold alone"
       },
       "ligand_heavy_atoms": 24,
       "tokens": 1287,

@@ -796,6 +796,25 @@ def domain_context(accession: str | None, start: int | None, end: int | None) ->
         and record["database"] in ("interpro", "pfam")
         and record["start"] <= start and end <= record["end"]
     ]
+    # Ordered, because `domains[0]` is what `benchmark_plan` submits as the
+    # substrate construct and this list arrived in InterPro's response order.
+    # That made the construct depend on how the API happened to sort its
+    # records: the library was built when IPR000719 came first for CSNK1A1
+    # and a later resolution put PF00069 first, which is the whole of the
+    # "the plan now specifies 219" discrepancy F93 recorded as a curation
+    # change (F107).
+    #
+    # Longest first, because the construct's job is to fold. Every candidate
+    # here encloses the degron, so the longest domain-level entry is the most
+    # complete folding unit and a shorter one is a sub-match of it. InterPro's
+    # integrated entry beats a PFAM member signature on a tie, which is also
+    # the convention `constructs.py` follows for every receptor. Accession
+    # last, so the order is total.
+    enclosing.sort(key=lambda record: (
+        -record["length"],
+        0 if record["database"] == "interpro" else 1,
+        record["accession"],
+    ))
     if not enclosing:
         return {
             "inside_folded_domain": False,
@@ -805,6 +824,12 @@ def domain_context(accession: str | None, start: int | None, end: int | None) ->
         }
 
     window = end - start + 1
+    # The verdict stays on the *smallest* enclosing domain. "Can this window
+    # fold alone" is answered most conservatively by the domain it fills the
+    # most of: a 23-mer zinc finger covering all of a 23-residue finger
+    # annotation is self-sufficient however many larger domains also contain
+    # it. That is a different question from which domain to submit, and the
+    # two were sharing one ordering.
     coverage = max(window / record["length"] for record in enclosing)
     return {
         "inside_folded_domain": coverage < DOMAIN_COVERAGE_SELF_SUFFICIENT,
@@ -838,10 +863,16 @@ def annotate_domain_context(peptides: list[Peptide]) -> list[Peptide]:
         peptide.domain_context = context
         if context.get("inside_folded_domain"):
             best = context["domains"][0] if context["domains"] else {}
+            # The chosen domain's own coverage, not `max_coverage`. The
+            # maximum belongs to the smallest enclosing domain, which is not
+            # the one named here, so the sentence paired one domain's
+            # accession with another's percentage on 7 of 121 substrates
+            # (F107).
+            share = best.get("coverage", context["max_coverage"])
             peptide.notes.append(
                 "window lies inside the folded domain "
                 f"{best.get('accession', '?')} and covers only "
-                f"{context['max_coverage']:.0%} of it: it cannot fold alone, so a "
+                f"{share:.0%} of it: it cannot fold alone, so a "
                 "failure to reproduce a domain-mediated interface is expected "
                 "(D-NOB-027)"
             )
@@ -892,7 +923,7 @@ def benchmark_substrate_constructs() -> list[dict]:
                 "end": domain["end"],
                 "length": substrate_length,
                 "reason": (
-                    f"the 15-mer covers only {context['max_coverage']:.0%} of "
+                    f"the 15-mer covers only {domain['coverage']:.0%} of "
                     f"{domain['accession']} and cannot fold alone"
                 ),
             }

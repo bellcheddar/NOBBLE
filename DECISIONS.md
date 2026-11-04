@@ -1752,3 +1752,70 @@ directions.
 **Open.** The allowance of 1.5 is a margin rather than a measurement. The
 first tier-2 run should replace it with the ratio it observes, which is the
 one number here that real tier-2 timings would improve.
+
+## D-NOB-041: a substrate construct is the longest enclosing domain-level entry, InterPro preferred
+
+**Date:** 2026-11-04
+
+`domain_context()` returns every annotation that encloses a degron, and
+`benchmark_substrate_constructs` submits `domains[0]` as the substrate when
+the 15-mer cannot fold alone. That list arrived in InterPro's response order
+and was never sorted, so which boundary the plan gave depended on how the API
+had ordered its records. The library was built when CSNK1A1's first enclosing
+entry was IPR000719 at 269 residues; a later resolution put PF00069 at 219
+first. F93 recorded the difference as a curation change. It was not a change
+at all.
+
+**Decided.** The list is ordered: longest domain-level entry first, InterPro
+preferred over a PFAM member signature on a tie, accession last so the order
+is total. Only entries of InterPro type `domain` from the `interpro` and
+`pfam` databases are candidates, which is unchanged.
+
+**Reason.** The construct's job is to fold. Every candidate already encloses
+the degron, so the longest domain-level entry is the most complete folding
+unit and a shorter one is a sub-match inside it. A PFAM match is one member
+signature of the InterPro entry that integrates it, and its boundaries are
+where the HMM alignment ends rather than where the fold does.
+
+CSNK1A1 is the case that shows it. PF00069 gives 17-235 and IPR000719 gives
+17-285 for the same domain name. Three other signatures on the same protein
+agree with the longer boundary: CDD's catalytic domain at 16-281, SMART at
+17-283, the PROSITE profile at 17-285. And 5FQD chain C resolves residues 10
+to 303 continuously, with no unmodelled gaps, so the 50 residues PF00069
+drops are ordered structure rather than a disordered tail. A protein kinase
+is bilobal and 17-235 ends inside the C-lobe.
+
+**What changes.** Seven substrates submit a domain rather than a fragment,
+and exactly one of them moves: CSNK1A1 from PF00069 17-235 to IPR000719
+17-285. BRD4, GSPT1, RBM39, CDK12 and ZN346 keep the entry they already had,
+and CDK12 was already on IPR000719. Every substrate construct is now
+InterPro-sourced, which is the convention `constructs.py` has always followed
+for receptors.
+
+The 269 residues are what the corrected campaign actually submitted, so the
+superseded-substrate discrepancy and the caveat it put on the published
+conclusion both go away rather than being reworded. The running main campaign
+submits 15-mers for its benchmark pairs and is unaffected.
+
+**Alternatives.** Order by coverage, which is what `max_coverage` already
+computes: that picks the *shortest* enclosing domain, which would keep
+CSNK1A1 on PF00069 and would move BRD4 from the 111-residue bromodomain to a
+102-residue repeat-specific sub-entry. Shortest is right for asking whether a
+degron fills its domain and wrong for asking what to fold. Pin CSNK1A1 to
+IPR000719 by hand: fixes the instance and leaves the ordering
+nondeterministic for everything else. Include homologous-superfamily entries:
+IPR011009 would give 12-298, but a superfamily is not a domain and the type
+filter excludes it for good reason.
+
+**Reversal.** Delete the `enclosing.sort(...)` call in
+`nobble/curate/peptides.py` to return to response order, which is the bug.
+To keep the ordering and change the rule, the sort key is three lines and
+`tests/test_substrate_domain_choice.py` states what each term is for.
+
+**Note on `max_coverage`.** It still takes the maximum over all enclosing
+domains, which is the smallest of them, and still decides
+`inside_folded_domain`. That is deliberate and unchanged: "can this window
+fold alone" is answered most conservatively by the domain it fills most of,
+and a 23-residue zinc finger covering all of a 23-residue finger annotation
+is self-sufficient however many larger domains contain it. The two questions
+were sharing one ordering, which is what made the bug possible.
