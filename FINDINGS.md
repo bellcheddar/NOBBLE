@@ -5042,3 +5042,44 @@ meaningful and does not make guessing acceptable.
 
 The sweep for other consumers of the raw list found two, and both are now
 ordered: this one and `domain_context`.
+
+## F109. The correction step rewrote a live campaign's memory in place
+
+`tools/rerun_pair.py bench02_BRD4_VHL --apply` is F47's fix, still pending.
+The pair's fifteen jobs were emitted with a hydroxyproline on BRD4 Pro379,
+the rule is fixed, the YAMLs on disk are not, and the step regenerates them
+and drops the pair's rows so the queue runs them again.
+
+It runs once, by hand, when the GPU is free, against a campaign holding days
+of compute. Nothing in the suite exercised it. The only mentions of it were
+comments in other tests saying it was pending, which is a different thing
+from a test.
+
+Its matching rule turns out to be careful. It takes a row when `pair_id`
+matches exactly or when `job_id` starts with the pair id plus the `__`
+separator, so a pair whose id is a prefix of another is not swept up. It
+keeps an unparseable line rather than dropping it, which is right: a torn
+final line from a kill mid-append is a job this tool cannot read, not a job
+that did not happen. And it takes a `.bak` first.
+
+The write was not atomic. `path.write_text(...)` truncates before it writes,
+and `state.jsonl` is how a 2,360-job campaign knows which jobs are done. A
+kill inside that window leaves a partial record, and the project's own rule
+is to assume the process can be killed at any moment. The `.bak` makes that
+recoverable by hand; the campaign resuming on its own would read the
+truncated file and re-run whatever had been lost. At 170 jobs that is hours,
+and the step is meant to run at the end when it would be far more.
+
+Now written to a sibling and renamed, which is atomic within a directory, so
+a reader sees the old file or the new one. The test for it raises inside
+`os.replace` and asserts the original survives, which fails against the old
+code because there was no replace to raise in.
+
+One smaller thing: a second run overwrote the first `.bak`, losing the
+original. The backup is only taken when one does not already exist, because
+the first is the one that predates any of this.
+
+Nine other tests cover the matching rule, the prefix case, a row matched by
+`job_id` alone because `state.jsonl` carries a "running" row before the
+result and those have no `pair_id`, the torn line, the no-match case taking
+no backup, and the dry run changing nothing.

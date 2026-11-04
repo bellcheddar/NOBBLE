@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -66,8 +67,22 @@ def _rewrite_without(path: Path, pair_id: str) -> int:
             continue
         kept.append(line)
     if dropped:
-        shutil.copy(path, path.with_suffix(path.suffix + ".bak"))
-        path.write_text("\n".join(kept) + ("\n" if kept else ""))
+        backup = path.with_suffix(path.suffix + ".bak")
+        if not backup.exists():
+            # Not overwritten on a second run: the first backup is the one
+            # that predates any of this, and that is the one worth keeping.
+            shutil.copy(path, backup)
+
+        # Written to a sibling and renamed, not written in place. `state.jsonl`
+        # is how a campaign knows which of its 2,360 jobs are done, and
+        # `write_text` truncates before it writes: a kill in that window
+        # leaves a partial file, and the project's own rule is to assume the
+        # process can be killed at any moment. os.replace is atomic within a
+        # directory, so a reader sees either the old file or the new one
+        # (F109).
+        temporary = path.with_suffix(path.suffix + ".rewriting")
+        temporary.write_text("\n".join(kept) + ("\n" if kept else ""))
+        os.replace(temporary, path)
     return dropped
 
 
