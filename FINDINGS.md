@@ -5019,11 +5019,23 @@ listed first" with "whichever InterPro listed Nth" and kept the failure mode
 intact: a receptor construct boundary that moves when the API reorders its
 records, with nothing raising.
 
-Latent today. Response order and N-terminal order agree for Q9UK73: [0] is
-5-301 and [1] is 424-610, so `FEM1B_ANK` with `interpro_occurrence=0` gets
-the 297-residue N-terminal region it declares, which is what spec 1.1 means.
-The day they stopped agreeing, FEM1B's receptor would silently become the
-187-residue C-terminal region, and FEM1B is a benchmark E3.
+Latent today, and less consequential than I first wrote. Response order and
+N-terminal order agree for Q9UK73: [0] is 5-301 and [1] is 424-610, so
+`FEM1B_ANK` with `interpro_occurrence=0` gets the 297-residue N-terminal
+region it declares, which is what spec 1.1 means. The day they stopped
+agreeing, FEM1B's receptor would silently become the 187-residue C-terminal
+region.
+
+**Correction.** This first said "and FEM1B is a benchmark E3". It is not. The
+benchmark E3s are CRBN, DCAF15, DDB1 and VHL, and the main campaign submits
+four constructs: CRBN_CULT on 2,270 jobs, then VHL_VCB, DCAF15_DDB1_DDA1 and
+DDB1_BPC on 30 each. `FEM1B_ANK` and `KEAP1_KELCH` are declared in
+`constructs.py`, token-budgeted and tested, and submitted by no job in any
+campaign. So `interpro_occurrence` is used by exactly one construct and that
+construct is unused: the broken contract is real and its blast radius today
+is nothing. Found by comparing `E3_TO_CONSTRUCT`'s values against the
+constructs any queue actually names, which is the same kind of key-set
+comparison that found F106.
 
 That day is not hypothetical. It is what happened on the substrate side:
 the library manifest records IPR000719 as CSNK1A1's first enclosing entry

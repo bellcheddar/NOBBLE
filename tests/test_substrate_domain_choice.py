@@ -285,3 +285,46 @@ def test_an_ambiguous_entry_with_no_occurrence_still_refuses():
     make guessing acceptable."""
     with pytest.raises(interpro.AmbiguousEntry):
         interpro.domain_by_accession("Q9UK73", "IPR036770")
+
+
+def test_which_constructs_any_campaign_actually_submits():
+    """Recorded because F108 got this wrong in writing.
+
+    `interpro_occurrence` exists for one construct, `FEM1B_ANK`, and the
+    severity of a defect in it depends on whether anything submits that
+    construct. Nothing does: the benchmark E3s are CRBN, DCAF15, DDB1 and
+    VHL, and `FEM1B_ANK` and `KEAP1_KELCH` are declared, budgeted and tested
+    without appearing in any queue.
+
+    Pinned rather than left as prose, so a campaign that starts using either
+    one changes the reading of F108 here instead of in a sentence nobody
+    rechecks.
+    """
+    import json
+
+    from nobble.curate import constructs as C
+    from nobble.curate import peptides as P
+
+    assert {member["e3"] for member in P.BENCHMARK_CHAINS} == {
+        "CRBN", "DCAF15", "DDB1", "VHL"}
+
+    occurrence_users = {
+        name for name, construct in C.CONSTRUCTS.items()
+        if any(segment.interpro_occurrence is not None
+               for segment in construct.segments)
+    }
+    assert occurrence_users == {"FEM1B_ANK"}, occurrence_users
+
+    submitted = set()
+    for campaign in sorted((ROOT / "campaigns").glob("*/queue.jsonl")):
+        for line in campaign.read_text().splitlines():
+            if line.strip():
+                name = json.loads(line).get("construct")
+                if name:
+                    submitted.add(name)
+    if not submitted:
+        pytest.skip("no assembled queue on this checkout")
+    assert not (occurrence_users & submitted), (
+        f"{sorted(occurrence_users & submitted)} is submitted now, so F108's "
+        "blast radius is no longer nothing"
+    )
