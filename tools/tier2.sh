@@ -31,7 +31,7 @@ fi
 echo "--- refine"
 export KMP_DUPLICATE_LIB_OK=TRUE
 if [ -n "$CAMPAIGN" ]; then
-  caffeinate -dimsu "$PY_BOLTZ" -m nobble.execute.runner "$CAMPAIGN" --tier 2
+  caffeinate -dimsu "$PY_BOLTZ" -m nobble.execute.runner --campaign "$CAMPAIGN" --tier 2
 else
   caffeinate -dimsu "$PY_BOLTZ" -m nobble.execute.runner --tier 2
 fi

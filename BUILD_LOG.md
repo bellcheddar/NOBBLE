@@ -463,3 +463,15 @@
   both directions: publishing the main campaign explicitly switches the
   atlas, and with no main-campaign results the default still picks the
   benchmark panel. 111 tests pass.
+- 2026-11-04T13:25Z Second chain defect in the same family. tools/tier2.sh
+  passed the campaign to nobble.execute.runner positionally, and the runner
+  only accepts --campaign, so tier 2 would have died on argparse the moment
+  the chain reached it: after the main campaign's 52 hours. Confirmed by
+  running the exact command. Fixed, and every runner invocation in the repo
+  audited: all now use --campaign.
+- 2026-11-04T13:25Z Added tests/test_scripts.py. Two defects in one tick came
+  from a shell script calling Python with arguments it does not accept, or
+  dropping an argument it was handed. Neither fails until the stage runs, by
+  which point the compute is spent or skipped. The tests parse the scripts
+  rather than executing them, because these are GPU entry points and running
+  them to find out is exactly what is being avoided. 115 tests pass.
