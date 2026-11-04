@@ -163,23 +163,57 @@ def test_it_refuses_to_clear_results_it_could_not_verify(tmp_path, monkeypatch):
 
 
 def test_it_refuses_a_queue_whose_paths_leave_the_campaign(tmp_path, monkeypatch):
-    """F144: --campaign scopes the read and not the writes."""
+    """F144: --campaign scopes the read and not the writes.
+
+    Arranged so the containment check is the only thing that can stop the
+    write. The first version of this put the queue's target inside
+    `campaigns/`, which gave `_known_good` two candidates, so F146's
+    refusal fired first and the test passed with the containment check
+    disabled: it asserted the right outcome for the wrong reason, and the
+    mutation sweep said so.
+
+    Here the target sits outside `campaigns/` altogether, which is what an
+    archived or relocated campaign looks like, so exactly one reference
+    exists and `_known_good` succeeds. Then the only reason the original is
+    not rewritten is that it is outside the campaign named on the command
+    line.
+    """
     module = _module()
-    target, job = _tree(tmp_path)
     monkeypatch.setattr(module, "ROOT", tmp_path)
     monkeypatch.chdir(tmp_path)
-    elsewhere = tmp_path / "campaigns" / "campaign_20260301T000000Z"
-    (elsewhere / "yaml").mkdir(parents=True)
-    (elsewhere / "yaml" / f"{job}.yaml").write_text(STALE)
-    # A copy of the campaign that still names the original's files.
-    copy = tmp_path / "copy"
-    (copy / "yaml").mkdir(parents=True)
-    for name in ("queue.jsonl", "state.jsonl", "results.jsonl", "scores.jsonl"):
-        (copy / name).write_text((target / name).read_text())
-    original = (target / "yaml" / f"{job}.yaml").read_text()
-    assert _apply(module, copy, monkeypatch) == 2
-    assert (target / "yaml" / f"{job}.yaml").read_text() == original, (
-        "applying to a copy rewrote the original campaign's YAML"
+    job = "benchXX_GENE_E3__ternary__conditioned__seed1"
+
+    # The file the queue names, outside campaigns/ and so outside any
+    # campaign directory.
+    archived = tmp_path / "archive" / "yaml"
+    archived.mkdir(parents=True)
+    victim = archived / f"{job}.yaml"
+    victim.write_text(STALE)
+
+    # Exactly one reference, so _known_good returns a source.
+    reference = tmp_path / "campaigns" / "benchmark_20260102T000000Z" / "yaml"
+    reference.mkdir(parents=True)
+    (reference / f"{job}.yaml").write_text(GOOD)
+
+    campaign = tmp_path / "campaigns" / "campaign_20260101T000000Z"
+    campaign.mkdir(parents=True)
+    (campaign / "queue.jsonl").write_text(json.dumps({
+        "job_id": job, "pair_id": "benchXX_GENE_E3", "yaml": str(victim),
+    }) + "\n")
+    (campaign / "state.jsonl").write_text(json.dumps(
+        {"job_id": job, "status": "done"}) + "\n")
+    (campaign / "results.jsonl").write_text("")
+    (campaign / "scores.jsonl").write_text("")
+
+    assert module._known_good(f"{job}.yaml", campaign) is not None, (
+        "the fixture does not reach the containment check"
+    )
+    assert _apply(module, campaign, monkeypatch) == 2
+    assert victim.read_text() == STALE, (
+        "a YAML outside the campaign named on the command line was rewritten"
+    )
+    assert (campaign / "state.jsonl").read_text().strip(), (
+        "the results were cleared for a campaign it refused to correct"
     )
 
 
