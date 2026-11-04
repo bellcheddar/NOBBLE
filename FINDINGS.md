@@ -5378,3 +5378,50 @@ tidies it.
 This is the sixth concern this build that turned out to be unreachable. The
 check cost ten minutes; a write-up claiming the primary signal could report
 NaN as zero would have cost more.
+
+## F116. The headline chart drew an absent bridge as percentile zero
+
+Spec section 4 read against the code, which is the audit F52 did for section
+5 and nobody had done for section 4. Most of it holds. 4.5's calibration note
+is on the About page in the form the spec asks for, ipTM-min and all. 4.2's
+substitution of lysine geometry for an uncalibrated fit is D-NOB-024, decided
+and recorded. 4.8's sliders exist. 4.1's percentile is against the 285,996
+and says so on the axis.
+
+One clause does not, and it is in the view the spec calls the headline.
+
+The Delta scatter plots Delta-ipTM against bridge percentile. It did it like
+this:
+
+    y: rows.map(p => p.bridge_percentile === null ? 0 : p.bridge_percentile)
+
+So a pair with no measurable bridge was drawn on the axis, among pairs with a
+genuine weak bridge, and the hover read `bridge percentile %{y:.1f}`, which
+turns the plotted position into a stated number: "bridge percentile 0.0" for
+a measurement that does not exist.
+
+CDK12 is that pair. All ten of its seeds reject as `single_chain`, which says
+the glue touched one chain rather than two. Not a weak bridge, no bridge.
+
+The campaign table already knew. It blanks the cell and puts the reject
+reasons in the tooltip, with a comment saying why: "without this the cell is
+blank and the distinction is invisible". So one surface distinguished absent
+from worst and the other did not, and the one that did not is the headline.
+
+F115 established that the computation cannot report a confident zero, because
+BINMAN's bridging criterion rejects a non-finite dSASA before it can reach
+the percentile. This is the same hazard arriving by presentation rather than
+by arithmetic, which is why finding the first made the second visible.
+
+Those points now sit in their own band below the axis, at -1 inside a range
+widened to -4, so the position cannot be read as a percentile. The axis
+labels it "none". The hover takes the text from customdata rather than from
+the plotted position, so it says "no bridge in any seed". They stay in the
+chart rather than being dropped, because a pair that vanishes from the
+headline view is worse than one drawn wrongly.
+
+A test counts the customdata entries by splitting on top-level commas and
+asserts the hovertemplate reaches exactly that far, because a hovertemplate
+indexes positionally and a field inserted in the wrong place silently
+relabels every one after it. The first version of that test counted lines and
+found seven entries where there are nine, the first line holding three.

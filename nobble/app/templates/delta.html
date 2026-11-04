@@ -89,6 +89,23 @@
           : p.conditioning_disagreement.toFixed(3)))
     : 'no';
 
+  /* A pair with no measurable bridge was plotted at percentile 0, which is
+     the lowest real value and not an absence: CDK12's ten seeds all reject
+     as single_chain, meaning the glue touched one chain rather than two, and
+     it sat on the axis beside pairs with a genuine weak bridge. The hover
+     then said "bridge percentile 0.0", a stated number for a measurement
+     that does not exist.
+     The campaign table already handles this, blanking the cell and naming
+     the reject reason. The headline chart did not. Drawn in its own band
+     below the axis now, with the percentile read from customdata so it can
+     say so (F116). */
+  const NO_BRIDGE_Y = -1;
+  const hasBridge = p => p.bridge_percentile !== null
+                      && p.bridge_percentile !== undefined;
+  const bridgeText = p => hasBridge(p)
+    ? p.bridge_percentile.toFixed(1)
+    : 'no bridge in any seed';
+
   const bridgedOf = p => (p.bridging_seeds_with_bridge || 0) + '/'
     + (p.bridging_seeds_total || 0)
     + ((p.bridging_seeds_unmeasurable || 0)
@@ -112,7 +129,7 @@
       return {
         name: label + ' (' + rows.length + ')',
         x: rows.map(p => p.delta_iptm),
-        y: rows.map(p => p.bridge_percentile === null ? 0 : p.bridge_percentile),
+        y: rows.map(p => hasBridge(p) ? p.bridge_percentile : NO_BRIDGE_Y),
         text: rows.map(p => p.pair_id),
         customdata: rows.map(p => [
           p.peptide_gene || '—', p.e3_gene || '—', p.ligand_key || '—',
@@ -120,7 +137,8 @@
           bridgedOf(p),
           lysineCount(p),
           p.seed_collapse_affects_delta ? 'yes' : 'no',
-          forcedLabel(p)
+          forcedLabel(p),
+          bridgeText(p)
         ]),
         mode: 'markers',
         type: 'scatter',
@@ -138,7 +156,7 @@
           'target %{customdata[0]} · E3 %{customdata[1]} · ligand %{customdata[2]}<br>' +
           '&Delta;-ipTM (min) %{x:.4f}<br>' +
           '&Delta;-ipTM (median) %{customdata[3]}<br>' +
-          'bridge percentile %{y:.1f}<br>' +
+          'bridge percentile %{customdata[8]}<br>' +
           'bridging seeds %{customdata[4]}<br>' +
           'peptide lysines %{customdata[5]}<br>' +
           'seed collapse set the minimum: %{customdata[6]}<br>' +
@@ -150,7 +168,16 @@
     Plotly.newPlot('scatter', traces, NOBBLE.plotLayout({
       title: { text: 'Delta-ipTM against bridge percentile', font: { size: 13 } },
       xaxis: { title: 'Delta-ipTM (ternary minus binary, minimum across seeds)', zeroline: true, zerolinewidth: 2 },
-      yaxis: { title: 'Bridge percentile (of 285,996 observed bridges)', range: [-2, 102] },
+      yaxis: {
+        title: 'Bridge percentile (of 285,996 observed bridges)',
+        range: [-4, 102],
+        /* The band below zero is "no bridge", which is not a low percentile.
+           Labelled on the axis so the position does not have to be guessed
+           from a hover (F116). */
+        tickmode: 'array',
+        tickvals: [NO_BRIDGE_Y, 0, 25, 50, 75, 100],
+        ticktext: ['none', '0', '25', '50', '75', '100']
+      },
       dragmode: 'lasso',
       showlegend: true,
       legend: { orientation: 'h', y: -0.22 },
