@@ -657,3 +657,34 @@ recorded instead: a campaign with a wide token spread, or one dominated by
 jobs above 700 tokens, would be underestimated by roughly a third. The
 corrected campaign is exactly that case, and its 27 remaining jobs project
 to 3.6 hours on the observed large-job rate against 2.4 on the median.
+
+## F16. Every failed bridge in the panel fails the same way, and the reason was being discarded
+
+`bridge_percentile` is spec 4.1's primary signal, and `bench07_CDK12_DDB1`
+has none: 0 of 10 seeds produced a bridge. The campaign table showed a
+blank cell and no reason, because `score_structure` records a
+`reject_reason` per seed and the aggregation kept only the count.
+
+Recovered, the reasons are uniform across the whole panel:
+
+| pair | bridged | rejected | reason |
+|---|---|---|---|
+| GSPT1 / CRBN | 3/10 | 7 | `single_chain:1_qualifying_of_1` |
+| BRD4 / VHL | 4/10 | 6 | `single_chain:1_qualifying_of_1` |
+| BRD4 / CRBN | 4/5 | 1 | `single_chain:1_qualifying_of_1` |
+| CDK12 / DDB1 | **0/10** | 10 | `single_chain:1_qualifying_of_1` |
+
+Not one seed anywhere failed for a weak, small or unbalanced bridge. Every
+failure is the same: the glue buried surface against one chain rather than
+two.
+
+That is a different claim from "the bridge was poor". A seed that fails
+this way has the glue sitting on the receptor with the peptide somewhere
+else entirely, so there is no interface to measure rather than a bad one.
+It is consistent with CDK12's pose recovery, the worst in the panel at
+44.92 A, and it says the failure mode is placement rather than
+quality: the model is not building a weak ternary, it is not building a
+ternary at all.
+
+The reason now travels to the pair record and into the tooltip on an empty
+percentile cell, so an absent primary signal explains itself.

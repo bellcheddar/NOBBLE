@@ -90,6 +90,23 @@ def score_campaign(campaign: Path, with_plip: bool = True, limit: int | None = N
         found = [item for item in bridge_scores if item is not None and item.found]
         entry["bridging_seeds_total"] = len([item for item in bridge_scores if item])
         entry["bridging_seeds_with_bridge"] = len(found)
+
+        # Why the seeds that did not bridge did not bridge. The per-seed
+        # reason was computed and then aggregated away, so a pair with no
+        # bridge showed a blank percentile and no explanation. On CDK12 all
+        # ten seeds reject as single_chain:1_qualifying_of_1, which says the
+        # glue buried surface against one chain rather than two: it is not
+        # that the bridge was weak, it is that there was no bridge to
+        # measure. That distinction is the whole of spec 4.1.
+        reasons: dict[str, int] = {}
+        for item in bridge_scores:
+            if item is None or item.found:
+                continue
+            reason = item.reject_reason or "unknown"
+            reasons[reason] = reasons.get(reason, 0) + 1
+        entry["bridge_reject_reasons"] = (
+            dict(sorted(reasons.items(), key=lambda kv: -kv[1])) if reasons else {}
+        )
         entry["bridge_formation_rate"] = (
             round(len(found) / entry["bridging_seeds_total"], 3)
             if entry["bridging_seeds_total"] else None
@@ -203,6 +220,7 @@ def score_campaign(campaign: Path, with_plip: bool = True, limit: int | None = N
         for key in (
             "bridge_percentile", "bridge_percentile_range", "bridge_formation_rate",
             "bridging_seeds_total", "bridging_seeds_with_bridge",
+            "bridge_reject_reasons",
             "dsasa_total_median", "bridging_balance_median",
             "convergence_score", "plip_fingerprint_match",
             "plip_glue_to_peptide_contacts", "plip", "lysine_reach",

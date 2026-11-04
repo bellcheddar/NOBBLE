@@ -187,6 +187,17 @@
     if (key === 'bridge_percentile' && value !== null && value !== undefined) {
       bits.push('data-tip-percentile="' + value + ' of 285,996 observed bridges"');
     }
+    /* An absent percentile means no seed produced a bridge, and the reason
+       was computed per seed and then aggregated away. On CDK12 all ten
+       seeds reject as single_chain, which says the glue touched one chain
+       rather than two: not a weak bridge, no bridge. Without this the cell
+       is blank and the distinction is invisible. */
+    if (key === 'bridge_percentile' && (value === null || value === undefined)
+        && pair && pair.bridge_reject_reasons) {
+      const why = Object.keys(pair.bridge_reject_reasons)
+        .map(k => k + ' x' + pair.bridge_reject_reasons[k]).join('; ');
+      if (why) { bits.push('data-tip-value="no bridge: ' + why.replace(/"/g, '&quot;') + '"'); }
+    }
     return bits.join(' ');
   }
 

@@ -128,9 +128,9 @@
       "corrected_median_rmsd": 0.715,
       "delta_rmsd": -5.37,
       "baseline_anchor_rmsd": 0.756,
-      "corrected_anchor_rmsd": 0.747,
+      "corrected_anchor_rmsd": 0.733,
       "baseline_poses": 10,
-      "corrected_poses": 2,
+      "corrected_poses": 3,
       "is_control": false,
       "verdict": "improved"
     }

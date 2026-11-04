@@ -624,3 +624,16 @@
   differ. Now rendered on the Interactions tab, where it already shows the
   chain map it used. Same class as the status note that was computed and
   discarded earlier: a sentence the pipeline writes and nothing displays.
+- 2026-11-04T18:30Z Swept for the "computed and never rendered" pattern
+  after hitting it three times. 64 of 129 record fields are never
+  referenced by any template or script; most are legitimately internal.
+  One mattered: bridge reject_reason. bench07_CDK12_DDB1 has no bridge
+  percentile at all (0 of 10 seeds bridged) and the table showed a blank
+  cell with no reason, because the per-seed reason was aggregated away.
+- 2026-11-04T18:30Z Recovering it gave a finding. Every failed bridge in
+  the panel fails identically: single_chain:1_qualifying_of_1, the glue
+  burying surface against one chain rather than two. Not one seed anywhere
+  failed for a weak or unbalanced bridge. That says the failure mode is
+  placement rather than quality, consistent with CDK12 also having the
+  worst pose recovery at 44.92 A. F16. The reason now reaches the pair
+  record and the tooltip on an empty percentile cell. 131 tests pass.
