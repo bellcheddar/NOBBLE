@@ -36,6 +36,13 @@ from nobble import paths
 from nobble.curate import binman_store as store
 from nobble.curate import numbering, plddt
 
+DEGRON_SCAN_CONTACT_CUTOFF = float(
+    paths.thresholds()["geometry"]["degron_scan_contact_cutoff_a"]
+)
+NEGATIVES_PER_POSITIVE = int(
+    paths.thresholds()["peptide"]["negatives_per_positive"]
+)
+
 FOLDED_DOMAIN_EXCEPTION_MIN_LENGTH = int(
     paths.thresholds()["manifest"]["folded_domain_exception_min_length"]
 )
@@ -487,7 +494,7 @@ def _significant_drugs(row: dict) -> list[str]:
     return [d.strip() for d in str(row.get("drugs_significant", "")).split(";") if d.strip()]
 
 
-def sievers_matched_set(negatives_per_positive: int = 4) -> dict:
+def sievers_matched_set(negatives_per_positive: int | None = None) -> dict:
     """The Sievers arm, sized for the campaign while keeping its matching.
 
     The screen is strongly imbalanced: 32 zinc fingers are degraded and 5,631 are
@@ -503,6 +510,8 @@ def sievers_matched_set(negatives_per_positive: int = 4) -> dict:
     which is the opposite of what diversity selection optimises for. Spec 3.4's
     diversity reduction still applies to the rest of the library.
     """
+    if negatives_per_positive is None:
+        negatives_per_positive = NEGATIVES_PER_POSITIVE
     everything = sievers_peptides()
     all_positives = [peptide for peptide in everything if peptide.label == "degraded"]
     pool = [peptide for peptide in everything if peptide.label == "not_degraded"]
@@ -637,7 +646,8 @@ def benchmark_peptides() -> list[Peptide]:
         centre = None
         if member["ligand"]:
             contacts = structures.contacts_to_ligand(
-                member["pdb_id"], member["ligand"], member["chain"], 5.0
+                member["pdb_id"], member["ligand"], member["chain"],
+                DEGRON_SCAN_CONTACT_CUTOFF,
             )
             glycines = [item for item in contacts if item["one_letter"] == "G"]
             chosen = (glycines or contacts or [None])[0]

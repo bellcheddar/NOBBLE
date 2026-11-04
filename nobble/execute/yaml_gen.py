@@ -35,6 +35,11 @@ LIGAND_CHAIN = "L"
 COFACTOR_CHAIN = "Z"
 RECEPTOR_CHAINS = "ABCDEFGH"
 POCKET_MAX_DISTANCE = float(paths.thresholds()["geometry"]["pocket_max_distance_a"])
+# Which receptor residues are listed as lining the pocket, as opposed to how
+# far the ligand may sit from them. Was a bare 5.0 at the call site.
+POCKET_CONTACT_CUTOFF = float(
+    paths.thresholds()["geometry"]["pocket_contact_cutoff_a"]
+)
 
 # Which chains of each benchmark deposition hold the receptor, so the pocket can
 # be measured rather than asserted. Read off the deposited assemblies.
@@ -88,7 +93,9 @@ def derive_pocket(
         return None
     chain, accession = mapping
 
-    contacts = structures.contacts_to_ligand(pdb_id, ligand_ccd, chain, cutoff=5.0)
+    contacts = structures.contacts_to_ligand(
+        pdb_id, ligand_ccd, chain, cutoff=POCKET_CONTACT_CUTOFF
+    )
     if not contacts:
         return None
     try:

@@ -15,6 +15,10 @@ import gemmi
 
 from nobble import paths
 
+LIGAND_MIN_HEAVY_ATOMS = int(
+    paths.thresholds()["geometry"]["ligand_min_heavy_atoms"]
+)
+
 ASSEMBLY_CACHE = paths.BINMAN_CACHE / "rcsb_assemblies"
 WATER = {"HOH", "DOD", "WAT"}
 
@@ -81,8 +85,10 @@ def chain_summary(pdb_id: str) -> list[dict]:
     return summary
 
 
-def ligand_chains(pdb_id: str, min_atoms: int = 12) -> list[dict]:
+def ligand_chains(pdb_id: str, min_atoms: int | None = None) -> list[dict]:
     """Heteroatom residues large enough to be a glue or degrader, not a buffer salt."""
+    if min_atoms is None:
+        min_atoms = LIGAND_MIN_HEAVY_ATOMS
     structure = read_assembly(pdb_id)
     found = []
     for chain in structure[0]:
@@ -103,9 +109,17 @@ def ligand_chains(pdb_id: str, min_atoms: int = 12) -> list[dict]:
 
 
 def contacts_to_ligand(
-    pdb_id: str, ligand_ccd: str, protein_chain: str, cutoff: float = 5.0
+    pdb_id: str, ligand_ccd: str, protein_chain: str, cutoff: float
 ) -> list[dict]:
     """Residues of one protein chain within `cutoff` of a named ligand.
+
+    `cutoff` is required on purpose. It used to default to 5.0, and three
+    callers meant three different measurements by it: the degron scan's
+    contact distance, the degron centre for a benchmark member, and which
+    receptor residues line a ligand pocket. Two passed a bare literal and one
+    read the configured value, so changing the config would have moved one of
+    the three. A shared helper with a default cutoff gives the same answer to
+    questions that are not the same.
 
     Used by the degron gate: the degron is the part of the substrate that packs
     against the glue and the receptor pocket, which is a measurement rather than

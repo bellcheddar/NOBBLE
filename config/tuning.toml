@@ -21,6 +21,9 @@ token_cap_exceptions = ["VHL_VCB", "DCAF15_DDB1_DDA1"]
 max_compute_hours = 96
 wall_clock_budget_hours = 48
 seeds = 5
+# Longest one tier-1 job may run before it is killed. F20: the kill itself
+# used to be the problem, not the limit.
+job_timeout_seconds = 5400
 tier1_recycles = 3
 tier1_diffusion_samples = 1
 tier1_potentials = false

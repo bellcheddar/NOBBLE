@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import math
+from collections import Counter
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -25,7 +26,12 @@ from nobble import paths
 # Ranking keys in order of preference. The first one with values on enough
 # pairs wins.
 RANKING_PREFERENCE = ("nobble_score", "bridge_percentile", "delta_iptm_median")
+# Arms whose pairs are controls rather than candidates.
+CONTROL_ARMS = ("scramble",)
 MINIMUM_RANKED = int(paths.thresholds()["tier2"]["minimum_ranked"])
+# Twenty-five diffusion samples per job, so this decides how much compute
+# the refinement costs. Was a default argument on two functions.
+DECILE_FRACTION = float(paths.thresholds()["tier2"]["decile_fraction"])
 
 
 @dataclass
@@ -36,6 +42,7 @@ class Selection:
     pairs_considered: int
     pairs_selected: int
     selected: list = field(default_factory=list)
+    arms: dict = field(default_factory=dict)
     status: str = "pending"
     notes: list = field(default_factory=list)
 
@@ -60,7 +67,9 @@ def choose_ranking_key(rows: list[dict]) -> tuple[str | None, list[str]]:
     return None, notes
 
 
-def select_top_decile(campaign: Path, fraction: float = 0.1) -> Selection:
+def select_top_decile(campaign: Path, fraction: float | None = None) -> Selection:
+    if fraction is None:
+        fraction = DECILE_FRACTION
     scores_path = campaign / "scores.jsonl"
     selection = Selection(
         campaign=campaign.name, ranking_key=None, decile_fraction=fraction,
@@ -96,11 +105,36 @@ def select_top_decile(campaign: Path, fraction: float = 0.1) -> Selection:
             "e3_gene": row.get("e3_gene"),
             "peptide_gene": row.get("peptide_gene"),
             "ligand_key": row.get("ligand_key"),
+            # Which arm the pair came from. The ranking is deliberately blind
+            # to this: a scramble that ranks top is a result, and excluding it
+            # would hide it. But twenty-five diffusion samples per job is real
+            # compute, and a reader should not have to cross-reference
+            # scores.jsonl to find out that a third of the refinement was
+            # spent on negative controls.
+            "tier": row.get("tier"),
+            "peptide_label": row.get("peptide_label"),
         }
         for index, row in enumerate(chosen)
     ]
     selection.pairs_selected = len(chosen)
+    selection.arms = dict(sorted(Counter(
+        str(row.get("tier")) for row in chosen
+    ).items()))
     selection.status = "selected"
+    # A mixed decile is ordinary and needs no comment. Controls ranking into
+    # it is the thing worth saying, and a decile made entirely of controls is
+    # the strongest version of it: the first condition tried here fired on the
+    # mixed case and stayed silent on that one.
+    controls = sum(count for arm, count in selection.arms.items()
+                   if arm in CONTROL_ARMS)
+    if controls:
+        shape = ", ".join(f"{count} {arm}" for arm, count in selection.arms.items())
+        selection.notes.append(
+            f"{controls} of {len(chosen)} selected pair(s) are controls "
+            f"({shape}). The ranking is deliberately blind to the arm, so a "
+            "control ranking high is a result rather than a fault, but the "
+            "refinement budget is shared and this is where it went"
+        )
     return selection
 
 
@@ -159,7 +193,7 @@ def build_tier2_queue(campaign: Path, selection: Selection) -> dict:
     }
 
 
-def run(campaign: Path, fraction: float = 0.1) -> dict:
+def run(campaign: Path, fraction: float | None = None) -> dict:
     selection = select_top_decile(campaign, fraction)
     report = {"selection": selection.to_dict()}
     if selection.status == "selected":
@@ -176,7 +210,7 @@ def main() -> int:
         description="Select the top decile and build the tier-2 refinement queue."
     )
     parser.add_argument("campaign", nargs="?", default=None)
-    parser.add_argument("--fraction", type=float, default=0.1,
+    parser.add_argument("--fraction", type=float, default=DECILE_FRACTION,
                         help="decile fraction (default 0.1)")
     args = parser.parse_args()
 

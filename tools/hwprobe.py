@@ -159,6 +159,9 @@ def main() -> int:
             "max_compute_hours": 96,
             "wall_clock_budget_hours": 48,
             "seeds": 5,
+            # Longest one tier-1 job may run before it is killed. Tier 2
+            # is given four times this (runner.settings_from_config).
+            "job_timeout_seconds": 5400,
             "tier1_recycles": 3,
             "tier1_diffusion_samples": 1,
             "tier1_potentials": False,

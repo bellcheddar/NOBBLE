@@ -1230,3 +1230,69 @@ harmless query into an error for no gain.
 
 Same shape as F24: a component that was careful about its own stated
 contract and silent about what arrived from outside it.
+
+## F30. The fourth hiding place, and one number answering three questions
+
+The cutoff sweep needed a fourth pass. A default argument is the quietest
+place a threshold can sit, because a signature reads as configuration
+already: `fraction: float = 0.1` in `tier2.select_top_decile` looked
+settled while deciding how much of the campaign's compute the refinement
+costs, at twenty-five diffusion samples a job against tier 1's one.
+
+Five defaults were real cutoffs. The decile fraction, in two places plus
+an argparse default. `negatives_per_positive = 4`, which sets the
+composition of the matched-control curve. `min_atoms = 12`, the floor
+below which a heteroatom is a buffer salt rather than a degrader. And
+`job_timeout_seconds = 5400`, the number F20 was all about, sitting in a
+signature.
+
+The timeout needed care: `config/tuning.toml` is written by
+`tools/hwprobe.py`, so a key added there by hand is a key the next
+hardware probe silently drops. It went into the generator as well, and a
+test checks that it is still written, because the failure mode is a
+`tuning.toml` that `settings_from_config` cannot read.
+
+### One default answering three different questions
+
+`structures.contacts_to_ligand(..., cutoff: float = 5.0)` is the worst of
+them, and not because of the literal. Three callers used it and meant
+three different measurements.
+
+`degron_gate` read `degron_scan_contact_cutoff_a` from config and passed
+it. `peptides` passed a bare `5.0` to find the degron centre of a
+benchmark member. `yaml_gen` passed a bare `cutoff=5.0` to decide which
+receptor residues line a ligand pocket, which is a different question
+again from either. So the same number existed four times: the default, two
+literals, and a config key only one of the three read. Changing that key
+would have moved one measurement and left two behind, which is worse than
+a plain literal, because the config made it look handled.
+
+The default is now gone rather than wired up. A shared helper with a
+default cutoff gives the same answer to questions that are not the same,
+and removing it makes every caller state which one it is asking. The
+pocket question got its own key, since its radius and its contact list are
+genuinely two numbers.
+
+Thirteen defaults remain, allowed with reasons. Seven name a sampling
+tier, which is an identity rather than a threshold. Three are procedure
+parameters: a bootstrap's resampling count, its seed, and an embedding
+batch size, none of which changes a result. Three are illustrative inputs
+to a budget calculator that prints them rather than applying them.
+
+### What the sweep did not find, and tier 2 anyway
+
+Reading `tier2.py` for the fraction turned up something else. The
+selection records which key it ranked on, with a good reason given: a top
+decile is only interpretable if you know what it was the top decile of. It
+did not record which arm each chosen pair came from, so "2 pairs selected"
+could mean two negative controls.
+
+The ranking is blind to the arm on purpose, and should stay that way: a
+scramble that outranks every candidate is a result, and excluding it would
+be the one reliable way to ensure nobody saw it. So the arm is reported,
+not filtered, and a note fires when controls are in the decile.
+
+My first version of that note fired when the decile spanned more than one
+arm, which is ordinary, and stayed silent on a decile made entirely of
+controls, which is the alarming case. Inverted, it now says how many of
+the refined pairs are controls and where the budget went.

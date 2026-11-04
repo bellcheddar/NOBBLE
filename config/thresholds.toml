@@ -17,6 +17,10 @@ tile_length = 15
 tile_step = 3
 degron_flank = 20
 scrambles_per_positive = 1
+# Matched negatives drawn per degraded peptide for the Sievers arm. This sets
+# the composition of the matched-control curve, so it is not a default to
+# leave in a function signature.
+negatives_per_positive = 4
 
 [manifest]
 token_cap_tier1 = 400
@@ -35,6 +39,14 @@ docked_contact_cutoff_a = 5.0
 degron_scan_contact_cutoff_a = 5.0
 # Pocket constraint radius when conditioning a ligand, angstrom.
 pocket_max_distance_a = 6.0
+# Distance within which a receptor residue counts as lining the ligand pocket
+# when the constraint's contact list is built. Distinct from the radius above:
+# that is how far the ligand may sit from the listed residues, this is which
+# residues get listed.
+pocket_contact_cutoff_a = 5.0
+# Smallest heteroatom residue that may be treated as a glue or degrader rather
+# than a buffer salt, in heavy atoms.
+ligand_min_heavy_atoms = 12
 
 [lysine]
 # Relative SASA above which a lysine counts as solvent exposed.
@@ -108,6 +120,10 @@ domain_window = 200
 [tier2]
 # Fewest ranked pairs before a tier-2 refinement is attempted at all.
 minimum_ranked = 3
+# Fraction of ranked pairs refined at tier 2. Twenty-five diffusion samples
+# per job, so this decides how much of the campaign's compute the refinement
+# costs: not a default to leave in a signature.
+decile_fraction = 0.1
 
 [weights]
 # Fewest labelled pairs before any weight fit is attempted.

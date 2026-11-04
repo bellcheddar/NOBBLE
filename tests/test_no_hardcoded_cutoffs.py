@@ -216,6 +216,125 @@ def test_the_moved_integer_cutoffs_resolve_from_config():
         t["weights"]["wide_bounds_below_per_side"])
 
 
+# Numeric default arguments. The fourth place a cutoff can hide, and the
+# quietest: a signature reads as configuration, so `fraction: float = 0.1`
+# looked settled while deciding how much of the campaign's compute tier 2
+# spends. A default is also shared, which is how one 5.0 in
+# structures.contacts_to_ligand answered three different questions.
+ALLOWED_DEFAULTS = {
+    # Tier identity. Naming the sampling tier, not thresholding anything.
+    "settings_from_config.tier": "names the sampling tier",
+    "tier_files.tier": "names the sampling tier",
+    "run_campaign.tier": "names the sampling tier",
+    "hard_bound_seconds.tier": "names the sampling tier",
+    "stall_report.tier": "names the sampling tier",
+    "aggregate.sampling_tier": "names the sampling tier",
+    "score_campaign.sampling_tier": "names the sampling tier",
+    # Procedure parameters: precision and reproducibility, not data cutoffs.
+    "_bootstrap_interval.rounds": "resampling count, a precision and compute "
+                                  "trade-off rather than a cutoff on data",
+    "_bootstrap_interval.seed": "fixed seed for reproducibility",
+    "embed.batch_size": "how many sequences go to the model at once, a memory "
+                        "trade-off with no effect on any result",
+    # A what-if calculator's illustrative inputs, printed rather than applied.
+    "budget_report.peptide_length": "an example length for the printed budget",
+    "budget_report.ligand_heavy_atoms": "an example size for the printed budget",
+    "campaign_budget.default_pairs": "an example pair count for the printed budget",
+}
+
+
+def _numeric_defaults() -> dict[str, list[str]]:
+    """Function parameters whose default is a bare number."""
+    found: dict[str, list[str]] = {}
+    for path in sorted((ROOT / "nobble").rglob("*.py")):
+        tree = ast.parse(path.read_text())
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            args = node.args
+            positional = args.posonlyargs + args.args
+            pairs = []
+            if args.defaults:
+                pairs += list(zip([a.arg for a in positional][-len(args.defaults):],
+                                  args.defaults))
+            pairs += list(zip([a.arg for a in args.kwonlyargs], args.kw_defaults))
+            for name, default in pairs:
+                if default is None:
+                    continue
+                value = default
+                if isinstance(value, ast.UnaryOp) and isinstance(value.op, ast.USub):
+                    value = value.operand
+                if (isinstance(value, ast.Constant)
+                        and isinstance(value.value, (int, float))
+                        and not isinstance(value.value, bool)):
+                    found.setdefault(f"{node.name}.{name}", []).append(
+                        f"{path.relative_to(ROOT)}:{node.lineno}"
+                    )
+    return found
+
+
+def test_no_cutoff_hides_in_a_default_argument():
+    found = _numeric_defaults()
+    unexplained = {
+        name: where for name, where in found.items() if name not in ALLOWED_DEFAULTS
+    }
+    assert not unexplained, (
+        "numeric default(s) that should read from config: "
+        f"{unexplained}"
+    )
+
+
+def test_the_default_allowances_are_all_still_real():
+    found = _numeric_defaults()
+    stale = [name for name in ALLOWED_DEFAULTS if name not in found]
+    assert not stale, f"ALLOWED_DEFAULTS lists parameters that are gone: {stale}"
+
+
+def test_a_shared_contact_cutoff_has_no_default_at_all():
+    """Three callers meant three measurements by one 5.0.
+
+    degron_gate read the configured value and passed it; peptides and
+    yaml_gen each passed a bare literal. Changing the config would have moved
+    one of the three. Removing the default makes every caller say which
+    question it is asking.
+    """
+    import inspect
+
+    from nobble.curate import structures
+
+    signature = inspect.signature(structures.contacts_to_ligand)
+    assert signature.parameters["cutoff"].default is inspect.Parameter.empty, (
+        "contacts_to_ligand has a default cutoff again, so a caller can omit "
+        "it and get someone else's measurement"
+    )
+
+
+def test_the_moved_defaults_resolve_from_config():
+    from nobble import paths
+    from nobble.curate import peptides, structures
+    from nobble.execute import runner, tier2, yaml_gen
+
+    t = paths.thresholds()
+    assert tier2.DECILE_FRACTION == float(t["tier2"]["decile_fraction"])
+    assert peptides.NEGATIVES_PER_POSITIVE == int(t["peptide"]["negatives_per_positive"])
+    assert structures.LIGAND_MIN_HEAVY_ATOMS == int(
+        t["geometry"]["ligand_min_heavy_atoms"])
+    assert yaml_gen.POCKET_CONTACT_CUTOFF == float(
+        t["geometry"]["pocket_contact_cutoff_a"])
+    assert runner.settings_from_config(tier=1)["job_timeout_seconds"] == int(
+        paths.tuning()["campaign"]["job_timeout_seconds"])
+
+
+def test_hwprobe_writes_the_job_timeout_it_is_read_from():
+    """tuning.toml is machine-written, so a key added only by hand is a key
+    the next hardware probe silently drops."""
+    source = (ROOT / "tools" / "hwprobe.py").read_text()
+    assert '"job_timeout_seconds"' in source, (
+        "hwprobe no longer writes job_timeout_seconds, so the next probe would "
+        "produce a tuning.toml that settings_from_config cannot read"
+    )
+
+
 def test_no_threshold_is_hard_coded_in_python():
     found = _cutoff_comparisons()
     unexplained = {text: where for text, where in found.items() if text not in ALLOWED}

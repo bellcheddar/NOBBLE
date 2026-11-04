@@ -227,9 +227,14 @@ def run_job(job: dict, campaign: Path, settings: dict) -> JobOutcome:
     )
 
 
-def settings_from_config(tier: int = 1, job_timeout_seconds: int = 5400) -> dict:
+def settings_from_config(tier: int = 1, job_timeout_seconds: int | None = None) -> dict:
     campaign_settings = paths.tuning()["campaign"]
     compute = paths.tuning()["compute"]
+    # The timeout was a default argument, which put the number that decides
+    # when a job is abandoned in a signature rather than in config. Still
+    # overridable, because a test needs to.
+    if job_timeout_seconds is None:
+        job_timeout_seconds = int(campaign_settings["job_timeout_seconds"])
     if tier == 1:
         return {
             "recycles": int(campaign_settings["tier1_recycles"]),
