@@ -4421,3 +4421,60 @@ reason, because a decision is only as good as its premise and an arm whose
 classes stopped being matched would need the question reopened. Recorded
 rather than fixed, on F75's precedent: the next reader to notice a folding
 unit without an alignment will otherwise rediscover this as a hypothesis.
+
+## F99. The confidence and the structure came from different poses
+
+Tier 2 has never run. It is ten jobs at the end of a fifty-hour campaign, at
+ten recycles and twenty-five diffusion samples with potentials on, and the
+cheap thing to check was whether its Boltz invocation is even valid. It is:
+`--recycling_steps`, `--diffusion_samples` and `--use_potentials` are all
+real options in the installed Boltz. The defect was one layer down.
+
+Boltz writes one structure and one confidence JSON per diffusion sample,
+ranked rather than indexed: `argsort(confidence_score, descending)` puts the
+best model at `_model_0`. At one sample there is one of each. At twenty-five
+there are fifty files, and `_read_outputs` asked for the two by different
+rules. The structure came from `*_model_0.cif`, sorted. The confidence came
+from the first hit of `rglob("confidence_*.json")`, which is directory order
+and nothing else.
+
+Replaying the old function against a freshly written twenty-five sample
+directory: structure rank 0, confidence rank 14. Not creation order, not
+alphabetical, just what APFS handed back. Every one of the ten tier-2 jobs
+would have recorded one pose's ipTM beside another pose's bridge
+percentile, PLIP fingerprint and RMSD, and the pairing would differ between
+machines. Delta-ipTM is the tier-2 headline and is a difference of two
+ipTMs, so both would have described a structure nobody scored.
+
+The fix is not to sort the confidence glob. The confidence is now derived
+from the chosen structure's own filename, `confidence_<structure stem>.json`,
+which makes the mismatch unrepresentable rather than merely unlikely. When
+that file is absent the function returns no confidence and a reason saying
+which of the two failures happened, and the caller puts the reason in the
+retry detail instead of the old fixed string: "no confidence JSON written"
+and "a structure whose confidence JSON is missing" are different problems
+and the manifest should record whichever is true. Several confidence JSONs
+with no structure is a refusal, on F81's precedent.
+
+The replay also exposed a second flaw, in code I had just written as well as
+in the old version. The ranks are not zero-padded, so a sorted `*.cif`
+fallback puts `_model_10` ahead of `_model_3`: with ranks 0 to 2 missing it
+scored rank 10 while ranks 3 to 9 sat in the same directory. Structure
+choice is now by numeric rank, preferring this job's own files, mmCIF over
+PDB, a ranked model over an unranked one, with the name as the tie-break so
+the choice does not depend on directory order either.
+
+Tier 1 is unaffected, which is worth stating precisely rather than
+reassuringly: at one diffusion sample each pattern matches exactly one file,
+so old and new pick the same pair, and two tests hold that, one on a
+synthetic single-sample directory and one on a directory Boltz actually
+wrote during this campaign. The long-lived tier-1 runner is still holding
+the old module in memory and does not need restarting for that reason.
+`tools/tier2.sh` spawns a fresh `nobble.execute.runner --tier 2`, so the fix
+reaches tier 2 without touching the campaign in flight.
+
+`tests/test_sample_pairing.py` builds the twenty-five sample layout the
+pipeline has not yet seen rather than waiting fifty hours to meet it, and
+asserts the property rather than the ordering: for every rank, the
+confidence returned is the one named after the structure returned, and the
+structure is the best rank still present.

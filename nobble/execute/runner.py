@@ -90,28 +90,118 @@ def completed(state_path: Path) -> dict[str, dict]:
     return done
 
 
-def _read_outputs(output_dir: Path, stem: str) -> tuple[dict | None, dict | None, str | None]:
-    """Locate Boltz's confidence JSON, affinity JSON and predicted structure."""
-    confidence = affinity = None
-    structure = None
-    for path in output_dir.rglob("confidence_*.json"):
-        try:
-            confidence = json.loads(path.read_text())
-        except Exception:                           # noqa: BLE001
-            confidence = None
-        break
-    for path in output_dir.rglob("affinity_*.json"):
+def _model_rank(path: Path) -> int | None:
+    """Boltz's rank from a filename, or None if it carries no rank.
+
+    The ranks are not zero-padded, so sorting the names lexically puts
+    `_model_10` ahead of `_model_3`. With one diffusion sample there is only
+    `_model_0` and no ordering to get wrong; with twenty-five, a batch whose
+    first ranks failed to write would have been scored on rank 10 while
+    ranks 3 to 9 sat beside it (F99).
+    """
+    marker = "_model_"
+    if marker not in path.stem:
+        return None
+    tail = path.stem.rsplit(marker, 1)[1]
+    return int(tail) if tail.isdigit() else None
+
+
+def _best_structure(output_dir: Path, stem: str) -> Path | None:
+    """The highest-ranked predicted structure Boltz wrote for this job.
+
+    Preference order: this job's own files over any others in the tree, mmCIF
+    over PDB, a ranked model over an unranked one, and then the best rank
+    numerically. Ties break on the name so the choice is reproducible rather
+    than dependent on directory order.
+    """
+    candidates = [path for suffix in (".cif", ".pdb")
+                  for path in output_dir.rglob(f"*{suffix}")]
+    if not candidates:
+        return None
+
+    def key(path: Path) -> tuple:
+        rank = _model_rank(path)
+        return (
+            0 if path.stem.startswith(stem) else 1,
+            0 if path.suffix == ".cif" else 1,
+            0 if rank is not None else 1,
+            rank if rank is not None else 0,
+            str(path),
+        )
+
+    return min(candidates, key=key)
+
+
+def _read_outputs(
+    output_dir: Path, stem: str
+) -> tuple[dict | None, dict | None, str | None, str | None]:
+    """Locate Boltz's confidence JSON, affinity JSON and predicted structure.
+
+    Boltz writes one structure and one confidence JSON per diffusion sample,
+    named by rank rather than by sample index: `argsort(confidence_score,
+    descending)` puts the best model at `_model_0`, so `<stem>_model_0.cif`
+    is the pick of the batch and `confidence_<stem>_model_0.json` holds that
+    model's metrics.
+
+    Tier 1 runs one diffusion sample, so each pattern matches exactly one
+    file and any pick is the right one. Tier 2 runs twenty-five, and then the
+    confidence has to come from the model whose structure is being scored.
+    This used to take the first `confidence_*.json` that `rglob` yielded, in
+    directory order, while the structure loop asked for `_model_0`
+    explicitly: on the ten tier-2 jobs the recorded ipTM would have belonged
+    to an arbitrary one of twenty-five poses and the bridge, PLIP and RMSD
+    measurements to another, with the arbitrary choice depending on APFS
+    directory order rather than on anything reproducible. Delta-ipTM is the
+    tier-2 headline, so the two numbers it differences have to describe the
+    same structure (F99).
+
+    The confidence is therefore derived from the structure's own filename
+    rather than searched for, which makes a mismatch unrepresentable instead
+    of merely unlikely. A fourth return value carries the reason when
+    something is missing, because "no confidence JSON written" and "a
+    structure whose confidence JSON is missing" are different failures and
+    the retry records whichever is true.
+    """
+    structure = _best_structure(output_dir, stem)
+
+    confidence = None
+    reason = None
+    if structure is not None:
+        beside = structure.parent / f"confidence_{structure.stem}.json"
+        if beside.exists():
+            try:
+                confidence = json.loads(beside.read_text())
+            except Exception as problem:            # noqa: BLE001
+                reason = f"{beside.name} did not parse: {type(problem).__name__}"
+        else:
+            reason = f"{structure.name} written but {beside.name} is missing"
+    else:
+        # No structure to match against. One confidence JSON is the tier-1
+        # shape and unambiguous; several with no structure is not something
+        # to guess at, on F81's precedent.
+        candidates = sorted(output_dir.rglob("confidence_*.json"))
+        if len(candidates) == 1:
+            try:
+                confidence = json.loads(candidates[0].read_text())
+            except Exception as problem:            # noqa: BLE001
+                reason = f"{candidates[0].name} did not parse: {type(problem).__name__}"
+            reason = reason or "no structure written, confidence read alone"
+        elif candidates:
+            reason = (f"no structure written and {len(candidates)} confidence "
+                      "JSONs, so none can be matched to a pose")
+        else:
+            reason = "no confidence JSON written"
+
+    affinity = None
+    # Affinity is written once per job rather than once per sample.
+    for path in sorted(output_dir.rglob("affinity_*.json")):
         try:
             affinity = json.loads(path.read_text())
         except Exception:                           # noqa: BLE001
             affinity = None
         break
-    for pattern in ("*_model_0.cif", "*.cif", "*_model_0.pdb", "*.pdb"):
-        found = sorted(output_dir.rglob(pattern))
-        if found:
-            structure = str(found[0])
-            break
-    return confidence, affinity, structure
+
+    return confidence, affinity, (str(structure) if structure else None), reason
 
 
 # How long to keep trying to reap a child that has already been SIGKILLed,
@@ -207,9 +297,10 @@ def run_job(job: dict, campaign: Path, settings: dict) -> JobOutcome:
             break
         if returncode == 0:
             seconds = time.monotonic() - started
-            confidence, affinity, structure = _read_outputs(output_dir, job_id)
+            confidence, affinity, structure, reason = _read_outputs(
+                output_dir, job_id)
             if confidence is None:
-                detail = "exit 0 but no confidence JSON written"
+                detail = f"exit 0 but {reason}"
                 continue
             return JobOutcome(
                 job_id=job_id, status="done", seconds=seconds, tokens=job["tokens"],
