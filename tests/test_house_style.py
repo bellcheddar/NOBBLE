@@ -109,6 +109,15 @@ def punctuation_em_dashes(text: str) -> list[str]:
     return found
 
 
+# A forbidden word in straight double quotes is a citation rather than a
+# use. F67's own entry in FINDINGS.md names the inflections the sweep had
+# been missing, and a rule that cannot be written about is a rule whose
+# violations cannot be explained. Exactly the quoted token, on the same
+# reasoning as the em-dash placeholder: a quote around part of a sentence
+# would be a loophole, a quote around the word alone is a reference to it.
+CITATION = re.compile(r'"[\w-]+"')
+
+
 def banned_words(text: str) -> list[str]:
     r"""Forbidden words, including their inflections.
 
@@ -123,7 +132,7 @@ def banned_words(text: str) -> list[str]:
     so a banned stem inside another word is still ignored. All eight terms
     are long and distinctive enough that nothing innocent begins with one.
     """
-    lowered = text.lower()
+    lowered = CITATION.sub(lambda m: " " * len(m.group(0)), text.lower())
     return [word for word in BANNED
             if re.search(rf"\b{re.escape(word)}\w*", lowered)]
 
@@ -268,3 +277,25 @@ def test_the_prose_only_spellings_are_not_checked_in_code():
     assert american_spellings("color: #fff; text-align: center;",
                               prose=False) == []
     assert american_spellings("the color of the bar", prose=True)
+
+
+def test_a_quoted_forbidden_word_is_a_citation_not_a_use():
+    """F67's entry names the inflections its own sweep had been missing. A
+    rule that cannot be written about is a rule whose violations cannot be
+    explained."""
+    assert banned_words('it missed "delved" and "seamlessly"') == []
+    assert banned_words('the forbidden words are "delve" and "seamless"') == []
+
+
+def test_the_citation_allowance_does_not_cover_a_quoted_phrase():
+    """Quoting a whole sentence containing the word is using it. Only the
+    bare quoted token is a reference."""
+    assert banned_words('he called it "a seamless integration"') == ["seamless"]
+    assert banned_words('"we delved into the data" is the problem') == ["delve"]
+
+
+def test_an_unquoted_use_beside_a_citation_is_still_caught():
+    """The loophole to close: one legitimate citation in a paragraph must
+    not license the word in the prose around it."""
+    assert banned_words(
+        'the list forbids "delve", and this delves into it') == ["delve"]

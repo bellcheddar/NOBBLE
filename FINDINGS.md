@@ -3120,8 +3120,9 @@ earned its place immediately.
 
 The forbidden-word check matched `\b<word>\b`, so it caught "delve" and
 missed "delved", "delves", "delving" and "seamlessly". Those are most of
-the real uses: "delved into the data" is the sentence the rule exists to
-prevent. Worse, the test that was supposed to cover the boundary used
+the real uses, because the inflected form is how a word of that kind
+actually turns up in a sentence. Worse, the test meant to cover the
+boundary used
 "shelve" as its negative case, and "shelve" does not contain "delve" at
 all. So the test passed, the check looked boundary-safe, and every
 inflection went through. It matches `\b<word>\w*` now, which keeps the
@@ -3136,3 +3137,47 @@ constant now and the test refuses an empty one.
 Both are the same shape as the thing this sweep exists to catch: a check
 whose correct and incorrect behaviours produce the same result on the data
 at hand.
+
+## F68. The installed app would have painted its chrome in the house blue
+
+CLAUDE.md reserves the marcdeller.com palette for the README and the blog
+mark, and `depot.css` repeats it at the top of the file, naming the colour:
+"header and #1e73be palette do NOT apply here". `site.webmanifest` set
+`theme_color` to #1e73be, the exact colour that line excludes, and
+`background_color` to white where Depot's background is concrete.
+
+Nothing contradicted it. `base.html` carries its own
+`<meta name="theme-color">` with the right Depot values for light and dark,
+and that is what a browser tab uses, so every surface anyone had looked at
+was correct. The manifest only takes effect once the app is installed, so
+the installed app would have shown house-brand chrome and a white splash,
+and the splash is the one surface a reader sees before any stylesheet loads.
+
+Both now read Depot's `--bg`. Three places hold that colour, the CSS
+variable, the meta tag and the manifest, and the tests check they agree
+rather than that each is a particular string, which is the reasoning that
+fixed F54 and F55.
+
+**Three bugs in the tests themselves, all mine and all found by running
+them.** The icon path check dropped the `static/` segment, so it looked for
+files one directory above where they are. And the dark-mode lookup matched
+`depot.css`'s header comment twice over: first on a bare
+`prefers-color-scheme: dark` anchor, then on the full `@media` query, which
+the comment also quotes in full. Both times it sliced from the comment and
+found the light `--bg` twenty lines below, then compared it against the dark
+meta tag. Anchored on the opening brace now, which is what distinguishes the
+rule from the prose about it.
+
+Then the house-style sweep from F67 failed on F67's own entry, which is the
+sweep working. The entry names the inflections the old pattern had been
+missing, and naming them is using them by a literal reading. A rule that
+cannot be written about is a rule whose violations cannot be explained, so a
+forbidden word in straight double quotes is now a citation rather than a
+use: exactly the quoted token, on the same reasoning as the em-dash
+placeholder. A quoted phrase is still a use, and an unquoted use beside a
+legitimate citation is still caught, both of which are tested, because those
+are the two ways the allowance could become a loophole.
+
+Two passages were reworded rather than exempted. Exempting FINDINGS.md and
+BUILD_LOG.md would have excused the two files most likely to drift, since
+they are where almost all of this project's prose is written.
