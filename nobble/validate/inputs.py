@@ -70,17 +70,36 @@ def _required(row: dict) -> list[tuple[int, str]]:
     return []
 
 
+# Every queue a campaign holds, not the one that was in front of me. Tier 2
+# writes `queue_tier2.jsonl` beside `queue.jsonl` and points it at the same
+# YAML files, so a pair selected into the top decile is refined from
+# whatever its tier-1 YAML says. Checking one queue would have cleared a
+# campaign whose refinement queue was the stale half.
+QUEUE_GLOB = "queue*.jsonl"
+
+
+def queues(campaign: Path) -> list[Path]:
+    return sorted(Path(campaign).glob(QUEUE_GLOB))
+
+
 def stale_inputs(campaign: Path) -> list[dict]:
     """Jobs whose YAML disagrees with the queue row describing them.
+
+    Every queue in the campaign, because a campaign has more than one and
+    they share their YAML files.
 
     Reported whether the job has run or not. An unrun stale job is not
     harmless: running it produces a number for an input the code would not
     emit, which is the same defect arriving later.
     """
     campaign = Path(campaign)
-    queue = campaign / "queue.jsonl"
-    if not queue.exists():
-        return []
+    stale: list[dict] = []
+    for queue in queues(campaign):
+        stale.extend(_stale_in(campaign, queue))
+    return stale
+
+
+def _stale_in(campaign: Path, queue: Path) -> list[dict]:
     stale: list[dict] = []
     for line in queue.read_text().splitlines():
         if not line.strip():
@@ -92,6 +111,7 @@ def stale_inputs(campaign: Path) -> list[dict]:
         if not path.exists():
             stale.append({
                 "job_id": row.get("job_id"), "pair_id": row.get("pair_id"),
+                "queue_file": queue.name,
                 "reason": "the YAML the queue row names is not on disk",
                 "queue": _required(row), "yaml": None,
             })
@@ -101,6 +121,7 @@ def stale_inputs(campaign: Path) -> list[dict]:
         if sorted(on_disk) != sorted(wanted):
             stale.append({
                 "job_id": row.get("job_id"), "pair_id": row.get("pair_id"),
+                "queue_file": queue.name,
                 "reason": "the YAML and the queue row disagree about "
                           "which residues are modified",
                 "queue": wanted, "yaml": on_disk,
@@ -116,7 +137,8 @@ def refusal(stale: list[dict]) -> str:
         "ran on an input the current code would not emit.",
     ]
     for row in stale[:REFUSAL_EXAMPLES]:
-        lines.append(f"  {row['job_id']}: yaml={row['yaml']} "
+        lines.append(f"  {row.get('queue_file', 'queue.jsonl')} "
+                     f"{row['job_id']}: yaml={row['yaml']} "
                      f"queue={row['queue']}")
     if len(stale) > REFUSAL_EXAMPLES:
         lines.append(f"  and {len(stale) - REFUSAL_EXAMPLES} more")

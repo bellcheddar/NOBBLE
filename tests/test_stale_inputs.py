@@ -16,6 +16,7 @@ Fifteen jobs ran and would have been published as BRD4 against VHL (F59).
 """
 from __future__ import annotations
 
+import collections
 import json
 import subprocess
 import sys
@@ -148,8 +149,13 @@ def test_the_live_campaign_holds_exactly_the_f47_pair():
     if not stale:
         pytest.skip("the F47 correction has been applied")
     assert {row["pair_id"] for row in stale} == {"bench02_BRD4_VHL"}
-    assert len(stale) == 15
     assert all(row["yaml"] == [(1, "HYP")] for row in stale)
+    # Per queue, because the tier 2 queue exists only once the decile has
+    # been selected and asserting a single total would couple this test to
+    # which stages have run.
+    by_queue = collections.Counter(row["queue_file"] for row in stale)
+    assert by_queue["queue.jsonl"] == 15, by_queue
+    assert set(by_queue) <= {"queue.jsonl", "queue_tier2.jsonl"}, by_queue
 
 
 def test_the_atlas_build_refuses_rather_than_publishing(tmp_path):
@@ -180,3 +186,67 @@ def test_the_atlas_build_refuses_rather_than_publishing(tmp_path):
 
     after = sorted(p.name for p in atlas.iterdir()) if atlas.exists() else None
     assert after == before, "the published atlas was disturbed by a refusal"
+
+
+def _tier2_queue(campaign, jobs):
+    rows = []
+    for job_id, pair_id, required, yaml_path in jobs:
+        rows.append({"job_id": job_id + "__tier2", "pair_id": pair_id,
+                     "required_modification": required, "tier_setting": 2,
+                     "yaml": str(yaml_path)})
+    (campaign / "queue_tier2.jsonl").write_text(
+        "\n".join(json.dumps(r) for r in rows) + "\n")
+
+
+def test_every_queue_in_the_campaign_is_checked(tmp_path):
+    """A campaign has more than one queue, and checking the one in front of
+    me would have cleared a campaign whose refinement queue was the stale
+    half. Tier 2 points its own queue at the tier-1 YAML files, so a pair in
+    the top decile is refined from whatever its tier-1 YAML says."""
+    campaign = _campaign(tmp_path, [("j1", "p1", None, CLEAN)])
+    assert inputs.stale_inputs(campaign) == []
+
+    stale_yaml = campaign / "yaml" / "j1.yaml"
+    _tier2_queue(campaign, [("j1", "p1", {"position": 1, "ccd": "HYP"},
+                             stale_yaml)])
+    (stale,) = inputs.stale_inputs(campaign)
+    assert stale["queue_file"] == "queue_tier2.jsonl"
+    assert stale["job_id"] == "j1__tier2"
+
+
+def test_the_queues_are_discovered_not_listed(tmp_path):
+    campaign = _campaign(tmp_path, [("j1", "p1", None, CLEAN)])
+    _tier2_queue(campaign, [("j1", "p1", None, campaign / "yaml" / "j1.yaml")])
+    assert [q.name for q in inputs.queues(campaign)] == [
+        "queue.jsonl", "queue_tier2.jsonl"]
+
+
+def test_each_report_names_the_queue_it_came_from(tmp_path):
+    """Both queues share their YAML files, so the same file can be stale in
+    two places. Which queue is what tells you whether correcting the pair
+    and rerunning tier 1 is enough."""
+    campaign = _campaign(tmp_path, [("j1", "p1", None, MODIFIED)])
+    _tier2_queue(campaign, [("j1", "p1", None, campaign / "yaml" / "j1.yaml")])
+    stale = inputs.stale_inputs(campaign)
+    assert {row["queue_file"] for row in stale} == {
+        "queue.jsonl", "queue_tier2.jsonl"}
+    assert "queue_tier2.jsonl" in inputs.refusal(stale)
+
+
+def test_the_live_tier2_queue_shares_the_tier1_yaml():
+    """The property that makes the fix in tools/rerun_pair.py sufficient:
+    regenerating the tier-1 YAML corrects tier 2 as well, which is why the
+    chain corrects before it refines rather than after."""
+    if not MAIN.exists() or not (MAIN / "queue_tier2.jsonl").exists():
+        pytest.skip("tier 2 has not been selected on this checkout")
+    tier1 = {json.loads(line)["yaml"]
+             for line in (MAIN / "queue.jsonl").read_text().splitlines()
+             if line.strip()}
+    tier2 = {json.loads(line)["yaml"]
+             for line in (MAIN / "queue_tier2.jsonl").read_text().splitlines()
+             if line.strip()}
+    assert tier2, "the tier 2 queue is empty"
+    assert tier2 <= tier1, (
+        "tier 2 names YAML files that tier 1 does not, so correcting a "
+        "pair's tier-1 input would no longer correct its refinement"
+    )

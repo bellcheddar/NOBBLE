@@ -1596,3 +1596,19 @@ move the figure as the campaign runs.
 **Reversal.** Drop `job_tokens` from the call sites. The projection falls
 back to the flat rate, which is still implemented and whose basis string
 says it used one rate for every job size.
+
+## D-NOB-055. The stale-input check discovers queues rather than naming one
+
+**Decision.** `stale_inputs` globs `queue*.jsonl` and reports the queue each
+finding came from.
+
+**Alternatives.** List the two queues explicitly. Rejected for the reason
+the finding exists: the first version named the one queue I knew about, and
+a list is the same mistake with a second entry. A glob covers a third queue
+without an edit, and the sweep tests assert what it discovers.
+
+**Cost.** A YAML shared by two queues is reported twice, once per queue.
+Kept deliberately: they are two jobs, they run under different settings, and
+collapsing them would hide which stage is affected.
+
+**Reversal.** Set `QUEUE_GLOB` back to `queue.jsonl`. Three tests fail.

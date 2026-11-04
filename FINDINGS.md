@@ -2844,3 +2844,55 @@ The band edges are configured, and the binning is one function imported by
 both the writer and the projection. Two copies of a binning rule is how a
 rate measured in one set of bands comes to be applied in another, which is
 this finding arriving again by duplication.
+
+## F62. A campaign has two queues and the check read one
+
+Three stages had never executed: tier 2, the design scan and the prediction
+scorer. A stage that has never run is the largest remaining risk in an
+unattended build, so each was dry-run against the real campaign with the
+inference step left out, to find a crash now rather than in fifty hours.
+
+They work. Scoring the partial campaign succeeded and the composite
+correctly refused to fit on six positives and no negatives. Tier 2 selected
+a decile, explained why it had ranked on bridge percentile rather than the
+unfitted composite, and built a queue.
+
+The queue it built was for `bench02_BRD4_VHL`, and it pointed at the
+tier-1 YAML files, which still carry F47's hydroxyproline. Two things
+follow.
+
+The first is good and worth recording because the correction path depends
+on it: tier 2 reuses the tier-1 YAML verbatim, since only the sampling
+settings differ between tiers and those are command-line arguments. So
+regenerating a pair's tier-1 YAML corrects its refinement too, and the
+chain correcting before it refines is the right order. That property had no
+test, and `build_tier2_queue`'s docstring asserting it is not the same as
+something checking it.
+
+The second is a gap in F59. `stale_inputs` read `queue.jsonl`, and a
+campaign has `queue_tier2.jsonl` beside it. On this campaign it happened to
+catch the same files through the tier-1 queue, so the atlas still refused,
+but a campaign whose tier-1 inputs had been corrected while its refinement
+queue still named an old YAML would have passed. The check I wrote one
+context window ago covered the queue that was in front of me rather than
+the queues that exist. It now discovers them, and each report names the
+queue it came from, because which queue it is tells you whether correcting
+and rerunning tier 1 is enough.
+
+The dry run left a decile selected from six of 158 scored pairs in the live
+campaign. `build_tier2_queue` opens its target with `w`, so the chain
+rewrites it from the full scores and nothing was at risk, but it was removed
+rather than left: a top decile chosen from six pairs is exactly the state
+that reads as an answer. The property it demonstrated is now a unit test
+that does not depend on the artefact existing.
+
+Also checked and found sound, so recorded as verified rather than fixed:
+CLAUDE.md's rule against hard-coding cores, memory or device holds. The one
+device literal in the codebase compares the configured device against `mps`
+to choose boltz's `--accelerator`, which is a translation rather than a
+hard-coding. And the four run scripts export inconsistent subsets of
+`tuning.toml`'s `[env]`, which looked like drift until `boltz_environment()`
+turned out to apply all of it to the inference subprocess, and the runner
+parent turned out not to import torch at all. Tier 2 is therefore not at
+risk of running without the MPS fallback, which was the concern worth
+chasing.

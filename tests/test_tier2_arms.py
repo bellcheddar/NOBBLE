@@ -83,3 +83,49 @@ def test_the_arm_summary_is_absent_when_nothing_was_selected(tmp_path):
     # One pair is below the floor to rank on at all.
     assert selection.status.startswith("not_selected")
     assert selection.arms == {}
+
+
+def test_the_tier2_queue_reuses_the_tier1_yaml_paths(tmp_path):
+    """The property that makes correcting a pair's tier-1 input sufficient.
+
+    `build_tier2_queue`'s docstring says the YAMLs "do not change" and are
+    "reused verbatim", and the whole correction path depends on it: F47's
+    hydroxyproline was fixed by regenerating the tier-1 YAMLs, and that only
+    corrects the refinement because tier 2 reads the same files. If tier 2
+    ever copied or regenerated them, the chain would have to correct twice
+    and nothing would say so (F62).
+    """
+    import json
+
+    from nobble.execute import tier2
+
+    campaign = tmp_path / "campaign_20261104T000000Z"
+    (campaign / "yaml").mkdir(parents=True)
+    rows = []
+    for index, (pair, complex_type) in enumerate(
+            [("p1", "ternary"), ("p1", "binary"), ("p2", "ternary")]):
+        path = campaign / "yaml" / f"job{index}.yaml"
+        path.write_text("sequences: []\n")
+        rows.append({"job_id": f"job{index}", "pair_id": pair,
+                     "complex_type": complex_type, "yaml": str(path),
+                     "tokens": 150, "seed": 1})
+    (campaign / "queue.jsonl").write_text(
+        "\n".join(json.dumps(r) for r in rows) + "\n")
+
+    selection = tier2.Selection(
+        campaign=campaign.name, ranking_key="bridge_percentile",
+        decile_fraction=0.1, pairs_considered=2, pairs_selected=1,
+        selected=[{"pair_id": "p1"}], arms={"benchmark": 1},
+        forced_excluded=[], status="selected")
+    result = tier2.build_tier2_queue(campaign, selection)
+
+    emitted = [json.loads(line) for line in
+               (campaign / "queue_tier2.jsonl").read_text().splitlines()
+               if line.strip()]
+    assert result["jobs"] == 1, "only p1's ternary job should be refined"
+    assert emitted[0]["yaml"] == rows[0]["yaml"], (
+        "tier 2 no longer points at the tier-1 YAML, so correcting a pair's "
+        "tier-1 input would not correct its refinement"
+    )
+    assert emitted[0]["job_id"] == "job0__tier2"
+    assert emitted[0]["tier_setting"] == 2
