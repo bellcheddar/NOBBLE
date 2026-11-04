@@ -539,3 +539,16 @@
   which is what the matched-control ROC is for. The fit now carries an
   explicit in-sample caveat and the row status says "in-sample AUC".
   124 tests pass.
+- 2026-11-04T16:00Z Exercised the matched-control ROC at real arm size for
+  the first time. It is the project's falsifiable test and has never
+  computed: every campaign so far had no matched negatives. At 24 degraded
+  against 96 controls it computes cleanly, excludes the 38 pairs outside the
+  arm, and the bootstrap interval brackets the point estimate.
+  All three branches pinned, including the one that matters most: a weak
+  edge gives AUC 0.594 with a 95 per cent interval running below 0.5, and
+  the layer declines to call it a signal rather than rounding the point
+  estimate into a finding. Added the converse too, so the layer is not
+  merely cautious: a real separation is reported as above chance.
+  My first assertion pinned AUC > 0.6 from an earlier ad-hoc run whose draw
+  order differed; corrected to assert the property rather than tune the
+  fixture until it agreed. 128 tests pass.
