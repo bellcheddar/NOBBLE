@@ -417,6 +417,25 @@ ROC_ARM = "sievers_zf"
 ROC_LABELS = ("degraded", "not_degraded")
 
 
+def _verdict(low: float, high: float) -> str:
+    """What a bootstrap interval says about an AUC, in three cases.
+
+    Written as a function rather than a conditional expression because the
+    middle case is the one that used to swallow the third: `low > 0.5` else
+    "not distinguishable" reads as exhaustive and is not.
+    """
+    level = f"{confidence_level():g} per cent confidence"
+    if low > 0.5:
+        return "above chance"
+    if high < 0.5:
+        return (
+            f"below chance at {level}: the statistic separates the two "
+            "classes in the opposite direction to the prediction, which is a "
+            "result rather than an absence of one"
+        )
+    return f"not distinguishable from chance at {level}"
+
+
 def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerResult:
     """Delta-ipTM on the Sievers degraded against non-degraded split."""
     layer = LayerResult(name="matched_control_roc", status="not_computed: no scores")
@@ -519,11 +538,17 @@ def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerR
         # level actually used, so the two cannot disagree if alpha changes.
         "ci95": [low, high],
         "confidence_level": confidence_level(),
-        "interpretation": (
-            "above chance" if low > 0.5
-            else "not distinguishable from chance at "
-                 f"{confidence_level():g} per cent confidence"
-        ),
+        # Three outcomes, not two. An interval entirely below 0.5 is not
+        # "indistinguishable from chance": it is the statistic separating the
+        # two classes in the opposite direction to the prediction, which for
+        # Delta-ipTM would mean the matched negatives gaining more interface
+        # confidence from the glue than the degraded fingers do. Spec 4.3
+        # asks for exactly that case to be reported, "a real result about
+        # co-folding models and ternary cooperativity [...] rather than
+        # hiding it", and D-NOB-024 already reports BINMAN's reach window as
+        # "at or below chance and slightly inverted". This branch could not
+        # say it (F120).
+        "interpretation": _verdict(low, high),
     }
     if balance["imbalanced"]:
         layer.summary["interpretation"] += (

@@ -5569,3 +5569,49 @@ docstring, so the docstrings are blanked before the scan. The degenerate
 bootstrap test pins the indexing rather than the sampling, because a
 perfectly separated set gives AUC 1.0 on every resample and a perfectly tied
 one gives 0.5, so the bounds are known without reasoning about randomness.
+
+## F120. The headline verdict had two branches for three outcomes
+
+Reading `_bootstrap_interval` for F119 meant reading what consumes it. The
+matched-control ROC turned its interval into a sentence like this:
+
+    "above chance" if low > 0.5
+    else "not distinguishable from chance at N per cent confidence"
+
+That reads as exhaustive. It is not. An interval entirely below 0.5 is a
+third case, and it is the opposite of indistinguishable: the statistic
+separates the two classes, in the direction opposite to the prediction. An
+AUC of 0.15 with an interval of 0.08 to 0.24 would have been reported as not
+distinguishable from chance, which is false twice over.
+
+For Δ-ipTM it would mean the matched negatives gaining more interface
+confidence from the glue than the degraded fingers do. That is a finding, and
+spec 4.3 asks for it by name: "If it does not [hold], that is a real result
+about co-folding models and ternary cooperativity, and the app should report
+it as such rather than hiding it." Spec 5 adds that a poor ROC is not a gate
+failure while failing to report one is. Reporting a mislabelled one is worse
+than either.
+
+The project already knows how to say it. D-NOB-024 reports BINMAN's lysine
+reach window as "at or below chance and slightly inverted" on an AUC of 0.42
+to 0.48, and declines to weight it. The headline curve had no way to reach
+the same conclusion about itself.
+
+Three branches now, in a named function rather than a conditional
+expression, because the shape is the cause: `A if cond else B` invites
+reading B as everything-else, and a function with three returns does not.
+Both boundaries are strict, so an interval touching 0.5 from either side
+claims nothing.
+
+The estimator underneath is correct and was checked rather than assumed:
+perfect separation gives 1.0, perfect inversion 0.0, all ties 0.5, and a
+single tie among four comparisons 0.875, which is the Mann-Whitney statistic
+normalised by the product of the group sizes.
+
+The cutoff sweep caught the new comparison immediately, which is the sweep
+working. `low > 0.5` was already allowed with the reason that 0.5 is the
+definition of chance for an area under a curve rather than a tunable
+threshold. `high < 0.5` is the same constant on the other side and is listed
+separately rather than folded into the first entry, on F119's lesson: an
+allowlist entry is evidence that one line was looked at, not that its
+neighbours were.

@@ -32,6 +32,12 @@ ALLOWED = {
     "low > 0.5":
         "0.5 is the definition of chance for an area under a ROC curve, not a "
         "tunable threshold",
+    "high < 0.5":
+        "the same 0.5, on the other side: an interval entirely below chance "
+        "is an inverted result rather than an absent one, and F120 added the "
+        "branch that says so. Allowed for the same reason as the comparison "
+        "above, and listed separately because an allowlist entry is evidence "
+        "that one line was looked at and not that its neighbours were (F119)",
 }
 
 
