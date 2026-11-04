@@ -3771,3 +3771,33 @@ concluded the notes were discarded. They are under `row["plip"]["notes"]`.
 After the `RECOVERED_A` grep in F64 and the `preview.cost` key in F79, the
 pattern is mine rather than the code's: I guess at a field name instead of
 printing the keys first, and the guess reads as a finding.
+
+## F82. The four-chain case, verified 21 jobs before the first real one
+
+F81 removed a chain-map fallback that assumed three chains, leaving an
+unparsed map as a refusal. That left a question worth answering before the
+Sievers arm starts rather than after: does the parse work on a four-chain
+job at all? If it did not, the refusal would be correct and the PLIP
+component would be absent for 120 of the campaign's 158 pairs.
+
+It works. A real benchmark ternary with a zinc inserted as chain Z between
+the peptide and the glue, which is where the assembler puts it, parses as
+`{'A': 'A', 'P': 'B', 'Z': 'C', 'L': 'D'}`. The glue is identified as chain
+D, the ion's single row is excluded with a note naming D as the glue, and
+seven receptor contacts and one peptide contact survive the filter.
+
+So F81's refusal is a floor rather than a change of behaviour, and F14's ion
+exclusion is confirmed on a four-chain input for the first time.
+
+Two things were checked rather than assumed on the way. The assembler's
+chain order was read from a real Sievers YAML, `sv_neg_BCL6B_c2c0a3`, rather
+than from the comment that asserts it: protein A, protein P, ligand Z,
+ligand L, with the ion as a ligand entry before the glue. And the
+`zinc_probe` campaign turned out not to help, because its structures are
+peptide-only, P and Z, with no receptor or glue: a probe of the folding
+question rather than of the fingerprint.
+
+The test constructs the structure rather than storing a fixture, so it
+exercises the real converter against the real geometry and skips where
+cif2plip or a benchmark campaign is absent. Permanent, because the path it
+covers has still never run in production and will within the hour.
