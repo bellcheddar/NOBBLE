@@ -11,6 +11,16 @@
 <section class="panel">
   <h2>What predicts a recovered pose</h2>
   <p class="panel__hint">Pose recovery needs a deposited crystal, so it covers only pairs with one.</p>
+  {# Generated from the time-split layer, not written here, so it follows the
+     data: if a post-cutoff deposition ever enters the panel this line reports
+     the blind number instead of the caveat. #}
+  {% set retro = (time_split.get('retrospective') or {}).get('n') or 0 %}
+  {% set blind = (time_split.get('prospective') or {}).get('n') or 0 %}
+  {% if retro and not blind %}
+  <p class="panel__hint">All {{ retro }} predate Boltz-2's {{ time_split.get('training_cutoff') }} training cutoff, so this is retrospective.</p>
+  {% elif blind %}
+  <p class="panel__hint">{{ blind }} of {{ retro + blind }} postdate the {{ time_split.get('training_cutoff') }} cutoff: {{ (time_split.get('prospective') or {}).get('median_rmsd') }} A blind against {{ (time_split.get('retrospective') or {}).get('median_rmsd') }} A retrospective.</p>
+  {% endif %}
   <div class="split split--2">
     <div><div class="chart chart--short" id="recovery-plot"></div></div>
     <div>

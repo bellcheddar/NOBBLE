@@ -104,11 +104,21 @@ def benchmark():
             "scores": scored.get(pair_id),
             "pending": pair_id not in scored,
         })
+    # The time split is carried even when the layer is not_computed, which is
+    # the case that matters: it is not_computed precisely when every target
+    # predates the training cutoff, and that is what the recovery numbers need
+    # said about them.
+    validation = data.precomputed("validation.json")
+    time_split = (
+        ((validation.get("layers") or {}).get("time_split") or {}).get("summary") or {}
+    )
+
     return render_template(
         "benchmark.html", page_title="Benchmark", active="benchmark",
         cards=cards, meta=data.campaign_meta(),
         comparison=data.precomputed("comparison.json"),
         recovery_vs_bridge=data.precomputed("recovery_vs_bridge.json"),
+        time_split=time_split,
     )
 
 

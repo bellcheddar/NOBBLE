@@ -999,3 +999,40 @@ The second attached the imbalance caveat to score files that predate the
 "Cannot be checked" and "checked and found uneven" are different claims,
 and a caveat on the first is the sort of blanket qualifier CLAUDE.md
 warns reads as a lack of confidence rather than as rigour.
+
+## F25. The recovery numbers never said they were retrospective
+
+Every benchmark deposition is from 2016 to 2020: 5HXB, 5T35, 6BNB, 6H0F,
+5FQD, 6Q0W, 6TD3. Boltz-2's training cutoff is 2021-09-30, so all seven
+could have been memorised, and none of them estimates prospective
+performance.
+
+The `time_split` layer knows this exactly, and says it well. It refuses to
+compute and gives the reason: no deposition postdates the cutoff, so there
+is no blind set, and the retrospective number must not be read as
+prospective performance. That status is in `validation.json` and in the
+published atlas.
+
+It was not on the page carrying the numbers. `/benchmark` showed the
+recovery correlation and the RMSD table with a hint saying only that
+recovery needs a deposited crystal. A reader takes an RMSD on that page
+as how well the method predicts, which is the one reading the data does
+not support.
+
+One generated sentence now sits beside the figure: "All 7 predate
+Boltz-2's 2021-09-30 training cutoff, so this is retrospective." Eleven
+words, which keeps `/benchmark` at 105 words of hint prose against the
+150 budget.
+
+Generated rather than written, which is the part worth keeping. It reads
+the layer, so if a post-cutoff deposition ever joins the panel the line
+stops being a caveat and becomes a result: so many of so many postdate
+the cutoff, this much blind against that much retrospective. A sentence
+typed into the template would have had to be remembered, and would have
+gone stale in the direction that flatters.
+
+This is the same failure as F21 and F22 in the other direction. There,
+facts maintained by hand went quietly out of date. Here a fact the
+pipeline had computed correctly simply never reached the page, which is
+the recurring theme at the top of this file: compute whose output nothing
+reads is indistinguishable from compute that never ran.
