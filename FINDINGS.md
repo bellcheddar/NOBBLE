@@ -7822,3 +7822,46 @@ read and not the writes, F139's filter naming a class nothing carried, and
 now a flag that covers one of two side effects. In each case the narrower
 thing was the one someone had in mind at the time, and the wider one was
 equally obvious afterwards.
+
+## F171. The drift check compared stale against stale
+
+`tools/atlas_drift.py` is what stops a deploy publishing an atlas that is not
+what the current code builds. F96 is the finding it exists for: a caveat was
+written, tested and committed and was not on the page, because
+`comparison.json` is built by the atlas and the atlas had not been rebuilt.
+`deploy.sh` refuses while it reports drift.
+
+It reported "in step" while the published atlas was missing four fields the
+code had been producing for some time: `non_finite_dropped` from F74,
+`secondary_graded_test` from F52, `seed_balance` and `seed_counts`, and
+`peptide_identity`, `peptide_predicted_sequence` and
+`peptide_deposited_sequence` on all 65 pose-recovery rows from F103.
+
+The mechanism. `build_atlas.py` **copies** `validation.json` from the
+campaign rather than recomputing it, which is reasonable: the atlas
+publishes what the pipeline produced. The drift check rebuilds the atlas
+from that same campaign and compares. So a rebuild that copies a stale file
+produces a stale file, which matches the stale published one, and the check
+passes. It cannot see staleness shared by the published atlas and the
+campaign artefact it was copied from, and that is the only kind of staleness
+that arises here, because both come from the same place.
+
+How it surfaced is worth recording, because I was not looking for it. F170
+needed proof that `refresh.sh --no-publish` leaves shared state alone, so I
+ran it against the benchmark campaign. `--no-publish` did protect the atlas
+file and `data/throughput.json`, and the run also rescored the campaign,
+which is what scoring a campaign means. That rewrote the campaign's
+`validation.json` with the current code's output, and the next suite run went
+red on two atlas-drift tests. My verification did not create the drift; it
+removed the thing that was hiding it.
+
+Two changes. The check now recomputes the documents the atlas copies before
+rebuilding, so it answers the question it is named for rather than comparing
+two copies of one stale file. And the atlas is rebuilt, so the published
+bundle carries those fields: the ROC summary goes from 5 keys to 9 and all 65
+recovery rows gain the identity fields F103 added.
+
+The deploy was blocked while this stood, which is the check working. What was
+not working is that it had been passing for as long as the staleness was
+symmetric, and a check that cannot fail while both sides are wrong together
+is the most expensive kind to trust.

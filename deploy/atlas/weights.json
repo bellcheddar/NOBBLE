@@ -6,7 +6,13 @@
   "positives": 7,
   "negatives": 0,
   "components_used": [],
-  "caveats": [],
+  "caveats": [
+    "1 of 7 labelled pair(s) contributed a different number of seeds from the modal 5 binary, 10 ternary, so their delta_iptm is a difference of differently sized minima. Reported rather than refused: the ROC refuses on this and is scoped to the Sievers arm, where every pair matches, while the fit spans the panel too (spec 4.8)"
+  ],
   "per_component_auc": {},
+  "seed_shapes": {
+    "5 binary, 10 ternary": 6,
+    "5 binary, 5 ternary": 1
+  },
   "fitted": false
 }

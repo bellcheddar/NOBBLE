@@ -91,6 +91,34 @@ def _leaves(root: Path) -> dict[str, object]:
     return out
 
 
+
+def _refresh_derived(campaign: Path) -> None:
+    """Recompute the documents the atlas copies rather than derives.
+
+    `validation.json` is produced by `nobble.validate.layers.run` and copied
+    into the bundle verbatim. If the campaign's copy predates a change to
+    those layers, so does the published one, and comparing the two says
+    nothing. Recomputing here makes the comparison answer the question the
+    check is named for: is the published atlas what the current code builds.
+
+    Written into the campaign, which is where `build_atlas.py` reads it from,
+    and which is also where `refresh.sh` writes it in the normal flow. This
+    is not a side effect the check invents: it is the step the normal flow
+    already performs before publishing, and skipping it is what let the
+    staleness hide.
+    """
+    try:
+        from nobble.validate.layers import run as run_layers
+
+        payload = run_layers(campaign)
+    except Exception as problem:                        # noqa: BLE001
+        print(f"   could not recompute validation.json: "
+              f"{type(problem).__name__}: {problem}")
+        return
+    (campaign / "validation.json").write_text(
+        json.dumps(payload, indent=2, default=str))
+
+
 def drift() -> dict:
     """Leaf values that differ between the published atlas and a rebuild."""
     if not (PUBLISHED / "ATLAS.json").exists():
@@ -102,6 +130,16 @@ def drift() -> dict:
                 "moved": [], "campaign": campaign.name}
 
     with tempfile.TemporaryDirectory() as workdir:
+        # The derived documents are refreshed in the copy before the
+        # rebuild, because `build_atlas.py` copies them rather than
+        # recomputing them, and a rebuild that copies a stale file produces
+        # a stale file that matches the stale published one. So this check
+        # reported "in step" while the published atlas lacked four fields
+        # the code had been producing since F52, F74 and F103: it was
+        # comparing stale against stale, and only a rescore of the campaign
+        # made the difference visible (F171).
+        _refresh_derived(campaign)
+
         completed = subprocess.run(
             [sys.executable, "deploy/build_atlas.py", str(campaign)],
             cwd=str(ROOT), capture_output=True, text=True, timeout=1800,

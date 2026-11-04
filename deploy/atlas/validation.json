@@ -128,6 +128,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.751,
+          "peptide_predicted_sequence": "CLVDKKSGEKSKTRP",
+          "peptide_deposited_sequence": "CLVDKKSGEKSKTRP",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -139,6 +142,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.723,
+          "peptide_predicted_sequence": "CLVDKKSGEKSKTRP",
+          "peptide_deposited_sequence": "CLVDKKSGEKSKTRP",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -150,6 +156,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.751,
+          "peptide_predicted_sequence": "CLVDKKSGEKSKTRP",
+          "peptide_deposited_sequence": "CLVDKKSGEKSKTRP",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -161,6 +170,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.761,
+          "peptide_predicted_sequence": "CLVDKKSGEKSKTRP",
+          "peptide_deposited_sequence": "CLVDKKSGEKSKTRP",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -172,6 +184,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.768,
+          "peptide_predicted_sequence": "CLVDKKSGEKSKTRP",
+          "peptide_deposited_sequence": "CLVDKKSGEKSKTRP",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -183,6 +198,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.758,
+          "peptide_predicted_sequence": "CLVDKKSGEKSKTRP",
+          "peptide_deposited_sequence": "CLVDKKSGEKSKTRP",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -194,6 +212,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.72,
+          "peptide_predicted_sequence": "CLVDKKSGEKSKTRP",
+          "peptide_deposited_sequence": "CLVDKKSGEKSKTRP",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -205,6 +226,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.747,
+          "peptide_predicted_sequence": "CLVDKKSGEKSKTRP",
+          "peptide_deposited_sequence": "CLVDKKSGEKSKTRP",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -216,6 +240,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.769,
+          "peptide_predicted_sequence": "CLVDKKSGEKSKTRP",
+          "peptide_deposited_sequence": "CLVDKKSGEKSKTRP",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -227,6 +254,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.773,
+          "peptide_predicted_sequence": "CLVDKKSGEKSKTRP",
+          "peptide_deposited_sequence": "CLVDKKSGEKSKTRP",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -238,6 +268,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 560,
           "receptor_rmsd": 0.537,
+          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
+          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -249,6 +282,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 560,
           "receptor_rmsd": 0.615,
+          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
+          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -260,6 +296,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 560,
           "receptor_rmsd": 0.675,
+          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
+          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -271,6 +310,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 560,
           "receptor_rmsd": 0.772,
+          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
+          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -282,6 +324,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 560,
           "receptor_rmsd": 0.568,
+          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
+          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -293,6 +338,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 560,
           "receptor_rmsd": 0.486,
+          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
+          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -304,6 +352,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 560,
           "receptor_rmsd": 0.607,
+          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
+          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -315,6 +366,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 560,
           "receptor_rmsd": 0.684,
+          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
+          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -326,6 +380,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 560,
           "receptor_rmsd": 0.744,
+          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
+          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -337,6 +394,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 560,
           "receptor_rmsd": 0.642,
+          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
+          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -348,6 +408,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 424,
           "receptor_rmsd": 1.014,
+          "peptide_predicted_sequence": "YKIIKTPMDMGTIKK",
+          "peptide_deposited_sequence": "YKIIKTPMDMGTIKK",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -359,6 +422,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 424,
           "receptor_rmsd": 0.93,
+          "peptide_predicted_sequence": "YKIIKTPMDMGTIKK",
+          "peptide_deposited_sequence": "YKIIKTPMDMGTIKK",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -370,6 +436,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 424,
           "receptor_rmsd": 0.982,
+          "peptide_predicted_sequence": "YKIIKTPMDMGTIKK",
+          "peptide_deposited_sequence": "YKIIKTPMDMGTIKK",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -381,6 +450,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 424,
           "receptor_rmsd": 0.973,
+          "peptide_predicted_sequence": "YKIIKTPMDMGTIKK",
+          "peptide_deposited_sequence": "YKIIKTPMDMGTIKK",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -392,6 +464,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 424,
           "receptor_rmsd": 0.949,
+          "peptide_predicted_sequence": "YKIIKTPMDMGTIKK",
+          "peptide_deposited_sequence": "YKIIKTPMDMGTIKK",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -403,6 +478,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.883,
+          "peptide_predicted_sequence": "PFQCNQCGASFTQKG",
+          "peptide_deposited_sequence": "PFQCNQCGASFTQKG",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -414,6 +492,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.839,
+          "peptide_predicted_sequence": "PFQCNQCGASFTQKG",
+          "peptide_deposited_sequence": "PFQCNQCGASFTQKG",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -425,6 +506,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.832,
+          "peptide_predicted_sequence": "PFQCNQCGASFTQKG",
+          "peptide_deposited_sequence": "PFQCNQCGASFTQKG",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -436,6 +520,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.835,
+          "peptide_predicted_sequence": "PFQCNQCGASFTQKG",
+          "peptide_deposited_sequence": "PFQCNQCGASFTQKG",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -447,6 +534,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.804,
+          "peptide_predicted_sequence": "PFQCNQCGASFTQKG",
+          "peptide_deposited_sequence": "PFQCNQCGASFTQKG",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -458,6 +548,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.884,
+          "peptide_predicted_sequence": "PFQCNQCGASFTQKG",
+          "peptide_deposited_sequence": "PFQCNQCGASFTQKG",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -469,6 +562,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.844,
+          "peptide_predicted_sequence": "PFQCNQCGASFTQKG",
+          "peptide_deposited_sequence": "PFQCNQCGASFTQKG",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -480,6 +576,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.832,
+          "peptide_predicted_sequence": "PFQCNQCGASFTQKG",
+          "peptide_deposited_sequence": "PFQCNQCGASFTQKG",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -491,6 +590,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.837,
+          "peptide_predicted_sequence": "PFQCNQCGASFTQKG",
+          "peptide_deposited_sequence": "PFQCNQCGASFTQKG",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -502,6 +604,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.805,
+          "peptide_predicted_sequence": "PFQCNQCGASFTQKG",
+          "peptide_deposited_sequence": "PFQCNQCGASFTQKG",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -513,6 +618,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.798,
+          "peptide_predicted_sequence": "LAINITNGEEVAVKL",
+          "peptide_deposited_sequence": "LAINITNGEEVAVKL",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -524,6 +632,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.721,
+          "peptide_predicted_sequence": "LAINITNGEEVAVKL",
+          "peptide_deposited_sequence": "LAINITNGEEVAVKL",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -535,6 +646,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.832,
+          "peptide_predicted_sequence": "LAINITNGEEVAVKL",
+          "peptide_deposited_sequence": "LAINITNGEEVAVKL",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -546,6 +660,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.74,
+          "peptide_predicted_sequence": "LAINITNGEEVAVKL",
+          "peptide_deposited_sequence": "LAINITNGEEVAVKL",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -557,6 +674,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.821,
+          "peptide_predicted_sequence": "LAINITNGEEVAVKL",
+          "peptide_deposited_sequence": "LAINITNGEEVAVKL",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -568,6 +688,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.799,
+          "peptide_predicted_sequence": "LAINITNGEEVAVKL",
+          "peptide_deposited_sequence": "LAINITNGEEVAVKL",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -579,6 +702,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.721,
+          "peptide_predicted_sequence": "LAINITNGEEVAVKL",
+          "peptide_deposited_sequence": "LAINITNGEEVAVKL",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -590,6 +716,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.825,
+          "peptide_predicted_sequence": "LAINITNGEEVAVKL",
+          "peptide_deposited_sequence": "LAINITNGEEVAVKL",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -601,6 +730,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.743,
+          "peptide_predicted_sequence": "LAINITNGEEVAVKL",
+          "peptide_deposited_sequence": "LAINITNGEEVAVKL",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -612,6 +744,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 436,
           "receptor_rmsd": 1.804,
+          "peptide_predicted_sequence": "LAINITNGEEVAVKL",
+          "peptide_deposited_sequence": "LAINITNGEEVAVKL",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -623,6 +758,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 824,
           "receptor_rmsd": 0.705,
+          "peptide_predicted_sequence": "ITEDMLRGIFEPFGR",
+          "peptide_deposited_sequence": "ITEDMLRGIFEPFGR",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -634,6 +772,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 824,
           "receptor_rmsd": 0.777,
+          "peptide_predicted_sequence": "ITEDMLRGIFEPFGR",
+          "peptide_deposited_sequence": "ITEDMLRGIFEPFGR",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -645,6 +786,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 824,
           "receptor_rmsd": 0.749,
+          "peptide_predicted_sequence": "ITEDMLRGIFEPFGR",
+          "peptide_deposited_sequence": "ITEDMLRGIFEPFGR",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -656,6 +800,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 824,
           "receptor_rmsd": 0.745,
+          "peptide_predicted_sequence": "ITEDMLRGIFEPFGR",
+          "peptide_deposited_sequence": "ITEDMLRGIFEPFGR",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -667,6 +814,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 824,
           "receptor_rmsd": 0.756,
+          "peptide_predicted_sequence": "ITEDMLRGIFEPFGR",
+          "peptide_deposited_sequence": "ITEDMLRGIFEPFGR",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -678,6 +828,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 824,
           "receptor_rmsd": 0.706,
+          "peptide_predicted_sequence": "ITEDMLRGIFEPFGR",
+          "peptide_deposited_sequence": "ITEDMLRGIFEPFGR",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -689,6 +842,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 824,
           "receptor_rmsd": 0.774,
+          "peptide_predicted_sequence": "ITEDMLRGIFEPFGR",
+          "peptide_deposited_sequence": "ITEDMLRGIFEPFGR",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -700,6 +856,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 824,
           "receptor_rmsd": 0.756,
+          "peptide_predicted_sequence": "ITEDMLRGIFEPFGR",
+          "peptide_deposited_sequence": "ITEDMLRGIFEPFGR",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -711,6 +870,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 824,
           "receptor_rmsd": 0.744,
+          "peptide_predicted_sequence": "ITEDMLRGIFEPFGR",
+          "peptide_deposited_sequence": "ITEDMLRGIFEPFGR",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -722,6 +884,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 824,
           "receptor_rmsd": 0.76,
+          "peptide_predicted_sequence": "ITEDMLRGIFEPFGR",
+          "peptide_deposited_sequence": "ITEDMLRGIFEPFGR",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -733,6 +898,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 1240,
           "receptor_rmsd": 1.198,
+          "peptide_predicted_sequence": "FYLVFEYMDHDLMGL",
+          "peptide_deposited_sequence": "FYLVFEYMDHDLMGL",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -744,6 +912,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 1240,
           "receptor_rmsd": 1.35,
+          "peptide_predicted_sequence": "FYLVFEYMDHDLMGL",
+          "peptide_deposited_sequence": "FYLVFEYMDHDLMGL",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -755,6 +926,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 1240,
           "receptor_rmsd": 1.347,
+          "peptide_predicted_sequence": "FYLVFEYMDHDLMGL",
+          "peptide_deposited_sequence": "FYLVFEYMDHDLMGL",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -766,6 +940,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 1240,
           "receptor_rmsd": 1.766,
+          "peptide_predicted_sequence": "FYLVFEYMDHDLMGL",
+          "peptide_deposited_sequence": "FYLVFEYMDHDLMGL",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -777,6 +954,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 1240,
           "receptor_rmsd": 1.183,
+          "peptide_predicted_sequence": "FYLVFEYMDHDLMGL",
+          "peptide_deposited_sequence": "FYLVFEYMDHDLMGL",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -788,6 +968,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 1240,
           "receptor_rmsd": 1.247,
+          "peptide_predicted_sequence": "FYLVFEYMDHDLMGL",
+          "peptide_deposited_sequence": "FYLVFEYMDHDLMGL",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -799,6 +982,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 1240,
           "receptor_rmsd": 1.486,
+          "peptide_predicted_sequence": "FYLVFEYMDHDLMGL",
+          "peptide_deposited_sequence": "FYLVFEYMDHDLMGL",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -810,6 +996,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 1240,
           "receptor_rmsd": 1.375,
+          "peptide_predicted_sequence": "FYLVFEYMDHDLMGL",
+          "peptide_deposited_sequence": "FYLVFEYMDHDLMGL",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -821,6 +1010,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 1240,
           "receptor_rmsd": 1.82,
+          "peptide_predicted_sequence": "FYLVFEYMDHDLMGL",
+          "peptide_deposited_sequence": "FYLVFEYMDHDLMGL",
+          "peptide_identity": 1.0,
           "notes": []
         },
         {
@@ -832,6 +1024,9 @@
           "atoms_compared": 60,
           "receptor_anchor_atoms": 1240,
           "receptor_rmsd": 1.167,
+          "peptide_predicted_sequence": "FYLVFEYMDHDLMGL",
+          "peptide_deposited_sequence": "FYLVFEYMDHDLMGL",
+          "peptide_identity": 1.0,
           "notes": []
         }
       ],
@@ -914,7 +1109,20 @@
         "positives": 0,
         "matched_negatives": 0,
         "pairs_outside_the_arm_excluded": 7,
-        "source": "Sievers zinc-finger screen: negatives assayed in the same screen"
+        "non_finite_dropped": 0,
+        "source": "Sievers zinc-finger screen: negatives assayed in the same screen",
+        "seed_counts": {
+          "positives": {
+            "ternary": {},
+            "binary": {}
+          },
+          "negatives": {
+            "ternary": {},
+            "binary": {}
+          }
+        },
+        "seed_balance": "not assessable: one or both groups have no scored pairs",
+        "secondary_graded_test": "not_computed: slabicki_graded_labels_unavailable. Spec 5.3 specifies a secondary continuous test against Slabicki's graded degradation labels. BINMAN cites the paper and did not acquire the per-compound data, so the split below is binary only"
       },
       "detail": [],
       "notes": [],
