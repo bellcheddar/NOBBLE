@@ -5691,3 +5691,51 @@ had just written. It runs `create_app(<dir>)` in a subprocess now, the way
 Three wrong attempts at one twelve-line change, each caught immediately,
 which is the argument for small changes against a suite that runs in two
 minutes.
+
+## F123. The browser marked an incomplete composite and the stored record did not
+
+Spec 4.8's composite is computed twice. `weights.apply` computes it for the
+pipeline and `run.py` stores it as `nobble_score`; `nobble.js` recomputes it
+in the browser on every slider move, which is what lets the ranking
+re-derive without a round trip.
+
+I checked they agree, and they do. Running both rather than reading both:
+`qc/composite_harness.mjs` loads `nobble.js` under node with the smallest
+browser stubs that let it initialise and calls its real `composite` on the
+same rows and weights as Python's `apply`. They match to 5e-5 across the
+benchmark panel, which is exactly Python's `round(..., 4)`. The aggregation
+is the same weighted mean renormalised over the components that had values,
+and the two normalisations that matter, `bridge_percentile / 100` and
+`clamp((delta_iptm + 1) / 2)`, are the same. Python additionally clamps the
+other three components, which are already bounded by construction, so the
+difference is defensive rather than real.
+
+What they do not share is coverage, and the JavaScript explains why in a
+comment I could not have written better:
+
+> a pair part-way through its jobs has null convergence and null PLIP, and
+> renormalising over the weights that did have values gives it a score built
+> from two components sitting in the same ranked column as one built from
+> four. RBM39 ranked second that way on a composite that never saw its pose
+> convergence. A score is only comparable to another score over the same
+> components.
+
+So the page returns `components`, `requested` and `complete` beside every
+score and shows them. `weights.apply` returned a bare float, and `run.py`
+stored it with the fit's provenance and no coverage at all. A reader of
+`scores.jsonl`, of `/api/pairs`, or BINMAN-LM sorting on `nobble_score`,
+would have compared a three-component score against a four-component one as
+the same quantity.
+
+Not hypothetical: two of the seven benchmark pairs score on fewer components
+than the weights ask for. RBM39 has three of four and CDK12 has two, which is
+the pair with no bridge at all.
+
+`weights.coverage` reports it now, from the same traversal the score comes
+from, and `run.py` stores it as `nobble_score_coverage`. It is None today
+because the fit needs the Sievers matched set, so this takes effect when the
+fit lands, which is the end of the campaign.
+
+The agreement itself is now a test rather than a thing I checked once. Two
+implementations of one formula agree until they do not, and the page is where
+the ranking is read.

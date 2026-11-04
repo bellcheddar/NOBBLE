@@ -344,6 +344,11 @@ def score_campaign(campaign: Path, with_plip: bool = True, limit: int | None = N
     if fit.fitted:
         for entry in scored:
             entry["nobble_score"] = weights.apply(entry, fit.weights)
+            # How many of the weighted components the pair had. The browser
+            # has always shown this and the stored record did not, so a
+            # score over three components and one over four sat in the same
+            # column as the same quantity (F123).
+            entry["nobble_score_coverage"] = weights.coverage(entry, fit.weights)
             entry["nobble_score_status"] = (
                 f"fitted on {fit.labelled_pairs} labelled pairs, "
                 f"in-sample AUC {fit.objective}"

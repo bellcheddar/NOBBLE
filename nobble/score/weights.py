@@ -312,13 +312,54 @@ def fit(campaign: Path) -> FitResult:
 
 
 def apply(row: dict, weights: dict) -> float | None:
-    """Composite for one pair under a given weighting."""
+    """Composite for one pair under a given weighting.
+
+    A weighted mean over the components that had a value, renormalised by
+    the weights that contributed. `coverage` reports how many of the
+    requested components those were, and a stored score without it is not
+    comparable to another stored score (F123).
+    """
+    total, weight_total, _, _ = _weighted(row, weights)
+    return round(total / weight_total, 4) if weight_total else None
+
+
+def _weighted(row: dict, weights: dict) -> tuple[float, float, int, int]:
     features = _features(row)
     total = weight_total = 0.0
+    available = requested = 0
     for name, weight in weights.items():
-        value = features.get(name)
-        if value is None or not weight:
+        if not weight:
             continue
+        requested += 1
+        value = features.get(name)
+        if value is None:
+            continue
+        available += 1
         total += weight * value
         weight_total += weight
-    return round(total / weight_total, 4) if weight_total else None
+    return total, weight_total, available, requested
+
+
+def coverage(row: dict, weights: dict) -> dict:
+    """How many of the weighted components this pair actually had.
+
+    The browser has always reported this, and `nobble.js` says why: "a pair
+    part-way through its jobs has null convergence and null PLIP, and
+    renormalising over the weights that did have values gives it a score
+    built from two components sitting in the same ranked column as one built
+    from four. RBM39 ranked second that way on a composite that never saw
+    its pose convergence. A score is only comparable to another score over
+    the same components."
+
+    The page refuses to show one unmarked. The stored record carried no mark
+    at all, so a reader of `scores.jsonl`, the API or BINMAN-LM would compare
+    a three-component score against a four-component one as the same
+    quantity. On the benchmark panel that is not hypothetical: two of its
+    seven pairs score on fewer components than the weights ask for (F123).
+    """
+    _total, _weight_total, available, requested = _weighted(row, weights)
+    return {
+        "components": available,
+        "requested": requested,
+        "complete": requested > 0 and available == requested,
+    }
