@@ -31,4 +31,13 @@ else
   caffeinate -dimsu "$PY_BOLTZ" -m nobble.execute.runner --tier 2
 fi
 
-echo "=== tier 2 done. Score it separately: tier-1 scores are unchanged. ==="
+echo "--- score the refined poses"
+# Writes scores_tier2.jsonl. scores.jsonl and weights.json are untouched: the
+# composite is not refitted on a decile that the composite itself selected.
+if [ -n "$CAMPAIGN" ]; then
+  "$PY_SCI" -m nobble.score.run --campaign "$CAMPAIGN" --tier 2
+else
+  "$PY_SCI" -m nobble.score.run --tier 2
+fi
+
+echo "=== tier 2 done. Tier-1 scores are unchanged, by construction. ==="

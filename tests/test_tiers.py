@@ -106,3 +106,39 @@ def test_tier2_writes_to_its_own_three_files(tmp_path):
     assert tier2["state"].name == "state_tier2.jsonl"
     for key in ("queue", "state", "results"):
         assert tier1[key] != tier2[key]
+
+
+def test_scoring_reads_the_results_file_for_the_tier_it_was_asked_for(tmp_path):
+    """Tier 2 must not be scored out of tier 1's results file.
+
+    Before this, score_campaign opened results.jsonl unconditionally, so
+    asking for tier 2 silently rescored tier 1 and wrote the answer over
+    scores.jsonl.
+    """
+    from nobble.score.run import score_campaign
+
+    _write(tmp_path / "results.jsonl", [_job("j1", "binary", 0.60)])
+
+    out = score_campaign(tmp_path, with_plip=False, sampling_tier=2)
+    assert out["status"].startswith("no results yet")
+    assert out["sampling_tier"] == 2
+    assert not (tmp_path / "scores_tier2.jsonl").exists()
+    assert not (tmp_path / "scores.jsonl").exists(), "a tier-2 run wrote tier 1's scores"
+
+
+def test_a_tier1_results_file_holding_only_tier2_rows_scores_nothing(tmp_path):
+    """The filter is on the record, not only on the filename.
+
+    `by_pair` feeds geometry and PLIP per job, so a stray tier-2 record in
+    tier 1's file would reach a tier-1 number by that route even though the
+    minima are partitioned.
+    """
+    from nobble.score.run import score_campaign
+
+    _write(tmp_path / "results.jsonl", [
+        _job("j1__tier2", "ternary", 0.10, tier_setting=2),
+    ])
+
+    out = score_campaign(tmp_path, with_plip=False, sampling_tier=1)
+    assert out["status"] == "no tier-1 results yet"
+    assert not (tmp_path / "scores.jsonl").exists()

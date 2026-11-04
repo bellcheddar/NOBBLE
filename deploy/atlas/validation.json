@@ -7,14 +7,14 @@
       "summary": {
         "pairs_with_recovery": 6,
         "pairs_expected": 7,
-        "poses_compared": 52,
+        "poses_compared": 53,
         "overall_curve": {
           "within_1.0A": 0.0,
           "within_2.0A": 0.0,
           "within_3.0A": 0.0,
-          "within_5.0A": 0.0192,
-          "n": 52,
-          "median_rmsd": 12.362
+          "within_5.0A": 0.0189,
+          "n": 53,
+          "median_rmsd": 12.308
         },
         "by_pair": {
           "bench01_GSPT1_CRBN": {
@@ -88,17 +88,17 @@
             }
           },
           "bench06_RBM39_DCAF15": {
-            "n": 7,
+            "n": 8,
             "best_rmsd": 5.462,
-            "median_rmsd": 6.003,
+            "median_rmsd": 6.18,
             "worst_rmsd": 6.446,
             "curve": {
               "within_1.0A": 0.0,
               "within_2.0A": 0.0,
               "within_3.0A": 0.0,
               "within_5.0A": 0.0,
-              "n": 7,
-              "median_rmsd": 6.003
+              "n": 8,
+              "median_rmsd": 6.18
             }
           }
         },
@@ -676,6 +676,17 @@
           "receptor_anchor_atoms": 824,
           "receptor_rmsd": 0.774,
           "notes": []
+        },
+        {
+          "pair_id": "bench06_RBM39_DCAF15",
+          "pdb_id": "6Q0W",
+          "job_id": "bench06_RBM39_DCAF15__ternary__unconstrained__seed3",
+          "seed": 3,
+          "rmsd": 6.18,
+          "atoms_compared": 60,
+          "receptor_anchor_atoms": 824,
+          "receptor_rmsd": 0.756,
+          "notes": []
         }
       ],
       "notes": [
@@ -727,7 +738,7 @@
               "pair_id": "bench06_RBM39_DCAF15",
               "pdb_id": "6Q0W",
               "release_date": "2019-11-13",
-              "median_rmsd": 6.003
+              "median_rmsd": 6.18
             }
           ]
         },

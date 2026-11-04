@@ -55,15 +55,15 @@
       "gene": "RBM39",
       "e3": "DCAF15",
       "bridge_rate": 1.0,
-      "bridging": "7/7",
-      "median_rmsd": 6.003,
+      "bridging": "8/8",
+      "median_rmsd": 6.18,
       "best_rmsd": 5.462,
-      "convergence": 0.8038
+      "convergence": 0.8207
     }
   ],
   "n": 6,
-  "pearson_r": -0.871,
-  "pearson_p": 0.0238,
+  "pearson_r": -0.872,
+  "pearson_p": 0.0237,
   "spearman_rho": -0.88,
   "spearman_p": 0.0206
 }

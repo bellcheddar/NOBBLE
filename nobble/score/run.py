@@ -20,6 +20,7 @@ import sys
 from pathlib import Path
 
 from nobble import paths
+from nobble.execute.runner import tier_files
 from nobble.score import geometry, lysine, metrics, plip, poses, weights
 
 COMPONENTS = (
@@ -31,20 +32,38 @@ COMPONENTS = (
 )
 
 
-def score_campaign(campaign: Path, with_plip: bool = True, limit: int | None = None) -> dict:
-    """Score every pair with completed jobs. Writes scores.jsonl."""
-    results_path = campaign / "results.jsonl"
+def score_campaign(campaign: Path, with_plip: bool = True, limit: int | None = None,
+                   sampling_tier: int = 1) -> dict:
+    """Score every pair with completed jobs. Writes scores.jsonl.
+
+    `sampling_tier` selects which sampling regime to score and defaults to
+    tier 1, the regime Delta-ipTM is defined over (D-NOB-032). Tier 2 has its
+    own results file, so the two cannot mix by accident, but the job list is
+    filtered here as well: `by_pair` feeds geometry and PLIP per job, which is
+    a second path a stray record could take into a tier-1 number.
+    """
+    tier_paths = tier_files(campaign, sampling_tier)
+    results_path = tier_paths["results"]
     if not results_path.exists():
-        return {"status": "no results yet", "campaign": str(campaign)}
+        return {"status": "no results yet", "campaign": str(campaign),
+                "sampling_tier": sampling_tier}
 
     jobs = [
         json.loads(line) for line in results_path.read_text().splitlines() if line.strip()
     ]
+    jobs = [job for job in jobs if int(job.get("tier_setting", 1)) == sampling_tier]
+    if not jobs:
+        return {"status": f"no tier-{sampling_tier} results yet",
+                "campaign": str(campaign), "sampling_tier": sampling_tier}
+
     by_pair: dict[str, list[dict]] = {}
     for job in jobs:
         by_pair.setdefault(job["pair_id"], []).append(job)
 
-    pair_metrics = {item.pair_id: item for item in metrics.aggregate(results_path)}
+    pair_metrics = {
+        item.pair_id: item
+        for item in metrics.aggregate(results_path, sampling_tier=sampling_tier)
+    }
 
     scored = []
     pairs = sorted(by_pair)
@@ -201,7 +220,8 @@ def score_campaign(campaign: Path, with_plip: bool = True, limit: int | None = N
         entry.setdefault("errors", [])
         scored.append(entry)
 
-    output = campaign / "scores.jsonl"
+    suffix = "" if sampling_tier == 1 else f"_tier{sampling_tier}"
+    output = campaign / f"scores{suffix}.jsonl"
     with output.open("w") as handle:
         for entry in scored:
             handle.write(json.dumps(entry, default=str) + "\n")
@@ -210,6 +230,27 @@ def score_campaign(campaign: Path, with_plip: bool = True, limit: int | None = N
     # the fit reads the scored components, so the composite cannot be written
     # until every component exists. When the fit refuses, nobble_score stays
     # null and carries the refusal as its status, which is the honest output.
+    #
+    # Tier 1 only. The fit reads scores.jsonl and writes weights.json, both of
+    # which the app, the atlas and tier-2 selection all read. Refitting them
+    # from a refined decile would fit the composite on the pairs the composite
+    # just selected, and the decile is not a sample of anything: it is the top
+    # of the ranking by construction.
+    if sampling_tier != 1:
+        return {
+            "campaign": str(campaign),
+            "sampling_tier": sampling_tier,
+            "scored": len(scored),
+            "output": str(output),
+            "note": (
+                "tier-2 poses scored into their own file. The composite was "
+                "not refitted: the decile is the top of the tier-1 ranking by "
+                "construction, not a sample, so fitting on it would be fitting "
+                "on the selection. Delta-ipTM here is not comparable to tier 1 "
+                "(D-NOB-032)."
+            ),
+        }
+
     fit = weights.fit(campaign)
     (campaign / "weights.json").write_text(json.dumps(fit.to_dict(), indent=2))
     if fit.fitted:
@@ -241,6 +282,9 @@ def main() -> int:
     parser.add_argument("--campaign", type=Path, default=None)
     parser.add_argument("--no-plip", action="store_true")
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument("--tier", type=int, default=1, choices=(1, 2),
+                        help="sampling tier to score (default 1, the regime "
+                             "Delta-ipTM is defined over)")
     args = parser.parse_args()
 
     campaign = args.campaign
@@ -251,7 +295,8 @@ def main() -> int:
         print("no campaign found", file=sys.stderr)
         return 2
 
-    summary = score_campaign(Path(campaign), with_plip=not args.no_plip, limit=args.limit)
+    summary = score_campaign(Path(campaign), with_plip=not args.no_plip,
+                             limit=args.limit, sampling_tier=args.tier)
     print(json.dumps(summary, indent=2))
     return 0
 

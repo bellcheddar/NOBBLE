@@ -2,10 +2,10 @@
   "campaign": "benchmark_20261103T192126Z",
   "files": {
     "campaign.json": 7502,
-    "validation.json": 24143,
+    "validation.json": 24482,
     "weights.json": 475,
     "scores.jsonl": 6,
-    "results.jsonl": 82,
+    "results.jsonl": 83,
     "benchmark.json": 7,
     "about.json": 16,
     "recovery_vs_bridge.json": 6,
@@ -15,6 +15,6 @@
   "comparison_conclusion": "not concluded: the IKZF1 control has no number in both campaigns, so a difference in the other pairs cannot yet be attributed to the construct",
   "jobs_total": 100,
   "pairs_total": 7,
-  "structures": 82,
-  "bytes": 19273195
+  "structures": 83,
+  "bytes": 20122482
 }

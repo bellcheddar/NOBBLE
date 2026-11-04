@@ -30,3 +30,13 @@
   issued to nobble.mdeller.com, verifies cleanly, runs to 2027-02-01, port 80
   returns 301. No gate is currently open. Throughput paragraph updated from the
   optimistic 0.343 s/token to the measured median of 0.4738 over 80 jobs.
+- 2026-11-04T00:40Z Tier-2 wiring completed. score_campaign still opened
+  results.jsonl unconditionally, so asking for tier 2 would have silently
+  rescored tier 1 and written the answer over scores.jsonl. It now takes
+  sampling_tier, resolves its paths through tier_files, filters the job list
+  as well as the minima (by_pair feeds geometry and PLIP per job, a second
+  route a stray record could take into a tier-1 number), and writes
+  scores_tier2.jsonl. The composite is not refitted on tier 2: the decile is
+  the top of the tier-1 ranking by construction, not a sample, so fitting on
+  it would be fitting on the selection. tools/tier2.sh now runs select,
+  refine and score. 42 tests pass.
