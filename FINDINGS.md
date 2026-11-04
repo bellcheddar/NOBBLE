@@ -3090,3 +3090,49 @@ finding.
 Both guards are checked by mutating the harness with the harness, which
 refused on the first attempt because `mutate.py` had uncommitted changes:
 the entry guard doing its job on its own author.
+
+## F67. The house style was enforced by nothing, and my sweep for it leaked
+
+CLAUDE.md and BUILD_SPEC.md 1.4 both state the house style: British
+English, no em dashes, and a forbidden-word list. Nothing checked it for the
+whole build, and thousands of words of FINDINGS.md, DECISIONS.md and UI copy
+were written against it on trust.
+
+The trust was mostly warranted. No forbidden word appears outside the two
+files that state the rule. No American spelling appears anywhere, and the
+British forms are in active use: colour, behaviour, tumour and labelled all
+occur, which is what makes the absence of their counterparts evidence rather
+than a broken pattern.
+
+Writing the check settled one question that had never been decided. The app
+templates hold 32 em dashes and every one is an empty-value placeholder in a
+table cell or a stat. The rule's own remedy, "use colons, semicolons or
+parentheses", cannot be applied to a glyph standing for "no value", so the
+rule is about punctuation in prose and the placeholder is allowed. The 11
+em dashes used as punctuation are all in BUILD_SPEC.md, which is the
+authoritative input rather than this project's output, and which is where
+the rule is stated. Recorded as a decision because an unrecorded
+interpretation is indistinguishable from an unnoticed violation.
+
+**The sweep then leaked twice, and the harness from F66 found both.** This
+is the first use of that harness on something I had just written, and it
+earned its place immediately.
+
+The forbidden-word check matched `\b<word>\b`, so it caught "delve" and
+missed "delved", "delves", "delving" and "seamlessly". Those are most of
+the real uses: "delved into the data" is the sentence the rule exists to
+prevent. Worse, the test that was supposed to cover the boundary used
+"shelve" as its negative case, and "shelve" does not contain "delve" at
+all. So the test passed, the check looked boundary-safe, and every
+inflection went through. It matches `\b<word>\w*` now, which keeps the
+leading boundary, and the negative cases are words that genuinely contain a
+banned stem: "bedevilled", "seamed".
+
+And the control asserting the British forms are in use passed when its loop
+was emptied, because the loop target was a literal in the test body. A
+control that passes vacuously is not a control. The forms are a named
+constant now and the test refuses an empty one.
+
+Both are the same shape as the thing this sweep exists to catch: a check
+whose correct and incorrect behaviours produce the same result on the data
+at hand.

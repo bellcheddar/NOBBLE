@@ -50,6 +50,11 @@ BANNED = ("groundbreaking", "revolutionary", "paradigm-shifting",
           "game-changing", "cutting-edge", "unprecedented", "seamless",
           "delve")
 
+# The British forms this project uses. Named rather than inlined so that
+# emptying the loop that checks them fails instead of passing vacuously,
+# which is how the mutation harness caught this one.
+BRITISH_IN_USE = ("colour", "behaviour", "tumour", "labelled")
+
 # American spellings whose British form this project uses. Only words that
 # cannot appear as code: `color` and `center` are CSS properties and are
 # checked in prose alone.
@@ -105,9 +110,22 @@ def punctuation_em_dashes(text: str) -> list[str]:
 
 
 def banned_words(text: str) -> list[str]:
+    r"""Forbidden words, including their inflections.
+
+    `\b<word>\b` alone was too narrow and the mutation harness found it:
+    "delved", "delves", "delving" and "seamlessly" all passed a sweep whose
+    whole purpose is to catch them, and the boundary test that was supposed
+    to cover this used "shelve", which does not contain "delve" at all. So
+    the test passed, the check looked boundary-safe, and the inflections
+    went through.
+
+    `\b<word>\w*` catches the inflections and keeps the leading boundary,
+    so a banned stem inside another word is still ignored. All eight terms
+    are long and distinctive enough that nothing innocent begins with one.
+    """
     lowered = text.lower()
     return [word for word in BANNED
-            if re.search(rf"\b{re.escape(word)}\b", lowered)]
+            if re.search(rf"\b{re.escape(word)}\w*", lowered)]
 
 
 def american_spellings(text: str, prose: bool) -> list[str]:
@@ -182,8 +200,9 @@ def test_the_british_forms_really_are_in_use():
     """A spelling sweep that finds nothing proves nothing on its own: it
     reads the same whether the project is consistent or the pattern is
     broken. These are the forms the project does use."""
+    assert BRITISH_IN_USE, "the control checks nothing"
     text = "\n".join(_read(path).lower() for _relative, path in _files())
-    for british in ("colour", "behaviour", "tumour", "labelled"):
+    for british in BRITISH_IN_USE:
         assert re.search(rf"\b{british}\b", text), (
             f"{british} does not appear anywhere, so the sweep for its "
             "American form is not evidence of anything"
@@ -218,12 +237,23 @@ def test_the_banned_word_check_catches_one():
     assert banned_words("this is a GROUNDBREAKING result") == ["groundbreaking"]
 
 
-def test_the_banned_word_check_respects_word_boundaries():
-    """`delve` must not fire on `delved into` being absent while matching
-    inside an unrelated word. Checked because a substring sweep would
-    report a violation nobody wrote."""
-    assert banned_words("the shelve was full") == []
+def test_the_banned_word_check_catches_inflections():
+    """The gap the harness found. A list of stems that only matches the
+    exact form lets every use of the word through, which is most of them:
+    "delved into the data" is the sentence the rule is about."""
+    assert banned_words("we delved into the data") == ["delve"]
+    assert banned_words("it delves into it") == ["delve"]
+    assert banned_words("integrates seamlessly") == ["seamless"]
     assert banned_words("we delve into it") == ["delve"]
+
+
+def test_the_banned_word_check_keeps_its_leading_boundary():
+    """A stem inside another word is not a use of it. "shelve" does not
+    contain "delve" and was a useless test case; these do contain a banned
+    stem and must still be ignored."""
+    assert banned_words("the shelve was full") == []
+    assert banned_words("he was bedevilled by it") == []
+    assert banned_words("the mainsail was seamed") == []
 
 
 def test_the_spelling_check_catches_an_americanism():

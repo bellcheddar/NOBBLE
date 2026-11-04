@@ -1634,3 +1634,21 @@ megabytes between every mutation in a sweep of twenty would dominate the run.
 
 **Reversal.** Drop the fingerprint calls from `main`. Four tests fail,
 including the two that feed it an appearing and a disappearing file.
+
+## D-NOB-057. An em dash standing for "no value" is not punctuation
+
+**Decision.** The house style's ban on em dashes applies to punctuation in
+prose, code comments and UI copy. A quoted em dash used as an empty-value
+placeholder, `{{ value or '-' }}` in a table cell, is allowed and is checked
+to still exist, so the allowance cannot quietly come to cover prose.
+
+**Alternatives.** Replace the 32 placeholders with an en dash or with "n/a".
+Rejected: an en dash is still a dash and would need the same decision, "n/a"
+in a numeric column reads as a value rather than its absence, and the churn
+buys nothing a reader would notice. Also considered treating them as
+violations and leaving them: rejected because a rule with 32 standing
+exceptions is not enforced, it is ignored.
+
+**Reversal.** Delete `PLACEHOLDER` from the sweep. 33 em dashes are then
+reported, which is the signal to decide this question again rather than a
+defect.
