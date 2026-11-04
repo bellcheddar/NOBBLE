@@ -2681,3 +2681,30 @@ assembler, all matched against a single regex in `latest()`. A copy drifting
 from that regex would not have failed anything. The campaign would simply
 have stopped being found, which is the same silence the skeletons produced,
 arrived at from the other direction.
+
+## F58. Removing the litter would have removed the evidence with it
+
+F57's fix deletes a campaign directory whose assembly failed. Reproducing
+the design assembly afterwards succeeded, so the three skeletons were
+transient, almost certainly my own edits to the tree while calling into it
+during the mutation sweeps. Almost certainly is as far as it goes: nothing
+recorded a traceback, so the cause cannot be confirmed.
+
+That is the state the fix would have made permanent. Litter with no
+explanation at least says that something failed three times, 20 minutes
+apart. A directory silently removed says nothing at all, and is the quieter
+of the two failures rather than the smaller one.
+
+The reason is now appended to `data/manifests/failed_assemblies.jsonl`
+before the directory goes: the error, the message, the traceback and what
+the directory held. Appended rather than rewritten, because three identical
+failures in sequence said more together than any one of them did.
+
+Two things fell out of testing it. The fixture for F57's tests redirected
+`CAMPAIGNS` and not the new manifest, so four test failures were appended
+to the real one before I looked: a fixture that redirects some of a
+function's outputs stops covering the rest of them without saying so. And
+the recorder's `except OSError` was too narrow. A `FAILED_ASSEMBLIES` path
+that pathlib rejects raises `ValueError` before any I/O, so the diagnostic
+would have replaced the error it exists to describe. Its own comment says
+that must not happen, which is how the test came to look for it.

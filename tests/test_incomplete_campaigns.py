@@ -20,6 +20,7 @@ which every assembler writes last (F57).
 """
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -34,10 +35,20 @@ from nobble.execute import campaign as C  # noqa: E402
 
 @pytest.fixture()
 def campaigns(tmp_path, monkeypatch):
+    """Redirect everything the helper writes, not only the campaigns.
+
+    The failure record was added after these tests and escaped the first
+    version of this fixture, which redirected CAMPAIGNS alone: four test
+    failures were appended to the real manifest before anyone looked. A
+    fixture that redirects some of a function's outputs is a fixture that
+    silently stops covering the rest of them.
+    """
     directory = tmp_path / "campaigns"
     directory.mkdir()
     monkeypatch.setattr(paths, "CAMPAIGNS", directory)
     monkeypatch.setattr(C.paths, "CAMPAIGNS", directory)
+    monkeypatch.setattr(C, "FAILED_ASSEMBLIES",
+                        tmp_path / "manifests" / "failed_assemblies.jsonl")
     return directory
 
 
@@ -200,3 +211,61 @@ def test_every_assembler_builds_inside_the_helper():
     assert not offenders, (
         f"assembler(s) not using fresh_campaign: {offenders}"
     )
+
+
+def _records():
+    return [json.loads(line) for line in
+            C.FAILED_ASSEMBLIES.read_text().splitlines() if line.strip()]
+
+
+def test_the_reason_is_recorded_before_the_directory_goes(campaigns):
+    """Removing the litter without writing down why would be quieter than
+    leaving it and no more informative. The three real skeletons carried no
+    record, so their cause could only be guessed at afterwards."""
+    with pytest.raises(RuntimeError):
+        with C.fresh_campaign("design") as directory:
+            (directory / "queue.jsonl").write_text("{}\n")
+            raise RuntimeError("could not derive the pocket")
+
+    (record,) = _records()
+    assert record["campaign_id"] == directory.name
+    assert record["error"] == "RuntimeError"
+    assert "could not derive the pocket" in record["message"]
+    assert "could not derive the pocket" in record["traceback"]
+    assert "queue.jsonl" in record["contents"]
+    assert record["failed_at"]
+
+
+def test_the_records_accumulate(campaigns):
+    """Appended, not rewritten. Three identical skeletons 20 minutes apart
+    said more together than any one of them did."""
+    for _ in range(3):
+        with pytest.raises(RuntimeError):
+            with C.fresh_campaign("design") as directory:
+                raise RuntimeError("the same failure again")
+    assert len(_records()) == 3
+
+
+def test_a_successful_assembly_records_nothing(campaigns):
+    with C.fresh_campaign("design") as directory:
+        (directory / C.COMPLETION_MARKER).write_text("{}")
+    assert not C.FAILED_ASSEMBLIES.exists()
+
+
+def test_a_missing_marker_is_recorded_too(campaigns):
+    with pytest.raises(RuntimeError):
+        with C.fresh_campaign("design") as directory:
+            (directory / "queue.jsonl").write_text("{}\n")
+    (record,) = _records()
+    assert C.COMPLETION_MARKER in record["message"]
+
+
+def test_a_failed_record_does_not_mask_the_error(campaigns, monkeypatch):
+    """The record is a diagnostic, not a dependency. If it cannot be
+    written the assembly's own error is still what the caller sees."""
+    monkeypatch.setattr(C, "FAILED_ASSEMBLIES",
+                        campaigns / "nonexistent\x00dir" / "x.jsonl")
+    with pytest.raises(RuntimeError, match="the real failure"):
+        with C.fresh_campaign("design") as directory:
+            raise RuntimeError("the real failure")
+    assert not directory.exists()

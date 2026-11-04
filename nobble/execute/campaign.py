@@ -67,6 +67,44 @@ def latest(prefix: str = "benchmark") -> Path | None:
     return candidates[-1] if candidates else None
 
 
+# Appended to, never rewritten: a failed assembly is an event, and the
+# previous failure is the context for the next one. Three identical
+# skeletons 20 minutes apart said more together than any one of them did.
+FAILED_ASSEMBLIES = paths.MANIFESTS / "failed_assemblies.jsonl"
+
+
+def _record_failed_assembly(directory: Path, error: BaseException) -> None:
+    """Write down why a campaign directory is about to be removed."""
+    import traceback
+
+    contents = []
+    try:
+        contents = sorted(
+            str(item.relative_to(directory)) for item in directory.rglob("*"))
+    except Exception:                                           # noqa: BLE001
+        pass
+    record = {
+        "campaign_id": directory.name,
+        "failed_at": datetime.now(timezone.utc).isoformat(),
+        "error": type(error).__name__,
+        "message": str(error),
+        "traceback": "".join(
+            traceback.format_exception(type(error), error,
+                                       error.__traceback__)),
+        "contents": contents,
+    }
+    try:
+        FAILED_ASSEMBLIES.parent.mkdir(parents=True, exist_ok=True)
+        with FAILED_ASSEMBLIES.open("a") as handle:
+            handle.write(json.dumps(record) + "\n")
+    except Exception:                                           # noqa: BLE001
+        # Losing the record must not mask the error it describes, and the
+        # ways a path can fail are not all OSError: a bad FAILED_ASSEMBLIES
+        # raises ValueError from pathlib before any I/O is attempted, which
+        # a narrower clause let through and on top of the real failure.
+        pass
+
+
 @contextlib.contextmanager
 def fresh_campaign(prefix: str):
     """A campaign directory that does not outlive a failed assembly.
@@ -82,21 +120,30 @@ def fresh_campaign(prefix: str):
     removed. A process killed mid-assembly can still leave one, which is
     why `latest()` checks the marker as well: this handles the failure that
     actually happened, and that handles the one that cannot be caught.
+
+    The reason is recorded before the directory goes. The three skeletons
+    that prompted this carried no record of why they failed, so the cause
+    had to be guessed at afterwards and could not be confirmed. Removing
+    them without writing the traceback down would have replaced litter with
+    nothing at all, which is quieter and no more informative.
     """
     directory = paths.CAMPAIGNS / campaign_id(prefix)
     (directory / "yaml").mkdir(parents=True, exist_ok=True)
     (directory / "outputs").mkdir(parents=True, exist_ok=True)
     try:
         yield directory
-    except BaseException:
+    except BaseException as error:
+        _record_failed_assembly(directory, error)
         shutil.rmtree(directory, ignore_errors=True)
         raise
     if not (directory / COMPLETION_MARKER).exists():
-        shutil.rmtree(directory, ignore_errors=True)
-        raise RuntimeError(
+        error = RuntimeError(
             f"{directory.name} finished assembling without writing "
             f"{COMPLETION_MARKER}: removed rather than left looking complete"
         )
+        _record_failed_assembly(directory, error)
+        shutil.rmtree(directory, ignore_errors=True)
+        raise error
 
 
 def assemble_benchmark(reuse_latest: bool = True) -> dict:
