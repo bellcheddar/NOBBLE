@@ -216,3 +216,18 @@
   list and deploy.sh's route verification both had hardcoded six-tab lists,
   so a broken seventh tab would have passed QC and deployed as "verified".
   Both now include /design.
+- 2026-11-04T06:25Z Design assembler built: nobble/design/assemble.py emits a
+  runnable campaign from a planned scan. IKZF1/CRBN alanine scan assembles to
+  16 pairs (parent plus 15 variants), 240 jobs, pocket derived from 6H0F.
+  Preflight passes: 0 errors, 0 asymmetric cofactors. The parent is re-run
+  alongside its variants rather than reused from an earlier campaign: 15 jobs
+  out of 240 buys parent and variant measured under identical settings, which
+  is what lift depends on.
+- 2026-11-04T06:25Z D-NOB-038, found while building it. An alanine scan of a
+  zinc finger mutates the coordinating residues, so inferring the cofactor
+  per variant drops the zinc at C3A and C6A, measured on ZEP2. Those are the
+  coordinating cysteines, the positions the scan exists to interrogate. Their
+  lift would have been large and negative, read as "this position is
+  critical", and been reporting the missing ion. A wrong answer that matches
+  the prior is worse than an obviously broken one. Variants now inherit the
+  parent's cofactor. 89 tests pass.

@@ -1129,3 +1129,43 @@ opinion about which designs are good, and the arm exists to test NOBBLE's.
 **Reversal.** `nobble/design/`, the `/design` route, and the `design.json`
 block in `deploy/build_atlas.py`. `tests/test_design.py` (13 tests) covers
 the generators and every refusal path in lift.
+
+## D-NOB-038: a design variant inherits its parent's cofactor rather than re-deriving it
+
+**Date:** 2026-11-04
+
+Building the design assembler exposed a trap in the arm's most interesting
+case. `requires_structural_zinc` infers the cofactor from the sequence: a
+complete C2H2 site means a `ZN` chain. An alanine scan mutates residues one
+at a time, so a scan of a zinc finger mutates the coordinating cysteines and
+histidines, and the inference then returns `False` for those variants.
+
+Measured on a real finger (ZEP2, 25 residues): a 25-position scan drops the
+ion at **C3A and C6A**, two variants out of twenty-five.
+
+Those two are not incidental. They are the coordinating cysteines, the
+positions a scan of a zinc finger exists to interrogate. The parent would
+carry a zinc and those variants would not, so their design lift would
+subtract two differently-constituted systems and report the missing ion as
+the substitution's effect. The lift would be large and negative, it would
+read as "this position is critical", and that conclusion is the one a
+structural biologist expects, so it would very likely be believed. A wrong
+answer that agrees with the prior is worse than an obviously broken one.
+
+**Decided.** `Peptide` carries an optional `cofactor` dict that overrides
+inference, and every design variant is given its parent's. If the parent has
+a zinc, so does C3A, even though C3A cannot coordinate it. That is correct
+for a control: the variant differs from its parent in the residue, not in
+the chemical system around it.
+
+**Consequence worth being explicit about.** C3A is then a finger with a zinc
+it cannot hold properly, which is not a physically tidy object. That is the
+right trade. The scan's question is "what does this residue contribute to
+the interface, holding everything else fixed", and holding everything else
+fixed is the whole of it. A variant that also loses its ion answers a
+different and uninterpretable question.
+
+**Reversal.** The `cofactor` field on `Peptide` and the early return in
+`requires_structural_zinc`. `tests/test_design.py` holds both halves: one
+test demonstrates the trap without inheritance, another pins that
+inheritance closes it.

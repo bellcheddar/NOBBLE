@@ -91,6 +91,11 @@ class Peptide:
     # the arm's drug assignment reads it, and parsing it back out of a
     # sentence would be a silent dependency on the sentence's wording.
     screen_drugs: dict | None = None
+    # An explicit cofactor decision that overrides inference from the
+    # sequence. Design variants carry their parent's, because a scan that
+    # mutates a coordinating residue would otherwise silently drop the ion
+    # and report its absence as the substitution's effect (D-NOB-038).
+    cofactor: dict | None = None
     notes: list[str] = field(default_factory=list)
 
     @property
@@ -909,6 +914,16 @@ def requires_structural_zinc(peptide: "Peptide") -> dict:
     # from its positive in exactly one variable, the residue order, and
     # withholding the zinc would make it differ in two: a negative that
     # fails for the wrong reason tells you nothing about the positive.
+    # An explicit decision wins over inference. A design variant inherits
+    # its parent's cofactor: an alanine scan of a zinc finger mutates the
+    # coordinating cysteines and histidines, so inferring from the variant's
+    # own sequence would drop the ion at exactly C3A and C6A, the positions
+    # the scan most wants to measure. The lift there would be large, would
+    # look like "this position is critical", and would be reporting the
+    # missing zinc rather than the substitution (D-NOB-038).
+    if peptide.cofactor is not None:
+        return dict(peptide.cofactor)
+
     domain_classes = ("zinc_finger", "scramble_of_zinc_finger")
     if peptide.degron_class not in domain_classes:
         return {"required": False, "reason": "not a zinc-finger domain"}

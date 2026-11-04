@@ -130,3 +130,87 @@ def test_the_scan_profile_ranks_positions_and_keeps_the_unscored_ones():
     assert profile["least_sensitive"]["position"] == 10
     # Untested positions stay visible rather than vanishing from the chart.
     assert sum(1 for p in profile["positions"] if p["status"] == "not_scored") == 12
+
+
+# --- cofactor inheritance (D-NOB-038) ---------------------------------------
+
+def _zf_parent() -> "object":
+    from nobble.curate.peptides import Peptide
+    return Peptide(
+        peptide_id="zf_parent", sequence="YPCIPCGFSFKTKSNLYKHRKSHAH",
+        source="sievers_zf", label="degraded", accession="X", gene="ZEP2",
+        start_res=1, end_res=25, degron_class="zinc_finger",
+    )
+
+
+def test_scanning_a_zinc_finger_would_drop_the_ion_without_inheritance():
+    """The trap, demonstrated before the fix is applied.
+
+    An alanine scan mutates the coordinating cysteines. Inferring the
+    cofactor from each variant's own sequence drops the zinc at exactly
+    C3A and C6A, which are the positions the scan most wants to measure.
+    """
+    from nobble.curate.peptides import Peptide, requires_structural_zinc
+
+    parent = _zf_parent()
+    assert requires_structural_zinc(parent)["required"] is True
+
+    dropped = []
+    for variant in V.generate(parent.peptide_id, parent.sequence)["variants"]:
+        naive = Peptide(
+            peptide_id=variant["variant_id"], sequence=variant["sequence"],
+            source="design", label=None, accession="X", gene="ZEP2",
+            start_res=1, end_res=25, degron_class="zinc_finger",
+        )
+        if not requires_structural_zinc(naive)["required"]:
+            dropped.append(variant["substitution"])
+
+    assert dropped, "the trap should exist without inheritance"
+    assert all(s[0] in "CH" for s in dropped), dropped
+
+
+def test_an_inherited_cofactor_keeps_every_variant_symmetric_with_its_parent():
+    from nobble.curate.peptides import Peptide, requires_structural_zinc
+
+    parent = _zf_parent()
+    inherited = requires_structural_zinc(parent)
+
+    for variant in V.generate(parent.peptide_id, parent.sequence)["variants"]:
+        child = Peptide(
+            peptide_id=variant["variant_id"], sequence=variant["sequence"],
+            source="design", label=None, accession="X", gene="ZEP2",
+            start_res=1, end_res=25, degron_class="zinc_finger",
+            cofactor=dict(inherited),
+        )
+        assert requires_structural_zinc(child)["required"] is True, (
+            f"{variant['substitution']} lost the ion its parent has"
+        )
+
+
+def test_an_explicit_no_cofactor_is_also_respected():
+    """Inheritance has to carry "no zinc" as faithfully as "zinc", or a
+    variant of a non-finger parent could acquire one."""
+    from nobble.curate.peptides import Peptide, requires_structural_zinc
+
+    child = Peptide(
+        peptide_id="v", sequence="CCHHCCHHCCHH", source="design", label=None,
+        accession=None, gene=None, start_res=None, end_res=None,
+        degron_class="zinc_finger",
+        cofactor={"required": False, "reason": "parent had none"},
+    )
+    assert requires_structural_zinc(child)["required"] is False
+
+
+def test_design_variants_carry_no_experimental_label():
+    """A design is a question. Labelling it would smuggle an answer into
+    the set the weight fitter reads as ground truth."""
+    from nobble.design import assemble as A
+
+    manifest = A.build_manifest("benchmark_888fd2c63e")
+    if manifest.get("status"):
+        pytest.skip(manifest["status"])
+    variants = [p for p in manifest["pairs"] if p["role"] == "variant"]
+    assert variants
+    assert all(p["peptide_label"] is None for p in variants)
+    parent = next(p for p in manifest["pairs"] if p["role"] == "parent")
+    assert parent["peptide_label"] == "degraded"
