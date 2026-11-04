@@ -3772,7 +3772,24 @@ After the `RECOVERED_A` grep in F64 and the `preview.cost` key in F79, the
 pattern is mine rather than the code's: I guess at a field name instead of
 printing the keys first, and the guess reads as a finding.
 
-## F82. The four-chain case, verified 21 jobs before the first real one
+## F82. The four-chain case, and a claim of mine that was too wide
+
+**Corrected below.** The first version of this entry said the four-chain
+path "had not been exercised" and tested it against a structure I built by
+inserting a zinc into a three-chain benchmark ternary. Both were wrong.
+`campaigns/smoke_sievers` holds a real prediction of `sv_neg_ZN346_d5063d`
+with chains A, P, Z, L, and `test_plip_ions.py` has been running the
+fingerprint and every geometry consumer against it all along. I looked in
+`zinc_probe`, found peptide-only predictions, and stopped looking.
+
+What remains true, and is the narrower thing this finding is worth: those
+existing tests assert the *consequence*, that the ion stays out of the
+fingerprint and out of the bridge metric. Neither fails if the map is right
+for the wrong reason. The mapping itself is now pinned, Z to C and L to D,
+which is the fact F81's removal of the fallback depends on. The test uses
+the real prediction, so the synthetic structure is gone.
+
+## F82 (original text). The four-chain case, verified before the first real one
 
 F81 removed a chain-map fallback that assumed three chains, leaving an
 unparsed map as a refusal. That left a question worth answering before the
@@ -3789,15 +3806,14 @@ seven receptor contacts and one peptide contact survive the filter.
 So F81's refusal is a floor rather than a change of behaviour, and F14's ion
 exclusion is confirmed on a four-chain input for the first time.
 
-Two things were checked rather than assumed on the way. The assembler's
-chain order was read from a real Sievers YAML, `sv_neg_BCL6B_c2c0a3`, rather
-than from the comment that asserts it: protein A, protein P, ligand Z,
-ligand L, with the ion as a ligand entry before the glue. And the
-`zinc_probe` campaign turned out not to help, because its structures are
-peptide-only, P and Z, with no receptor or glue: a probe of the folding
-question rather than of the fingerprint.
+The assembler's chain order was read from a real Sievers YAML,
+`sv_neg_BCL6B_c2c0a3`, rather than from the comment that asserts it:
+protein A, protein P, ligand Z, ligand L, with the ion as a ligand entry
+before the glue. That part stands.
 
-The test constructs the structure rather than storing a fixture, so it
-exercises the real converter against the real geometry and skips where
-cif2plip or a benchmark campaign is absent. Permanent, because the path it
-covers has still never run in production and will within the hour.
+The rest of this paragraph was wrong and is kept for the record. It said
+the `zinc_probe` campaign did not help, its structures being peptide-only,
+and that the test therefore had to construct a four-chain structure. The
+first clause is true and the conclusion does not follow: `smoke_sievers`
+holds the real thing. Checking one campaign and generalising to all of them
+is how a fixture gets built for a case that already had one.
