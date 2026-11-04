@@ -21,7 +21,6 @@ import json
 import urllib.request
 from dataclasses import dataclass
 from functools import lru_cache
-from pathlib import Path
 
 from nobble import paths
 from nobble.curate import structures

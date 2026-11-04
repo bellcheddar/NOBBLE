@@ -20,13 +20,10 @@ rather than a bare number, and "not computed" is always distinguishable from
 from __future__ import annotations
 
 import json
-import math
 import random
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from nobble import paths
-from nobble.curate import peptides as peptide_module
 from nobble.score import poses
 
 # Boltz-2's training cutoff. Depositions released after it cannot have been

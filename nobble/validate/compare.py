@@ -19,7 +19,7 @@ Two things make the comparison honest rather than flattering:
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from nobble import paths
 

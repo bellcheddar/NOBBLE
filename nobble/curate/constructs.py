@@ -15,7 +15,7 @@ for the reasons spec 1.1 gives:
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from nobble import paths
 from nobble.curate import interpro, numbering

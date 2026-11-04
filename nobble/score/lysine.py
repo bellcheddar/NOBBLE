@@ -83,7 +83,6 @@ EXPOSED_REL_SASA = float(paths.thresholds()["lysine"]["exposed_rel_sasa"])
 def measure(job: dict) -> LysineReach:
     """Measure lysine geometry in one predicted complex."""
     import freesasa
-    import gemmi
 
     from nobble.score.poses import PEPTIDE_CHAIN, _load, _receptor_chain_ids
 

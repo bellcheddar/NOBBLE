@@ -22,7 +22,6 @@ from __future__ import annotations
 import itertools
 from dataclasses import asdict, dataclass, field
 from functools import lru_cache
-from pathlib import Path
 
 from nobble import paths
 from nobble.curate import constructs as C

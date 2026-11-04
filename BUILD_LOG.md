@@ -728,3 +728,17 @@
   the real file's mtime does not move, and that it still holds the 15 rows
   PROGRESS claims. Every module in nobble/ now has a test referencing it.
   148 tests pass.
+- 2026-11-04T21:40Z No linter is installed in either environment, so ran a
+  stdlib AST pass instead: compile every file, then flag unused imports,
+  bare excepts and mutable default arguments across nobble/, tools/ and
+  deploy/. No bare excepts and no mutable defaults in 50 files. 52 unused
+  imports reported, 41 of them `__future__ annotations`, which is used
+  implicitly and is a false positive.
+- 2026-11-04T21:40Z The other 11 were real dead imports, each appearing
+  only on its own line: Path in four modules, gemmi in lysine, math and
+  paths and peptide_module in layers, field in two dataclass modules.
+  Removed and verified three ways rather than on the test suite alone:
+  151 tests, every one of the 38 modules imported, and the touched
+  modules exercised against real data (interpro resolves CULT, layers
+  recovers 17.14 A, compare concludes, assemble builds 16 pairs).
+  Preflight on the 2,360-job campaign still clean, QC still clean.
