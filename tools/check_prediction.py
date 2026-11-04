@@ -108,6 +108,13 @@ def evaluate(baseline: Path, corrected: Path) -> dict:
         "tested": len(tested),
         "wrong": sum(1 for r in tested if r["verdict"] == "WRONG"),
         "supported": sum(1 for r in tested if r["verdict"] == "supported"),
+        # The third verdict. `evaluate` can return "unclear" for a pair that
+        # is neither falsified nor inside its supported interval, and the
+        # summary counted the other two, so `tested` could exceed
+        # supported + wrong with nothing saying which prediction was
+        # unaccounted for. It adds up today, 1 and 1 of 2, and would not the
+        # first time a prediction landed in between (F121).
+        "unclear": sum(1 for r in tested if r["verdict"] == "unclear"),
         "provisional": sum(1 for r in tested if r.get("provisional")),
         "final": sum(1 for r in tested if not r.get("provisional")),
     }
@@ -126,9 +133,14 @@ def main() -> int:
     corrected = Path(args.corrected or sorted(glob.glob("campaigns/corrected_*"))[-1])
     result = evaluate(baseline, corrected)
 
+    # Every tested prediction appears in exactly one of the three counts, so
+    # the sentence accounts for the number it opens with.
+    assert result["tested"] == (result["supported"] + result["wrong"]
+                                + result["unclear"]), result
     print(f"F13 predictions, {result['tested']} testable "
           f"({result['final']} final, {result['provisional']} provisional), "
-          f"{result['supported']} supported, {result['wrong']} wrong\n")
+          f"{result['supported']} supported, {result['wrong']} wrong, "
+          f"{result['unclear']} unclear\n")
     for row in result["predictions"]:
         tag = " (PROVISIONAL)" if row.get("provisional") else ""
         print(f"  {row['gene']:8s} {row['verdict']}{tag}")

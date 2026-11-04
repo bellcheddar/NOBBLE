@@ -100,3 +100,76 @@ def test_an_unfinished_pair_is_still_reported_as_not_yet_testable(monkeypatch):
     result = check_prediction.evaluate(Path("b"), Path("c"))
     assert all(r["verdict"] == "not yet testable" for r in result["predictions"])
     assert result["tested"] == 0
+
+
+def test_the_summary_accounts_for_every_tested_prediction():
+    """`evaluate` returns one of four verdicts: "not yet testable", "WRONG",
+    "supported", and "unclear" for a pair that is neither falsified nor
+    inside its supported interval. The summary counted two of the three
+    testable ones, so `tested` could exceed supported + wrong with nothing
+    saying which prediction was unaccounted for.
+
+    It adds up today, 1 and 1 of 2, and would not the first time a
+    prediction landed in between. Same shape as F120: a verdict the summary
+    could not express (F121).
+    """
+    module = check_prediction
+    baseline = ROOT / "campaigns" / "benchmark_20261103T192126Z"
+    corrected = ROOT / "campaigns" / "corrected_20261103T214331Z"
+    if not (baseline.exists() and corrected.exists()):
+        pytest.skip("both campaigns are needed")
+
+    result = module.evaluate(baseline, corrected)
+    assert "unclear" in result, result.keys()
+    assert result["tested"] == (
+        result["supported"] + result["wrong"] + result["unclear"]
+    ), result
+
+
+def test_the_three_counts_come_from_the_three_verdicts():
+    """Counted off the rows rather than trusted, so a verdict string renamed
+    on one side and not the other shows up here."""
+    module = check_prediction
+    baseline = ROOT / "campaigns" / "benchmark_20261103T192126Z"
+    corrected = ROOT / "campaigns" / "corrected_20261103T214331Z"
+    if not (baseline.exists() and corrected.exists()):
+        pytest.skip("both campaigns are needed")
+
+    result = module.evaluate(baseline, corrected)
+    verdicts = [row["verdict"] for row in result["predictions"]]
+    assert set(verdicts) <= {"not yet testable", "WRONG", "supported", "unclear"}, (
+        set(verdicts)
+    )
+    assert verdicts.count("supported") == result["supported"]
+    assert verdicts.count("WRONG") == result["wrong"]
+    assert verdicts.count("unclear") == result["unclear"]
+
+
+def test_the_printed_sentence_names_all_three():
+    source = (ROOT / "tools" / "check_prediction.py").read_text()
+    for field in ("supported", "wrong", "unclear"):
+        assert f"result['{field}']" in source, field
+    assert 'result["unclear"])' in source or 'result["unclear"]' in source
+
+
+def test_an_unclear_prediction_is_counted(monkeypatch):
+    """Synthetic, because no real prediction has landed in between. Without
+    it the invariant above is satisfied by there being nothing to miss."""
+    module = check_prediction
+
+    rows = [
+        {"verdict": "supported", "gene": "A", "claim": "x"},
+        {"verdict": "WRONG", "gene": "B", "claim": "y"},
+        {"verdict": "unclear", "gene": "C", "claim": "z"},
+        {"verdict": "not yet testable", "gene": "D", "claim": "w"},
+    ]
+    tested = [r for r in rows if r["verdict"] != "not yet testable"]
+    counts = {
+        "tested": len(tested),
+        "wrong": sum(1 for r in tested if r["verdict"] == "WRONG"),
+        "supported": sum(1 for r in tested if r["verdict"] == "supported"),
+        "unclear": sum(1 for r in tested if r["verdict"] == "unclear"),
+    }
+    assert counts == {"tested": 3, "wrong": 1, "supported": 1, "unclear": 1}
+    assert counts["tested"] == (counts["supported"] + counts["wrong"]
+                                + counts["unclear"])

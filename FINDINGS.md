@@ -5615,3 +5615,35 @@ threshold. `high < 0.5` is the same constant on the other side and is listed
 separately rather than folded into the first entry, on F119's lesson: an
 allowlist entry is evidence that one line was looked at, not that its
 neighbours were.
+
+## F121. The prediction scorer counted two of its three verdicts
+
+The same shape as F120, found by looking for it. `tools/check_prediction.py`
+scores the F13 predictions mechanically, and its docstring is explicit about
+why: "a scorer that cannot return 'wrong' is not scoring anything."
+
+It can return four things. "not yet testable" for a pair whose data has not
+arrived, then `"WRONG" if falsified else ("supported" if passed else
+"unclear")`. Four verdicts, and the branching is complete.
+
+The summary counted two of the three testable ones. `tested`, `wrong` and
+`supported`, with no `unclear`, and the printed sentence read "N testable
+(... ), N supported, N wrong". So `tested` could exceed supported + wrong
+with nothing saying which prediction was unaccounted for, and a reader would
+have to notice the arithmetic rather than the sentence.
+
+It adds up today: one supported, one wrong, of two testable. It would not
+the first time a prediction landed between its falsification and its
+supported interval, which is precisely the case "unclear" exists to name.
+The per-pair lines print every verdict, so the information was there; the
+sentence that gets quoted was the thing that could not say it.
+
+Counted and printed now, with an assertion in `main` that the three add up to
+the number the sentence opens with. A test holds the same invariant against
+the real campaigns, and a second builds the three-verdict case
+synthetically, because the invariant on today's data is satisfied by there
+being nothing to miss.
+
+Three findings in a row from one question: what does this code do with the
+case it does not mention. The bootstrap's percentile literals (F119), the
+ROC's missing third branch (F120), and this.
