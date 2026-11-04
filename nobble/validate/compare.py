@@ -27,6 +27,10 @@ from nobble import paths
 CONTROL_GENE = "IKZF1"
 # A control that moves by more than this invalidates the comparison.
 CONTROL_TOLERANCE_A = float(paths.thresholds()["scoring"]["control_tolerance_a"])
+# The cutoff behind "F6 supported". It was a literal here, which is exactly
+# what CLAUDE.md forbids: the number that decides the headline conclusion
+# could not be changed or even found without reading this function.
+CHANGE_MARGIN_A = float(paths.thresholds()["scoring"]["campaign_change_margin_a"])
 
 
 @dataclass
@@ -178,9 +182,9 @@ def compare(baseline: Path, corrected: Path) -> dict:
                     "control held" if abs(item.delta_rmsd) <= CONTROL_TOLERANCE_A
                     else "CONTROL MOVED: the comparison is not trustworthy"
                 )
-            elif item.delta_rmsd < -2.0:
+            elif item.delta_rmsd < -CHANGE_MARGIN_A:
                 item.verdict = "improved"
-            elif item.delta_rmsd > 2.0:
+            elif item.delta_rmsd > CHANGE_MARGIN_A:
                 item.verdict = "worse"
             else:
                 item.verdict = "unchanged"
@@ -209,14 +213,16 @@ def compare(baseline: Path, corrected: Path) -> dict:
         )
     elif improved and not worse:
         conclusion = (
-            f"F6 supported: {len(improved)} pair(s) improved by more than 2 A "
-            "with the whole domain, the control held, and none got worse"
+            f"F6 supported: {len(improved)} pair(s) improved by more than "
+            f"{CHANGE_MARGIN_A:g} A with the whole domain, the control held, "
+            "and none got worse"
         )
     elif not improved and not worse:
         conclusion = (
             "F6 not supported: the control held, and no pair changed by more "
-            "than 2 A. The 15-mer was not what limited pose recovery, so the "
-            "limitation is the model or the sampling, not the construct"
+            f"than {CHANGE_MARGIN_A:g} A. The 15-mer was not what limited pose "
+            "recovery, so the limitation is the model or the sampling, not the "
+            "construct"
         )
     else:
         conclusion = (

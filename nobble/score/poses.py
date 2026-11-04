@@ -27,6 +27,10 @@ from nobble import paths
 from nobble.curate import constructs as C
 from nobble.curate import numbering, structures
 
+# Receptor anchor RMSD above which the frame is called poor, which
+# qualifies every peptide RMSD measured in it. Was a literal below.
+FRAME_POOR_ANCHOR_A = float(paths.thresholds()["scoring"]["frame_poor_anchor_rmsd_a"])
+
 BACKBONE = ("N", "CA", "C", "O")
 PEPTIDE_CHAIN = "P"
 
@@ -292,7 +296,7 @@ def recovery_against_crystal(
     result.receptor_anchor_atoms = len(moving)
     anchor_rmsd = _rmsd(moving, fixed, transform)
     result.receptor_rmsd = round(anchor_rmsd, 3) if anchor_rmsd is not None else None
-    if result.receptor_rmsd is not None and result.receptor_rmsd > 5.0:
+    if result.receptor_rmsd is not None and result.receptor_rmsd > FRAME_POOR_ANCHOR_A:
         result.notes.append(
             f"receptor superposed at only {result.receptor_rmsd} A: the frame is "
             "poor, so the peptide RMSD below is not a reliable measure of pose "

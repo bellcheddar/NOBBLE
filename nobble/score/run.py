@@ -23,6 +23,10 @@ from nobble import paths
 from nobble.execute.runner import tier_files
 from nobble.score import geometry, lysine, metrics, plip, poses, weights
 
+# Was a literal at the call site. It decides the published `forced` flag,
+# so it is a cutoff and belongs in thresholds.toml (CLAUDE.md).
+FORCED_DISAGREEMENT = float(paths.thresholds()["conditioning"]["forced_disagreement"])
+
 COMPONENTS = (
     "bridge_percentile",
     "lysine_reach",          # reported as measurement only: D-NOB-024
@@ -209,7 +213,7 @@ def score_campaign(campaign: Path, with_plip: bool = True, limit: int | None = N
         entry["furniture_status"] = "not_computed: protcid_unavailable"
         entry["forced"] = (
             bool(entry.get("conditioning_disagreement") and
-                 entry["conditioning_disagreement"] > 0.2)
+                 entry["conditioning_disagreement"] > FORCED_DISAGREEMENT)
             if entry.get("conditioning_disagreement") is not None else None
         )
         # Guarantee the schema. A pair whose PLIP or geometry has not run yet

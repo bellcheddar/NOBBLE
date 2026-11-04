@@ -1036,3 +1036,50 @@ facts maintained by hand went quietly out of date. Here a fact the
 pipeline had computed correctly simply never reached the page, which is
 the recurring theme at the top of this file: compute whose output nothing
 reads is indistinguishable from compute that never ran.
+
+## F26. The number behind "F6 supported" was a literal in Python
+
+CLAUDE.md is unambiguous: thresholds come from `config/thresholds.toml`,
+never hard-coded in Python. The rule was kept nearly everywhere, which is
+what made the exceptions hard to see. An AST walk over the package found
+three.
+
+The one that matters is in `compare.py`. "Improved" and "worse" were
+decided by literal `2.0`s, so the cutoff producing the headline sentence
+"F6 supported" could not be changed, or even found, without reading the
+function. `CONTROL_TOLERANCE_A` sat four lines above it, correctly read
+from config, which is how the inconsistency survived: the file looked
+compliant.
+
+Worse, the sentence quoted its own cutoff independently. The comparison
+used a constant and the wording said "more than 2 A", so changing the
+threshold would have produced a conclusion stating the old one. Both now
+read the same value.
+
+The other two: `run.py` decided the published `forced` flag on a literal
+`0.2`, and `poses.py` called a superposition frame poor above a literal
+`5.0`, which qualifies every peptide RMSD measured in that frame. Neither
+was reachable from the config that is supposed to hold every cutoff.
+
+Two float comparisons remain and are allowed with their reasons: a `1e-9`
+epsilon for identifying which seed held the minimum, and `low > 0.5` for
+an AUC, where 0.5 is the definition of chance rather than a choice.
+Neither has a value anyone could sensibly tune.
+
+The guard is an AST walk, not a regex, because a float literal inside a
+formula is fine and only one being compared against is a cutoff. It also
+checks the allowlist still describes code that exists, since an allowlist
+outliving what it allowed is just a hole.
+
+### A test of mine that did nothing
+
+The first version of the wording check matched the source with a regex. The
+conclusion is built from several f-string fragments, so it matched only the
+first and would have passed with "2 A" hard-coded in any later one. It is
+now behavioural: change the configured margin, read the sentence back, and
+require it to have followed. That version fails on the mutation the first
+version missed.
+
+This is the whole theme of this file turned on the tests themselves. F21's
+stale tuple, F22's hand-written sentinel and this regex all shared one
+property: they passed, and that told nobody anything.

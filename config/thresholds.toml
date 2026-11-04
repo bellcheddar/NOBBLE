@@ -49,6 +49,13 @@ domain_coverage_self_sufficient = 0.80
 collapse_margin = 0.30
 # How far the IKZF1 control may move before a campaign comparison is untrusted.
 control_tolerance_a = 2.0
+# Change in median RMSD that counts as a real improvement or regression when
+# one campaign is compared against another. This is the cutoff behind the
+# words "F6 supported", so it belongs here rather than in compare.py.
+campaign_change_margin_a = 2.0
+# Receptor anchor RMSD above which the superposition frame is called poor and
+# every peptide RMSD measured in it is flagged as unreliable.
+frame_poor_anchor_rmsd_a = 5.0
 # Pose recovery success-rate curve breakpoints, in angstrom.
 rmsd_breakpoints = [1.0, 2.0, 3.0, 5.0]
 seeds = 5
@@ -65,3 +72,9 @@ overdue_multiple = 3.0
 # runner's own timeout, retry count and kill grace rather than set here, so
 # it cannot drift away from the behaviour it describes.
 stall_margin_minutes = 10
+
+[conditioning]
+# Disagreement between the conditioned and unconstrained arms above which the
+# conditioned pose is treated as forced by the pocket constraint rather than
+# found. Published per pair as `forced`.
+forced_disagreement = 0.2
