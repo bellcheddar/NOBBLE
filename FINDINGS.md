@@ -5877,3 +5877,48 @@ could not see a renamed file or an `app` directory (F124), the cutoff sweep
 walked one directory of four (F125), and this one drew its boundary with a
 suffix (F126). None had cost anything yet. All three were drawn with a tool
 one notch too blunt for the job.
+
+## F127. Python writes JSON that a browser rejects, and nothing checked
+
+The scope audit that produced F124, F125 and F126 turned up one more, and
+this one is about a consequence rather than a coverage count.
+
+`test_numeric_rule.py` enforces F76 and F77's rule about what counts as a
+number. It scans `ROOT / "nobble"`. `deploy/build_atlas.py` is outside it,
+and `build_atlas` runs `scipy.stats.pearsonr` and `spearmanr` over the
+recovery-against-bridge points and publishes `round(float(r), 3)` with no
+finiteness guard of its own.
+
+What makes that worth more than another scope entry is what a non-finite
+result would do. Python's `json.dumps` writes `NaN`, `Infinity` and
+`-Infinity` by default. None of the three is valid JSON and `JSON.parse`
+rejects all three. So one non-finite number anywhere in the atlas does not
+put a wrong figure on a page. It puts no page there, because the document
+fails to parse, and the benchmark chart reads that file.
+
+Measured: all nine published files parse under a strict parser, and so do
+every API response. A NaN cannot reach the correlation today either, because
+`median_rmsd` arrives through `finite_values` and `bridge_rate` divides by a
+total already checked non-zero.
+
+Both guards are upstream of the place the risk lands, and neither is stated
+where the correlation is taken. So the check is now at the boundary that
+matters: the bytes a browser loads. `tests/test_published_json_is_valid.py`
+parses every published file and every API response with
+`parse_constant` set to raise, which is what the browser does, and separately
+asserts no file contains the tokens at all, because a parse error reports a
+byte offset and a reader needs a field name.
+
+The first test in the file is the control: it dumps a NaN with Python's own
+encoder, asserts the token appears, and asserts the strict parser rejects it.
+Without that, the five tests below could pass against a parser that accepts
+everything.
+
+Verified by writing a NaN into the published correlation and confirming three
+of the six fail, then restoring and confirming all six pass.
+
+Four findings from one question asked of four checks. None had cost anything
+yet, and all four boundaries were drawn with a tool one notch too blunt: a
+same-path comparison that a rename defeats, a walk of one directory in four,
+a suffix standing in for a path, and a numeric rule that stopped at the
+package while the published bytes are written outside it.
