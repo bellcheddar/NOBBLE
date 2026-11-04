@@ -7191,3 +7191,35 @@ part worth recording is not the score. It is that the list had grown to cover
 what the code decides and still said nothing about what the code promises,
 and those are different questions. A sweep that only tests decisions will
 pass on the day a licensing constraint is deleted.
+
+## F157. The README called a finished result provisional
+
+The README's early results ended: "These are interim, triage-tier numbers, and
+the corrected-construct comparison is provisional while CDK12 is still
+running."
+
+CDK12 finished. `comparison.json` records `pairs_compared: 7`,
+`pairs_incomplete: 0` and `provisional: false`, and
+`tools/check_prediction.py` has been scoring CDK12 as a supported prediction
+for some time, with its numbers: 44.92 A to 5.28 A, 0 of 10 seeds bridging to
+6 of 10.
+
+Two things made it invisible. A caveat that understates a result is the kind
+of staleness nobody chases, because the direction feels safe. And the
+assertion that would have caught it was in the seven that F152's sweep found
+never executing: `test_gates.py` checks for "Provisional" in the conclusion
+when pairs are incomplete and for its absence when they are not, and only one
+branch can run. That test is correct and it is about the pipeline's own
+conclusion string, not about the README.
+
+Corrected to what the data says, in digits so it can be tied to the file: 7
+pairs compared, none incomplete, 6 improved by more than 2 A, the control
+held, none worse, 4 bridging in more seeds and none in fewer. The prediction
+sentence now states both outcomes, one supported and one wrong, rather than
+only the wrong one.
+
+Pinned in the direction that actually drifts. The new test compares the
+README against `comparison.json` and fails either way: a provisional
+comparison described as complete, or a complete one still carrying the
+caveat. The second is what happened, and the first is what would happen if
+someone fixed this by deleting the sentence.

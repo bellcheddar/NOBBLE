@@ -127,3 +127,36 @@ def test_the_bridge_reference_count_is_the_one_quoted():
     assert f"{counted:,} experimentally observed bridges" in spec, (
         f"spec 4.1 no longer states the population as {counted:,}"
     )
+
+
+def test_the_readme_does_not_call_a_finished_comparison_provisional():
+    """The corrected-construct comparison completed and the README said it
+    was still provisional while CDK12 ran (F157).
+
+    Checked against the published `comparison.json`, which records both the
+    count and the flag, so this fails in whichever direction the two drift:
+    a provisional comparison described as complete, or a complete one still
+    carrying the caveat.
+    """
+    import json
+
+    text = (ROOT / "README.md").read_text()
+    published = ROOT / "deploy" / "atlas" / "comparison.json"
+    if not published.exists():
+        pytest.skip("no published comparison")
+    payload = json.loads(published.read_text())
+    provisional = bool(payload.get("provisional")) or bool(
+        payload.get("pairs_incomplete"))
+
+    says_provisional = "comparison\nis provisional" in text or \
+        "comparison is provisional" in text
+    assert says_provisional == provisional, (
+        f"comparison.json says provisional={provisional} "
+        f"(pairs_incomplete={payload.get('pairs_incomplete')}) and the README "
+        f"{'says' if says_provisional else 'does not say'} it is provisional"
+    )
+    if not provisional:
+        assert f"{payload['pairs_compared']} pairs compared" in text, (
+            "the README does not state how many pairs the finished "
+            "comparison covers"
+        )
