@@ -489,3 +489,15 @@
   a growing results.jsonl is safe because torn lines are handled; copying a
   structure mid-write is not. The status panel already says what it
   published and what was queued.
+- 2026-11-04T14:30Z Verified the GPU wait does not block on its own tmux
+  session. run_chain.sh runs inside nobble-chain and nobble-chain is in the
+  list it waits on, but the chain blocks on nobble-corrected first, so the
+  self-wait is unreached in the live run: it would have fired the moment the
+  corrected campaign finished, and the chain would have waited for itself
+  forever with nothing new in the log. The skip works, tested by running the
+  function inside a session whose own name was the only entry in the list.
+  Pinned as a test. 119 tests pass.
+- 2026-11-04T14:30Z Saturation assembly tested end to end: 20 pairs, 300
+  jobs, 0 errors, wild type excluded, every variant one residue from the
+  parent. It had only been unit-tested at the generator, and it is the
+  follow-up the alanine scan is meant to lead to.

@@ -363,3 +363,36 @@ def test_the_unscored_fallback_never_picks_a_bivalent_degrader():
 def test_sievers_parents_are_glues():
     from nobble.design.report import _modality_of
     assert _modality_of({"source": "sievers_zf", "gene": "ZN346"}) == "glue"
+
+
+def test_a_saturation_scan_assembles_into_a_real_manifest():
+    """The generator was unit-tested; the assembly path for saturation
+    never was. It is the follow-up the alanine scan is meant to lead to, so
+    it should not first be exercised on the day someone wants it."""
+    from nobble.app import data
+    from nobble.design import assemble as A
+    from nobble.design import report as R
+
+    data.configure()
+    preview = R.build().get("preview") or {}
+    parent = preview.get("parent")
+    if not parent:
+        pytest.skip("no scannable parent")
+
+    manifest = A.build_manifest(parent["peptide_id"], generator="saturation",
+                                positions=[7])
+    if manifest.get("status"):
+        pytest.skip(manifest["status"])
+
+    variants = [p for p in manifest["pairs"] if p["role"] == "variant"]
+    assert len(variants) == 19, "19 substitutions, the wild type excluded"
+    assert manifest["errors"] == 0
+
+    wild_type = parent["sequence"][6]
+    assert all(p["substitution"][-1] != wild_type for p in variants)
+    assert len({p["pair_id"] for p in variants}) == 19, "duplicate pair ids"
+    # Every variant still differs from the parent by exactly one residue.
+    for pair in variants:
+        differences = sum(1 for a, b in zip(parent["sequence"], pair["peptide_sequence"])
+                          if a != b)
+        assert differences == 1, pair["substitution"]

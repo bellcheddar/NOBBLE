@@ -74,3 +74,47 @@ def test_no_gpu_runner_aborts_before_scoring_what_ran():
             if line.strip().startswith("set -") and "e" in line.split()[1].lstrip("-"):
                 offenders.append(f"{name}: {line.strip()}")
     assert not offenders, "set -e in a runner that must score partial work:\n" + "\n".join(offenders)
+
+
+def test_the_gpu_wait_does_not_wait_for_its_own_session():
+    """A deadlock that would stall the whole chain silently.
+
+    run_chain.sh runs inside tmux `nobble-chain`, and `nobble-chain` is in
+    the session list it waits on. It currently blocks on `nobble-corrected`,
+    which comes first, so the self-wait is unreached and untested in the
+    live run: it would fire the moment the corrected campaign finishes, and
+    the chain would wait for itself forever with nothing in the log but the
+    line it had already printed.
+    """
+    import shutil
+
+    import pytest
+
+    if not shutil.which("tmux"):
+        pytest.skip("tmux not available")
+
+    session = "nobble-skiptest"
+    script = (
+        f"cd {ROOT} && source tools/wait_for_gpu.sh && "
+        f"NOBBLE_GPU_SESSIONS=({session}) && "
+        "nobble_wait_for_gpu && echo DID_NOT_WAIT_FOR_SELF"
+    )
+    subprocess.run(["tmux", "kill-session", "-t", session],
+                   capture_output=True)
+    subprocess.run(["tmux", "new-session", "-d", "-s", session,
+                    f"bash -c '{script}; sleep 5'"], capture_output=True)
+    try:
+        import time
+        deadline = time.time() + 15
+        output = ""
+        while time.time() < deadline:
+            output = subprocess.run(["tmux", "capture-pane", "-pt", session],
+                                    capture_output=True, text=True).stdout
+            if "DID_NOT_WAIT_FOR_SELF" in output:
+                break
+            time.sleep(1)
+        assert "DID_NOT_WAIT_FOR_SELF" in output, (
+            "the wait blocked on its own session:\n" + output)
+    finally:
+        subprocess.run(["tmux", "kill-session", "-t", session],
+                       capture_output=True)
