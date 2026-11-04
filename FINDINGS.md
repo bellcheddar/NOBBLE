@@ -4110,3 +4110,46 @@ This is the third time today a fix has been placed at the symptom rather
 than at the rule: F74 guarded one of fourteen numeric type checks, F78
 guarded one of nine median sites, and F89 configured one of five sections.
 Each time the sweep that followed was worth more than the original fix.
+
+## F91. The configured seed count was read by nothing
+
+A sixth place the cutoff sweep does not look. It tests for an `ast.Constant`
+holding a number, in comparisons, module constants and default arguments;
+F54 added templates and F80 and F87 added arithmetic. A module-level
+collection of numbers is none of those, because a tuple of constants is not
+a constant.
+
+Four exist. `weights.GRID` and `numbering.ANCHOR_LENGTHS` are search
+ladders with their reasoning written beside them, and are left alone. The
+other two are the same list: `SEEDS = (1, 2, 3, 4, 5)` in
+`curate/manifest.py` and again in `execute/corrected.py`.
+
+`config/tuning.toml` declares `campaign.seeds = 5`, and nothing read it.
+Editing it changed nothing, which is the shape this project treats as a
+defect wherever it appears: a value computed or configured and then ignored
+is indistinguishable from one that was never there.
+
+The count is not an incidental number. Delta-ipTM is a difference of minima
+over seeds, and a minimum is not robust to how many draws it was taken
+over, which is the reasoning behind the hard partition by sampling tier and
+behind the seed-balance report beside the headline curve. It also sets the
+campaign's size: 158 pairs times 5 seeds times 3 arms is 2,360 jobs.
+
+Two copies made it worse than one. A corrected campaign emitted with a
+different seed count from the benchmark it is compared against would break
+that comparison's premise, which is that exactly one variable changed.
+`corrected.py` imports the manifest's list now.
+
+Behaviour-preserving: the configured value is 5 and the derived tuple is
+identical, so `jobs_per_pair` is still 15 and the live campaign's seeds
+still match, which is asserted against the queue rather than assumed.
+
+**Fifth false alarm of the day, and the clearest.** Verifying the change, I
+compared the fresh manifest against the assembled queue and found ten extra
+jobs, `bench03_BRD4_CRBN` and its scramble gaining a conditioned ternary
+arm. I had compared two different stages: the manifest emits both
+conditionings for every ternary and the assembler drops conditioned jobs
+with no pocket, which bench03 has none of because its ligand has no CCD
+entry. The campaign's own metadata records
+`conditioned_jobs_dropped_no_pocket = 10`, so the answer was written down at
+assembly time in a file I could have read before counting.
