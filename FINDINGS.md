@@ -5739,3 +5739,61 @@ fit lands, which is the end of the campaign.
 The agreement itself is now a test rather than a thing I checked once. Two
 implementations of one formula agree until they do not, and the page is where
 the ranking is read.
+
+## F124. The largest shared file sat outside the check that protects shared code
+
+CLAUDE.md states D-NOB-007 as a rule: shared code is widened in place in
+BINMAN or BoltzMaker, never forked. F71 built
+`tests/test_shared_code.py` to enforce it, and its own docstring says why:
+"Stated in CLAUDE.md and checked by nothing."
+
+It enumerates every file NOBBLE holds **at the same relative path** as a
+peer and requires byte-identity. Three files qualify. Its `SKIP_PARTS` also
+skips `app`, on the stated grounds that those directories are "each
+project's own by definition".
+
+NOBBLE's app is not entirely its own.
+
+Compared by content rather than by path, twelve files are byte-identical to a
+peer's copy at a different path. Nine are vendored libraries, molstar,
+plotly, d3, tabulator and the fonts, which neither project owns and the rule
+does not reach. Three are project code:
+
+| NOBBLE | peer | size |
+|---|---|---|
+| `app/static/vendor/molstar-bridge.js` | `BINMAN/app/static/js/molstar-bridge.js` | 39 KB |
+| `app/static/css/depot.css` | `BINMAN/app/static/css/binman.css` | 34 KB |
+| `elementor-widget-markdown.css` | `BoltzMaker/wordpress/...` | 3.7 KB |
+
+All three are identical today, so nothing is forked. What is missing is
+anything holding them to it, and the two largest are the easiest to edit by
+accident for opposite reasons.
+
+`molstar-bridge.js` is 991 lines of BINMAN's viewer filed under NOBBLE's
+`vendor/`. The directory name says third-party, so a reader skips it and so
+does every sweep: my own greps all excluded `vendor`, the project's house
+style and cutoff checks never look there, and `SKIP_PARTS` would have
+skipped it anyway. It is the single largest piece of shared code in the
+project and it was outside the check twice over, once by path and once by
+convention. Nothing in the test suite referenced it by path before today.
+
+`depot.css` is BINMAN's stylesheet under a different name, which is what
+"the Depot design system is inherited from BINMAN" means in bytes. A rename
+defeats a same-path comparison completely.
+
+`SHARED_AT_A_DIFFERENT_PATH` names the three now, each with the reason and
+with what to do instead: widen BINMAN's copy and re-vendor. Three further
+tests hold the map honest, that every entry names a file NOBBLE still has,
+that no vendored library is listed, since that would turn a rule about shared
+code into a rule about pinned dependencies, and that the bridge really is
+project code, which it demonstrates by naming the spec section it implements
+in its first line.
+
+Verified by divergence rather than by reading: appending one comment line to
+`depot.css` fails the check, and the restore is confirmed by the two md5s
+matching again.
+
+The content of the bridge, read while there, is sound. Its numeric literals
+are the standard AlphaFold four-band pLDDT scale, documented as such, and a
+block of ligand presentation tuning gathered in one place with a comment
+saying that is why. The finding is where the file lives, not what it says.

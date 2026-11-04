@@ -48,6 +48,37 @@ ALLOWED_TO_DIFFER = {
 }
 
 
+# Shared project code that sits at a *different* relative path in each
+# project, so the same-path walk below cannot pair it. Found by comparing
+# content rather than paths: twelve files are byte-identical to a peer's at a
+# different path, and nine of them are vendored libraries (molstar, plotly,
+# d3, tabulator, the fonts) that neither project owns and D-NOB-007 therefore
+# does not reach. These three are project code.
+#
+# All three are identical today, which is the point of writing them down. The
+# rule is not "they happen to match", it is that a local edit to shared code
+# is a fork; and the two largest are the easiest to edit by accident.
+# `molstar-bridge.js` is 39 KB of BINMAN's viewer filed under NOBBLE's
+# `vendor/`, where the directory name says third-party and every sweep,
+# including this test's own `SKIP_PARTS`, stays away. `depot.css` is BINMAN's
+# stylesheet under a different name, which is what "the design system is
+# inherited from BINMAN" means in practice (F124).
+SHARED_AT_A_DIFFERENT_PATH = {
+    "nobble/app/static/vendor/molstar-bridge.js":
+        ("BINMAN", "app/static/js/molstar-bridge.js",
+         "D-NOB-031: the Mol* presentation is BINMAN's, taken whole. Widen "
+         "BINMAN's copy and re-vendor rather than editing this one"),
+    "nobble/app/static/css/depot.css":
+        ("BINMAN", "app/static/css/binman.css",
+         "CLAUDE.md: the Depot design system is inherited from BINMAN. The "
+         "name differs and the bytes do not"),
+    "elementor-widget-markdown.css":
+        ("BoltzMaker", "wordpress/elementor-widget-markdown.css",
+         "the WordPress widget stylesheet the house pages use, shared with "
+         "BoltzMaker"),
+}
+
+
 def _digest(path: Path) -> str:
     return hashlib.md5(path.read_bytes()).hexdigest()
 
@@ -189,3 +220,52 @@ def test_polishing_a_branded_readme_changes_nothing():
     if not twice.endswith("\n"):
         twice += "\n"
     assert twice == once, "polish() is not idempotent on its own output"
+
+
+def test_shared_code_at_a_different_path_is_still_identical():
+    """The same-path walk above cannot see these, and `SKIP_PARTS` skips
+    `app` anyway, so the largest shared file in the project sat outside the
+    check that exists to protect shared code, twice over (F124)."""
+    checked = 0
+    for mine, (peer, theirs, reason) in SHARED_AT_A_DIFFERENT_PATH.items():
+        here = ROOT / mine
+        there = paths.PORTFOLIO / peer / theirs
+        if not there.exists():
+            continue
+        assert here.exists(), f"{mine} is gone; update the map"
+        assert _digest(here) == _digest(there), (
+            f"{mine} has diverged from {peer}/{theirs}. {reason}"
+        )
+        checked += 1
+    if not checked:
+        pytest.skip("no peer checkout to compare against")
+    assert checked == len(SHARED_AT_A_DIFFERENT_PATH), checked
+
+
+def test_the_map_names_only_files_that_exist_here():
+    """An entry for a file NOBBLE no longer holds would pass by skipping."""
+    for mine in SHARED_AT_A_DIFFERENT_PATH:
+        assert (ROOT / mine).exists(), mine
+
+
+def test_vendored_libraries_are_not_in_the_map():
+    """They are byte-identical to the peers' copies too, and that is not a
+    fork: neither project owns molstar or plotly. Listing them would turn a
+    rule about shared code into a rule about pinned dependencies."""
+    for mine in SHARED_AT_A_DIFFERENT_PATH:
+        assert "/molstar/" not in mine, mine
+        assert "/plotly/" not in mine, mine
+        assert "/d3/" not in mine, mine
+        assert "/tabulator/" not in mine, mine
+
+
+def test_the_bridge_is_project_code_rather_than_a_library():
+    """Why it belongs in the map at all. A vendored library carries no
+    reference to this project's own vocabulary; this one opens by naming the
+    spec section it implements."""
+    bridge = ROOT / "nobble" / "app" / "static" / "vendor" / "molstar-bridge.js"
+    if not bridge.exists():
+        pytest.skip("no bridge on this checkout")
+    head = bridge.read_text()[:400]
+    assert "spec 6.4" in head, head[:120]
+    assert "mountViewer" in bridge.read_text()
