@@ -27,6 +27,41 @@ export PYTHONPATH="$ROOT"
 
 say() { echo "=== $* $(date -u +%Y-%m-%dT%H:%M:%SZ) ==="; }
 
+# A stall detector that only runs after the stall can no longer matter is not
+# a detector. `nobble.execute.watchdog` tells a working campaign apart from a
+# stopped one, which is the ambiguity F20 cost most of a night to, and it was
+# reachable only through `tools/status.sh`, called on the last line of this
+# script. So during the forty-seven hours when a stall is possible, nothing
+# consulted it (F112).
+#
+# Armed here instead, for the length of the chain. Read-only: it compares
+# recorded timings and prints, and it is the runner's own timeout that stops
+# a job. Quiet unless the verdict stops being "ok", so the chain log carries
+# a line only when there is something to see.
+# Keyed on the exit code, which the watchdog already provides: 0 ok, 1 a job
+# running longer than the slowest comparable one it has finished, 2 a job past
+# the bound the runner itself allows. Grepping the printed verdict would key
+# on its spacing, which is the kind of coupling F54 was.
+WATCHDOG_EVERY="${NOBBLE_WATCHDOG_SECONDS:-600}"
+watchdog_loop() {
+  local verdict code
+  while true; do
+    sleep "$WATCHDOG_EVERY"
+    verdict="$("$SENV/bin/python" -m nobble.execute.watchdog 2>&1)"
+    code=$?
+    if [ "$code" -ne 0 ]; then
+      echo "=== WATCHDOG exit $code $(date -u +%Y-%m-%dT%H:%M:%SZ) ==="
+      printf '%s\n' "$verdict"
+    fi
+  done
+}
+watchdog_loop &
+WATCHDOG_PID=$!
+# Taken down with the chain however the chain ends, so a killed run does not
+# leave a loop behind polling a campaign nobody is running.
+trap 'kill "$WATCHDOG_PID" 2>/dev/null || true' EXIT
+say "watchdog armed, every ${WATCHDOG_EVERY}s"
+
 # The newest *complete* campaign with a prefix. Complete means it wrote
 # campaign.json, which every assembler writes last.
 #

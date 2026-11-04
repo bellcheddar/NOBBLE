@@ -5205,3 +5205,51 @@ The end-to-end test builds its fixture from real rows rather than inventing
 one. My first attempt invented a results row and died on `e3_gene`, which is
 the ninth field name I have guessed wrong in this build, and the fixture now
 takes a real pair's rows and cuts the last line.
+
+## F112. The stall detector ran once, after the stall could no longer matter
+
+F20 cost most of a night to one ambiguity: a campaign that has stopped looks
+exactly like a campaign that is working. Both show a `running` record and a
+live process, and every check that asked "is the process alive" answered yes
+while the queue sat still for 3h45m.
+
+`nobble/execute/watchdog.py` exists because of that, and it is careful. It
+separates an informational `overdue`, which compares a job against the
+slowest comparable one the same campaign has finished, from a `stalled` that
+needs no tuning: the runner cannot legitimately spend more than its timeout
+times its retries plus the grace it allows a kill, so a job past that bound
+means the runner has lost control of it. It returns 0, 1 or 2, so a caller
+need not read its prose.
+
+It was reachable from one place: `tools/status.sh`. And the chain calls
+`status.sh` on its last line, after the deploy. So across the forty-seven
+hours in which a stall is possible, nothing consulted it, and it spoke once,
+when the answer could no longer change anything. A detector that runs after
+the event is not a detector, and this one was built in response to the event
+it was not watching for.
+
+Armed in `run_chain.sh` now, for the length of the chain: a loop that polls
+every `NOBBLE_WATCHDOG_SECONDS` (600 by default) and prints only when the
+exit code is non-zero, with a trap that takes it down however the chain ends
+so a killed run does not leave a loop polling a campaign nobody is running.
+Keyed on the exit code rather than on the printed verdict, because grepping
+for "   ok  " would couple the chain to the spacing of a status line, which
+is what F54 was.
+
+Checked before relying on it: the watchdog only reads. The only occurrences
+of "kill" in it are in its own prose, it runs no subprocess and writes no
+file, so arming it unattended for days beside a live campaign cannot act on
+one. It is the runner's own timeout that stops a job; this only says so. A
+test strips the comments and docstrings and asserts that, because "it only
+reads" is the kind of claim that stops being true quietly.
+
+Replaced by rename rather than edited in place. The chain is running, and
+bash reads a script by byte offset as it goes, so editing the file under a
+live run corrupts what it executes next. That is F57's lesson and it applies
+to its own fix.
+
+The running chain therefore does not have this: it is executing the old
+inode. A separate watch is armed alongside it for the remainder of this
+campaign, polling the same read-only check every ten minutes and reporting
+only a stall, so silence means healthy. The chain that follows this one picks
+up the fix itself.
