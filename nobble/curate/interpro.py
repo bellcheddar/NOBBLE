@@ -99,9 +99,24 @@ def domain_by_accession(accession: str, entry: str,
     means, counted from the N-terminus. Which one is the substrate-binding
     region is science knowledge, like the entry itself, and belongs in the
     construct rather than here.
+
+    The matches are sorted by start before being indexed, which is what makes
+    "counted from the N-terminus" true. F41 required the caller to name an
+    occurrence and then indexed the response list, so it replaced "whichever
+    InterPro listed first" with "whichever InterPro listed Nth" and kept the
+    failure mode: a boundary that moves when the API reorders its records and
+    nothing fails. That is not hypothetical, it is what happened to CSNK1A1's
+    substrate domain, where the library manifest and a later lookup disagree
+    about which entry came first (F107). Today response order and N-terminal
+    order agree for FEM1B's two annotations, 5-301 then 424-610, so this
+    changes nothing and would have changed the receptor construct of a
+    benchmark E3 the day they stopped agreeing.
     """
-    matches = [record for record in domains(accession)
-               if record["accession"] == entry]
+    matches = sorted(
+        (record for record in domains(accession)
+         if record["accession"] == entry),
+        key=lambda record: (record["start"], record["end"]),
+    )
     if not matches:
         raise KeyError(f"{entry} not annotated on {accession}")
     if len(matches) == 1:

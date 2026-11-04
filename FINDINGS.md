@@ -4995,3 +4995,50 @@ which exists, so every iteration hit `continue` and the assertions never ran.
 Found by printing the plan's keys rather than by the tests failing, which is
 the eighth field-name guess of this build. Both take the degron window from
 the peptide library now and assert they checked all six.
+
+## F108. The same defect on the receptor side, in the function that fixed it
+
+F107 was an unsorted list read by index on the substrate side. The receptor
+side has its own lookup, and it has the same defect, in the function whose
+docstring describes having fixed it.
+
+`domain_by_accession(accession, entry, occurrence)` returns a named InterPro
+entry. An entry can be annotated several times on one protein, and F41 found
+exactly that: FEM1B carries IPR036770, the ankyrin repeat superfamily, at
+5-301 and again at 424-610. Its docstring says so, and says why it mattered:
+
+> This used to return whichever InterPro listed first, which is both the
+> wrong 187 or 297 residues depending on an ordering nobody controls, and a
+> boundary that could move without anything failing (F41).
+
+The fix was to refuse an ambiguous entry unless the caller names which
+occurrence it means, "counted from the N-terminus". The code then did
+`matches[occurrence]`, where `matches` is filtered out of
+`domains(accession)` in response order. So it replaced "whichever InterPro
+listed first" with "whichever InterPro listed Nth" and kept the failure mode
+intact: a receptor construct boundary that moves when the API reorders its
+records, with nothing raising.
+
+Latent today. Response order and N-terminal order agree for Q9UK73: [0] is
+5-301 and [1] is 424-610, so `FEM1B_ANK` with `interpro_occurrence=0` gets
+the 297-residue N-terminal region it declares, which is what spec 1.1 means.
+The day they stopped agreeing, FEM1B's receptor would silently become the
+187-residue C-terminal region, and FEM1B is a benchmark E3.
+
+That day is not hypothetical. It is what happened on the substrate side:
+the library manifest records IPR000719 as CSNK1A1's first enclosing entry
+and the same call today returns PF00069 first.
+
+One line: the matches are sorted by start before being indexed, which makes
+"counted from the N-terminus" true rather than coincidental. The contract
+was already written down; now the code keeps it.
+
+Testing it needs a deliberate disagreement, since the real data agrees. The
+test hands back the two FEM1B annotations in reverse and asserts occurrence 0
+is still 5-301, which fails against the old code and passes against the new.
+Two more hold that a single annotation is unaffected and that an ambiguous
+entry with no occurrence still refuses, because sorting makes the index
+meaningful and does not make guessing acceptable.
+
+The sweep for other consumers of the raw list found two, and both are now
+ordered: this one and `domain_context`.

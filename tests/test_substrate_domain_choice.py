@@ -228,3 +228,60 @@ def test_the_plan_matches_what_the_corrected_campaign_submitted():
         break
     else:
         pytest.skip("no CSNK1A1 ternary YAML")
+
+
+# --------------------------------------------------------------------------- #
+# The same defect on the receptor side.
+# --------------------------------------------------------------------------- #
+
+def test_an_occurrence_is_counted_from_the_n_terminus(monkeypatch):
+    """`domain_by_accession` promises N-terminal counting and indexed the
+    response list, so F41's fix replaced "whichever InterPro listed first"
+    with "whichever InterPro listed Nth" and kept the failure mode.
+
+    Response order and N-terminal order agree for FEM1B today, so the only
+    way to test the contract is to disagree with it deliberately.
+    """
+    reversed_response = [
+        {"accession": "IPR036770", "name": "Ankyrin repeat-containing",
+         "database": "interpro", "type": "homologous_superfamily",
+         "start": 424, "end": 610, "length": 187},
+        {"accession": "IPR036770", "name": "Ankyrin repeat-containing",
+         "database": "interpro", "type": "homologous_superfamily",
+         "start": 5, "end": 301, "length": 297},
+    ]
+    monkeypatch.setattr(interpro, "domains", lambda accession: reversed_response)
+
+    first = interpro.domain_by_accession("Q9UK73", "IPR036770", 0)
+    assert (first["start"], first["end"]) == (5, 301), (
+        f"occurrence 0 gave {first['start']}-{first['end']}: the response "
+        "order was followed rather than the N-terminus"
+    )
+    second = interpro.domain_by_accession("Q9UK73", "IPR036770", 1)
+    assert (second["start"], second["end"]) == (424, 610), second
+
+
+def test_the_fem1b_receptor_construct_is_the_n_terminal_ankyrin_region():
+    """The construct that depends on it. FEM1B_ANK declares occurrence 0 and
+    spec 1.1's substrate-binding region is the N-terminal one."""
+    from nobble.curate import constructs
+
+    segment = constructs.CONSTRUCTS["FEM1B_ANK"].segments[0]
+    start, end = segment.range()
+    assert (start, end) == (5, 301), (
+        f"FEM1B_ANK resolves to {start}-{end}, not the N-terminal 5-301"
+    )
+
+
+def test_an_unambiguous_entry_is_unaffected():
+    """One annotation needs no ordering, and the sort must not change what a
+    single match returns."""
+    record = interpro.domain_by_accession("P48729", "IPR000719")
+    assert (record["start"], record["end"]) == (17, 285), record
+
+
+def test_an_ambiguous_entry_with_no_occurrence_still_refuses():
+    """F41's other half. Sorting makes the index meaningful; it does not
+    make guessing acceptable."""
+    with pytest.raises(interpro.AmbiguousEntry):
+        interpro.domain_by_accession("Q9UK73", "IPR036770")
