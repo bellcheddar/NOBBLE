@@ -81,17 +81,49 @@ def test_the_benchmark_panel_still_sorts_ahead_of_the_sievers_split():
     assert all(pid.startswith("bench") for pid in first_seven), first_seven
 
 
-def test_gate_g1_is_judged_against_max_compute_not_the_run_target():
+def _with_throughput(monkeypatch, tmp_path, seconds_per_token, representative_tokens):
+    """A known throughput measurement, so these tests assert the logic.
+
+    The first version of the test below asserted the status of
+    projected_hours(167) against whatever throughput file happened to be on
+    disk. It passed while that came from the benchmark campaign and failed
+    the moment the chain remeasured on the corrected one, whose jobs are
+    three times larger: a test coupled to a measurement it does not control
+    (F45).
+    """
+    import json
+
+    from nobble import paths
+    from nobble.curate import diversity
+
+    path = tmp_path / "throughput.json"
+    path.write_text(json.dumps({
+        "campaign": "synthetic",
+        "median_seconds_per_token": seconds_per_token,
+        "representative_tokens": representative_tokens,
+        "seconds_per_representative_job": seconds_per_token * representative_tokens,
+        "jobs_per_pair": 15,
+    }))
+    monkeypatch.setattr(paths, "THROUGHPUT", path)
+    monkeypatch.setattr(diversity.paths, "THROUGHPUT", path)
+
+
+def test_gate_g1_is_judged_against_max_compute_not_the_run_target(
+    monkeypatch, tmp_path
+):
     """The two budgets are close enough to talk yourself across, so the
     distinction is pinned here.
 
     48 hours is the per-run target that sizes affordable_pairs. 96 hours is
-    the Gate G1 threshold. The calibration set projects to ~51 hours: over
-    the target, nowhere near the gate. Treating that as a gate would stop an
-    unattended build for a scheduling fact the priority ordering handles.
+    the Gate G1 threshold. A set that overruns the first is a scheduling
+    fact the priority ordering handles; treating it as a gate would stop an
+    unattended build.
     """
     from nobble.curate.diversity import projected_hours
 
+    # 0.5028 s/token x 180 tokens = 90.5 s a job. 167 pairs x 15 jobs is
+    # then 63 h: over the 48-hour target, well under the 96-hour gate.
+    _with_throughput(monkeypatch, tmp_path, 0.5028, 180)
     result = projected_hours(167)
     assert result["status"] == "within_max_compute"
     assert result["gate_g1_open"] is False
@@ -99,9 +131,48 @@ def test_gate_g1_is_judged_against_max_compute_not_the_run_target():
     assert result["projected_hours"] < result["max_compute_hours"]
 
 
-def test_a_genuinely_unaffordable_set_does_open_gate_g1():
+def test_a_genuinely_unaffordable_set_does_open_gate_g1(monkeypatch, tmp_path):
     from nobble.curate.diversity import projected_hours
 
+    # The same rate, six times the pairs: 377 h.
+    _with_throughput(monkeypatch, tmp_path, 0.5028, 180)
     result = projected_hours(1000)
     assert result["gate_g1_open"] is True
     assert result["status"] == "gate_g1_open"
+
+
+def test_a_token_total_projects_from_real_job_sizes(monkeypatch, tmp_path):
+    """The defect this guards. Throughput measured on a campaign whose
+    median job is 397 tokens projected a campaign whose median job is 124
+    at 104 hours and opened Gate G1 on a 54-hour run.
+
+    The per-token rate transfers between campaigns; a representative job
+    does not."""
+    from nobble.curate.diversity import projected_hours
+
+    _with_throughput(monkeypatch, tmp_path, 0.4, 397)
+
+    # 2,370 jobs of a 397-token representative: the old method.
+    without = projected_hours(158)
+    # The same campaign's real tokens: 2,370 jobs averaging 166 tokens.
+    with_tokens = projected_hours(158, total_tokens=2370 * 166)
+
+    assert without["projected_hours"] > with_tokens["projected_hours"] * 2
+    assert without["gate_g1_open"] is True
+    assert with_tokens["gate_g1_open"] is False
+    # And each says which basis it used, so the difference is explicable.
+    assert "397-token job" in without["basis"]
+    assert "tokens at the measured" in with_tokens["basis"]
+
+
+def test_the_projection_names_the_campaign_its_representative_job_came_from(
+    monkeypatch, tmp_path
+):
+    """Without a token total the estimate assumes the measured campaign's
+    job-size mix, and has to say so rather than presenting one number."""
+    from nobble.curate.diversity import projected_hours
+
+    _with_throughput(monkeypatch, tmp_path, 0.4, 397)
+    basis = projected_hours(158)["basis"]
+    assert "synthetic" in basis, basis
+    assert "not necessarily" in basis, basis

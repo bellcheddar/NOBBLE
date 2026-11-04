@@ -115,11 +115,20 @@ def _default_parent(parents: list[dict]) -> dict:
     return fallback
 
 
-def cost_of(count: int) -> dict:
-    """What a set of variants would cost, from the measured rate."""
-    from nobble.curate.diversity import projected_hours
+def cost_of(count: int, tokens_per_pair: int | None = None) -> dict:
+    """What a set of variants would cost, from the measured rate.
 
-    projection = projected_hours(count)
+    `tokens_per_pair` lets the caller project from real job sizes rather than
+    from a representative job of whichever campaign was measured last (F45).
+    A design scan's variants are the parent's length, so one number covers
+    them all.
+    """
+    from nobble.curate.diversity import projected_hours
+    from nobble.curate.manifest import jobs_per_pair
+
+    total_tokens = (count * jobs_per_pair() * tokens_per_pair
+                    if tokens_per_pair else None)
+    projection = projected_hours(count, total_tokens=total_tokens)
     return {
         "variants": count,
         "jobs": projection.get("jobs"),

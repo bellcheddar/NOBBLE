@@ -258,7 +258,7 @@ def campaign_budget(default_pairs: int = 220) -> int:
     return default_pairs
 
 
-def projected_hours(pairs: int) -> dict:
+def projected_hours(pairs: int, total_tokens: int | None = None) -> dict:
     """Wall-clock hours a selection of `pairs` would take at measured rate.
 
     Two budgets exist and they are not the same thing, which matters because
@@ -270,6 +270,20 @@ def projected_hours(pairs: int) -> dict:
 
     Evaluating that in code rather than by eye, because the two numbers are
     close enough to talk yourself across.
+
+    `total_tokens` is the token count of the campaign being sized, and should
+    be given whenever it is known. Without it the projection multiplies the
+    job count by a "representative job" taken from whichever campaign was
+    measured last, which is only right when the two campaigns have the same
+    job-size distribution.
+
+    They did not. Throughput measured on the corrected campaign, whose median
+    job is 397 tokens, projected the main campaign, whose median job is 124,
+    at 104.3 hours and opened Gate G1. Summing the main campaign's real tokens
+    at the rate measured for jobs of each size gives 54.0 hours: over the
+    48-hour target and well inside the 96-hour gate. A false gate stops an
+    unattended build, which is the most expensive thing this function can do
+    (F45).
     """
     tuning = paths.tuning()["campaign"]
     budget_hours = float(tuning["wall_clock_budget_hours"])
@@ -286,13 +300,28 @@ def projected_hours(pairs: int) -> dict:
         return {"status": "not_computed: throughput file is incomplete",
                 "pairs": pairs}
 
-    hours = (pairs * per_pair * seconds_per_job) / 3600.0
+    rate = measured.get("median_seconds_per_token")
+    if total_tokens and rate:
+        # Per-token rate transfers between campaigns; a representative job
+        # does not.
+        hours = (total_tokens * float(rate)) / 3600.0
+        basis = (f"{total_tokens:,} tokens at the measured "
+                 f"{rate} s/token")
+    else:
+        hours = (pairs * per_pair * seconds_per_job) / 3600.0
+        basis = (
+            f"{pairs * per_pair} jobs at {seconds_per_job} s for a "
+            f"{measured.get('representative_tokens')}-token job, which is the "
+            f"median job of {measured.get('campaign')} and not necessarily of "
+            "the campaign being sized"
+        )
     gate_open = hours > max_hours
     return {
         "status": "gate_g1_open" if gate_open else "within_max_compute",
         "pairs": pairs,
         "jobs": pairs * per_pair,
         "projected_hours": round(hours, 1),
+        "basis": basis,
         "wall_clock_budget_hours": budget_hours,
         "max_compute_hours": max_hours,
         "over_wall_clock_target": round(max(0.0, hours - budget_hours), 1),

@@ -68,8 +68,12 @@ from pathlib import Path
 camps = sorted(glob.glob("campaigns/campaign_*"))
 if camps:
     q = Path(camps[-1]) / "queue.jsonl"
-    pairs = len({json.loads(l)["pair_id"] for l in q.read_text().splitlines() if l.strip()})
-    h = projected_hours(pairs)
+    rows = [json.loads(l) for l in q.read_text().splitlines() if l.strip()]
+    pairs = len({r["pair_id"] for r in rows})
+    # The real token total, not a representative job from whichever campaign
+    # was measured last: that method projected this campaign at 104 h and
+    # opened Gate G1 on a 54-hour run (F45).
+    h = projected_hours(pairs, total_tokens=sum(r["tokens"] for r in rows))
     print(f"   G1 compute   {'OPEN' if h.get('gate_g1_open') else 'closed'}  "
           f"{h.get('projected_hours')} h projected, max {h.get('max_compute_hours')}")
 PY

@@ -2063,3 +2063,71 @@ under pocket conditioning", which is true of CDK12 at 0.494 and equally
 true of a pair at 0.21. The tooltip now carries the magnitude. A tooltip
 is pipeline-generated status text and outside the prose budget, which is
 the right place for a number that qualifies a flag rather than a figure.
+
+## F45. A false Gate G1, which would have stopped the build
+
+The corrected campaign finished, the chain started, and throughput was
+remeasured on it. A budget test began failing, and the number behind the
+failure was `projected_hours(158) = 104.3 hours` against a Gate G1
+threshold of 96. Gate G1 open means stop and ask Marc. The run that had
+just started was the 2,360-job main campaign.
+
+It was wrong. The gate is not open.
+
+`projected_hours` multiplied the job count by a "representative job":
+the median rate times the median token count of whichever campaign was
+measured last. The per-token rate transfers between campaigns. The job
+size does not. Throughput came from the corrected campaign, whose median
+job is 397 tokens, and was applied to the main campaign, whose median job
+is 124. That is a factor of three in job size and a factor of 2.4 in the
+answer.
+
+Measured properly, by summing the campaign's real tokens at the rate
+observed for jobs of each size:
+
+    0-200 tokens    2,270 jobs   0.4768 s/token
+    200-500 tokens      60 jobs   0.3600 s/token
+    800+ tokens         30 jobs   0.7488 s/token
+                     --------
+                       54.0 hours
+
+Over the 48-hour per-run target by six hours, which is a scheduling fact
+the priority ordering absorbs, and 42 hours clear of the gate. The
+campaign's first jobs are now running at 0.2629 s/token, better than the
+0.4768 I used, so 54 hours is an overestimate.
+
+`projected_hours` now takes the campaign's token total and uses it when
+given. Without it, it still falls back to the old method and says so in a
+new `basis` field: "2370 jobs at 158.5 s for a 397-token job, which is the
+median job of corrected_20261103T214331Z and not necessarily of the
+campaign being sized". `status.sh` and the design report both pass real
+tokens now, since both already had them to hand.
+
+A false gate is the most expensive thing this function can do. CLAUDE.md
+says stop only at a Gate; a gate that opens on a correct campaign stops
+an unattended build for nothing, and it would have done so on the run the
+whole project is for.
+
+### The test that found it was coupled to a measurement
+
+`test_gate_g1_is_judged_against_max_compute_not_the_run_target` asserted
+the status of `projected_hours(167)` against whatever throughput file was
+on disk. It passed for as long as that came from the benchmark campaign
+and failed the moment the chain remeasured. The failure was correct and
+the test was wrong to depend on it: it now injects a known measurement, so
+it asserts the logic it is named for. Two further tests cover the defect
+itself and the basis string.
+
+### And my own sweep left a mutation in the tree
+
+I stopped the fifth mutation sweep because the campaign was minutes from
+finishing and I did not want source files flickering as the chain started.
+Stopping it killed the script between writing a mutation and the `finally`
+that restores it, leaving `curate/library.py` with its selection replaced
+by every candidate.
+
+Caught by checking `git status` immediately rather than assuming the
+`finally` had run, and the library manifest was verified untouched: 158
+rows, yesterday's mtime. The lesson is the obvious one in hindsight. A
+tool that mutates tracked files is safe only while it completes, and
+"stop it before the risky window" has a risky window of its own.
