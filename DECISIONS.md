@@ -1273,3 +1273,41 @@ hand at any point: `bash tools/refresh.sh <campaign> && bash deploy/deploy.sh`.
 
 **Reversal.** Add a publisher loop to the main-campaign stage of
 `tools/run_chain.sh`, and read the paragraph above first.
+
+## D-NOB-042: the chain publishes once at the end, and deploys
+
+**Date:** 2026-11-04
+
+Reading `run_chain.sh` end to end after several rounds of edits found two
+gaps, neither of which would have failed anything.
+
+**The atlas was built too early.** `refresh.sh` runs straight after the
+main campaign, before tier 2 and the design scan have produced anything.
+Both then ran for hours into files the published bundle did not contain:
+refined poses the structure catalogue could not offer, and a scan profile
+with no chart. The compute would have happened and the site would not have
+known.
+
+**And nothing deployed.** The chain built an atlas and stopped. After about
+sixty hours the live site would still have been showing the benchmark
+panel, waiting for someone to notice and run `deploy.sh` by hand.
+
+**Decided.** A single rebuild after the last stage, then a deploy.
+
+Once, at the end, not between stages: D-NOB-041 rules out publishing while
+a campaign is writing structures, because the rsync can copy an mmCIF
+mid-write and a truncated structure draws a partial chain rather than
+failing. Every stage that can change the bundle has finished by then.
+
+Deploying is the point of having built the bundle, and the permission is
+explicit and repeated. It runs last, after everything, and `deploy.sh`
+already refuses to report success unless all nine routes answer 200. A
+failed deploy prints how to retry and does not fail the chain, because the
+atlas is built locally either way and the compute is the expensive part.
+
+The chain ends by printing `tools/status.sh`, so the last thing in the log
+is where everything stands rather than the tail of a deploy.
+
+**Reversal.** The two blocks at the end of `tools/run_chain.sh`. Removing
+the deploy leaves the atlas built and unpublished, which is the previous
+behaviour.

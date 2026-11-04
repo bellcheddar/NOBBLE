@@ -101,4 +101,24 @@ if [[ -n "$DESIGN" ]]; then
   bash tools/run_design.sh "$DESIGN" || true
 fi
 
+# --- 5. publish, once, at the end ----------------------------------------
+# The atlas was built straight after the main campaign, before tier 2 and
+# the design scan existed. Without rebuilding here, both would run for
+# hours and produce nothing the site could show: refined poses the
+# catalogue cannot offer and a scan profile with no chart. Rebuilt once,
+# at the end, rather than during a run (D-NOB-041: a mid-run publish can
+# copy a structure while Boltz is writing it).
+if [[ -n "${CAMPAIGN:-}" ]]; then
+  say "rebuilding the atlas with tier 2 and the design scan included"
+  bash tools/refresh.sh "$CAMPAIGN" || true
+fi
+
+# Deploying is the point of having published an atlas, and Marc granted it
+# explicitly. It runs last, after everything that could still change the
+# bundle, and deploy.sh refuses to report success unless all nine routes
+# answer 200.
+say "deploying"
+bash deploy/deploy.sh || echo "deploy failed: the atlas is built locally, rerun deploy/deploy.sh" >&2
+
 say "chain complete"
+bash tools/status.sh || true

@@ -686,3 +686,12 @@
   "from nobble.execute.runner import disk_gate", a Python import rather
   than a CLI call; narrowed to -m invocations and confirmed it still
   catches the tier2.sh defect it was written for. 134 tests pass.
+- 2026-11-04T20:25Z Re-read run_chain.sh end to end after several rounds of
+  edits and found two gaps that would not have failed anything. The atlas
+  was rebuilt straight after the main campaign, before tier 2 and the
+  design scan existed, so both would have run for hours producing files the
+  published bundle did not contain. And the chain never deployed, so after
+  sixty hours the live site would still have shown the benchmark panel.
+  Both fixed: one rebuild after the last stage, then a deploy, then a
+  status print. D-NOB-042. Restarted tmux nobble-chain to pick up the
+  change, since editing a running script is read by byte offset.
