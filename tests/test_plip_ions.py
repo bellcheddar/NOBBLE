@@ -62,3 +62,38 @@ def test_the_fallback_chain_map_announces_that_it_may_be_wrong():
     assert "unverified" in source, (
         "the fallback chain map must flag itself when it cannot be trusted"
     )
+
+
+def test_the_zinc_stays_out_of_every_geometry_consumer():
+    """The ion was added so the finger folds. Each downstream consumer had
+    to be checked separately, because each classifies chains itself and
+    "not receptor, not peptide, not ligand" is only correct if that branch
+    exists. PLIP was the one that did not have it (F14).
+
+    Verified against a real prediction rather than read off the source:
+    the bridge metric is spec 4.1's primary signal, so a zinc quietly
+    entering it would move the headline number on 120 pairs.
+    """
+    from nobble.score import geometry, poses
+
+    structure = _zinc_structure()
+    if structure is None:
+        pytest.skip("no zinc-bearing smoke structure")
+
+    job = {"job_id": "zinc", "structure": str(structure.resolve()),
+           "construct": "CRBN_CULT", "complex_type": "ternary"}
+
+    contacts = geometry.contact_map(job)
+    assert contacts["status"] == "ok"
+    labels = contacts["receptor_residues"] + contacts["peptide_residues"]
+    assert not any("ZN" in str(label) for label in labels), labels
+
+    docking = poses.docking_check(job).to_dict()
+    assert docking["docked"] is True
+    # 197 peptide atoms for a 26-mer: the single zinc atom is not among them.
+    assert docking["peptide_atoms"] > 100
+
+    bridge = geometry.score_structure(job).to_dict()
+    assert bridge.get("reject_reason") is None
+    assert bridge["dsasa_total"] > 0
+    assert 0 <= bridge["bridge_percentile"] <= 100

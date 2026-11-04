@@ -602,3 +602,21 @@ The general shape is the same as F11: adding something correct for one
 reason (the fold needs its ion) changed something unrelated (what PLIP
 thinks the ligand is), and the result was a plausible number rather than
 an error.
+
+**Every other consumer was then checked, on a real zinc prediction rather
+than by reading the source.** Each classifies chains for itself, so
+"not receptor, not peptide, not ligand" is only safe where that branch
+actually exists. PLIP was the one place it did not.
+
+| consumer | zinc handling | checked on a real structure |
+|---|---|---|
+| Bridge geometry (spec 4.1, primary) | chain Z skipped | dSASA 730 A2, percentile 46.4, valid two-chain bridge |
+| Contact map | chain Z skipped | 23 contacts, no ZN among the residue labels |
+| Docking check | chain Z skipped | docked, 56 contact atoms, 197 peptide atoms |
+| PLIP fingerprint | **was counting it** | fixed above |
+| Pose viewer | rendered invisibly | given spacefill |
+| Token budget | 1 token, both arms | preflight reports 0 asymmetric cofactors |
+
+The bridge metric is the one that mattered most: it is spec 4.1's primary
+signal, so a zinc quietly entering it would have moved the headline number
+on all 120 pairs rather than a secondary one.
