@@ -3728,3 +3728,46 @@ The watchdog's `hard_bound_seconds` derives from the runner rather than
 being configured separately, so it follows the multiple: 12.2 hours for tier
 2 against 3.2 for tier 1. A bound that did not follow would call a healthy
 refinement stalled, which is F20's mistake with a longer fuse.
+
+## F81. The code said "treat this as unverified" and then reported it as ok
+
+`plip.fingerprint` parses the chain map out of cif2plip's stdout rather
+than assuming it, because assuming it would attribute every peptide contact
+to the receptor. That care is right and the parse works: all twenty real
+fingerprints across three campaigns parsed it successfully.
+
+When the parse failed it fell back to the documented A/P/L to A/B/C
+ordering and appended two notes, the second reading "Treat this fingerprint
+as unverified". Then, at the end of the function, `result.status = "ok"`
+unconditionally.
+
+`run.py` branches on `finger.status != "ok"` and knows nothing about
+`notes`. So the warning went to a field nothing downstream reads, the
+status said the opposite, and the reader of the two was the one that could
+not see the warning. The match was recorded as a measurement, fed to the
+weight fitter as an observation and shown on the Interactions tab, which is
+the state F32 already fixed once for a different cause.
+
+The fallback is correct for three chains. A peptide carrying a structural
+zinc gives four, A, P, Z and L, so the ligand is D and the map hands the
+ligand slot to the ion: every "glue to degron" contact would have been the
+zinc's coordination to the receptor. The Sievers arm is whole zinc fingers,
+120 of the campaign's 158 pairs and the arm the headline ROC is computed
+on, and those jobs begin at queue position 100. The campaign is at 78.
+
+So this is latent in the sense that it has never fired, and twenty-two jobs
+away from the first four-chain input.
+
+There is no fallback now. An unparsed chain map is a refusal, which costs
+one component on one pair rather than the component's meaning across the
+arm that matters most. The guess was the wrong trade in a way that is worth
+stating plainly: a fingerprint that refuses is visibly absent, and a
+fingerprint built on the wrong chain is a number that looks like every
+other number.
+
+Three probe errors of mine today, this being the third. Looking for the
+chain-map notes I read `row["plip_notes"]`, which has never existed, and
+concluded the notes were discarded. They are under `row["plip"]["notes"]`.
+After the `RECOVERED_A` grep in F64 and the `preview.cost` key in F79, the
+pattern is mine rather than the code's: I guess at a field name instead of
+printing the keys first, and the guess reads as a finding.
