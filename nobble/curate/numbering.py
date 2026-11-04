@@ -49,7 +49,7 @@ MAX_ANCHOR_SLIDE = 40
 # deposition may carry an engineered point mutation or a modified residue; a
 # frame that disagrees beyond this is not an offset problem but a different
 # protein, and raising is the correct outcome.
-MAX_MISMATCH_FRACTION = 0.1
+MAX_MISMATCH_FRACTION = float(paths.thresholds()["numbering"]["max_mismatch_fraction"])
 
 
 @dataclass(frozen=True)

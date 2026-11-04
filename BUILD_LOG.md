@@ -419,3 +419,12 @@
   config, with a test that changing the config changes the curve. The second
   is genuinely dead (D-NOB-009: the column is 0 for all 650 rows) and is now
   annotated as not applied rather than looking live. 106 tests pass.
+- 2026-11-04T12:05Z thresholds.toml opens with "Nothing in Python hard-codes
+  a threshold". It was not true: nine module-level cutoffs lived in code
+  (contact distances, the pocket radius, the collapse margin, the control
+  tolerance, the exposed-SASA and mismatch fractions, the domain coverage
+  floor). All nine moved into config with their values unchanged, verified
+  one by one. A test now greps for new numeric module constants and fails on
+  any that is a cutoff rather than a physical constant, so the file's opening
+  claim is enforced rather than aspirational. 108 tests pass, preflight on
+  the assembled campaign still clean.

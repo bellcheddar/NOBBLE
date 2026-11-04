@@ -22,7 +22,33 @@ scrambles_per_positive = 1
 token_cap_tier1 = 400
 affinity_heavy_atom_cap = 128
 
+[geometry]
+# Heavy-atom contact distance for the peptide-receptor contact map, angstrom.
+contact_cutoff_a = 4.5
+# A seed counts as docked when the peptide reaches within this of the receptor.
+docked_contact_cutoff_a = 5.0
+# Degron Scan's contact distance against the deposited structure, angstrom.
+degron_scan_contact_cutoff_a = 5.0
+# Pocket constraint radius when conditioning a ligand, angstrom.
+pocket_max_distance_a = 6.0
+
+[lysine]
+# Relative SASA above which a lysine counts as solvent exposed.
+exposed_rel_sasa = 0.25
+
+[numbering]
+# Fraction of residues allowed to disagree before a numbering frame is rejected.
+max_mismatch_fraction = 0.1
+
+[substrate]
+# Domain coverage above which a degron window is treated as self-sufficient.
+domain_coverage_self_sufficient = 0.80
+
 [scoring]
+# A seed is collapsed when it sits this far below the median of its set.
+collapse_margin = 0.30
+# How far the IKZF1 control may move before a campaign comparison is untrusted.
+control_tolerance_a = 2.0
 # Pose recovery success-rate curve breakpoints, in angstrom.
 rmsd_breakpoints = [1.0, 2.0, 3.0, 5.0]
 seeds = 5

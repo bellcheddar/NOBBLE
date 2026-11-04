@@ -206,7 +206,7 @@ def score_structure(job: dict) -> BridgeScore:
 # convention for a packing contact: close enough to be an interaction, loose
 # enough to include a water-mediated approach that the prediction has no water
 # for.
-CONTACT_CUTOFF = 4.5
+CONTACT_CUTOFF = float(paths.thresholds()["geometry"]["contact_cutoff_a"])
 
 
 def contact_map(job: dict) -> dict:

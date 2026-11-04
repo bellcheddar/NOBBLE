@@ -34,7 +34,7 @@ LIGAND_CHAIN = "L"
 # A structural metal that belongs to the peptide, not to the glue mechanism.
 COFACTOR_CHAIN = "Z"
 RECEPTOR_CHAINS = "ABCDEFGH"
-POCKET_MAX_DISTANCE = 6.0
+POCKET_MAX_DISTANCE = float(paths.thresholds()["geometry"]["pocket_max_distance_a"])
 
 # Which chains of each benchmark deposition hold the receptor, so the pocket can
 # be measured rather than asserted. Read off the deposited assemblies.

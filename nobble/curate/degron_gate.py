@@ -23,8 +23,9 @@ from dataclasses import dataclass, field
 
 from nobble.curate import binman_store as store
 from nobble.curate import numbering, structures
+from nobble import paths
 
-CONTACT_CUTOFF = 5.0
+CONTACT_CUTOFF = float(paths.thresholds()["geometry"]["degron_scan_contact_cutoff_a"])
 
 
 @dataclass

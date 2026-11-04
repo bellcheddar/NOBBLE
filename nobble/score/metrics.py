@@ -30,6 +30,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from nobble.curate import constructs as C
+from nobble import paths
 
 MISSING = None
 
@@ -173,7 +174,7 @@ def _median(values: list[float | None]) -> float | None:
 
 # A seed whose interface confidence sits this far below the median of its own
 # condition is treated as a collapsed run rather than a low measurement.
-COLLAPSE_MARGIN = 0.30
+COLLAPSE_MARGIN = float(paths.thresholds()["scoring"]["collapse_margin"])
 
 
 def _collapsed_seeds(values: list[tuple[int, float | None]]) -> list[int]:

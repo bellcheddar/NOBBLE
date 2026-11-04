@@ -65,3 +65,53 @@ def test_changing_the_configured_breakpoints_changes_the_curve(monkeypatch):
     curve = poses.success_rate_curve([0.4, 6.0, 20.0])
     assert set(curve) == {"within_0.5A", "within_8.0A", "n", "median_rmsd"}
     assert curve["within_0.5A"] == round(1 / 3, 4)
+
+
+def test_no_cutoff_is_hard_coded_in_python():
+    """thresholds.toml opens by claiming "Nothing in Python hard-codes a
+    threshold". It was not true: nine module-level cutoffs lived in code,
+    so the file was describing a rule the project did not follow.
+
+    This pins the claim. A new numeric module constant that is a cutoff
+    belongs in the config; add it there and read it, or add its name below
+    with a reason if it is a physical constant rather than a choice.
+    """
+    import re
+    import subprocess
+
+    # Physical or structural constants, not tunable choices.
+    allowed = {
+        "LYSINE_MAX_ASA",        # max accessible surface area of lysine
+        "SEED",                  # a seed, not a cutoff
+        "MINIMUM_SEEDS", "MINIMUM_LABELLED", "MINIMUM_RANKED",  # sample-size floors
+        "SCALE", "RETRIES", "MINIMUM_RANKED",
+    }
+    out = subprocess.run(
+        ["grep", "-rnE", r"^[A-Z_]+ = [0-9]+\.[0-9]+", "nobble"],
+        capture_output=True, text=True).stdout
+
+    offenders = []
+    for line in out.splitlines():
+        name = re.search(r"^[^:]+:\d+:([A-Z_]+) =", line)
+        if name and name.group(1) not in allowed:
+            offenders.append(line)
+    assert not offenders, "hard-coded cutoffs:\n" + "\n".join(offenders)
+
+
+def test_every_moved_cutoff_kept_its_value():
+    """The move must not have changed the science. Same numbers, read from
+    a different place."""
+    from nobble.curate import degron_gate, numbering, peptides
+    from nobble.execute import yaml_gen
+    from nobble.score import geometry, lysine, metrics, poses
+    from nobble.validate import compare
+
+    assert geometry.CONTACT_CUTOFF == 4.5
+    assert poses.DOCKED_CONTACT_CUTOFF == 5.0
+    assert degron_gate.CONTACT_CUTOFF == 5.0
+    assert yaml_gen.POCKET_MAX_DISTANCE == 6.0
+    assert lysine.EXPOSED_REL_SASA == 0.25
+    assert numbering.MAX_MISMATCH_FRACTION == 0.1
+    assert peptides.DOMAIN_COVERAGE_SELF_SUFFICIENT == 0.80
+    assert metrics.COLLAPSE_MARGIN == 0.30
+    assert compare.CONTROL_TOLERANCE_A == 2.0

@@ -77,7 +77,7 @@ class LysineReach:
 # Theoretical maximum solvent accessibility for lysine, Angstrom^2
 # (Tien et al., PLoS ONE 2013, 8(11):e80635), the same reference BINMAN uses.
 LYSINE_MAX_ASA = 236.0
-EXPOSED_REL_SASA = 0.25
+EXPOSED_REL_SASA = float(paths.thresholds()["lysine"]["exposed_rel_sasa"])
 
 
 def measure(job: dict) -> LysineReach:

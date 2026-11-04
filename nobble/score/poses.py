@@ -378,7 +378,7 @@ def success_rate_curve(values: list[float], breakpoints=None) -> dict:
 # receptor at all. This is a presence check, not an interface quality measure:
 # spec 4.1 scores interface quality against the atlas, and this only separates
 # "the peptide is on the protein" from "the peptide is in solvent".
-DOCKED_CONTACT_CUTOFF = 5.0
+DOCKED_CONTACT_CUTOFF = float(paths.thresholds()["geometry"]["docked_contact_cutoff_a"])
 
 
 @dataclass

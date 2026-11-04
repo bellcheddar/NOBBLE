@@ -700,7 +700,7 @@ def benchmark_peptides() -> list[Peptide]:
 # representing the domain rather than as a slice cut out of one. Below it, the
 # window cannot fold on its own and cannot reproduce an interface the intact
 # domain makes.
-DOMAIN_COVERAGE_SELF_SUFFICIENT = 0.80
+DOMAIN_COVERAGE_SELF_SUFFICIENT = float(paths.thresholds()["substrate"]["domain_coverage_self_sufficient"])
 
 
 def domain_context(accession: str | None, start: int | None, end: int | None) -> dict:

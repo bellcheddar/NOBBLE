@@ -21,11 +21,12 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from nobble import paths
 
 # The control: unchanged between campaigns by design.
 CONTROL_GENE = "IKZF1"
 # A control that moves by more than this invalidates the comparison.
-CONTROL_TOLERANCE_A = 2.0
+CONTROL_TOLERANCE_A = float(paths.thresholds()["scoring"]["control_tolerance_a"])
 
 
 @dataclass
