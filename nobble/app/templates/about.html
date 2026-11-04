@@ -10,8 +10,8 @@
 
 <section class="panel">
   <h2>The confidence caveat, stated plainly</h2>
-  <p class="panel__hint">Boltz-2 on 519 therapeutic antibodies: confidence separates cognate from non-cognate antigens poorly. Treat ipTM as enrichment, not a verdict.</p>
-  <p class="panel__hint">On the first benchmark pair a genuinely bridging pose scored below a non-bridging one, so geometry leads the ranking and confidence does not.</p>
+  <p class="panel__hint">Boltz-2 on 519 therapeutic antibodies separates cognate from non-cognate antigens poorly. ipTM is enrichment, not a verdict.</p>
+  <p class="panel__hint">On the first benchmark pair a bridging pose scored below a non-bridging one, so geometry leads the ranking.</p>
 </section>
 
 <section class="panel">
@@ -160,7 +160,7 @@
 
 <section class="panel">
   <h2>Validation</h2>
-  <p class="panel__hint">Three gating layers. A campaign that fails one publishes the failure. A poor ROC is not a failure; reporting none, or one without matched negatives, is.</p>
+  <p class="panel__hint">Three gating layers. A poor ROC is not a failure; reporting none, or one without matched negatives, is.</p>
   {% set layers = (validation or {}).get('layers', {}) %}
   {% set recovery = layers.get('pose_recovery', {}) %}
   {% set split = layers.get('time_split', {}) %}
@@ -197,12 +197,8 @@
         </tbody>
       </table>
     </div>
-    <p class="panel__hint" style="margin-top:0.5rem">
-      Superposed on the receptor, peptide backbone atoms only. Every record
-      carries its own anchor size and anchor RMSD, because a pose RMSD means
-      nothing without evidence that the frame it was measured in was sound.
-      {% if recovery.get('notes') %}<br>{{ recovery.notes|join('; ') }}{% endif %}
-    </p>
+    <p class="panel__hint">Superposed on the receptor, peptide backbone only. Each record carries its own anchor size and RMSD.
+      {% if recovery.get('notes') %}<br>{{ recovery.notes|join('; ') }}{% endif %}</p>
   {% else %}
     <p class="panel__hint"><span class="flag flag--pending">not computed</span>
       {{ recovery.get('status', 'no campaign') }}</p>
@@ -245,8 +241,8 @@
 {% if throughput %}
 <section class="panel">
   <h2>The design arm, and what it is not</h2>
-  <p class="panel__hint">The only part that proposes rather than measures. Not in the build specification.</p>
-  <p class="panel__hint">It ships before the score it ranks by is validated, so read the ordering of positions, not the absolute lift.</p>
+  <p class="panel__hint">The only part that proposes rather than measures, and not in the build specification. It ships before the score it ranks by is validated.</p>
+  
   <table class="ntable">
     <thead><tr><th>Question</th><th>Answer</th></tr></thead>
     <tbody>

@@ -40,6 +40,7 @@ class Lift:
     variant_id: str
     parent_peptide_id: str
     substitution: str | None = None
+    position: int | None = None
     variant_delta_iptm: float | None = None
     parent_delta_iptm: float | None = None
     lift: float | None = None
@@ -60,6 +61,7 @@ def compute(variant_row: dict, parent_row: dict) -> Lift:
         variant_id=variant_row.get("pair_id") or variant_row.get("variant_id", "?"),
         parent_peptide_id=parent_row.get("peptide_id", "?"),
         substitution=variant_row.get("substitution"),
+        position=variant_row.get("position"),
     )
 
     # A substitution that changes nothing is not a variant. Its two runs
@@ -154,7 +156,16 @@ def scan_profile(lifts: list[Lift], parent_sequence: str) -> dict:
     for item in lifts:
         if item.status != "computed" or item.substitution is None:
             continue
-        position = int("".join(c for c in item.substitution[1:-1] if c.isdigit()))
+        # The generator records the position; prefer it. Re-deriving it from
+        # the label works for K7A and stops working the moment a label is
+        # anything else, and a scan that silently loses a position just
+        # leaves a gap in the chart.
+        position = item.position
+        if position is None:
+            digits = "".join(c for c in item.substitution[1:-1] if c.isdigit())
+            if not digits:
+                continue
+            position = int(digits)
         by_position[position] = item
 
     rows = []

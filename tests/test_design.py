@@ -308,3 +308,32 @@ def test_unequal_seed_counts_between_variant_and_parent_block_the_lift():
         {**base, "seeds_binary": 5, "seeds_ternary": 5},
     )
     assert matched.status == "computed"
+
+
+def test_the_scan_profile_uses_the_recorded_position_not_the_label():
+    """Re-deriving the position from the label works for K7A and stops
+    working for anything else. The generator already records it, so a scan
+    should not depend on a string parse that can silently drop a position
+    and leave a gap in the chart."""
+    base = dict(construct="CRBN_CULT", e3_gene="CRBN", ligand_key="Y70",
+                modality="glue", seeds_binary=5, seeds_ternary=5)
+    # A label the parse cannot read, with the position recorded alongside.
+    odd = Lmod.compute(
+        {**base, "delta_iptm": 0.20, "substitution": "p.Lys7Ala", "position": 7},
+        {**base, "delta_iptm": 0.30})
+    assert odd.status == "computed"
+    assert odd.position == 7
+
+    profile = Lmod.scan_profile([odd], "PFQCNQCGASFTQKG")
+    assert profile["scored"] == 1
+    assert profile["most_sensitive"]["position"] == 7
+
+
+def test_a_lift_with_neither_position_nor_a_readable_label_is_skipped():
+    base = dict(construct="CRBN_CULT", e3_gene="CRBN", ligand_key="Y70",
+                modality="glue", seeds_binary=5, seeds_ternary=5)
+    unreadable = Lmod.compute(
+        {**base, "delta_iptm": 0.2, "substitution": "mutant"},
+        {**base, "delta_iptm": 0.3})
+    profile = Lmod.scan_profile([unreadable], "PFQCNQCGASFTQKG")
+    assert profile["scored"] == 0

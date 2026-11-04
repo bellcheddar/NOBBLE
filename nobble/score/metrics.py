@@ -76,6 +76,7 @@ class PairMetrics:
     peptide_sequence: str | None = None
     parent_peptide_id: str | None = None
     substitution: str | None = None
+    position: int | None = None
     role: str | None = None
     iptm_min_binary: float | None = None
     iptm_min_ternary: float | None = None
@@ -251,6 +252,7 @@ def aggregate(results_path: Path, sampling_tier: int = 1) -> list[PairMetrics]:
             peptide_sequence=first.get("peptide_sequence"),
             parent_peptide_id=first.get("parent_peptide_id"),
             substitution=first.get("substitution"),
+            position=first.get("position"),
             role=first.get("role"),
         )
 

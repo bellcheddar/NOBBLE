@@ -220,6 +220,7 @@ def assemble(parent_id: str, generator: str = "alanine_scan",
             record["yaml"] = str(yaml_path)
             record["role"] = pair["role"]
             record["substitution"] = pair.get("substitution")
+            record["position"] = pair.get("position")
             record["parent_peptide_id"] = pair.get("parent_peptide_id")
             record["pocket_residues"] = pocket.positions if pocket else None
             queue.write(json.dumps(record) + "\n")
