@@ -4153,3 +4153,41 @@ with no pocket, which bench03 has none of because its ligand has no CCD
 entry. The campaign's own metadata records
 `conditioned_jobs_dropped_no_pocket = 10`, so the answer was written down at
 assembly time in a file I could have read before counting.
+
+## F92. Five false alarms, one command
+
+Five times today I compared a figure against another that looked comparable
+and was not.
+
+- A `RECOVERED_A` grep over a served page, where the alternation matched
+  class names and `head -4` consumed them before reaching the constant.
+- `preview.cost` read as a top-level key, which has never existed, so a
+  working projection read as `None` and looked like a regression.
+- `row["plip_notes"]`, also never existing, so notes that are kept read as
+  discarded.
+- A design cost of 4.7 hours against a measured 4.4, which is two parents.
+- A fresh manifest's 2,370 jobs against the queue's 2,360, which is the
+  manifest before the assembler's pocket filter and the queue after it.
+
+Every answer was already recorded in the project. `campaign.json` carries
+`conditioned_jobs_dropped_no_pocket = 10`. `design.json` carries its
+parent. The notes are under `plip.notes`. The failure each time was not
+reading, and the remedy for that is fewer greps rather than more care.
+
+So `tools/status.sh` has a provenance section now, printing the three facts
+that each of those questions turned on: what the assembler emitted and what
+it dropped and why, whether any input is stale and therefore whether the
+atlas build will refuse, and which degron the design ranking chooses against
+which one the site publishes.
+
+The third is the one worth having. Those two disagreed for the whole
+project's life and F89 found it by accident; the line marks the
+disagreement, and a test feeds it a published file naming a different parent
+to check the marker fires, because a line that cannot show a problem is not
+worth printing.
+
+The fourth false alarm is also the one that produced a real finding. Asking
+why the atlas previewed a different parent from the one the chain assembles
+was the question I had not asked, and the answer was F89. The other four
+cost time and produced nothing, which is the honest accounting: the same
+habit that found one defect manufactured four non-defects.

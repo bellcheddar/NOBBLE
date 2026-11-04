@@ -95,6 +95,10 @@ PY
 curl -s -o /dev/null -w "   live         %{http_code} in %{time_total}s\n" https://nobble.mdeller.com/ 2>/dev/null || echo "   live         unreachable"
 echo
 
+echo "-- provenance"
+"$SCI" tools/provenance.py
+echo
+
 echo "-- failures in the logs"
 # grep -c exits 1 when it finds nothing, so `|| echo 0` appends a second
 # zero and every clean log reads as a failure. Count without the fallback.

@@ -1,0 +1,52 @@
+"""The facts that answer "are these two numbers about the same thing".
+
+Printed together because five times in one day a figure was compared
+against another that looked comparable and was not: a pre-filter manifest
+against a post-filter queue, an atlas preview against an assembled scan, a
+cost against a different parent. Every answer was already recorded
+somewhere, so this is one command instead of five greps (F92).
+"""
+import json
+import sys
+from pathlib import Path
+
+sys.path.insert(0, ".")
+from nobble.execute.campaign import latest
+from nobble.validate import inputs
+
+campaign = latest("campaign") or latest("benchmark")
+if campaign is None:
+    print("   no campaign assembled")
+else:
+    meta_path = campaign / "campaign.json"
+    meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
+    dropped = meta.get("conditioned_jobs_dropped_no_pocket")
+    if dropped is not None:
+        print(f"   {campaign.name}: {meta.get('jobs_emitted')} job(s) emitted, "
+              f"{dropped} conditioned dropped for having no pocket")
+    stale = inputs.stale_inputs(campaign)
+    if stale:
+        pairs = sorted({r["pair_id"] for r in stale if r.get("pair_id")})
+        print(f"   stale inputs  {len(stale)} job(s) across {pairs}: the atlas "
+              "build refuses while this holds")
+    else:
+        print("   stale inputs  none; the atlas build has nothing to refuse")
+
+try:
+    from nobble.app import data
+    from nobble.design import report
+
+    data.configure(str(campaign) if campaign else None)
+    chosen = report._default_parent(report.candidate_parents())
+    published = {}
+    atlas_design = Path("deploy/atlas/design.json")
+    if atlas_design.exists():
+        published = ((json.loads(atlas_design.read_text()).get("preview")
+                      or {}).get("parent") or {})
+    agree = published.get("peptide_id") == chosen["peptide_id"]
+    mark = "" if agree else "   <- the site and the ranking disagree"
+    print(f"   design target ranking says {chosen['peptide_id']} "
+          f"({chosen.get('gene')}), site says "
+          f"{published.get('peptide_id') or 'nothing published'}{mark}")
+except Exception as problem:                        # noqa: BLE001
+    print(f"   design target  not resolved: {type(problem).__name__}")
