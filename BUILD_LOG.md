@@ -480,3 +480,12 @@
   would have aborted the script before its scoring step, discarding the nine
   that ran to report a failure the log already showed. Dropped to
   `set -uo pipefail` like every other runner, with a test that pins it.
+- 2026-11-04T14:00Z Considered republishing the site periodically during the
+  52-hour main campaign and decided against it (D-NOB-041). deploy.sh rsyncs
+  the structure directory and build_atlas copies every structure the results
+  file references, so a mid-run publish can copy an mmCIF as Boltz is writing
+  it. A truncated structure does not announce itself: the viewer draws a
+  partial chain, which is a wrong picture rather than a missing one. Scoring
+  a growing results.jsonl is safe because torn lines are handled; copying a
+  structure mid-write is not. The status panel already says what it
+  published and what was queued.

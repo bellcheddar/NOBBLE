@@ -1242,3 +1242,34 @@ field rather than by default.
 
 **Reversal.** The re-assembly block in `tools/run_chain.sh`. Remove it to
 scan whichever campaign `campaigns/design_*` last holds.
+
+## D-NOB-041: the site is not republished while a campaign is running
+
+**Date:** 2026-11-04
+
+The main campaign runs for about 52 hours, during which the published site
+shows the benchmark panel and nothing moves. The obvious improvement is to
+refresh and deploy periodically so a visitor sees the campaign filling up,
+and now that `build_atlas` takes a campaign that would work.
+
+**Decided against.** `deploy.sh` rsyncs `deploy/atlas/structures`, and
+`build_atlas` copies every structure referenced by `results.jsonl`. Mid-run,
+the runner is writing those files. Copying one as Boltz writes it publishes
+a truncated mmCIF, and a truncated structure does not announce itself: the
+viewer loads what is there and draws a partial chain, which is a wrong
+picture rather than a missing one. Scoring a results file that is being
+appended to is safe, because the format is line-oriented and torn lines are
+already handled; copying a structure mid-write is not.
+
+The status panel already carries the honest version: it names the campaign
+it published and says how many others were queued when the slice was built
+(D-NOB-036 and the `outstanding` field). A static site that says it is
+static beats a live one that might show a half-written structure.
+
+**If it is wanted later**, the safe form is to publish only the JSON
+documents mid-run and hold the structures back until the campaign ends,
+rather than to copy structures more carefully. A refresh can also be run by
+hand at any point: `bash tools/refresh.sh <campaign> && bash deploy/deploy.sh`.
+
+**Reversal.** Add a publisher loop to the main-campaign stage of
+`tools/run_chain.sh`, and read the paragraph above first.
