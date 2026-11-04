@@ -6609,3 +6609,41 @@ worth matching on", so the project had granted it an explicit exemption, and
 longer describes anything in the tree. An allowlist that is only ever added
 to stops being a list of the cutoffs that exist, so the sweep checks both
 directions. Removing the heuristic removed the need for the exemption.
+
+## F142. The mutation harness could not tell the runner's appends from a rewrite
+
+The full suite failed on
+`test_mutation_harness.py::test_a_real_mutation_still_reports_and_exits_cleanly`,
+and the same test passed on its own. It drives `tools/mutate.py` through a
+real mutation, and `mutate.py` exits 4 when a protected live-state file
+changed while the sweep ran, on the stated grounds that "a mutation removes a
+safety, so a test run under it can reach things no test should touch".
+
+That is right about the hazard and wrong about how it detects it. The sweep
+compared size and modification time, so any write at all exited 4, and the
+campaign runner appends a line to `results.jsonl` and `state.jsonl` every
+thirty-five seconds or so. With a campaign running, whether this test passes
+depends on whether the runner happened to finish a job during the second or
+two the sweep's inner pytest took. F131 had already recorded the fact and
+read it the other way round: it noted that two of the three changed files
+were the runner's and fixed the third.
+
+An append and a rewrite are distinguishable, exactly rather than
+heuristically. The runner only adds bytes to the end, so the bytes that were
+there are still there; a test that corrupts live state rewrites the file,
+which is what happened when one of mine replaced a running campaign's
+throughput measurement with a benchmark's. So the previous `before_size`
+bytes are re-read and hashed, and a prefix that still matches is the runner
+doing its job. Reading only `before_size` bytes costs the same whether the
+file is a kilobyte or a gigabyte, which was the original objection to hashing
+at all.
+
+I then wrote the same class of defect into the fix. The prefix digests were a
+module-level dict that `_fingerprint` filled as a side effect, and
+`_live_state_changes` calls `_fingerprint` to get the "after" state, so the
+baseline was overwritten with the new content's digests before any comparison
+happened and every append still read as a rewrite. The four-case check caught
+it immediately: append, rewrite, truncation, no change. A function that looks
+like a measurement and quietly replaces the baseline is the shape this
+project keeps finding, and I put one inside the fix for another. The digests
+are now taken explicitly by the caller and passed in.

@@ -46,6 +46,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import signal
 import subprocess
 import sys
@@ -165,14 +166,77 @@ def _fingerprint() -> dict[str, str]:
     return out
 
 
-def _live_state_changes(before: dict[str, str]) -> list[str]:
+def _prefix_hashes() -> dict[str, str]:
+    """Digest of each protected file as it stands now.
+
+    Taken by the caller at the same moment as `_fingerprint`, and passed
+    back in for the comparison. It was a module-level dict that
+    `_fingerprint` filled as a side effect, which destroyed the thing it
+    was for: `_live_state_changes` calls `_fingerprint` to get the "after"
+    state, so the baseline hashes were overwritten with the new content's
+    before any comparison happened, and every append still read as a
+    rewrite. A function that looks like a measurement and quietly replaces
+    the baseline is the shape of defect this project keeps finding, and I
+    wrote one into the fix for another.
+    """
+    out = {}
+    for pattern in PROTECTED_GLOBS:
+        for path in sorted(ROOT.glob(pattern)):
+            with path.open("rb") as handle:
+                out[str(path.relative_to(ROOT))] = hashlib.sha256(
+                    handle.read()).hexdigest()
+    return out
+
+
+def _grew_by_appending(path: Path, before_size: int, before_hash: str) -> bool:
+    """Did this file only gain bytes on the end?
+
+    The campaign runner appends a line to `results.jsonl` and `state.jsonl`
+    every thirty-five seconds or so, which is its job. A test that corrupts
+    live state does something else: it rewrites the file, which is what
+    happened when one of mine replaced a running campaign's measurement with
+    a benchmark's (F131).
+
+    Those two are distinguishable, and the sweep could not tell them apart.
+    It compared size and mtime, so any write at all exited 4, and with a
+    campaign running the mutation harness's own tests failed intermittently
+    for a reason that had nothing to do with the mutation (F142).
+
+    Exact rather than heuristic: the bytes that were there are re-read and
+    compared against what is there now. A pure append leaves the prefix
+    identical. Only `before_size` bytes are read, so this costs the same
+    whether the file is a kilobyte or a gigabyte.
+    """
+    try:
+        stat = path.stat()
+    except OSError:
+        return False
+    if stat.st_size < before_size:
+        return False            # truncated: a rewrite, not an append
+    with path.open("rb") as handle:
+        prefix = handle.read(before_size)
+    return hashlib.sha256(prefix).hexdigest() == before_hash
+
+
+def _live_state_changes(before: dict[str, str],
+                        before_hashes: dict[str, str] | None = None) -> list[str]:
     after = _fingerprint()
     changed = []
     for name in sorted(set(before) | set(after)):
-        if before.get(name) != after.get(name):
-            was = "absent" if name not in before else before[name]
-            now = "absent" if name not in after else after[name]
-            changed.append(f"  {name}: {was} -> {now}")
+        if before.get(name) == after.get(name):
+            continue
+        was = "absent" if name not in before else before[name]
+        now = "absent" if name not in after else after[name]
+        if name in before and name in after and (before_hashes or {}).get(name):
+            before_size = int(before[name].split(":")[0])
+            if _grew_by_appending(ROOT / name, before_size,
+                                  before_hashes[name]):
+                # The runner doing its job, not the sweep reaching live
+                # state. Reported so the operator can see it happened.
+                print(f"    {name} grew by appending while the sweep ran: "
+                      "the campaign runner, not the mutation")
+                continue
+        changed.append(f"  {name}: {was} -> {now}")
     return changed
 
 
@@ -244,6 +308,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.tests:
         pytest_command = pytest_command[:-3] + ["-q", args.tests]
     live_before = _fingerprint()
+    live_hashes_before = _prefix_hashes()
     print(f"watching {len(live_before)} live-state file(s) for changes")
 
     global _active
@@ -287,7 +352,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\nTHIS SWEEP LEFT A MUTATION BEHIND:\n{dirty}", file=sys.stderr)
         return 3
 
-    touched_live = _live_state_changes(live_before)
+    touched_live = _live_state_changes(live_before, live_hashes_before)
     if touched_live:
         print("\nTHIS SWEEP CHANGED LIVE STATE. A mutation removes a safety, "
               "so a test run under it can reach things no test should touch:",

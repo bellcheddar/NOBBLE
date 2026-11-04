@@ -221,3 +221,74 @@ def test_a_real_mutation_still_reports_and_exits_cleanly():
     assert "1 of 1 attempted caught" in completed.stdout, completed.stdout
     assert "SKIPPED" not in completed.stdout
     assert completed.returncode == 0, completed.stdout[-600:]
+
+
+def test_an_append_by_the_running_campaign_is_not_a_sweep_touching_live_state(tmp_path, monkeypatch):
+    """The sweep could not tell the runner's appends from a rewrite (F142).
+
+    The campaign runner adds a line to results.jsonl and state.jsonl every
+    thirty-five seconds or so. The sweep compared size and mtime, so any
+    write at all exited 4, and with a campaign running the harness's own
+    success-path test failed intermittently for a reason that had nothing to
+    do with the mutation.
+
+    All four cases, because the point is the distinction and not the
+    tolerance: an append is the runner, a rewrite or a truncation is the
+    hazard the check exists for.
+    """
+    monkeypatch.setattr(mutate, "ROOT", tmp_path)
+    monkeypatch.setattr(mutate, "PROTECTED_GLOBS", ("live/*.jsonl",))
+    (tmp_path / "live").mkdir()
+    target = tmp_path / "live" / "results.jsonl"
+
+    def baseline():
+        return mutate._fingerprint(), mutate._prefix_hashes()
+
+    target.write_text('{"a":1}\n{"a":2}\n')
+    before, hashes = baseline()
+    target.write_text('{"a":1}\n{"a":2}\n{"a":3}\n')
+    assert mutate._live_state_changes(before, hashes) == [], (
+        "an append by the runner is reported as the sweep touching live state"
+    )
+
+    target.write_text('{"a":1}\n{"a":2}\n')
+    before, hashes = baseline()
+    target.write_text('{"zzz":9}\n{"zzz":8}\n{"zzz":7}\n')
+    assert mutate._live_state_changes(before, hashes), (
+        "a rewrite that happens to be longer is tolerated"
+    )
+
+    target.write_text('{"a":1}\n{"a":2}\n')
+    before, hashes = baseline()
+    target.write_text('{"a":1}\n')
+    assert mutate._live_state_changes(before, hashes), "a truncation is tolerated"
+
+    target.write_text('{"a":1}\n{"a":2}\n')
+    before, hashes = baseline()
+    assert mutate._live_state_changes(before, hashes) == []
+
+
+def test_fingerprinting_does_not_disturb_the_baseline(tmp_path, monkeypatch):
+    """The mistake inside the fix.
+
+    The prefix digests were a module-level dict that `_fingerprint` filled as
+    a side effect. `_live_state_changes` calls `_fingerprint` to get the
+    "after" state, so the baseline was overwritten with the new content's
+    digests before any comparison happened, and every append still read as a
+    rewrite. Taking a measurement must not replace the thing it is measured
+    against.
+    """
+    monkeypatch.setattr(mutate, "ROOT", tmp_path)
+    monkeypatch.setattr(mutate, "PROTECTED_GLOBS", ("live/*.jsonl",))
+    (tmp_path / "live").mkdir()
+    target = tmp_path / "live" / "results.jsonl"
+    target.write_text("one\n")
+    hashes = mutate._prefix_hashes()
+    target.write_text("one\ntwo\n")
+    mutate._fingerprint()
+    mutate._fingerprint()
+    assert mutate._prefix_hashes() != hashes, "the fixture did not change"
+    # The baseline the caller holds is unchanged by any number of
+    # measurements taken since.
+    assert hashes == {"live/results.jsonl": __import__("hashlib")
+                      .sha256(b"one\n").hexdigest()}
