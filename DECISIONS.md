@@ -1931,3 +1931,53 @@ a measured factor, and the refusal says so.
 **Reversal.** `budget.gate_g1` chooses the end in one line. Removing the
 reduction means deleting the `affordable_pairs` call in `tier2.run`, which
 restores the previous behaviour of queueing the whole decile unpriced.
+
+## D-NOB-065. Comparability across sampling regimes is a whitelist
+
+**Decision.** `nobble/sampling.py` names the quantities that may be shown
+tier 1 against tier 2: `bridge_formation_rate`, `bridge_percentile`,
+`convergence_score`, `plip_fingerprint_match`. Anything else is withheld,
+including everything derived from `iptm_min`. The module imports nothing.
+
+**Alternatives.** A blacklist of the order statistics, which is shorter and
+reads more naturally. Or showing everything with a caveat, which is what a
+reader skips.
+
+**Rule.** A mean, a median or a proportion gets less noisy as samples are
+added. A minimum gets smaller. That is not a property of these four
+quantities, it is a property of the shape of each statistic, so it decides
+the list.
+
+**Why a whitelist.** The two fail in opposite directions. A whitelist that
+misses a comparable quantity shows less than it could. A blacklist that
+misses an order statistic shows a biased number as an improvement, and it
+would look exactly like a result. The second mistake is not recoverable by a
+reader.
+
+**Reversal.** Add or remove a key in `COMPARABLE`, with its shape stated.
+`tests/test_sampling_comparability.py` refuses a key whose name says it is a
+minimum, and refuses a key that `scores.jsonl` does not emit.
+
+## D-NOB-066. The QC harness refuses a server it cannot identify
+
+**Decision.** `/healthz` reports a digest over the app's own source, and
+`qc/qc.mjs` exits 3 rather than reporting on a server whose digest is not the
+working tree. `tools/app_fingerprint.py` is the one implementation.
+
+**Alternatives.** Start a fresh server inside the harness on a random port,
+which is tidier and loses the ability to QC a deployed site. Recompute the
+hash in JavaScript, which is one fewer process and two implementations of one
+hash. Or trust the operator, which is what was there.
+
+**Why.** A QC run reported fourteen clean pages against a process started
+hours earlier. The report was true about the wrong build. A check whose
+subject is not the thing being checked is worse than no check, because it
+produces a pass.
+
+**Scope.** Vendored libraries are excluded and the loose files beside them
+are not: the subdirectories are pinned third-party builds, the loose file is
+BINMAN's shared bridge and it changes. `VENDOR.json` stands in for the
+libraries, so a version bump still moves the digest.
+
+**Reversal.** Delete the guard block above `chromium.launch()` in
+`qc/qc.mjs`. The `/healthz` field is additive and harms nothing if unread.

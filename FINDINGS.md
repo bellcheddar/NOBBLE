@@ -6375,3 +6375,97 @@ Also corrected: a finding that computed the campaign's size as "158 pairs
 times 5 seeds times 3 arms is 2,360 jobs". That product is 2,370. The queue
 holds 2,360 because two pairs carry two arms rather than three, which is the
 fact the sentence was reaching for and had rounded into the arithmetic.
+
+## F137. Refinement's numbers were written, published and read by nothing
+
+Tier 2 writes `scores_tier2.jsonl`. `deploy/build_atlas.py` publishes it, and
+nothing read it: not the app, not validation, not the LM. The pose catalogue
+offered the refined coordinates with no number beside them, so there was no
+way to tell whether refinement had improved anything. The log entry that made
+tier 2 visible says "the atlas now publishes the tier-2 slice, the app
+exposes it". The app exposed the structures.
+
+Showing the scores is easy and showing the wrong ones is the risk, which is
+the part worth writing down. `iptm_min` is a minimum over seeds, and the
+minimum of a larger sample of the same distribution is smaller in
+expectation, so tier 2 at 25 diffusion samples sits below tier 1 at 1 before
+anything physical has changed. `delta_iptm` is their difference and moves with
+it. A before-and-after of either reads as the refinement working.
+
+So `nobble/sampling.py` states the rule rather than leaving it to whoever
+writes the next panel: a mean, a median or a proportion survives a change of
+sample count, a minimum does not. `bridge_formation_rate` is a proportion
+over jobs, `bridge_percentile` a median of percentiles,
+`convergence_score` is built from a mean pairwise RMSD, and each answers the
+same question at either sampling regime. The comparison is a whitelist, so a
+quantity added to `scores.jsonl` later is withheld until someone has thought
+about its shape. A blacklist fails the other way, and its failure is a biased
+number presented as an improvement, which would look exactly like a result.
+
+The module imports nothing. The droplet serves a precomputed atlas with no
+scoring stack and no gemmi behind it, and this is read from both sides.
+
+Verified by running tier-2 scoring for the first time, on a copy of the
+benchmark campaign with a synthesised refinement queue. It works, and
+`delta_iptm` comes out None with `seeds_binary` 0, which is right: tier 2
+refines ternary jobs only, so there is no binary arm to difference against.
+
+## F138. QC reported a clean site against a server from hours earlier
+
+Browser QC drives a live server and reports pages captured, non-200
+responses, console errors and axe violations. It had no idea which build was
+answering.
+
+I ran it after adding F137's panel and it said 14 pages, 0 non-200, 0 console
+errors, 0 serious axe violations. The panel was not in any of those pages. A
+Flask process from earlier in the build still held port 5055, my own server
+had failed to bind and died with "Address already in use" in a log nobody was
+reading, and the report was a true description of the old build.
+
+What caught it was looking for the new element in the DOM and being told
+there was no such element. That is a thing I happened to do and not a thing
+the harness does, which is the whole finding: the verification step could
+pass against the wrong subject and say nothing.
+
+So `/healthz` now reports a fingerprint over the app's own source and
+`qc/qc.mjs` refuses to report on a server whose fingerprint is not the
+working tree. The expected value comes from `tools/app_fingerprint.py`
+rather than being recomputed in JavaScript, because two implementations of
+one hash drift and the symptom of that drift is QC rejecting a server that is
+in fact current.
+
+Which files count took one correction. Vendored libraries are excluded, since
+hashing 10 MB of Mol* and Plotly makes the fingerprint a statement about
+Mol*. But the loose file beside them, `molstar-bridge.js`, is BINMAN's own
+shared code, and it changes: the first thing I did after adding the check was
+widen that bridge, which fixed a serious axe violation and moved no
+fingerprint at all. Loose files in `vendor/` are now included and the pinned
+subdirectories are not, with `VENDOR.json` standing in for the libraries so a
+version change still moves the digest.
+
+Two things fell out of pointing the tools at a named host.
+
+`qc/axe_detail.mjs` was hardcoded to `https://nobble.mdeller.com` while
+`qc.mjs` ran against localhost. The two reported different violations and
+neither said which host it had audited, so for a while I was reading
+production's accessibility report as though it were the working tree's. It
+takes `NOBBLE_BASE` now and prints the host it looked at.
+
+And the violation it found on the live site is real and already fixed here:
+four serious colour-contrast failures on `/pose`, the backronym's italics
+fading from #7b7e79 to #b9bbb6 against #f7f7f4, the last at 1.8:1 against a
+required 4.5:1. The working tree renders all of them at #61655f, which
+passes. They will clear on the next deploy. The live site's `/healthz`
+reports no fingerprint at all, which is the honest statement that it predates
+this check.
+
+The violation in the working tree was `.msp-logo`: Mol*'s own logo, rendered
+as a link with no text, in the tab order with no accessible name. Reachable
+only once the plugin has initialised, which is why a QC run whose viewer
+loads nothing never sees it. Fixed by widening `mountViewer` in BINMAN in
+place rather than forking it (D-NOB-007), and re-vendoring the identical
+file. Named rather than hidden: the logo is Mol*'s attribution and removing
+it is not ours to decide, and a name satisfies the rule while leaving the
+link where its authors put it. Retried on a short bounded timer because the
+logo appears asynchronously after the mount, so a single query right after
+construction finds nothing.

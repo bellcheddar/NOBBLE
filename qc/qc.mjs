@@ -3,6 +3,7 @@
 import { chromium } from 'playwright';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { execFileSync } from 'node:child_process';
 
 const BASE = process.env.NOBBLE_BASE || 'http://127.0.0.1:5055';
 const PAGES = ['/', '/pose', '/interactions', '/delta', '/benchmark', '/design', '/about'];
@@ -17,6 +18,44 @@ try {
   axeSource = readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
 } catch (e) {
   console.log('axe-core not installed: accessibility check skipped');
+}
+
+/* Which build is answering on BASE. A server left running from earlier in
+ * the build serves the old templates and the old routes, and this report
+ * then comes back clean because the old build was clean: 14 pages, 0
+ * non-200, 0 console errors, against a process started hours before the
+ * change it was meant to be checking (F138).
+ *
+ * The expected value comes from tools/app_fingerprint.py rather than being
+ * recomputed here. Two implementations of one hash drift, and the symptom of
+ * that drift is this check refusing a server that is in fact current. */
+const PY = process.env.NOBBLE_PY
+  || '../BINMAN/.pixi/envs/default/bin/python';
+let expected = null;
+try {
+  expected = execFileSync(PY, ['tools/app_fingerprint.py'],
+    { encoding: 'utf8', env: { ...process.env, PYTHONPATH: '.' } }).trim();
+} catch (e) {
+  console.log('could not compute the expected fingerprint: ' + e.message);
+}
+if (expected) {
+  const health = await fetch(BASE + '/healthz').then((r) => r.json())
+    .catch(() => null);
+  const serving = health && health.source_fingerprint;
+  if (!serving) {
+    console.error('FAIL: ' + BASE + ' does not report a source fingerprint, '
+      + 'so there is no way to tell which build it is running');
+    process.exit(3);
+  }
+  if (serving !== expected) {
+    console.error('FAIL: ' + BASE + ' is serving build ' + serving
+      + ', the working tree is ' + expected
+      + '. Restart the server before trusting this report. '
+      + 'Run `' + PY + ' tools/app_fingerprint.py --detail` on both to see '
+      + 'which files differ.');
+    process.exit(3);
+  }
+  console.log('build          : ' + serving);
 }
 
 const report = { pages: [], consoleErrors: [], axe: [] };

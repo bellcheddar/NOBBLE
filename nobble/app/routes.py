@@ -419,5 +419,20 @@ def api_status():
 
 @bp.route("/healthz")
 def healthz():
+    """Liveness, plus which build is answering.
+
+    The fingerprint is here and not in `site_status` because it is for a
+    harness rather than a reader: browser QC drives a live server and used to
+    have no way of telling whether that server was the working tree. One run
+    reported 14 clean pages against a process started hours earlier, for a
+    change that was not in it (F138).
+    """
+    from nobble.app import fingerprint
+
     state = data.campaign_state()
-    return jsonify({"ok": True, "campaign": state["campaign_id"], "jobs_done": state["jobs_done"]})
+    return jsonify({
+        "ok": True,
+        "campaign": state["campaign_id"],
+        "jobs_done": state["jobs_done"],
+        "source_fingerprint": fingerprint.fingerprint(),
+    })
