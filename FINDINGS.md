@@ -5460,3 +5460,57 @@ withheld record has no `smiles` key at all. It has one, set to null, beside
 `smiles_withheld`. That is the better shape: a reader learns the record has
 chemistry and that it was withheld, rather than that the field does not
 exist. The test asserts there is no value rather than no key.
+
+## F118. Spec sections 2 and 3 read against the code, and what the empty cache meant
+
+F52 audited spec section 5 and F116 did section 4. These are the two in
+between, recorded because an audit that found nothing is worth exactly as
+much as the search nobody repeats.
+
+**2.2, ligand chain encoding.** Both clauses hold. CCD preferred over SMILES
+with the fallback flagged in the manifest and marked in the results table,
+which is F51. A ligand over Boltz's 128-atom affinity cap records
+`affinity_unavailable` as a warning and the structure prediction runs, rather
+than the job failing.
+
+**2.3, post-translational modifications.** The spec asks for a manifest error,
+not a low score, when a degron class needs a modification and the peptide is
+submitted without one. Two checks cover it from different sides.
+`manifest.validate` raises `ptm_residue_absent` as an error when the sequence
+carries no residue of the required type, which is the precondition.
+`stale_inputs` compares the modifications the YAML asks for against the
+modifications the queue row requires, and I checked it is symmetric rather
+than assuming: required and present is clean, required and absent is
+reported, present and not required is reported, which is the F47 case, and
+neither is clean. It blocks the atlas build, so a missing modification cannot
+be published.
+
+**3.4, peptide library construction.** The clause easiest to let slip is the
+last one: "record the reduction ratio and the clustering parameters in the
+manifest". Both are there, in the library manifest rather than the campaign
+one: 25,519 candidates to 158 selected, `reduction_ratio` 0.0062, and the
+parameters including the ESM-2 model, the pooling, the seed and the budget.
+
+That answered something that had looked like a gap. `data/cache/esm2` is
+empty, which reads as "the embedding was never run". It was not, and
+correctly: `diverse: 0`, because the mandatory sources contribute 127 of a
+measured budget of 156 and the full mandatory set is 158, so the selection is
+`over_budget: mandatory members alone exceed the measured budget` by 2 pairs.
+`embed()` is called only on the optional candidates and there were none. An
+empty cache is the consequence of a budget, not a stage that did not run.
+
+The over-budget state is reported rather than failed, because the mandatory
+members are deliberately not trimmed and Gate G1 is judged on
+`max_compute_hours` rather than the 48-hour per-run target. Two pairs over a
+target is a scheduling fact; 96 hours is the gate.
+
+**3.5, where ESMFold is used.** Already audited, in the entry at F28's "three
+rules of the spec read against the code": ESMFold is not used at all, because
+none of its three permitted cases has arisen, and the clause the spec
+emphasises, that the disorder prefilter must not be applied to linear degron
+mimetics, holds because no such prefilter exists.
+
+Sections 1 and 2's remaining clauses are covered by tests that already exist:
+house style, the MSA policy through preflight, the token cap through the
+construct budget, and the campaign budget through `projected_hours` and Gate
+G1's exit code at curation time.
