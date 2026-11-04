@@ -107,6 +107,20 @@ def build_yaml(construct, substrate: dict, ligand, pocket, complex_type: str,
     return document
 
 
+def _substrate_plans() -> list[dict]:
+    """The substrate plan this assembly is working from.
+
+    Separate so the recorded plan is the one the YAMLs were written from
+    rather than a second call that could resolve differently (F94).
+    """
+    from nobble.curate import peptides as peptide_module
+
+    try:
+        return list(peptide_module.benchmark_substrate_constructs())
+    except Exception:                                   # noqa: BLE001
+        return []
+
+
 def assemble() -> dict:
     """Emit the corrected campaign. Same axes as tier 1: 15 jobs per pair."""
     from nobble.execute.campaign import fresh_campaign
@@ -202,6 +216,31 @@ def assemble() -> dict:
             "pairs": pairs, "pair_count": len(pairs), "pair_detail": pairs,
             "jobs_emitted": written,
             "compare_against": "the tier-1 benchmark campaign, same deposited structures",
+            # Which domain each substrate actually was, recorded rather than
+            # recomputed later. The boundaries come from an InterPro lookup
+            # and move when ambiguous-entry resolution is fixed, so a
+            # campaign that records only its job count cannot be checked
+            # against the plan it ran under: corr05's CSNK1A1 domain moved
+            # from 269 residues to 219 and nothing noticed, while the
+            # published plan beside the result described the newer one
+            # (F93, F94).
+            # Keys read from the plan rather than guessed: the gene and the
+            # E3 are top level and the domain is under `substrate`, which
+            # also carries the InterPro entry the boundary came from. That
+            # entry is the thing that moves, so recording it is the point.
+            "substrate_plan": [
+                {
+                    "gene": plan.get("gene"),
+                    "e3": plan.get("e3"),
+                    "mode": (plan.get("substrate") or {}).get("mode"),
+                    "accession": (plan.get("substrate") or {}).get("accession"),
+                    "interpro": (plan.get("substrate") or {}).get("interpro"),
+                    "start": (plan.get("substrate") or {}).get("start"),
+                    "end": (plan.get("substrate") or {}).get("end"),
+                    "length": (plan.get("substrate") or {}).get("length"),
+                }
+                for plan in _substrate_plans()
+            ],
         }
         (directory / "campaign.json").write_text(json.dumps(summary, indent=2, default=str))
         return {"path": str(directory), **summary}

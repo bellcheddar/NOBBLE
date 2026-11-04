@@ -4239,3 +4239,41 @@ an expression deciding what counts as a domain. The distinction is in the
 data: the fragment arm submits the curated 15-mer, so it is identified by
 matching those sequences. A degron is a slice of the domain it sits in, so
 without that every fragment would have been reported as superseded.
+
+## F94. The preventive half, and what the recorded plan showed
+
+F93 found that one substrate domain had moved and that the campaign had not
+recorded which domain it used. That is two problems and F93 only fixed the
+detection: `superseded_substrates` compares a campaign's YAMLs against the
+plan, so the next move is caught, but a campaign still recorded nothing to
+be checked against.
+
+`corrected.assemble()` records the plan now: gene, E3, mode, accession, the
+InterPro or PFAM entry the boundary came from, and the range. The entry is
+the part that matters, because without it a reader cannot tell whether a
+boundary changed or a different entry was chosen for the same gene.
+
+Writing it down showed something the comparison had not. Five of the six
+folded domains resolve from an InterPro entry, IPR054696, IPR001487 twice,
+IPR000504 and IPR000719. CSNK1A1 resolves from PF00069, a PFAM accession,
+and CSNK1A1 is the one whose boundary moved.
+
+That is a signal and not a cause, and it is recorded as a signal. It does
+not establish that the sourcing is why the boundary moved, and it is where
+someone deciding which of the 269 and 219 residue domains is right should
+start. The test pins the set of PFAM-sourced domains at exactly CSNK1A1, so
+if another gene joins it the question arises again rather than quietly.
+
+The plan is published as the plan rather than as the campaign's record, and
+that is left alone deliberately. `build_atlas` recomputes it, which is
+correct for a document that describes what the plan says; the comparison
+beside it now carries the caveat naming the pair whose construct differs.
+Together those are honest. Replacing the published plan with a campaign's
+recorded copy would describe a past run as though it were the current
+intent.
+
+My own habit again, and the one F92 was about. The first version of the
+recorded plan read `pair_id` and `substrate.gene`, neither of which exists:
+the gene and the E3 are top level and the substrate carries the accession,
+entry, range, length, mode and reason. Printing the keys took one command
+and I wrote the guess first, which is the seventh time today.

@@ -105,3 +105,64 @@ def test_the_comparison_conclusion_says_so():
     assert "the measurement stands" in report["conclusion"], (
         "the caveat reads as though the number were wrong, which it is not"
     )
+
+
+def test_a_corrected_campaign_records_the_plan_it_ran_under():
+    """The preventive half of F93. A campaign that records only its job
+    count cannot be checked against the plan it used, which is how a
+    boundary moved 50 residues with nothing noticing (F94)."""
+    from nobble.execute import corrected
+
+    plans = corrected._substrate_plans()
+    assert plans, "the substrate plan is empty, so nothing would be recorded"
+    recorded = [
+        {"gene": plan.get("gene"),
+         "interpro": (plan.get("substrate") or {}).get("interpro"),
+         "start": (plan.get("substrate") or {}).get("start"),
+         "end": (plan.get("substrate") or {}).get("end")}
+        for plan in plans
+    ]
+    assert all(row["gene"] for row in recorded), (
+        "a recorded entry has no gene, so the keys are guessed rather than "
+        f"read: {recorded[:2]}"
+    )
+    assert any(row["interpro"] for row in recorded)
+
+
+def test_the_recorded_plan_names_the_entry_the_boundary_came_from():
+    """The InterPro or PFAM entry is the thing that moves, so recording the
+    range without it would leave the next reader unable to tell whether a
+    boundary changed or a different entry was chosen."""
+    from nobble.execute import corrected
+
+    folded = [plan for plan in corrected._substrate_plans()
+              if (plan.get("substrate") or {}).get("mode") == "folded_domain"]
+    assert folded
+    assert all((plan.get("substrate") or {}).get("interpro")
+               for plan in folded), folded
+
+
+def test_the_superseded_domain_is_the_one_sourced_differently():
+    """Recorded as a signal rather than a cause. Five folded domains
+    resolve from an InterPro entry and CSNK1A1 from a PFAM accession, and
+    CSNK1A1 is the one whose boundary moved. That does not prove the
+    sourcing is why, and it is where someone resolving which boundary is
+    correct should start."""
+    from nobble.execute import corrected
+
+    by_gene = {}
+    for plan in corrected._substrate_plans():
+        substrate = plan.get("substrate") or {}
+        if substrate.get("mode") == "folded_domain":
+            by_gene[plan["gene"]] = str(substrate.get("interpro") or "")
+
+    pfam = sorted(gene for gene, entry in by_gene.items()
+                  if entry.startswith("PF"))
+    interpro = sorted(gene for gene, entry in by_gene.items()
+                      if entry.startswith("IPR"))
+    assert interpro, by_gene
+    assert pfam == ["CSNK1A1"], (
+        f"the set of PFAM-sourced domains has changed: {pfam}. The one "
+        "superseded boundary was the only member, which is why this is "
+        "pinned"
+    )
