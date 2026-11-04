@@ -44,8 +44,17 @@ def domains(accession: str) -> list[dict]:
                 fragments = location.get("fragments") or []
                 if not fragments:
                     continue
-                start = fragments[0]["start"]
-                end = fragments[-1]["end"]
+                # min and max rather than first and last. A discontinuous
+                # domain's extent is what a construct boundary needs, and
+                # taking the ends by position does not depend on InterPro
+                # returning fragments in order. It does today: 345
+                # multi-fragment locations across the 1,197 cached
+                # accessions, none out of order. Relying on that would be
+                # relying on an undocumented property of someone else's
+                # API, and getting it wrong moves a construct boundary
+                # without anything failing.
+                start = min(f["start"] for f in fragments)
+                end = max(f["end"] for f in fragments)
                 records.append(
                     {
                         "accession": metadata.get("accession"),

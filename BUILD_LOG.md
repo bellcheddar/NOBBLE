@@ -707,3 +707,15 @@
   to prevent. Checked against the real constructs as well as invented
   strings: 11 segments, 11 keys, no collisions. Also pinned that a
   zero-byte a3m is a failed fetch rather than a cache hit. 140 tests pass.
+- 2026-11-04T21:00Z Tested curate.interpro, which had none. Construct
+  boundaries come from named InterPro entries and every job is built on
+  them: a wrong boundary gives the wrong receptor length, token count and
+  pocket residues, and nothing fails.
+- 2026-11-04T21:00Z Found an undefended assumption while there. Domain
+  extents were taken as fragments[0]["start"] and fragments[-1]["end"],
+  which assumes InterPro returns fragments in positional order. It does:
+  345 multi-fragment locations across 1,197 cached accessions, none out of
+  order. That is an undocumented property of someone else's API, and
+  relying on it would move a construct boundary silently if it changed.
+  Now min and max by position. Verified no construct moved, and preflight
+  on the assembled campaign is still clean. 144 tests pass.
