@@ -31,9 +31,11 @@ FORM = paths.ROOT / "config" / "tier_b_constructs.toml"
 
 # What a receptor segment has to fit inside, for a construct that does not
 # declare itself an exception: the tier-1 cap less a 15-mer peptide and a
-# glue at the recall set's median heavy-atom count.
-PEPTIDE_RESIDUES = 15
-GLUE_HEAVY_ATOMS = 59
+# glue at the recall set's median heavy-atom count. From config, because the
+# cutoff sweep is right that a number deciding an acceptance is a threshold
+# and not an incidental literal.
+PEPTIDE_RESIDUES = int(paths.thresholds()["tier_b"]["construct_peptide_residues"])
+GLUE_HEAVY_ATOMS = int(paths.thresholds()["tier_b"]["construct_glue_heavy_atoms"])
 
 
 def _tier_b_genes() -> list[str]:

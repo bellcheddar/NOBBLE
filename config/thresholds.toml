@@ -9,6 +9,15 @@ mean_plddt_min = 80.0
 # filter is unpopulated rather than selective, and applying it literally
 # emptied the funnel. See D-NOB-009.
 tumour_enrichment_above_median = true  # not applied
+
+# What a Tier B receptor segment has to fit inside, used by
+# nobble/curate/tier_b_constructs.py to judge a filled-in construct against
+# the tier-1 token cap. The peptide is the campaign's 15-mer; the glue is the
+# recall set's median heavy-atom count, measured in F133 over the 121
+# chemotypes. Here rather than in the module because the cutoff sweep is
+# right that a number deciding an acceptance belongs in config (F163).
+construct_peptide_residues = 15
+construct_glue_heavy_atoms = 59
 take_top = 15
 min_ligases_for_gate = 10
 

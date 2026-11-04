@@ -7544,3 +7544,18 @@ One defect in my own loader, found by that filled-table test rather than by
 reading it: `report()` built its `form` field with `relative_to(ROOT)`, which
 raises for a form outside the project root. A report that raises while
 describing a blocked state is worse than the blocked state.
+
+Two more things worth recording about how that went in.
+
+The cutoff sweep caught the module on its next run. I had written
+`PEPTIDE_RESIDUES = 15` and `GLUE_HEAVY_ATOMS = 59` as module constants, and
+both decide whether a filled-in construct is accepted, which makes them
+thresholds and puts them in `config/thresholds.toml` by CLAUDE.md's rule.
+The sweep was right and the numbers have moved.
+
+And it caught them after I had already committed, because the command was
+`pytest ... | tail -3 && git commit`, and a pipeline's exit status is the
+last command's: `tail` succeeded, so the `&&` did not gate anything. I have
+been running the suite that way all session and it has only now mattered,
+which is the definition of a latent fault in one's own method rather than in
+the code.
