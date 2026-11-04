@@ -82,3 +82,15 @@
   the 156 budget, but the selection is still 2 over once scrambles are paid
   for, so the campaign stays calibration-only with no discovery headroom.
   D-NOB-033. 58 tests pass.
+- 2026-11-04T02:30Z Main campaign manifest built: `build_campaign_manifest`
+  reads the persisted library and routes each arm by its own rule (benchmark
+  from its deposited chains, Sievers to CRBN with the IMiD assigned in
+  D-NOB-033, scrambles inheriting their parent's construct and ligand).
+  158 pairs, 2,370 jobs, 0 errors, 0 unroutable, written to
+  data/manifests/campaign.jsonl. Matches the library projection exactly.
+  Caught a bug in the first version: scramble inheritance rebuilt the parent's
+  ligand with by_ccd, which returns nothing for a SMILES-encoded degrader, so
+  bench03's dBET57 scramble dropped out as unroutable while its positive ran.
+  A positive with no control is worse than running neither. The benchmark
+  builder now exposes the resolved Ligand objects instead.
+  tests/test_campaign_manifest.py (5 tests). 63 tests pass.

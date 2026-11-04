@@ -231,6 +231,10 @@ def build_benchmark_manifest() -> dict:
     jobs: list[Job] = []
     pairs: list[dict] = []
     unroutable: list[dict] = []
+    # Keyed by peptide_id. A scramble inherits its parent's exact ligand, and
+    # rebuilding one from its dict form loses the SMILES-encoded degraders:
+    # by_ccd cannot reconstruct a ligand that never had a CCD.
+    routing: dict[str, dict] = {}
 
     for peptide in peptide_list:
         member = by_member.get((peptide.gene, peptide.e3_hint))
@@ -246,6 +250,8 @@ def build_benchmark_manifest() -> dict:
         pair_id = f"bench{member['index']:02d}_{peptide.gene}_{member['e3']}"
         pair_jobs = expand_pair(pair_id, "benchmark", construct, peptide, ligand)
         jobs.extend(pair_jobs)
+        routing[peptide.peptide_id] = {"construct": construct, "ligand": ligand,
+                                       "pair_id": pair_id}
         pairs.append({
             "pair_id": pair_id,
             "member": member["index"],
@@ -264,6 +270,7 @@ def build_benchmark_manifest() -> dict:
         "pairs": pairs,
         "jobs": jobs,
         "unroutable": unroutable,
+        "routing": routing,
         "jobs_per_pair": jobs_per_pair(),
         "issues": [issue.to_dict() for issue in issues],
         "errors": sum(1 for issue in issues if issue.severity == "error"),
@@ -297,3 +304,134 @@ def write(manifest: dict, name: str = "benchmark") -> dict:
         indent=2,
     ))
     return {"manifest": str(path), "summary": str(summary_path)}
+
+
+def build_campaign_manifest(library: list | None = None) -> dict:
+    """The full campaign: the benchmark panel, the Sievers arm and the scrambles.
+
+    Reads the persisted library (`data/manifests/library.jsonl`) rather than
+    reassembling it, because assembly is network-bound on UniProt and InterPro
+    and takes over half an hour.
+
+    Routing differs by source, so it is explicit per source rather than one
+    rule with exceptions:
+
+    * **benchmark** members come from `build_benchmark_manifest`, which knows
+      each member's deposited chain, CCD and E3 pairing.
+    * **sievers_zf** members all target CRBN and carry the IMiD assigned in
+      D-NOB-033, pomalidomide or lenalidomide depending on which the screen
+      found significant for that zinc finger.
+    * **scramble** members inherit their parent's construct and ligand. A
+      composition-matched scramble run against a different receptor or a
+      different drug than its positive is not a control for anything.
+    """
+    from nobble.curate import library as library_module
+    from nobble.curate import peptides as P
+
+    if library is None:
+        persisted = library_module.load()
+        if persisted is None:
+            return {"status": "no library manifest: run nobble.curate.library first",
+                    "pairs": [], "jobs": []}
+        library = persisted["peptides"]
+
+    rows = {row["peptide_id"]: row for row in library}
+
+    # The benchmark panel keeps its own builder: it is the only arm whose
+    # routing depends on a deposited structure rather than on the peptide.
+    benchmark = build_benchmark_manifest()
+    jobs: list[Job] = list(benchmark["jobs"])
+    pairs: list[dict] = list(benchmark["pairs"])
+    unroutable: list[dict] = list(benchmark["unroutable"])
+    benchmark_routing = benchmark.get("routing", {})
+
+    def _ligand_for(row: dict):
+        ccd = (row.get("screen_drugs") or {}).get("assigned_ccd")
+        if not ccd:
+            return None
+        return L.by_ccd(ccd, modality="glue", source="sievers_assigned")
+
+    # Sievers arm, then scrambles, so a scramble can look its parent up.
+    resolved: dict[str, dict] = {}
+    for row in library:
+        if row["source"] != "sievers_zf":
+            continue
+        construct_name = E3_TO_CONSTRUCT.get(row.get("e3_hint"))
+        ligand = _ligand_for(row)
+        if construct_name is None or ligand is None:
+            unroutable.append({
+                "peptide": row["peptide_id"], "e3": row.get("e3_hint"),
+                "reason": ("no receptor construct defined" if construct_name is None
+                           else "no IMiD assigned: see D-NOB-033"),
+            })
+            continue
+        construct = C.CONSTRUCTS[construct_name]
+        peptide = P.Peptide(**{k: v for k, v in row.items() if k != "length"})
+        label = "pos" if row.get("label") == "degraded" else "neg"
+        pair_id = f"sv_{label}_{row.get('gene') or 'unknown'}_{row['peptide_id'][-6:]}"
+        pair_jobs = expand_pair(pair_id, "sievers_zf", construct, peptide, ligand)
+        jobs.extend(pair_jobs)
+        entry = {
+            "pair_id": pair_id,
+            "tier": "sievers_zf",
+            "construct": construct.name,
+            "e3_gene": construct.e3_gene,
+            "peptide_id": row["peptide_id"],
+            "peptide_sequence": row["sequence"],
+            "peptide_gene": row.get("gene"),
+            "screen_label": row.get("label"),
+            "assigned_drug": (row.get("screen_drugs") or {}).get("assigned_drug"),
+            "ligand": ligand.to_dict(),
+            "jobs": len(pair_jobs),
+        }
+        pairs.append(entry)
+        resolved[row["peptide_id"]] = {"construct": construct, "ligand": ligand,
+                                       "pair_id": pair_id}
+
+    for row in library:
+        if row["source"] != "scramble":
+            continue
+        parent_id = row.get("parent_peptide_id")
+        parent_row = rows.get(parent_id)
+        inherited = resolved.get(parent_id)
+        if inherited is None:
+            # A benchmark parent: take the construct and ligand object the
+            # benchmark builder already resolved, including SMILES-encoded
+            # degraders that have no CCD to rebuild from.
+            inherited = benchmark_routing.get(parent_id)
+        if inherited is None or inherited["ligand"] is None:
+            unroutable.append({
+                "peptide": row["peptide_id"], "parent": parent_id,
+                "reason": ("scramble whose parent was not routed: a control "
+                           "cannot run without the positive it controls for"),
+            })
+            continue
+        peptide = P.Peptide(**{k: v for k, v in row.items() if k != "length"})
+        pair_id = f"scr_{inherited['pair_id']}"
+        pair_jobs = expand_pair(pair_id, "scramble", inherited["construct"],
+                                peptide, inherited["ligand"])
+        jobs.extend(pair_jobs)
+        pairs.append({
+            "pair_id": pair_id,
+            "tier": "scramble",
+            "construct": inherited["construct"].name,
+            "e3_gene": inherited["construct"].e3_gene,
+            "peptide_id": row["peptide_id"],
+            "peptide_sequence": row["sequence"],
+            "peptide_gene": row.get("gene"),
+            "parent_peptide_id": parent_id,
+            "parent_pair_id": inherited["pair_id"],
+            "ligand": inherited["ligand"].to_dict(),
+            "jobs": len(pair_jobs),
+        })
+
+    issues = validate(jobs)
+    return {
+        "pairs": pairs,
+        "jobs": jobs,
+        "unroutable": unroutable,
+        "jobs_per_pair": jobs_per_pair(),
+        "issues": [issue.to_dict() for issue in issues],
+        "errors": sum(1 for issue in issues if issue.severity == "error"),
+        "warnings": sum(1 for issue in issues if issue.severity == "warning"),
+    }
