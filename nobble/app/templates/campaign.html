@@ -65,17 +65,32 @@
   <aside>
     <section class="panel">
       <h3>Composite weights</h3>
-      <p class="panel__hint">Fitted on the benchmark panel and the Sievers matched set, never by hand.</p>
+      {# The caption used to claim these were the fitted weights while the
+         sliders rendered hardcoded defaults, beside a composite column
+         computed from the fit. Moving a slider then jumped the ranking for
+         no visible reason. #}
+      {% if weight_fit and weight_fit.get('fitted') %}
+        <p class="panel__hint">
+          Fitted on {{ weight_fit.labelled_pairs }} labelled pairs, never by hand.
+        </p>
+      {% else %}
+        <p class="panel__hint">
+          Not fitted yet, so these are starting values to explore with, not a
+          fitted model.
+        </p>
+      {% endif %}
       <div class="weights" id="weights">
         {% for key, meta in components.items() %}
         <div class="weight{% if meta.trust == 'not validated' %} weight--unvalidated{% endif %}"
              data-weight-key="{{ key }}">
           <div class="weight__head">
             <label class="weight__label" for="w-{{ key }}">{{ meta.label }}</label>
-            <span class="weight__value" data-weight-display>{{ meta.default_weight }}</span>
+            {% set fitted_w = (weight_fit.weights if weight_fit and weight_fit.get('fitted') else {}) %}
+            {% set start_w = fitted_w.get(key, meta.default_weight) %}
+            <span class="weight__value" data-weight-display>{{ start_w }}</span>
           </div>
           <input type="range" id="w-{{ key }}" min="0" max="1" step="0.05"
-                 value="{{ meta.default_weight }}"
+                 value="{{ start_w }}"
                  aria-describedby="wn-{{ key }}">
           <p class="weight__note" id="wn-{{ key }}">{{ meta.note }}</p>
         </div>
@@ -134,7 +149,23 @@
   let sortDir = -1;
 
   const defaults = {};
-  Object.keys(COMPONENTS).forEach(k => { defaults[k] = COMPONENTS[k].default_weight; });
+  /* The fit is the baseline when there is one: Reset should return to the
+     weights that produced the composite column, not to the hand-set
+     starting values the fit replaced. */
+  const FITTED_RAW = {{ (weight_fit.weights if weight_fit and weight_fit.get('fitted') else {}) | tojson }};
+  /* The fitter names the lysine component by the column it reads
+     (lysine_reach_exposed_fraction); the UI names the slider after the
+     signal (lysine_reach). Without the alias the fitted weight lands on no
+     slider and the slider silently keeps its hand-set default. */
+  const FITTED_ALIASES = { lysine_reach: 'lysine_reach_exposed_fraction' };
+  const FITTED = {};
+  Object.keys(COMPONENTS).forEach(k => {
+    const source = FITTED_ALIASES[k] || k;
+    if (FITTED_RAW[source] !== undefined) { FITTED[k] = FITTED_RAW[source]; }
+  });
+  Object.keys(COMPONENTS).forEach(k => {
+    defaults[k] = FITTED[k] !== undefined ? FITTED[k] : COMPONENTS[k].default_weight;
+  });
   let weights = NOBBLE.weights.load(defaults);
 
   function fmt(value, places) {

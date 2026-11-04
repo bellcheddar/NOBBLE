@@ -552,3 +552,22 @@
   My first assertion pinned AUC > 0.6 from an earlier ad-hoc run whose draw
   order differed; corrected to assert the property rather than tune the
   fixture until it agreed. 128 tests pass.
+- 2026-11-04T16:25Z Rendered the app against a fitted composite at full
+  scale, which has never happened: the fitter has always refused. The
+  composite column, the partial badges and the sliders all render, and both
+  fit caveats fire (in-sample AUC, and lysine geometry carrying 0.36 weight
+  despite being unvalidated).
+- 2026-11-04T16:25Z That exposed a real inconsistency. The weight sliders
+  rendered hardcoded defaults under a caption reading "Fitted on the
+  benchmark panel and the Sievers matched set, never by hand", beside a
+  composite column computed from the actual fit. The two disagreed, so
+  touching a slider jumped the ranking for no visible reason. The sliders
+  now seed from the fit, Reset returns to the fit rather than to the values
+  it replaced, and the caption says plainly when nothing is fitted.
+- 2026-11-04T16:25Z Two mistakes of my own on the way. I added weight_fit to
+  the /delta route instead of /campaign, because I matched the first
+  occurrence of a line that appears in both; caught by reading the rendered
+  page, which still said "Not fitted yet". And the fitter names the lysine
+  component lysine_reach_exposed_fraction while the UI slider is
+  lysine_reach, so the fitted weight landed on no slider and the default
+  stood silently. Aliased. 128 tests, QC clean, deployed.

@@ -37,6 +37,7 @@ def campaign():
         components=data.COMPONENTS,
         meta=data.campaign_meta(),
         throughput=data.throughput(),
+        weight_fit=data.weight_fit(),
     )
 
 
