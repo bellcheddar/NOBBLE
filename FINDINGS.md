@@ -7155,3 +7155,39 @@ different route in. The new test goes through `plddt_profile`, and through
 `summary()`, which swallows the exception into the status that was reported
 20,279 times. Both mutations are now accounted for: one removed as
 unobservable, one caught.
+
+## F156. The constraints the project answers to outside itself
+
+F153 widened `mutate.py`'s default list from five mutations to thirteen and
+F155 corrected one of them. What all nineteen now cover is a decision the
+code makes. What none of them covered is a promise the project has made to
+somebody else.
+
+Six added for those, and they are the ones whose failure would not be a wrong
+number but a broken undertaking:
+
+- **PROTAC-DB chemistry stops being withheld from the published bundle.**
+  Spec 2.1 is unconditional: PROTAC-DB stays internal-use-only and is never
+  redistributed. Publishing to a public site is redistribution, so the
+  redaction is the whole of how that promise is kept.
+- **A finished job stops counting as finished.** The resume guarantee:
+  `TERMINAL_STATUSES` is what makes a restart skip work already done, and
+  emptying it turns a kill into a repeat of up to 2,360 jobs.
+- **The YAML and the queue row stop being compared.** F47's refusal, which is
+  what stops a result computed on an input the current code would not emit
+  from reaching the published atlas.
+- **Tier-2 records can reach a tier-1 number.** D-NOB-032: a minimum over 25
+  diffusion samples pooled with one over 1 biases Delta-ipTM downwards for
+  exactly the pairs that were refined.
+- **The pose viewer asserts a pair exists when the campaign has no record of
+  it.** F122: a pair whose jobs all failed and a pair that does not exist are
+  different states, and 200 for both says they are the same.
+- **Head C stops naming the filter the campaign cannot satisfy.** Spec 5
+  requires the abstention to state what is missing, which F141 had to fix
+  once already.
+
+All six caught. Nineteen of nineteen now, after F155's correction, and the
+part worth recording is not the score. It is that the list had grown to cover
+what the code decides and still said nothing about what the code promises,
+and those are different questions. A sweep that only tests decisions will
+pass on the day a licensing constraint is deleted.
