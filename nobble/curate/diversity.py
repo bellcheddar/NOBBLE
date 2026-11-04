@@ -258,7 +258,20 @@ def campaign_budget(default_pairs: int = 220) -> int:
     return default_pairs
 
 
-def projected_hours(pairs: int, total_tokens: int | None = None) -> dict:
+def _token_band(tokens: int, edges: list[int]) -> tuple[int, int]:
+    """Imported from the writer so one definition decides the bands.
+
+    Two copies of a binning rule is how a rate measured in one set of bands
+    comes to be applied in another, which would be the same defect as F61
+    arriving by duplication.
+    """
+    from nobble.execute.runner import token_band
+
+    return token_band(tokens, edges)
+
+
+def projected_hours(pairs: int, total_tokens: int | None = None,
+                    job_tokens: list[int] | None = None) -> dict:
     """Wall-clock hours a selection of `pairs` would take at measured rate.
 
     Two budgets exist and they are not the same thing, which matters because
@@ -279,11 +292,27 @@ def projected_hours(pairs: int, total_tokens: int | None = None) -> dict:
 
     They did not. Throughput measured on the corrected campaign, whose median
     job is 397 tokens, projected the main campaign, whose median job is 124,
-    at 104.3 hours and opened Gate G1. Summing the main campaign's real tokens
-    at the rate measured for jobs of each size gives 54.0 hours: over the
-    48-hour target and well inside the 96-hour gate. A false gate stops an
-    unattended build, which is the most expensive thing this function can do
-    (F45).
+    at 104.3 hours and opened Gate G1. A false gate stops an unattended build,
+    which is the most expensive thing this function can do (F45).
+
+    `job_tokens` is the token count of each job being sized, and is better
+    than `total_tokens` for the same reason `total_tokens` is better than a
+    job count. F45's fix replaced a representative job with one median
+    seconds-per-token rate, and this docstring claimed the result was
+    reached by "summing the real tokens at the rate measured for jobs of
+    each size". It was not: the code multiplied every token by one median.
+
+    That rate is not a property of the model. Measured on the main
+    campaign it runs from 0.21 to 0.66 s/token across the configured token
+    bands, because attention cost does not grow linearly with sequence
+    length, and one median understates any campaign whose large jobs are a
+    minority of the jobs and a majority of the cost. On the main campaign's
+    own remaining queue the flat rate gives 48.6 hours and the banded rate
+    51.4 (F61).
+
+    Given `job_tokens` each job is priced in its own band. A band with no
+    measurement is priced at the slowest rate observed, which is the
+    pessimistic choice, and `unmeasured_jobs` says how many were.
     """
     tuning = paths.tuning()["campaign"]
     budget_hours = float(tuning["wall_clock_budget_hours"])
@@ -301,12 +330,45 @@ def projected_hours(pairs: int, total_tokens: int | None = None) -> dict:
                 "pairs": pairs}
 
     rate = measured.get("median_seconds_per_token")
-    if total_tokens and rate:
+    bands = measured.get("seconds_per_token_by_band") or []
+    unmeasured = 0
+    if job_tokens and bands:
+        # Each job at the rate measured for jobs of its size, which is what
+        # this function has always claimed to do.
+        edges = [int(edge) for edge in
+                 paths.thresholds()["throughput"]["token_bands"]]
+        measured_rate = {
+            (int(band["min_tokens"]), int(band["max_tokens"] or 0)):
+                float(band["median_seconds_per_token"]) for band in bands
+        }
+        slowest = max(measured_rate.values())
+        seconds = 0.0
+        for tokens in job_tokens:
+            band = _token_band(int(tokens), edges)
+            if band in measured_rate:
+                seconds += tokens * measured_rate[band]
+            else:
+                seconds += tokens * slowest
+                unmeasured += 1
+        hours = seconds / 3600.0
+        basis = (
+            f"{len(job_tokens):,} jobs totalling {sum(job_tokens):,} tokens, "
+            f"each priced in its own token band across {len(bands)} measured "
+            f"band(s) spanning "
+            f"{min(float(b['median_seconds_per_token']) for b in bands)} to "
+            f"{slowest} s/token"
+        )
+        if unmeasured:
+            basis += (f"; {unmeasured} job(s) fall in a band with no "
+                      f"measurement and are priced at {slowest} s/token")
+    elif total_tokens and rate:
         # Per-token rate transfers between campaigns; a representative job
-        # does not.
+        # does not. One rate for every job size does not either, which is
+        # why this is now the fallback rather than the method.
         hours = (total_tokens * float(rate)) / 3600.0
-        basis = (f"{total_tokens:,} tokens at the measured "
-                 f"{rate} s/token")
+        basis = (f"{total_tokens:,} tokens at the measured {rate} s/token, "
+                 "one rate for every job size because the per-job token "
+                 "counts were not supplied")
     else:
         hours = (pairs * per_pair * seconds_per_job) / 3600.0
         basis = (
@@ -322,6 +384,7 @@ def projected_hours(pairs: int, total_tokens: int | None = None) -> dict:
         "jobs": pairs * per_pair,
         "projected_hours": round(hours, 1),
         "basis": basis,
+        "unmeasured_jobs": unmeasured,
         "wall_clock_budget_hours": budget_hours,
         "max_compute_hours": max_hours,
         "over_wall_clock_target": round(max(0.0, hours - budget_hours), 1),

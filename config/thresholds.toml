@@ -89,6 +89,15 @@ seeds = 5
 [gates]
 min_free_disk_gb = 50
 
+[throughput]
+# Upper edges of the token bands throughput is measured in, exclusive.
+# A single seconds-per-token rate is not a property of the model: measured
+# on the main campaign it ranges from 0.21 to 0.66 depending on job size,
+# because attention cost does not grow linearly with sequence length.
+# Projecting a mixed campaign at one median rate understates it whenever
+# the large jobs are a minority of the jobs and a majority of the cost.
+token_bands = [200, 400, 800, 1600, 3200]
+
 [watchdog]
 # A running job is "overdue" past this multiple of the slowest comparable job
 # the same campaign has already completed, scaled by token count.

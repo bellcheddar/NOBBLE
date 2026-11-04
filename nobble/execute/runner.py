@@ -369,6 +369,48 @@ def run_campaign(campaign: Path, limit: int | None = None, tier: int = 1) -> dic
     }
 
 
+def token_band(tokens: int, edges: list[int]) -> tuple[int, int]:
+    """The (low, high) band a job of this size falls in, high exclusive.
+
+    A high of 0 means the open-ended top band. One band for all job sizes
+    is what a single median seconds-per-token rate amounts to, and that
+    rate is not constant: measured on the main campaign it runs from 0.21
+    to 0.66 s/token across these bands, because attention cost does not
+    grow linearly with sequence length (F61).
+    """
+    low = 0
+    for edge in edges:
+        if tokens < edge:
+            return (low, edge)
+        low = edge
+    return (low, 0)
+
+
+def throughput_bands(timed: list[dict]) -> list[dict]:
+    """Median seconds per token within each band, and how many jobs set it.
+
+    The job count travels with the rate because a band measured once is not
+    the same evidence as a band measured fifty times, and a projection that
+    cannot tell the difference states a number it has no basis for.
+    """
+    edges = [int(edge) for edge in
+             paths.thresholds()["throughput"]["token_bands"]]
+    grouped: dict[tuple[int, int], list[float]] = {}
+    for item in timed:
+        band = token_band(int(item["tokens"]), edges)
+        grouped.setdefault(band, []).append(item["seconds"] / item["tokens"])
+    out = []
+    for (low, high), observed in sorted(grouped.items()):
+        observed.sort()
+        out.append({
+            "min_tokens": low,
+            "max_tokens": high or None,
+            "jobs": len(observed),
+            "median_seconds_per_token": round(observed[len(observed) // 2], 4),
+        })
+    return out
+
+
 def write_throughput(campaign: Path) -> dict:
     """Measure seconds per token and size the campaign from it (spec 1.2)."""
     results_path = campaign / "results.jsonl"
@@ -382,6 +424,7 @@ def write_throughput(campaign: Path) -> dict:
 
     rates = sorted(item["seconds"] / item["tokens"] for item in timed)
     median_rate = rates[len(rates) // 2]
+    by_band = throughput_bands(timed)
     budget_hours = float(paths.tuning()["campaign"]["wall_clock_budget_hours"])
 
     # Size the campaign from the measured rate at a representative token count,
@@ -400,6 +443,7 @@ def write_throughput(campaign: Path) -> dict:
         "campaign": campaign.name,
         "jobs_timed": len(timed),
         "median_seconds_per_token": round(median_rate, 4),
+        "seconds_per_token_by_band": by_band,
         "mean_seconds_per_token": round(sum(rates) / len(rates), 4),
         "fastest_seconds_per_token": round(rates[0], 4),
         "slowest_seconds_per_token": round(rates[-1], 4),

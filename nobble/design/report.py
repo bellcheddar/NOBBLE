@@ -121,19 +121,25 @@ def cost_of(count: int, tokens_per_pair: int | None = None) -> dict:
     `tokens_per_pair` lets the caller project from real job sizes rather than
     from a representative job of whichever campaign was measured last (F45).
     A design scan's variants are the parent's length, so one number covers
-    them all.
+    them all, and that is exactly the case the banded projection prices
+    correctly: every job is the same size, so it belongs in one band, and a
+    scan whose jobs are all 1,200 tokens must not be priced at a rate whose
+    median came from 144-token jobs (F61).
     """
     from nobble.curate.diversity import projected_hours
     from nobble.curate.manifest import jobs_per_pair
 
-    total_tokens = (count * jobs_per_pair() * tokens_per_pair
-                    if tokens_per_pair else None)
-    projection = projected_hours(count, total_tokens=total_tokens)
+    jobs = count * jobs_per_pair()
+    job_tokens = [tokens_per_pair] * jobs if tokens_per_pair else None
+    total_tokens = jobs * tokens_per_pair if tokens_per_pair else None
+    projection = projected_hours(count, total_tokens=total_tokens,
+                                 job_tokens=job_tokens)
     return {
         "variants": count,
         "jobs": projection.get("jobs"),
         "projected_hours": projection.get("projected_hours"),
         "status": projection.get("status"),
+        "basis": projection.get("basis"),
     }
 
 

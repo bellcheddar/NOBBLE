@@ -1572,3 +1572,27 @@ waits is a larger one.
 **Reversal.** Hard-code both. The test that proves the guard waits would
 then either hang or be skipped on any machine that is actually busy, which
 is every machine where the guard matters.
+
+## D-NOB-054. Compute is projected per token band, not at one rate
+
+**Decision.** `write_throughput` records a median seconds-per-token rate and
+a job count for each configured token band, and `projected_hours` prices each
+job in its own band when given the per-job token counts. A band with no
+measurement is priced at the slowest rate observed.
+
+**Alternatives.** Fit a curve, since attention cost is super-linear in
+sequence length. Rejected on evidence: one job above 800 tokens is not a
+curve, and a fitted model would state a precision the data does not support.
+Banding states only what was measured. Also considered keeping the flat rate
+and widening the comment to admit the bias: rejected because the number is
+reported to a Gate, and a figure known to be low is not improved by saying so
+beside it.
+
+**Cost.** A band measured once sets the price for every job in it, so the
+29 jobs over 800 tokens are priced from a single observation. Visible rather
+than hidden: the job count is recorded with the rate, and more measurements
+move the figure as the campaign runs.
+
+**Reversal.** Drop `job_tokens` from the call sites. The projection falls
+back to the flat rate, which is still implemented and whose basis string
+says it used one rate for every job size.

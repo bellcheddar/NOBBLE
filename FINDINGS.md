@@ -2804,3 +2804,43 @@ pattern named in a command line is matched by `pgrep` against the tmux
 process carrying it, which is a sibling and so not excluded, and quoting it
 inside `bash -c '...'` closes the outer quote. The script is written to a
 file now, which has neither problem.
+
+## F61. Seconds per token is not one number, and the projection said it was
+
+F45 replaced a "representative job" with a measured seconds-per-token rate,
+on the reasoning that the per-token rate transfers between campaigns and a
+job size does not. `projected_hours`'s docstring then claimed the resulting
+figure was reached by "summing the real tokens at the rate measured for jobs
+of each size".
+
+It was not. The code multiplied every token by one median rate. The
+docstring described a method that was never written, which is the same shape
+as F56: a right-looking number with an explanation that does not describe how
+it was produced.
+
+And the method actually used is biased, because the rate is not a property of
+the model. On the main campaign it runs from 0.211 s/token for 200-400 token
+jobs to 0.663 for 800-1600 token jobs. Attention cost does not grow linearly
+with sequence length, so a single median understates any campaign whose large
+jobs are a minority of the jobs and a majority of the cost. That is the usual
+shape and it is this campaign's: 2,215 of 2,289 remaining jobs are under 200
+tokens, while the 29 jobs over 800 tokens carry a tenth of the tokens left.
+
+A linear fit gave `seconds = -23.1 + 0.504 * tokens`, and a negative
+intercept is the fit saying the relationship is not linear rather than that a
+zero-token job finishes before it starts. With one job above 800 tokens there
+is no curve to fit, so the projection bands rather than models: each job is
+priced at the median rate measured for jobs of its size, and a band with no
+measurement is priced at the slowest rate observed and counted in
+`unmeasured_jobs`. Guessing cheap is the one error that opens a gate too late.
+
+On this campaign's remaining queue the flat rate gives 48.6 hours and the
+banded rate 51.4. Both are inside Gate G1's 96, so nothing was reported
+wrongly: this was a measurement error and not a false gate, which F45 shows
+is the expensive failure. I had also written 46.8 hours into PROGRESS.md an
+hour earlier from my own flat-rate arithmetic, which is corrected there.
+
+The band edges are configured, and the binning is one function imported by
+both the writer and the projection. Two copies of a binning rule is how a
+rate measured in one set of bands comes to be applied in another, which is
+this finding arriving again by duplication.

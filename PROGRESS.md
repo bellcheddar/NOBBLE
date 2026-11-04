@@ -72,10 +72,21 @@ Rewritten after every phase and at least every 30 minutes during long compute.
   size does not. It now projects from the campaign's own token total and
   reports which basis it used.
 
-  **Measured in flight at 09:34 UTC**: 54 jobs done, median 75 s per job,
-  0.366 s per token, 44 jobs per hour over a 1.21-hour window at a 101 per
-  cent duty cycle. The 2,306 remaining project to **46.8 hours** of compute.
-  Within the budget, so Gate G1 stays closed. The nine hours between
+  **Measured in flight at 10:17 UTC**: 71 jobs done, 0.464 s per token
+  overall. The 2,289 remaining project to **51.4 hours** of compute, priced
+  in the token bands they fall in. Within the budget, so Gate G1 stays
+  closed, with 44.6 hours of headroom.
+
+  The 46.8 hours reported here an hour earlier was my own arithmetic at a
+  single median rate, and it was low. Seconds per token is not one number:
+  on this campaign it runs from 0.211 for 200-400 token jobs to 0.663 for
+  800-1600 token jobs, because attention cost does not grow linearly with
+  sequence length. One median understates any campaign whose large jobs are
+  a minority of the jobs and a majority of the cost, which is this one's
+  shape: 2,215 of the 2,289 remaining jobs are under 200 tokens, and the 29
+  jobs over 800 carry a tenth of the remaining tokens. `projected_hours`
+  now prices each job in its own band, which is what its docstring had
+  claimed since F45 (F61). The nine hours between
   assembly and the first result are the chain waiting for the corrected
   campaign to release the GPU, not lost throughput: the queue is at job 69
   of 2,360 and has not re-run anything, which was checked for duplicate job
