@@ -54,6 +54,31 @@ RECOVERY_TARGETS = {
 }
 
 
+# Resolved on (gene, E3) as well as the literal pair id. The targets are
+# keyed "bench01_GSPT1_CRBN", and the corrected-construct campaign runs the
+# same biology as "corr01_GSPT1_CRBN": the crystal to align against is the
+# same one, and keying on the prefix meant pose recovery silently found no
+# target there and reported "no predicted pose could be aligned". The F6
+# comparison then could never conclude, however long the campaign ran, and
+# nothing in the output pointed at the pair id as the reason.
+_TARGETS_BY_GENE = {
+    tuple(key.split("_")[1:3]): value for key, value in RECOVERY_TARGETS.items()
+}
+
+
+def recovery_target(pair_id: str | None) -> dict | None:
+    """The deposited structure to align this pair against, if there is one."""
+    if not pair_id:
+        return None
+    exact = RECOVERY_TARGETS.get(pair_id)
+    if exact is not None:
+        return exact
+    parts = pair_id.split("_")
+    if len(parts) >= 3:
+        return _TARGETS_BY_GENE.get((parts[1], parts[2]))
+    return None
+
+
 @dataclass
 class LayerResult:
     name: str
@@ -91,7 +116,7 @@ def pose_recovery(campaign: Path) -> LayerResult:
     per_pair: dict[str, list[float]] = {}
     detail = []
     for job in jobs:
-        target = RECOVERY_TARGETS.get(job.get("pair_id"))
+        target = recovery_target(job.get("pair_id"))
         if not target or job.get("complex_type") != "ternary":
             continue
         try:
@@ -171,7 +196,7 @@ def time_split(campaign: Path) -> LayerResult:
 
     before, after, unknown = [], [], []
     for pair_id, stats in recovery.summary["by_pair"].items():
-        target = RECOVERY_TARGETS.get(pair_id)
+        target = recovery_target(pair_id)
         if not target:
             continue
         date = release.get(target["pdb_id"])

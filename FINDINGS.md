@@ -484,3 +484,52 @@ The general lesson is the one this project keeps relearning. A failure that
 stops the pipeline is cheap, because it announces itself. The expensive ones
 complete, return a number in the right range, and point the way the prior
 already pointed.
+
+## F12. The 15-mers failed because a fragment cannot fold, and the proof was nearly lost to a pair id
+
+F6 proposed that the benchmark's poor pose recovery came from submitting
+each substrate as a 15-residue window cut out of a folded domain, rather
+than from the model being unable to dock. The corrected campaign tests that
+by giving the same substrates their whole domain, with IKZF1 held at its
+15-mer as the control (D-NOB-029).
+
+**F6 is supported.** Five of seven pairs scored, with the corrected campaign
+at 69 of 100 jobs:
+
+| pair | 15-mer | whole domain | change | verdict |
+|---|---|---|---|---|
+| GSPT1 / CRBN | 29.22 A | **1.17 A** | -28.05 | improved |
+| BRD4 / VHL | 19.23 A | **1.71 A** | -17.52 | improved |
+| CSNK1A1 / CRBN | 12.24 A | 6.19 A | -6.05 | improved |
+| BRD4 / CRBN | 20.40 A | 16.52 A | -3.88 | improved |
+| IKZF1 / CRBN (control) | 5.36 A | 5.36 A | **+0.00** | control held |
+| CDK12 / DDB1, RBM39 / DCAF15 | | | | not yet run |
+
+Two pairs recovered to under 2 A, which is a correct pose rather than an
+improved one. Nothing got worse.
+
+The control is the part that makes the rest usable. IKZF1 keeps its 15-mer
+in both campaigns, so its delta is not merely small but exactly zero:
+identical input, identical output. That is simultaneously the control
+holding and a determinism check on the whole pipeline, and it says the two
+campaigns differ in the construct and in nothing else.
+
+**The result was nearly unobtainable, for a reason that had nothing to do
+with the science.** `RECOVERY_TARGETS` is keyed on pair ids like
+`bench01_GSPT1_CRBN`, and the corrected campaign names the same biology
+`corr01_GSPT1_CRBN`. Pose recovery looked up the deposited crystal by the
+literal pair id, found nothing, and reported "no predicted pose could be
+aligned to a deposited chain". The comparison then returned "not concluded:
+the IKZF1 control has no number in both campaigns" and would have returned
+that however long the campaign ran.
+
+Every part of that failure was honest. The layer refused rather than
+inventing a number, the comparison refused rather than concluding without
+its control, and both said why. None of it pointed at the pair id, because
+nothing in the system knew the prefix was the problem. The target now
+resolves on (gene, E3) as well as the literal id.
+
+It was found by running the comparison early on a partially complete
+campaign to see whether a signal was emerging, rather than by waiting for
+the chain to run it at the end. The result would otherwise have arrived as
+a refusal after 100 jobs.

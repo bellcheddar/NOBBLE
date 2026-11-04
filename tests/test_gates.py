@@ -115,3 +115,21 @@ def test_every_moved_cutoff_kept_its_value():
     assert peptides.DOMAIN_COVERAGE_SELF_SUFFICIENT == 0.80
     assert metrics.COLLAPSE_MARGIN == 0.30
     assert compare.CONTROL_TOLERANCE_A == 2.0
+
+
+def test_recovery_resolves_a_target_across_campaign_prefixes():
+    """RECOVERY_TARGETS is keyed "bench01_GSPT1_CRBN"; the corrected
+    campaign runs the same biology as "corr01_GSPT1_CRBN". Keying on the
+    literal pair id meant pose recovery found no deposited crystal there
+    and the F6 comparison could never conclude, however long the campaign
+    ran. See F12."""
+    from nobble.validate.layers import RECOVERY_TARGETS, recovery_target
+
+    for key, expected in RECOVERY_TARGETS.items():
+        gene_e3 = "_".join(key.split("_")[1:3])
+        assert recovery_target(key) == expected
+        assert recovery_target(f"corr99_{gene_e3}") == expected, gene_e3
+
+    assert recovery_target("sv_pos_ZN346_abcdef") is None
+    assert recovery_target(None) is None
+    assert recovery_target("nopartshere") is None

@@ -428,3 +428,17 @@
   any that is a cutoff rather than a physical constant, so the file's opening
   claim is enforced rather than aspirational. 108 tests pass, preflight on
   the assembled campaign still clean.
+- 2026-11-04T12:25Z **F6 supported.** Ran the corrected comparison early on a
+  partially complete campaign rather than waiting for the chain, and found
+  both the result and a defect that would have hidden it. GSPT1/CRBN 29.22 A
+  -> 1.17 A, BRD4/VHL 19.23 -> 1.71, CSNK1A1 12.24 -> 6.19, BRD4/CRBN 20.40 ->
+  16.52, none worse. The IKZF1 control moved by exactly 0.00 A: identical
+  input, identical output, which is the control holding and a determinism
+  check at once. Two pairs still to run.
+- 2026-11-04T12:25Z The defect: RECOVERY_TARGETS is keyed on pair ids like
+  bench01_GSPT1_CRBN, and the corrected campaign names the same biology
+  corr01_GSPT1_CRBN. Pose recovery looked up the crystal by literal pair id,
+  found none, and said "no predicted pose could be aligned". The comparison
+  then said "not concluded" and would have said that after all 100 jobs.
+  Every refusal was honest and none pointed at the pair id. Targets now
+  resolve on (gene, E3) as well as the literal id. F12. 109 tests pass.

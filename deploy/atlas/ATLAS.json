@@ -21,7 +21,7 @@
     },
     {
       "campaign": "corrected_20261103T214331Z",
-      "jobs_done": 68,
+      "jobs_done": 70,
       "jobs_total": 100
     },
     {
@@ -30,9 +30,9 @@
       "jobs_total": 240
     }
   ],
-  "comparison_conclusion": "not concluded: the IKZF1 control has no number in both campaigns, so a difference in the other pairs cannot yet be attributed to the construct",
+  "comparison_conclusion": "F6 supported: 4 pair(s) improved by more than 2 A with the whole domain, the control held, and none got worse",
   "jobs_total": 100,
   "pairs_total": 7,
   "structures": 100,
-  "bytes": 25739515
+  "bytes": 25739397
 }
