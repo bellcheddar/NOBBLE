@@ -179,3 +179,32 @@ def test_a_complete_campaign_gets_no_provisional_qualifier():
         assert "Provisional" not in report["conclusion"]
     else:
         assert "Provisional" in report["conclusion"]
+
+
+def test_the_gene_fallback_does_not_claim_crystals_it_should_not():
+    """The (gene, E3) fallback added for the corrected campaign could
+    over-match. A scramble of a benchmark pair must not inherit its
+    parent's crystal, and no Sievers finger has one at all: either would
+    put a pose recovery number against a pair that has nothing to recover
+    against, which is worse than the missing number it replaced."""
+    import glob
+    import json
+
+    import pytest
+
+    from nobble.validate.layers import recovery_target
+
+    campaigns = sorted(glob.glob("campaigns/campaign_*"))
+    if not campaigns:
+        pytest.skip("no assembled campaign")
+    queue = Path(campaigns[-1]) / "queue.jsonl"
+    if not queue.exists():
+        pytest.skip("campaign has no queue")
+
+    pairs = sorted({json.loads(line)["pair_id"]
+                    for line in queue.read_text().splitlines() if line.strip()})
+    resolved = [p for p in pairs if recovery_target(p)]
+
+    assert all(p.startswith("bench") for p in resolved), resolved
+    assert not [p for p in pairs if p.startswith("scr_") and recovery_target(p)]
+    assert not [p for p in pairs if p.startswith("sv_") and recovery_target(p)]
