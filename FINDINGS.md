@@ -7421,3 +7421,38 @@ be priced at all. It asks the requested set now. And the test above is split
 in two, so the refusal cannot quietly become permanent: one case asserts
 that nothing measured refuses, the other that a single measurement is enough
 to price the rest.
+
+## F162. The deploy's own check could fail with a traceback instead of a verdict
+
+Continuing the review of this session's code after F161. `app/fingerprint.py`
+gates two things: browser QC refuses a server whose digest is not the working
+tree, and `deploy.sh` refuses a droplet that is not serving what was shipped.
+
+The property both rest on had never been tested: that the digest is a
+function of relative paths and content and nothing else. If it were not, the
+droplet could never agree with this machine and every deploy would refuse,
+blaming the droplet. Verified against a real rsync into a temporary root
+using the deploy's own exclude list, which produced the same digest,
+`9364eabf5091a859` on both sides. Pinned as the cheap version of that, which
+copies only the twenty-one hashed files to a different root.
+
+The defect is smaller and real. `files()` globs and `detail()` then reads, so
+the set can go stale between the two: an editor, or a mutation sweep
+restoring a file, is enough. A file listed and then gone raised
+`FileNotFoundError`. `deploy.sh` captures the digest with
+`SHIPPING=$(... app_fingerprint.py)` under `set -e`, so a deploy would abort
+on a Python traceback rather than on a verdict, which is the least useful way
+to stop one. QC would report that it could not compute the expected
+fingerprint and refuse for a reason that sounds like a configuration problem.
+
+A missing file is now recorded as `<missing>` rather than raised. Recorded
+rather than skipped, deliberately: a tree with a file missing *is* a
+different tree and should produce a different digest, where skipping would
+make it produce the same digest as a tree that never had the file, and
+`--detail` would not say which one went.
+
+Worth noting what this review has and has not found. Two passes over this
+session's own code have turned up one defect that mattered, F161's gate
+pricing an unmeasured campaign at zero, and one that would have wasted an
+afternoon, this one. Neither was in the logic the findings were about; both
+were in what happens when the inputs are not there yet.

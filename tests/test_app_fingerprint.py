@@ -136,3 +136,77 @@ def test_the_axe_detail_tool_says_which_host_it_looked_at():
     tool = (ROOT / "qc" / "axe_detail.mjs").read_text()
     assert "NOBBLE_BASE" in tool
     assert "console.log('axe ' + BASE + target)" in tool
+
+
+def test_the_digest_does_not_depend_on_where_the_tree_lives(tmp_path, monkeypatch):
+    """The property the deploy comparison rests on (F162).
+
+    `deploy.sh` fingerprints the tree on this machine and compares it against
+    what the droplet reports from its own copy at `$REMOTE_DIR`. That only
+    means anything if the digest is a function of relative paths and content
+    and nothing else. Verified against a real rsync with the deploy's own
+    exclude list, which gave the same digest; this is the cheap version of
+    that, copying only the hashed files to a different root.
+
+    If it ever stops holding, every deploy refuses and the message blames
+    the droplet for serving the wrong build.
+    """
+    import shutil
+
+    from nobble.app import fingerprint
+
+    before = fingerprint.fingerprint()
+    for path in fingerprint.files():
+        target = tmp_path / path.relative_to(ROOT)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, target)
+
+    monkeypatch.setattr(fingerprint, "ROOT", tmp_path)
+    monkeypatch.setattr(fingerprint, "APP", tmp_path / "nobble" / "app")
+    after = fingerprint.fingerprint()
+    assert after == before, (
+        "the digest moved when the same files were read from a different "
+        "root, so the droplet can never agree with this machine"
+    )
+
+
+def test_a_file_disappearing_mid_read_is_not_a_crash(tmp_path, monkeypatch):
+    """`files()` globs and `detail()` then reads, so the set can go stale.
+
+    A deploy fingerprints the tree while a campaign is writing, and an editor
+    or a sweep can remove a file between the two. Raising there fails a
+    deploy with an OSError rather than a verdict, which is the least useful
+    way to stop one.
+    """
+    import shutil
+
+    from nobble.app import fingerprint
+
+    for path in fingerprint.files():
+        target = tmp_path / path.relative_to(ROOT)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, target)
+    monkeypatch.setattr(fingerprint, "ROOT", tmp_path)
+    monkeypatch.setattr(fingerprint, "APP", tmp_path / "nobble" / "app")
+
+    listed = fingerprint.files()
+    assert listed, "the fixture copied nothing"
+    victim = next(p for p in listed if p.suffix == ".html")
+    real_files = fingerprint.files
+
+    def stale_listing():
+        found = real_files()
+        victim.unlink(missing_ok=True)
+        return found
+
+    monkeypatch.setattr(fingerprint, "files", stale_listing)
+    digest = fingerprint.fingerprint()
+    assert isinstance(digest, str) and digest, (
+        "a file removed between the listing and the read raised instead of "
+        "producing a digest"
+    )
+    # And the tree is a different tree, so it says which file went and does
+    # not pass for a tree that never had it.
+    monkeypatch.setattr(fingerprint, "files", real_files)
+    assert fingerprint.detail().get(
+        str(victim.relative_to(tmp_path))) in (None, fingerprint.MISSING)

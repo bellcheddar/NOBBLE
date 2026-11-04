@@ -73,13 +73,34 @@ def files() -> list[Path]:
     return sorted(found)
 
 
+# What a file's digest is when the file has gone. Distinct from any real
+# digest, so a tree missing a file is a different tree and says which one.
+MISSING = "<missing>"
+
+
 def detail() -> dict[str, str]:
-    """Per-file digest, so a mismatch can say which file differs."""
-    return {
-        str(path.relative_to(ROOT)):
-            hashlib.sha256(path.read_bytes()).hexdigest()[:16]
-        for path in files()
-    }
+    """Per-file digest, so a mismatch can say which file differs.
+
+    A file listed and then unreadable is recorded as `MISSING` rather than
+    raised. `files()` globs and this reads, so the set can go stale between
+    the two: an editor, or a mutation sweep restoring a file, is enough.
+    Raising there fails a deploy with an OSError instead of a verdict, which
+    is the least useful way to stop one, and `deploy.sh` captures this under
+    `set -e` (F162).
+
+    Recorded rather than skipped, because a tree with a file missing is a
+    different tree and should produce a different digest. Skipping would make
+    it produce the same digest as a tree that never had the file, and
+    `--detail` would not say which.
+    """
+    out: dict[str, str] = {}
+    for path in files():
+        name = str(path.relative_to(ROOT))
+        try:
+            out[name] = hashlib.sha256(path.read_bytes()).hexdigest()[:16]
+        except OSError:
+            out[name] = MISSING
+    return out
 
 
 def fingerprint() -> str:
