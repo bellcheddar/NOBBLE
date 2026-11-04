@@ -65,6 +65,17 @@
           </p>
         {% endif %}
 
+        {% if selected.plip.notes %}
+          {# Pipeline output, not commentary: these say what was dropped and
+             why. On a Sievers pair the fingerprint excludes the structural
+             zinc's metal-coordination rows, and without this the reader
+             cannot tell the shown contacts from raw PLIP output (F14). #}
+          <h3 style="font-family:var(--display);font-size:0.9rem">How this fingerprint was built</h3>
+          <ul class="mono" style="font-size:0.7rem;color:var(--muted);margin:0 0 0.6rem 1rem">
+            {% for note in selected.plip.notes %}<li>{{ note }}</li>{% endfor %}
+          </ul>
+        {% endif %}
+
         <h3 style="font-family:var(--display);font-size:0.9rem">CONECT integrity</h3>
         <p class="mono" style="font-size:0.7rem;color:var(--muted)">
           {{ selected.plip.conect.detail if selected.plip.conect else 'not recorded' }}

@@ -617,3 +617,10 @@
   with macOS " 2.cif" suffixes. I introduced them in efc1699 with a
   cp -r backup and restore of deploy/atlas while testing which campaign
   build_atlas publishes. 100 structures remain, matching the 100 jobs.
+- 2026-11-04T18:10Z The PLIP fingerprint's notes were computed and never
+  shown. On a Sievers pair the most important one says the structural
+  zinc's four metal-coordination rows were excluded (F14), and without it a
+  reader comparing the page to raw PLIP output cannot tell why the counts
+  differ. Now rendered on the Interactions tab, where it already shows the
+  chain map it used. Same class as the status note that was computed and
+  discarded earlier: a sentence the pipeline writes and nothing displays.
