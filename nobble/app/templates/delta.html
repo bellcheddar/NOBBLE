@@ -58,6 +58,15 @@
     unknown: '#61655F'
   };
 
+  /* "4/4 seeds bridged" with four more seeds that could not be assessed
+     reads as a perfect rate. The denominator is deliberately the measured
+     seeds only (F33), so the unmeasurable ones have to be said rather than
+     left out. Silent when there are none, which is every pair so far. */
+  const bridgedOf = p => (p.bridging_seeds_with_bridge || 0) + '/'
+    + (p.bridging_seeds_total || 0)
+    + ((p.bridging_seeds_unmeasurable || 0)
+        ? ' (+' + p.bridging_seeds_unmeasurable + ' unmeasurable)' : '');
+
   function lysineCount(p) {
     return (p.lysine_reach && p.lysine_reach.peptide_lysines) || 0;
   }
@@ -81,7 +90,7 @@
         customdata: rows.map(p => [
           p.peptide_gene || '—', p.e3_gene || '—', p.ligand_key || '—',
           p.delta_iptm_median === null || p.delta_iptm_median === undefined ? 'n/a' : p.delta_iptm_median,
-          (p.bridging_seeds_with_bridge || 0) + '/' + (p.bridging_seeds_total || 0),
+          bridgedOf(p),
           lysineCount(p),
           p.seed_collapse_affects_delta ? 'yes' : 'no'
         ]),
@@ -182,7 +191,7 @@
       mode: 'markers', type: 'scatter',
       marker: { size: 13, color: '#A64708', line: { width: 1, color: '#0c183c' } },
       customdata: rows.map(p => [
-        (p.bridging_seeds_with_bridge || 0) + '/' + (p.bridging_seeds_total || 0),
+        bridgedOf(p),
         p.seed_collapse_affects_delta ? 'yes' : 'no'
       ]),
       hovertemplate: '<b>%{y}</b><br>minimum across seeds %{x:.4f}<br>' +

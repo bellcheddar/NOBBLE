@@ -1485,3 +1485,42 @@ are passed to the bridge filter at all, so `binary_complex_has_no_bridge`
 cannot arise, and it is in the list defensively. `convergence_score` and
 the docking counts read through `.get` and come back null rather than
 zero.
+
+### F33, continued: the honest denominator needed saying out loud
+
+Making `bridge_formation_rate` count only measurable seeds is the right
+number and the wrong display. A pair with four usable ternaries that all
+bridged and four whose output carried no ligand chain now reads
+
+    4/4 seeds bridged
+
+which is a perfect rate with half the evidence missing. The fix made the
+figure honest and the screen less so, which is the F25 shape arriving from
+the opposite direction: not a computed fact that never reached the page,
+but a computed fact the page now needed and did not know about.
+
+The count travels to all four places the ratio appears, through one
+helper rather than four hand-built concatenations, and is silent when it
+is zero, which is every pair so far. A test executes that helper under
+node against the cases that matter, rather than pattern-matching the
+template, and another refuses a fifth display site that builds the ratio
+by hand.
+
+### A test of mine that passed alone and did nothing in the suite
+
+`test_deployed_app`'s droplet fixture deletes `nobble.*` from
+`sys.modules` so it can reimport the app with the scientific stack
+blocked. Anything running afterwards that does `from nobble.app import
+data` binds a *new* module object, while `routes` still holds the old one.
+Patching the new one changes nothing the route can see.
+
+Both new display tests passed in isolation and silently stopped asserting
+anything in the full suite: the page rendered with no scores at all, so
+the string they looked for was absent for a reason unrelated to the thing
+under test. Patching through `routes.data` fixes it, and the two earlier
+tests that had the same latent shape are now consistent.
+
+Worth recording because it is the fourth time this session a test has
+passed while checking nothing, after F21's stale tuple, F22's
+hand-written sentinel and F26's regex over a multi-fragment f-string. The
+failure modes differ and the symptom does not: green, and silent about it.

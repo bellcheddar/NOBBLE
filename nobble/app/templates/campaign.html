@@ -225,6 +225,14 @@
     const completeOnly = document.getElementById('f-complete').checked;
     const pins = NOBBLE.pins.get();
 
+  /* "4/4 seeds bridged" with four more seeds that could not be assessed
+     reads as a perfect rate. The denominator is deliberately the measured
+     seeds only (F33), so the unmeasurable ones have to be said rather than
+     left out. Silent when there are none, which is every pair so far. */
+  const bridgedOf = p => (p.bridging_seeds_with_bridge || 0) + '/'
+    + (p.bridging_seeds_total || 0)
+    + ((p.bridging_seeds_unmeasurable || 0)
+        ? ' (+' + p.bridging_seeds_unmeasurable + ' unmeasurable)' : '');
     let rows = PAIRS.map(function (p) {
       const c = NOBBLE.weights.composite(p, weights);
       return Object.assign({}, p, {
@@ -270,8 +278,8 @@
             p.composite_components + '/' + p.composite_requested + '</span>') +
           '</td>' +
         '<td class="num" ' + tipAttrs('bridge_percentile', p.bridge_percentile, p) + '>' + fmt(p.bridge_percentile, 1) + '</td>' +
-        '<td class="num" title="Fraction of ternary seeds in which the glue actually bridged receptor to peptide">' +
-          (p.bridging_seeds_with_bridge || 0) + '/' + (p.bridging_seeds_total || 0) + '</td>' +
+        '<td class="num" title="Ternary seeds in which the glue bridged receptor to peptide, out of the seeds whose geometry could be measured">' +
+          bridgedOf(p) + '</td>' +
         '<td class="num" ' + tipAttrs('delta_iptm', p.delta_iptm, p) +
           ' data-tip-source="model-derived. median across seeds: ' + fmt(p.delta_iptm_median) + '">' +
           fmt(p.delta_iptm) + '</td>' +

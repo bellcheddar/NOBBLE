@@ -154,7 +154,9 @@
              data-tip-source="measured against BINMAN's atlas" tabindex="0">
           <span class="stat__label">Bridge %ile</span>
           <span class="stat__value">{{ '%.1f'|format(s.get('bridge_percentile')) if s.get('bridge_percentile') is not none else '—' }}</span>
-          <span class="stat__sub">{{ s.get('bridging_seeds_with_bridge') }}/{{ s.get('bridging_seeds_total') }} seeds bridged</span>
+          {# Unmeasurable seeds left out would make a partial rate read as a
+             perfect one (F33). Silent when there are none. #}
+          <span class="stat__sub">{{ s.get('bridging_seeds_with_bridge') }}/{{ s.get('bridging_seeds_total') }} seeds bridged{% if s.get('bridging_seeds_unmeasurable') %}, {{ s.get('bridging_seeds_unmeasurable') }} unmeasurable{% endif %}</span>
         </div>
 
         <div class="stat"

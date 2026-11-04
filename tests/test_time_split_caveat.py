@@ -27,14 +27,17 @@ ATLAS = ROOT / "deploy" / "atlas"
 
 
 def _hints(monkeypatch, time_split):
-    from nobble.app import data, routes
+    # routes.data, not a fresh import: test_deployed_app's droplet fixture
+    # deletes nobble.* from sys.modules, so a later `from nobble.app import
+    # data` can bind a different module object than routes holds.
+    from nobble.app import routes
 
     # Without this the recovery panel does not render at all, and the test
     # would pass by finding no caveat because there was no figure.
     monkeypatch.setenv("NOBBLE_CAMPAIGN", str(ATLAS))
-    data.configure(str(ATLAS))
+    routes.data.configure(str(ATLAS))
 
-    real = data.precomputed
+    real = routes.data.precomputed
 
     def fake(name):
         if name == "validation.json":
@@ -95,10 +98,10 @@ def test_no_line_at_all_when_the_layer_has_nothing_to_say(monkeypatch):
 def test_the_benchmark_page_stays_inside_the_prose_budget(monkeypatch):
     """CLAUDE.md: under 150 prose words per page, excluding tables, labels
     and pipeline-generated status text."""
-    from nobble.app import create_app, data
+    from nobble.app import create_app, routes
 
     monkeypatch.setenv("NOBBLE_CAMPAIGN", str(ATLAS))
-    data.configure(str(ATLAS))
+    routes.data.configure(str(ATLAS))
 
     app = create_app()
     with app.test_client() as client:
