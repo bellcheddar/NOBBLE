@@ -533,3 +533,29 @@ Six concerns this session turned out to be unreachable or already decided and
 were recorded rather than acted on: D-NOB-035's premise, pose recovery's
 measurement, the correlation's caveats, the LM's no-arithmetic contract, Gate
 G1's wiring and the bridge percentile's NaN path.
+
+## F117, F118 and the end-to-end re-run
+
+**F117, fixed.** The licensing check ran in one direction. `build_atlas`
+verifies no PROTAC-DB chemistry reaches the bundle; nothing verified that
+every SMILES which is published has a source permitted to be. Seven ligand
+records read individually: six `deposited_ternary` and published, one dBET57
+`protacdb` and withheld, UbiBrowser and BioLiP2 present only as availability
+booleans. Four tests hold it in both directions now.
+
+**F118, audited clean.** Spec sections 2 and 3 read against the code, which
+completes the spec: F52 did section 5, F116 did section 4, and sections 1 and
+2's remaining clauses are covered by tests that already existed. 2.3's
+"fail loudly" is covered from two sides and `stale_inputs` is symmetric in
+all four cases, checked rather than assumed. 3.4 records its reduction ratio
+and clustering parameters, which explained the empty ESM-2 cache: `diverse`
+is 0 because the mandatory sources alone exceed the measured budget, so
+nothing optional was ever embedded.
+
+**The chain re-run.** Eighteen modules changed today, and the suite does not
+run the chain, which is how F96 was found. All ten non-GPU stages run clean:
+preflight, scoring, the three validation layers, compare, the design report,
+tier-2 selection, the atlas build, the drift check, provenance and
+check_prediction. The GPU stages are being exercised by the campaign itself.
+
+Suite 825 passing.
