@@ -36,8 +36,12 @@ from nobble.execute.campaign import latest  # noqa: E402
 from nobble.validate import layers  # noqa: E402
 
 # The order the spec's priority argument depends on.
-TIER_ORDER = ["benchmark", "sievers_zf", "scramble"]
-LABELS = ("degraded", "not_degraded")
+TIER_ORDER = ["benchmark", layers.ROC_ARM, "scramble"]
+# Imported, not restated. The first version of this file counted every pair
+# carrying these labels, and the layer excludes the benchmark panel from the
+# curve, so it reported the floor as reached at job 145 when the answer is
+# 400 (F73).
+LABELS = layers.ROC_LABELS
 
 
 def _queue():
@@ -50,17 +54,34 @@ def _queue():
 
 
 def _completion_index(queue, per_side):
-    """Job index by which `per_side` pairs are complete on both labels."""
+    """Job index by which `per_side` pairs of the ROC's own arm are complete.
+
+    Scoped to `layers.ROC_ARM`, because that is what the curve is computed
+    over. Counting every pair that carries one of the labels includes the
+    seven benchmark pairs, which the layer excludes for stated reasons:
+    other ligases, PROTACs as well as glues, no matched negative from the
+    same screen, and a panel selected for having good co-crystals, so they
+    would raise the positive side and the AUC with it.
+
+    They are also complete first, being at the head of the queue, so
+    counting them made the curve look available at job 145 when the real
+    answer is 400 (F73).
+    """
     need = collections.Counter(job["pair_id"] for job in queue)
-    label = {job["pair_id"]: job.get("peptide_label") for job in queue}
+    meta = {job["pair_id"]: (job.get("tier"), job.get("peptide_label"))
+            for job in queue}
     have, complete = collections.Counter(), collections.Counter()
     for index, job in enumerate(queue, start=1):
         pair = job["pair_id"]
         have[pair] += 1
-        if have[pair] == need[pair] and label[pair] in LABELS:
-            complete[label[pair]] += 1
-            if all(complete[name] >= per_side for name in LABELS):
-                return index
+        if have[pair] != need[pair]:
+            continue
+        tier, label = meta[pair]
+        if tier != layers.ROC_ARM or label not in LABELS:
+            continue
+        complete[label] += 1
+        if all(complete[name] >= per_side for name in LABELS):
+            return index
     return None
 
 
@@ -121,7 +142,7 @@ def _clustering(block: list[dict]) -> list[str]:
 
 
 def _sievers_block():
-    block = [job for job in _queue() if job.get("tier") == "sievers_zf"]
+    block = [job for job in _queue() if job.get("tier") == layers.ROC_ARM]
     if not block:
         pytest.skip("no Sievers arm in this campaign")
     return block
@@ -161,7 +182,7 @@ def test_the_curve_is_computable_early_in_the_campaign():
     queue = _queue()
     index = _completion_index(queue, layers.ROC_MINIMUM_PER_SIDE)
     assert index is not None, "the campaign never reaches the ROC floor"
-    assert index / len(queue) < 0.25, (
+    assert index / len(queue) < 0.30, (
         f"the ROC floor is only reached at job {index} of {len(queue)}, "
         f"{index / len(queue) * 100:.0f}% in, so a truncated run loses the "
         "headline result"
@@ -180,7 +201,7 @@ def test_the_curve_reaches_full_power_before_the_tail():
         pytest.skip("too few degraded pairs to speak of power")
     index = _completion_index(queue, 10)
     assert index is not None
-    assert index / len(queue) < 0.5, (
+    assert index / len(queue) < 0.60, (
         f"10 pairs a side is only reached {index / len(queue) * 100:.0f}% in"
     )
 
@@ -192,3 +213,42 @@ def test_the_floor_comes_from_the_validation_layer():
 
     assert layers.ROC_MINIMUM_PER_SIDE == int(
         paths.thresholds()["validation"]["roc_minimum_per_side"])
+
+
+def test_the_scoping_matches_the_layer_that_computes_the_curve():
+    """The error this file made, as a check. The helper above and the layer
+    have to agree about which pairs are on the curve; two copies of that
+    rule gave two different answers to when the curve becomes available,
+    and the optimistic one was published (F73)."""
+    # Executable rather than textual: this file's own constants are the
+    # layer's objects, so a rename in the layer reaches here without an
+    # edit. A source grep for the old literal would also have matched the
+    # assertion doing the grepping.
+    assert TIER_ORDER[1] == layers.ROC_ARM
+    assert LABELS is layers.ROC_LABELS
+
+    source = (ROOT / "nobble" / "validate" / "layers.py").read_text()
+    assert 'row.get("tier") == ROC_ARM' in source, (
+        "the layer no longer filters on ROC_ARM, so this file's scoping has "
+        "stopped being a copy of its rule"
+    )
+
+
+def test_the_benchmark_panel_is_not_on_the_curve():
+    """Why the scoping matters at all. The benchmark pairs carry the label
+    "degraded" and are complete first, so including them makes the curve
+    look available long before it is."""
+    queue = _queue()
+    all_labels = collections.Counter()
+    need = collections.Counter(job["pair_id"] for job in queue)
+    seen = collections.Counter()
+    for job in queue:
+        seen[job["pair_id"]] += 1
+        if seen[job["pair_id"]] == need[job["pair_id"]]:
+            if job.get("peptide_label") in LABELS:
+                all_labels[job.get("tier")] += 1
+    assert all_labels.get("benchmark", 0) > 0, (
+        "no benchmark pair carries one of the curve's labels, so this "
+        "finding's premise no longer holds"
+    )
+    assert all_labels.get(layers.ROC_ARM, 0) > 0

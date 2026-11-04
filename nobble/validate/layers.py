@@ -340,6 +340,17 @@ def _bootstrap_interval(positives: list[float], negatives: list[float],
     return (round(values[int(0.025 * rounds)], 4), round(values[int(0.975 * rounds)], 4))
 
 
+# The tier the matched-control curve is computed over. Named because
+# anything reasoning about when the curve becomes available has to apply the
+# same exclusion, and a second copy of the string is how two answers to that
+# question come to differ: the first estimate of when the curve arrives
+# counted every pair carrying the labels, including the seven benchmark
+# ones this layer deliberately leaves out, and was optimistic by roughly a
+# factor of two (F73).
+ROC_ARM = "sievers_zf"
+ROC_LABELS = ("degraded", "not_degraded")
+
+
 def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerResult:
     """Delta-ipTM on the Sievers degraded against non-degraded split."""
     layer = LayerResult(name="matched_control_roc", status="not_computed: no scores")
@@ -357,7 +368,7 @@ def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerR
     # would raise the positive side and the AUC with it, which is the wrong
     # direction for a number to move by accident. Spec 5.3 scopes this curve
     # to the Sievers degraded against non-degraded split.
-    arm = [row for row in rows if row.get("tier") == "sievers_zf"]
+    arm = [row for row in rows if row.get("tier") == ROC_ARM]
     excluded = len(rows) - len(arm)
 
     positive_rows = [row for row in arm

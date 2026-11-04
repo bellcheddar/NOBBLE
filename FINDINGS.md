@@ -3012,16 +3012,32 @@ a side:
 
 | complete pairs per side | job | share of campaign | projected hours |
 |---|---|---|---|
-| 3 (the floor) | 145 | 6.1% | 6.2 |
-| 5 | 190 | 8.1% | 7.1 |
-| 10 | 400 | 16.9% | 11.2 |
-| 20 | 1255 | 53.2% | 28.1 |
-| 24 (every degraded pair) | 1495 | 63.3% | 32.8 |
+| 3 (the floor) | 400 | 16.9% | 11.2 |
+| 5 | 610 | 25.8% | 15.3 |
+| 10 | 1015 | 43.0% | 23.3 |
+| 20 | 1645 | 69.7% | 35.8 |
+| 24 (every degraded pair) | 1855 | 78.6% | 39.9 |
 
-The project's falsifiable test is therefore computable six hours in and
-fully populated on the positive side at 33 of the 51 hours remaining. The
-last 37% of the campaign deepens the negative side and runs the scramble
-control, which is what "discovery off the tail" means in jobs.
+**Corrected.** The table above originally read 145, 190, 400, 1255 and 1495,
+and was optimistic by roughly a factor of two. The arithmetic was right and
+the scoping was wrong: it counted every pair carrying one of the two labels,
+and `matched_control_roc` computes the curve over the Sievers arm alone. The
+layer excludes the benchmark panel for reasons it states, other ligases,
+PROTACs as well as glues, no matched negative from the same screen, and a
+panel selected for having good co-crystals that would raise the positive
+side and the AUC with it. Those seven pairs are also at the head of the
+queue and so complete first, which is exactly what made the curve look
+available at job 145.
+
+Found by reading the layer while looking at something else, not by the test
+written to protect this. That test used the same unscoped count, so it
+enshrined the error: it would have gone on passing while reporting the wrong
+figure (F73).
+
+The falsifiable test is therefore computable about eleven hours in and fully
+populated on the positive side at 40 of the 51 hours remaining. The last 21%
+of the campaign deepens the negative side and runs the scramble control,
+which is what "discovery off the tail" means in jobs.
 
 Computable is not powered, and the two must not be conflated: three pairs a
 side is a curve that the About page's own 0.5 to 0.60 caveat exists for.
@@ -3354,3 +3370,42 @@ Keeping it would mean fifteen allowlist entries carrying no information,
 and an allowlist that large is the thing F67 and F71 both had to guard
 against: it outlives what it allows, and the next genuine case arrives
 looking exactly like the fifteen nobody reads.
+
+## F73. The figure I published for when the headline test arrives was wrong
+
+F65 recorded when the matched-control ROC becomes computable, as a table of
+jobs, campaign share and projected hours, and put it in both FINDINGS.md and
+PROGRESS.md. Gate G1's reasoning about truncation rests on it.
+
+The floor was reported as reached at job 145, 6.1% of the campaign, 6.2
+hours in. The real answer is job 400, 16.9%, 11.2 hours. Every row was
+optimistic by roughly a factor of two.
+
+The arithmetic was right. The scoping was wrong. `matched_control_roc`
+computes the curve over `tier == "sievers_zf"` alone, and I counted every
+pair carrying one of the two labels. The benchmark panel carries "degraded"
+too, and the layer excludes it for reasons written beside the exclusion:
+other E3 ligases, PROTACs as well as glues, no matched negative from the
+same screen, and a panel chosen for having good co-crystals, so including it
+would raise the positive side and the AUC with it. Those seven pairs are
+also at the head of the queue and complete first, which is precisely what
+made the curve look available so early.
+
+Two things about how this was found are worth more than the correction.
+
+It came from reading `matched_control_roc` while looking at something else
+entirely. Nothing flagged it, and nothing would have: the number was
+plausible, the method was described accurately in the finding, and the
+description did not mention the one filter that mattered.
+
+And the test written to protect this made the same mistake.
+`_completion_index` counted labels without the tier filter, so it agreed
+with the wrong figure and would have gone on agreeing. A test derived from
+the same misunderstanding as the claim it checks is worth nothing, and this
+is the second time today a check of mine shared its subject's error, after
+the boundary test that used "shelve" to stand for "delve".
+
+The arm and the labels are now named once, in the layer, and imported by the
+test. The scoping check is executable rather than textual, because the first
+version grepped its own source for the literal it forbids and matched the
+assertion doing the grepping.

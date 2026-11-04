@@ -203,14 +203,19 @@ project's falsifiable test, does not need the whole campaign:
 
 | complete pairs per side | job | share | projected hours |
 |---|---|---|---|
-| 3 (the configured floor) | 145 | 6.1% | 6.2 |
-| 10 | 400 | 16.9% | 11.2 |
-| 24 (every degraded pair) | 1495 | 63.3% | 32.8 |
+| 3 (the configured floor) | 400 | 16.9% | 11.2 |
+| 10 | 1015 | 43.0% | 23.3 |
+| 24 (every degraded pair) | 1855 | 78.6% | 39.9 |
 
-Computable at 6 hours, fully populated on the positive side at 33. The last
-37% of the campaign deepens the negative side and runs the scramble control.
-Checked rather than asserted, with negative controls, because Gate G1's
-reasoning rests on it (F65).
+Computable at about 11 hours, fully populated on the positive side at 40.
+The last 21% of the campaign deepens the negative side and runs the scramble
+control. Checked rather than asserted, with negative controls, because Gate
+G1's reasoning rests on it (F65).
+
+These figures replace an earlier set that was optimistic by roughly a factor
+of two. `matched_control_roc` computes the curve over the Sievers arm alone
+and the first count included the seven benchmark pairs, which carry the
+label "degraded" and sit at the head of the queue (F73).
 
 ## Next action, once the chain exits
 
