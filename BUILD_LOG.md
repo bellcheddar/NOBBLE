@@ -450,3 +450,16 @@
   carries pairs_compared, pairs_incomplete and provisional. Applied to every
   branch that draws a verdict, not just the supported one: "not supported"
   over a partial campaign overclaims in the same way. Live and verified.
+- 2026-11-04T13:05Z Found a defect that would have wasted the entire main
+  campaign. build_atlas hard-coded latest("benchmark"), and refresh.sh
+  accepted a campaign, scored it, then called build_atlas with no argument.
+  The chain called refresh.sh with no argument at all. So after 52 hours the
+  main campaign would have been neither scored nor published: refresh would
+  have re-scored the benchmark panel and the atlas would have republished it,
+  with nothing failing and no message saying the 158-pair result had been
+  skipped. build_atlas now takes the campaign, refresh.sh passes its own
+  through, the chain passes the campaign it just ran, and the default
+  prefers a main campaign with results over the benchmark panel. Verified in
+  both directions: publishing the main campaign explicitly switches the
+  atlas, and with no main-campaign results the default still picks the
+  benchmark panel. 111 tests pass.

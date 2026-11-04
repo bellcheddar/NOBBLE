@@ -57,8 +57,8 @@ else
   if "$SENV/bin/python" tools/preflight.py "$CAMPAIGN"; then
     say "running the main campaign"
     bash tools/run_queue.sh --campaign "$CAMPAIGN" || true
-    say "scoring, validating and publishing"
-    bash tools/refresh.sh || true
+    say "scoring, validating and publishing the main campaign"
+    bash tools/refresh.sh "$CAMPAIGN" || true
   else
     echo "preflight failed: refusing to start a 52-hour run on it" >&2
     exit 1

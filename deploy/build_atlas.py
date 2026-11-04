@@ -57,10 +57,28 @@ def redact(value):
 
 
 def main() -> int:
-    campaign = latest("benchmark")
+    # Takes the campaign to publish. It used to hard-code latest("benchmark"),
+    # which meant the main campaign could run for 52 hours and never reach the
+    # site: refresh.sh accepted a campaign, scored it, then called this with
+    # no argument and published a different one. Nothing failed, and the
+    # published atlas simply stayed on the benchmark panel.
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Publish a campaign as the atlas.")
+    parser.add_argument("campaign", nargs="?", default=None)
+    args = parser.parse_args()
+
+    if args.campaign:
+        campaign = Path(args.campaign)
+        if not campaign.exists():
+            print(f"no campaign at {campaign}", file=sys.stderr)
+            return 2
+    else:
+        campaign = latest("campaign") or latest("benchmark")
     if campaign is None:
         print("no campaign to publish", file=sys.stderr)
         return 2
+    print(f"publishing {campaign.name}")
 
     if OUT.exists():
         shutil.rmtree(OUT)

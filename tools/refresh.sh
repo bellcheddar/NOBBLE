@@ -13,7 +13,16 @@ ROOT="$(pwd)"
 SCI="$ROOT/../BINMAN/.pixi/envs/default/bin/python"
 export KMP_DUPLICATE_LIB_OK=TRUE PYTHONPATH="$ROOT"
 
-CAMPAIGN="${1:-$(ls -d campaigns/benchmark_* 2>/dev/null | tail -1)}"
+# Default to the main campaign once one has results, else the benchmark
+# panel. Hard-defaulting to the benchmark meant a finished main campaign
+# was silently never scored or published.
+CAMPAIGN="${1:-}"
+if [[ -z "$CAMPAIGN" ]]; then
+  for candidate in $(ls -d campaigns/campaign_* 2>/dev/null | tail -1); do
+    [[ -s "$candidate/results.jsonl" ]] && CAMPAIGN="$candidate"
+  done
+fi
+[[ -n "$CAMPAIGN" ]] || CAMPAIGN="$(ls -d campaigns/benchmark_* 2>/dev/null | tail -1)"
 [[ -n "$CAMPAIGN" ]] || { echo "refresh: no campaign found" >&2; exit 2; }
 echo "=== refreshing $CAMPAIGN ==="
 
@@ -41,5 +50,5 @@ except Exception as e:
 "
 
 echo "--- atlas"
-"$SCI" deploy/build_atlas.py 2>&1 | tail -3
+"$SCI" deploy/build_atlas.py "$CAMPAIGN" 2>&1 | tail -4
 echo "=== refreshed. Deploy separately with deploy/deploy.sh ==="
