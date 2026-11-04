@@ -5973,3 +5973,45 @@ separately, since relativising that one would have broken the viewer.
 The leak test now walks every published text file by suffix set, and names
 `results.jsonl` and `scores.jsonl` explicitly, because the glob that missed
 them looked perfectly reasonable.
+
+## F129. The same glob, in two more tests I wrote the same day
+
+F128 found `*.json` where the bundle also holds `.jsonl`. The obvious next
+question is whether I did it more than once, and I did: three of the tests
+added today enumerate the published bundle, each with its own glob, and two
+still had the narrow one. The licensing check and the strict-JSON check both
+skipped `results.jsonl` and `scores.jsonl`.
+
+Those are the two files that hold the records, which is why it is worth more
+than a third correction. `results.jsonl` carries ten `smiles` tokens, so the
+check on what chemistry may be published was not looking at the file with
+chemistry-shaped fields in it; and a hundred rows per file is where a
+non-finite component would surface.
+
+Both are clean. The ten tokens are `"ligand_encoding": "smiles"` and the
+`smiles_fallback` flag, label names rather than chemistry, because
+`build_atlas` applies `redact()` to the JSONL rows as well: dBET57's SMILES
+string appears nowhere in the bundle, which I checked directly rather than
+inferring from the top-level records. Both files parse strictly, line by
+line.
+
+**The fix is one definition, not three corrected globs.** `tests/conftest.py`
+now says what the published bundle is, by suffix set, and all three tests
+read it from there. That is F106 one layer down: the composite had two
+implementations that agreed until they would not, and this was three
+enumerations of the same directory that had already stopped agreeing.
+
+Widening the glob turned out not to be a glob change. A `.json` file is one
+document and a `.jsonl` file is one per line, so the licensing tests failed
+with a decode error the moment their glob was corrected. `published_documents`
+yields `(path, line, document)` from either layout, and the assertions name
+the line, because "results.jsonl failed" is not a useful thing to be told
+about a file with a hundred rows.
+
+And the shared-code check caught the new `conftest.py` on the next run,
+because BINMAN and BoltzMaker each have one at that path and mine differs.
+It is not shared code: BINMAN's opens a sqlite connection, BoltzMaker's fixes
+`sys.path`, and the shared name is pytest's convention, which is the same
+reason `wsgi.py` is already listed as allowed to differ. Recorded there with
+that reason. It is also F124's widening working within the hour: the check
+that could not see a renamed file now sees a new one the moment it lands.

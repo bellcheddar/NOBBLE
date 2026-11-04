@@ -60,7 +60,9 @@ def test_the_strict_parser_really_rejects_what_python_writes():
 
 
 def test_every_published_file_is_json_a_browser_accepts():
-    files = sorted(PUBLISHED.glob("*.json"))
+    from conftest import published_files
+
+    files = [path for path in published_files() if path.suffix == ".json"]
     if not files:
         pytest.skip("no published atlas")
     for path in files:
@@ -73,14 +75,46 @@ def test_every_published_file_is_json_a_browser_accepts():
 
 def test_no_published_file_carries_a_non_finite_token():
     """Belt and braces, and a clearer message than a parse error at an
-    offset: a reader needs to know which field, not which byte."""
-    files = sorted(PUBLISHED.glob("*.json"))
+    offset: a reader needs to know which field, not which byte.
+
+    Across every published text file, not one extension of it: the JSONL
+    records hold a hundred rows each and are where a non-finite component
+    would surface (F129).
+    """
+    from conftest import published_files
+
+    files = published_files()
     if not files:
         pytest.skip("no published atlas")
     for path in files:
         text = path.read_text()
         for token in ("NaN", "Infinity"):
             assert token not in text, (path.name, token)
+
+
+def test_every_published_jsonl_line_is_json_a_browser_accepts():
+    """A `.jsonl` file is one document per line, so widening the scan to it
+    is a parsing change rather than a glob change. The licensing tests
+    failed with a decode error the moment their glob was corrected, which is
+    how this was noticed."""
+    from conftest import published_documents
+
+    checked = 0
+    for path, line, _document in published_documents((".jsonl",)):
+        checked += 1
+    if not checked:
+        pytest.skip("no published JSONL records")
+    assert checked > 50, checked
+
+    # And strictly, line by line, with the line named on failure.
+    for path in sorted(PUBLISHED.glob("*.jsonl")):
+        for number, text in enumerate(path.read_text().splitlines(), start=1):
+            if not text.strip():
+                continue
+            try:
+                _strict(text)
+            except ValueError as problem:
+                raise AssertionError(f"{path.name}:{number}: {problem}") from None
 
 
 def test_every_api_response_is_json_a_browser_accepts():

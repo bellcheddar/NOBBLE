@@ -36,9 +36,19 @@ PERMITTED_CHEMISTRY = {"deposited_ternary"}
 
 
 def _bundle() -> list[Path]:
-    if not PUBLISHED.exists():
+    """The whole bundle, from `conftest.published_files`.
+
+    This globbed `*.json`, so the licensing check never looked at
+    `results.jsonl`, which carries ligand records. Nothing was wrong there,
+    `redact()` is applied to those rows too, but a check on what may be
+    published should see what is published (F129).
+    """
+    from conftest import published_files
+
+    files = published_files()
+    if not files:
         pytest.skip("no published atlas")
-    return sorted(PUBLISHED.glob("*.json"))
+    return files
 
 
 def _ligand_records(document) -> list[dict]:
@@ -61,16 +71,19 @@ def _ligand_records(document) -> list[dict]:
 def test_every_published_smiles_has_a_permitted_source():
     """The direction nothing checked. A withheld record is not enough on its
     own: what matters is that the ones published were allowed to be."""
+    from conftest import published_documents
+
     checked = 0
-    for path in _bundle():
-        for record in _ligand_records(json.loads(path.read_text())):
+    for path, line, document in published_documents():
+        for record in _ligand_records(document):
             if "smiles_withheld" in record:
                 continue
             if not record.get("smiles"):
                 continue        # nothing published for this record
             source = record.get("smiles_source") or record.get("source")
             assert source in PERMITTED_CHEMISTRY, (
-                path.name, record.get("key") or record.get("ligand_key"), source
+                path.name, line, record.get("key") or record.get("ligand_key"),
+                source
             )
             checked += 1
     if not checked:
@@ -79,9 +92,11 @@ def test_every_published_smiles_has_a_permitted_source():
 
 
 def test_protac_db_chemistry_is_withheld_and_says_so():
+    from conftest import published_documents
+
     found = 0
-    for path in _bundle():
-        for record in _ligand_records(json.loads(path.read_text())):
+    for path, line, document in published_documents():
+        for record in _ligand_records(document):
             if (record.get("smiles_source") or record.get("source")) != "protacdb":
                 continue
             found += 1
@@ -90,7 +105,7 @@ def test_protac_db_chemistry_is_withheld_and_says_so():
             # withheld, rather than that the field does not exist. What must
             # be absent is a value.
             assert not record.get("smiles"), (
-                path.name, record.get("key") or record.get("ligand_key"),
+                path.name, line, record.get("key") or record.get("ligand_key"),
                 "PROTAC-DB chemistry is in the published bundle"
             )
             assert "smiles_withheld" in record
@@ -123,8 +138,9 @@ def test_the_restricted_sources_appear_only_as_availability():
 def test_no_published_file_carries_a_restricted_source_as_a_row_list():
     """The shape a leak would take: a list of records under a restricted
     source's name."""
-    for path in _bundle():
-        document = json.loads(path.read_text())
+    from conftest import published_documents
+
+    for path, line, document in published_documents():
 
         def walk(node, trail=""):
             if isinstance(node, dict):
@@ -132,7 +148,7 @@ def test_no_published_file_carries_a_restricted_source_as_a_row_list():
                     lowered = key.lower()
                     if any(term in lowered for term in RESTRICTED):
                         assert not isinstance(value, (list, dict)) or not value, (
-                            path.name, f"{trail}.{key}",
+                            path.name, line, f"{trail}.{key}",
                             "a restricted source carries structured content"
                         )
                     walk(value, f"{trail}.{key}")

@@ -39,6 +39,13 @@ ALLOWED_TO_DIFFER = {
     "wsgi.py":
         "each project's WSGI entry point imports its own application; the "
         "shared name is a convention, not shared code",
+    "tests/conftest.py":
+        "each project's own test fixtures under a name pytest requires. "
+        "BINMAN's opens a sqlite connection for the atlas and BoltzMaker's "
+        "fixes sys.path; NOBBLE's defines what the published bundle is. The "
+        "shared name is pytest's convention, not shared code, which is the "
+        "same reason wsgi.py is here. Caught by this test the moment the file "
+        "was added, which is the widening in F124 working (F129)",
     "tools/hwprobe.py":
         "independent implementations rather than a fork: NOBBLE's writes the "
         "campaign tuning this project needs (token caps, recycle counts, "
