@@ -154,6 +154,11 @@ QC: `npx node qc/qc.mjs` with the app running.
 ## Gates open
 
 - **No gate is currently open.** All six are closed.
+- **G5 Disk**: closed and now actually enforced. The 50 GB floor had sat in
+  `thresholds.toml` since Phase 1 with nothing reading it, so the gate
+  existed on paper. `runner.disk_gate()` checks it before every job and
+  stops the queue rather than filling the volume: 543 GB free, and the
+  remaining campaigns need about 7 GB (2.7 MB per job, 2,610 jobs).
 - **G3 Deploy**: closed, satisfied and verified, not merely approved.
   `nobble.mdeller.com` serves the app over HTTPS behind its own nginx vhost,
   the certificate is issued to `nobble.mdeller.com` (not the ALPHABETTI

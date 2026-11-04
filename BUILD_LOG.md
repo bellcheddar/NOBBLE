@@ -401,3 +401,12 @@
   missing a3m fails at whichever job reaches it, hours into a run. Verified
   by pointing a job at a non-existent path and confirming preflight refuses.
   Both assembled campaigns pass: all 9 referenced MSAs present.
+- 2026-11-04T11:35Z Gate G5 enforced rather than configured. The 50 GB floor
+  had been in thresholds.toml and tuning.toml since Phase 1 and nothing read
+  it. runner.disk_gate() now checks before every job and stops the queue with
+  a count of what is left to rerun. Checked per job, not once at the start,
+  because a 52-hour run fills a volume gradually and a gate should stop
+  before the damage. My first version read the wrong config section and
+  reported a floor of 0.0, a gate that can never open, which is why the test
+  asserts the floor is read and is positive. Headroom: 543 GB free, about
+  7 GB needed. 104 tests pass.

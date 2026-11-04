@@ -192,6 +192,32 @@ def settings_from_config(tier: int = 1, job_timeout_seconds: int = 5400) -> dict
     }
 
 
+def free_disk_gb(path: Path | None = None) -> float:
+    """Free space on the project volume, in GB."""
+    import shutil
+
+    return shutil.disk_usage(path or paths.ROOT).free / 1e9
+
+
+def disk_gate(path: Path | None = None) -> dict:
+    """Gate G5. Open when free space falls below the configured floor.
+
+    The threshold has been in `thresholds.toml` as `min_free_disk_gb` since
+    the first phase and nothing read it, so the gate existed on paper only.
+    A campaign that fills the volume does not fail cleanly: Boltz writes a
+    truncated output, the job is recorded done, and the damage is found at
+    scoring time with the compute already spent.
+    """
+    floor = float(paths.thresholds().get("gates", {}).get("min_free_disk_gb", 0)
+                  or paths.tuning().get("gates", {}).get("min_free_disk_gb", 0))
+    free = free_disk_gb(path)
+    return {
+        "free_gb": round(free, 1),
+        "floor_gb": floor,
+        "open": bool(floor) and free < floor,
+    }
+
+
 def tier_files(campaign: Path, tier: int = 1) -> dict:
     """Queue, state and results paths for a sampling tier.
 
@@ -235,6 +261,17 @@ def run_campaign(campaign: Path, limit: int | None = None, tier: int = 1) -> dic
 
     outcomes = []
     for index, job in enumerate(pending, start=1):
+        # Gate G5, checked per job rather than once at the start: a 52-hour
+        # run fills a volume gradually, and the point of a gate is to stop
+        # before the damage, not to report it afterwards.
+        gate = disk_gate(campaign)
+        if gate["open"]:
+            print(f"GATE G5: {gate['free_gb']} GB free, below the "
+                  f"{gate['floor_gb']} GB floor. Stopping with "
+                  f"{len(pending) - index + 1} job(s) unrun; rerun to resume.",
+                  file=sys.stderr, flush=True)
+            break
+
         print(f"[{index}/{len(pending)}] {job['job_id']} ({job['tokens']} tokens)",
               flush=True)
         with state_path.open("a") as state:
