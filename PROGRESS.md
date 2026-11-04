@@ -57,10 +57,27 @@ Rewritten after every phase and at least every 30 minutes during long compute.
   2,360 jobs, and started it. Tier 2, the design scan, the atlas rebuild and
   the deploy follow (D-NOB-039). Each stage is resumable, so a kill anywhere
   is recovered by rerunning the script
-- **Main campaign: running**, 82 of 2,360 at 12:50 UTC on 4 November, still
-  in the benchmark block. The Sievers arm starts at job 100, which is where
-  the first four-chain zinc jobs and the matched negatives both arrive; the
-  paths they take were verified ahead of them in F82, F83 and F86.
+- **Main campaign: running**, 120 of 2,360 at 14:28 UTC on 4 November. The
+  benchmark block is behind it and the Sievers arm began at job 100 as
+  planned, so the first zinc-bearing jobs have now run: the paths they take
+  were verified ahead of them in F82, F83 and F86, and F102 confirmed on a
+  completed prediction that the cofactor really is in the binary arm, which
+  is what D-NOB-034 requires and what preflight could only check in the YAML.
+
+  Throughput by band, remeasured on 120 timed jobs: 0.484 s/token under 200
+  tokens, 0.3501 in the 200 to 400 band and 0.7375 in the 800 to 1600 band.
+  The 2,240 jobs remaining project to **48.2 hours**, 0.2 hours over the
+  48-hour per-run target and 47.8 clear of Gate G1's 96-hour threshold, so
+  the gate stays closed. The overrun is a scheduling fact the priority
+  ordering absorbs rather than a budget problem: the run yields the
+  benchmark panel first, then the Sievers split, and loses discovery off
+  the tail.
+
+  The arm is much cheaper per job than the block before it. A Sievers binary
+  is 136 tokens and runs in 35 seconds, against 1,223 tokens and 915 seconds
+  for a DCAF15 ternary, which is why the first 100 jobs took as long as they
+  did and why the projection is now dominated by job count rather than by
+  the few large constructs.
 - **Main campaign: running.** `campaigns/campaign_20261104T004632Z`, 158 pairs
   (7 benchmark, 120 Sievers, 31 scrambles), 2,360 jobs, 392,400 tokens.
   Measured on its own first jobs at 0.3363 s/token, which projects **36.7
@@ -332,3 +349,62 @@ two chains interleaving their later stages.
 - Degronopedia and ProtCID were never acquired (BINMAN's own Gate G7). The
   ProtCID packing-only veto of spec 4.7 will report `furniture: null` with status
   `not_computed: protcid_unavailable`, never `false`. See D-NOB-010.
+
+## Review F98 to F103, while the campaign runs
+
+Six entries, of which two are fixes, one is a correction to code committed an
+hour earlier, and three are verifications that found nothing wrong. The
+verifications are recorded because the alternative is rediscovering each as a
+hypothesis.
+
+**F98, verified.** D-NOB-035 refuses the Sievers fingers an MSA on the
+grounds that alignment depth would correlate with the ROC's label. Nobody had
+checked the arm against that description. All three premises hold in the
+assembled queue: 24 degraded pairs from 24 distinct genes, 96 controls from
+86, both median length 23, and composition matched within two percentage
+points on every class. No change made.
+
+**F99, fixed.** Tier 2 has never run. Its Boltz flags are valid, but
+`_read_outputs` asked for the structure by rank and the confidence by
+directory order, which agree at one diffusion sample and not at twenty-five:
+replaying the old code on a fresh 25-sample directory gave structure rank 0
+with confidence rank 14. All ten tier-2 jobs would have differenced ipTMs
+belonging to poses nobody scored. The confidence is now derived from the
+chosen structure's filename. The replay also caught an unpadded-rank sort
+picking `_model_10` over `_model_3`, in my replacement as well as the
+original.
+
+**F100, fixed.** The tier-2 timeout was a global cap times a guessed multiple
+of 4, per attempt, with one retry. BoltzMaker's 146,761 recorded runs all
+have null recycling and sampling settings, so no measurement of the scaling
+exists anywhere; it is bounded from config instead. Six of seven measured
+pairs have 4.6 to 10 times the headroom they need and
+`bench06_RBM39_DCAF15` has 0.83, because the DCAF15 assembly is 1,223 tokens
+by construction. Each refinement now carries a budget sized from its own
+pair's measured tier-1 cost, and the budget is per job rather than per
+attempt. D-NOB-040 records the retry trade-off.
+
+**F101, fixed, and it was mine.** F97's drift check excluded `throughput` and
+not the values computed from it. Thirteen jobs later it reported 63 drifted
+values, all design preview costs, and printed six with "and 57 more", so a
+real difference would have been in the 57. Drift now returns two categories.
+
+**F102, noted.** Boltz reports `ligand_iptm` for whichever het group is in
+the job, so on a Sievers pair it is the structural zinc: 0.9946 on a binary
+job containing no glue at all. Nothing reads it and it is not published, so
+the field stays with a comment and a test that fails if anything starts
+reading it.
+
+**F103, fixed.** The live median pose RMSD of 17.14 angstrom is either Gate
+G6 or a measurement bug. Neither: the receptor anchors at 1.751 angstrom,
+all seven reference chain pairs are genuine interfaces at 1.84 to 2.80
+angstrom minimum separation, and residue identity matches in all seven.
+F6 had already diagnosed the cause and the benchmark page already shows the
+domain comparison beside it. What was missing is that nothing asserted the
+correspondence, on the layer that decides whether the positive controls
+work. It is asserted now, with a control that shifts the frame by fifty
+residues, and the floor is in config because my first version used exact
+equality and refused CDK12 over 293 of 294 identical residues.
+
+Suite 707 passing, 2 skipped, both conditional on a campaign running and on
+tier 2 not yet being selected.
