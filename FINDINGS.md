@@ -4191,3 +4191,51 @@ why the atlas previewed a different parent from the one the chain assembles
 was the question I had not asked, and the answer was F89. The other four
 cost time and produced nothing, which is the honest accounting: the same
 habit that found one defect manufactured four non-defects.
+
+## F93. One substrate domain moved, and the campaign had not recorded which it used
+
+The corrected campaign exists to test one claim: that a folded domain
+recovers the pose better than a 15-mer fragment. Its substrate boundaries
+come from an InterPro lookup, and a fix to how an ambiguous entry is
+resolved moves them. `campaign.json` recorded `campaign_id`,
+`compare_against`, `created_at`, `jobs_emitted`, `pairs` and `purpose`, and
+not which domain any job used.
+
+One has moved. `corr05_CSNK1A1_CRBN` submitted a 269-residue domain; the
+plan now specifies 219, P48729 17-235, with the shorter sequence a strict
+substring of the longer. Five of the seven pairs match the plan exactly and
+IKZF1 is a 15-mer control by design, so this is isolated rather than
+systematic.
+
+It reaches the headline. CSNK1A1 is one of the six pairs in the published
+`improved` list, 12.24 angstrom to 6.189, and the published substrate plan
+beside it is recomputed at atlas-build time and so describes the 219-residue
+domain. A reader matching the plan against the result would have been
+matching a plan to a measurement of a different construct.
+
+`stale_inputs` could not see it. That check compares a YAML against the
+queue row beside it, and both were written by one assembly, so they agree
+about a boundary that has since moved. The comparison that matters is
+against the plan, which is what `superseded_substrates` does.
+
+The caveat is on the conclusion, not only in the per-pair table, for the
+same reason the incomplete one is: the sentence is the line that gets
+quoted. It says the measurement stands and describes a different construct
+from the plan beside it, because the number is not wrong and saying so
+would be a different and false claim. Which of the two domains is right is
+a question about the kinase rather than about the code, and this finding
+does not answer it.
+
+Two mistakes of mine on the way, both caught.
+
+The first was comparing the longest sequence in each YAML against the plan,
+which reads the receptor for most pairs: five of seven appeared to match no
+current domain. Found by the result being implausible rather than by a test,
+and the fix is to read the chain whose id is P.
+
+The second the cutoff sweep caught on its next run. My own guard used
+`len(submitted) < 30` to tell a 15-mer from a domain, which is a number in
+an expression deciding what counts as a domain. The distinction is in the
+data: the fragment arm submits the curated 15-mer, so it is identified by
+matching those sequences. A degron is a slice of the domain it sits in, so
+without that every fragment would have been reported as superseded.
