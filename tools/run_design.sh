@@ -49,7 +49,19 @@ status=$?
 echo "=== inference finished $(date -u +%Y-%m-%dT%H:%M:%SZ) exit=$status ==="
 
 echo "=== score ==="
+# Checked, because the lift step below reads these scores and a lift
+# computed from the previous run's values is a number that looks like a
+# measurement of this scan (F194). The same gap as refresh.sh had, in the
+# other script that scores and then consumes what it scored.
 "$SENV/bin/python" -m nobble.score.run --campaign "$CAMPAIGN"
+SCORE_CODE=$?
+if [ "$SCORE_CODE" -ne 0 ]; then
+  echo "run_design: scoring failed (exit $SCORE_CODE), so the lift below would" >&2
+  echo "            be computed from whatever scores.jsonl already held. The" >&2
+  echo "            inference is done and recorded; rerun scoring rather than" >&2
+  echo "            the scan." >&2
+  exit 1
+fi
 
 echo "=== lift ==="
 "$SENV/bin/python" -c "
@@ -72,4 +84,10 @@ if report.get('lifts'):
     (campaign / 'scan_profile.json').write_text(json.dumps(profile, indent=2))
     print('most sensitive position:', json.dumps(profile.get('most_sensitive')))
 "
-echo "=== design scan done $(date -u +%Y-%m-%dT%H:%M:%SZ) ==="
+LIFT_CODE=$?
+echo "=== design scan done $(date -u +%Y-%m-%dT%H:%M:%SZ) exit=$LIFT_CODE ==="
+# The script used to end on that echo, so a failed lift exited 0 and the
+# scan reported success with no scan_profile.json written. The inference is
+# the expensive part and it is recorded either way; this says whether the
+# analysis after it ran (F195).
+exit $LIFT_CODE

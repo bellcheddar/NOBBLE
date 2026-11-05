@@ -71,6 +71,16 @@ if [ -n "$CAMPAIGN" ]; then
 else
   caffeinate -dimsu "$PY_BOLTZ" -m nobble.execute.runner --tier 2
 fi
+REFINE_CODE=$?
+# Remembered, not acted on yet. The runner exits 1 when any job failed, and
+# aborting here would skip scoring the jobs that succeeded, which is what
+# `tests/test_scripts.py` forbids and what tier2.sh itself did once. So the
+# refinement's status is carried to the end and combined with the scorer's
+# (F195).
+if [ "$REFINE_CODE" -ne 0 ]; then
+  echo "    refinement exited $REFINE_CODE: at least one job failed. Scoring" >&2
+  echo "    what did run, and this script will exit non-zero at the end." >&2
+fi
 
 echo "--- score the refined poses"
 # Writes scores_tier2.jsonl. scores.jsonl and weights.json are untouched: the
@@ -80,5 +90,19 @@ if [ -n "$CAMPAIGN" ]; then
 else
   "$PY_SCI" -m nobble.score.run --tier 2
 fi
+SCORE_CODE=$?
+
+# Ending on the echo below exited 0 whatever the scoring did, so refined
+# poses that failed to score read as a completed refinement: the same shape
+# as F193 one step later in the same script (F195).
+if [ "$SCORE_CODE" -ne 0 ]; then
+  echo "tier 2: the refinement ran but scoring it failed (exit $SCORE_CODE)," >&2
+  echo "        so scores_tier2.jsonl may be absent or from an earlier run." >&2
+  echo "        The poses are on disk; rerun the scorer rather than the GPU." >&2
+  exit "$SCORE_CODE"
+fi
 
 echo "=== tier 2 done. Tier-1 scores are unchanged, by construction. ==="
+# The refinement's status has the last word, after the poses it produced
+# have been scored. Ending on the echo above exited 0 even when jobs failed.
+exit "$REFINE_CODE"

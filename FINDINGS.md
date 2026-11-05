@@ -8824,3 +8824,106 @@ thinks happened. A postcondition says what is on disk. When the two can
 disagree, the step that follows should read the second, and the way to find
 out that they can disagree is to make the step refuse and see what the next
 one does.
+
+## F194. The refresh said it had refreshed when the atlas had refused
+
+`tools/refresh.sh` runs score, validate, throughput and atlas, and it is the
+step between a finished campaign and the deploy. Two of those four were
+invoked as `… 2>&1 | tail -N`, which makes `$?` the status of `tail`. Nothing
+read either one.
+
+The atlas half was live. `build_atlas.py` returns 1 when
+`stale_inputs` reports anything, which is the main campaign's state today:
+fifteen `bench02_BRD4_VHL` jobs run on a YAML the fixed rule no longer emits.
+So the chain would have spent thirty-six hours on the queue, reached refresh,
+had the build refuse, and printed `=== refreshed. Deploy separately with
+deploy/deploy.sh ===`. D-NOB-069 predicted the refusal. It did not occur to
+me that the refusal would be invisible, and an operator reading that log
+would have had every reason to think the campaign was published.
+
+Worse, the printed tail is not reliable either. The refusal goes to stderr
+and `publishing <campaign>` to stdout, and under redirection those interleave
+by buffering, so the last line shown can be the one that reads like success.
+The status was the only trustworthy signal and it was the one discarded.
+
+The scoring half is quieter and the same shape. A failed score leaves
+`scores.jsonl` holding the previous run's values, the atlas copies them, and
+the drift check cannot notice because a rebuild reads the same stale file.
+That is F171's compare-stale-against-stale, one layer up from where F171
+found it.
+
+The fix captures each status before anything pipes it, and then treats the
+steps differently on purpose. Score and atlas gate publication: a failure
+stops the refresh with a non-zero exit and leaves the previously published
+atlas in place, which is stale rather than wrong, the F59 principle the build
+already applies to itself. Throughput does not gate: it feeds a panel, and
+refusing to publish a valid campaign because a timing summary failed is the
+wrong trade. That asymmetry is why these runners deliberately avoid `set -e`,
+and a test pins both halves of it so neither drifts into the other.
+
+`run_design.sh` had the same gap, in the other script that scores and then
+consumes what it scored: its lift step reads those scores, and a lift
+computed from the previous run's values is a number that looks like a
+measurement of this scan. Checked now, and the test enumerates the category,
+"every script that runs the scorer and then uses the scores", rather than
+naming the two files.
+
+Two things checked rather than assumed, both of which could have made this
+fix pointless. The scorer's status does carry information: it returns 2 for
+no campaign, propagates a crash as 1, and returns 0 on completion, with
+per-pair failures recorded in the data as the fallback ladder intends. Had it
+always returned 0 a status check would have been theatre and a file-level
+postcondition would have been needed, which is the distinction F193 turned
+on. And `run_design.sh` already captured the inference runner's status
+correctly, on its own line before the echo, which is exactly the idiom
+`run_corrected.sh` lacked in F190: the right pattern was in the repository
+and simply not applied uniformly, for the second time in three findings.
+
+One incidental confirmation. Running the refused build against the real
+`deploy/atlas` left it untouched, 111 files and 100 structures, because the
+stale check precedes `rmtree`. A refusal cannot leave a half-built atlas,
+which is the property F59 claims and which I had not actually tested.
+
+## F195. Four runners that could not say "failed", one of them mine
+
+Low severity, and worth saying so before the detail: the chain calls the
+runner and the scorer directly, and `run_queue.sh` with a deliberate `||
+true`, so none of this was breaking the live publish path the way F194's
+refresh was. It matters for an operator running a script by hand, and for
+`tools/status.sh`, which scans these logs for failures that `exit=0` can
+never match.
+
+The family had four states. `run_queue.sh` and `run_msa.sh` captured a status
+on its own line, reported it and exited with it. `run_corrected.sh` captured
+it, reported it and exited 0 anyway. `run_substrate_msa.sh` ended on an
+`echo`, so its status was the echo's. `run_design.sh` and `tier2.sh` had
+later steps whose statuses nobody read at all.
+
+The `run_corrected.sh` one is mine, from F190, committed a few hours ago. That
+finding was about a status line that could not say "failed", and it fixed the
+line and stopped there: the log told the truth and the script still exited 0.
+Fixing the instance and not the category, in a finding about fixing the
+category.
+
+What the enumeration bought is the point. I set out to fix two scripts. The
+test, written against the family rather than the two, failed on three more
+cases: `run_design.sh` ending on an echo so a failed lift reported success,
+`tier2.sh` doing the same after its refined scoring, and `tier2.sh`'s
+refinement step itself, whose status nothing read.
+
+That last one needed care rather than the obvious fix. The runner exits 1
+when any job failed, so aborting on it would skip scoring the jobs that
+succeeded, which `tests/test_scripts.py` forbids and which `tier2.sh` did
+once. So the refinement's status is remembered, the poses it produced are
+scored anyway, and the status has the last word at the end. The warning says
+that is what is happening, because a script that prints a failure and carries
+on should say why it is carrying on.
+
+My test was wrong once too, in both directions. It required a capture of the
+form `NAME=$?` and so reported `tier2.sh`, which captures
+`${PIPESTATUS[0]}` because its selector is piped through `tee`, as having no
+capture at all: more correct than `$?` there, not less. And it asserted "the
+last line is not an echo", which is a proxy rather than the property. A
+multi-step script may end on an echo if every failure path has already
+exited, which is exactly what `tier2.sh` does. The assertion is now the thing
+itself: somewhere the script exits with a status it captured.

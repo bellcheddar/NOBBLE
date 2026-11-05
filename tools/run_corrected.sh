@@ -28,3 +28,9 @@ caffeinate -dimsu "$BENV/bin/python" -m nobble.execute.runner --campaign "$CAMPA
 # match (F190).
 STATUS=$?
 echo "=== finished $(date -u +%Y-%m-%dT%H:%M:%SZ) exit=$STATUS ==="
+# Propagated, which F190 did not do. That finding fixed the log line and
+# stopped there, so the line told the truth and the script still exited 0:
+# a caller gating on it could not tell a failed run from a clean one.
+# `run_queue.sh` and `run_msa.sh` both end this way and have all along
+# (F195).
+exit $STATUS

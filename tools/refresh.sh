@@ -33,8 +33,33 @@ fi
 [[ -n "$CAMPAIGN" ]] || { echo "refresh: no campaign found" >&2; exit 2; }
 echo "=== refreshing $CAMPAIGN ==="
 
+# Each step's status is captured before anything pipes it away, and the
+# steps are not treated alike (F194).
+#
+# Scoring and the atlas build gate publication. `| tail -3` discarded their
+# status, so a failed score left `scores.jsonl` as the previous run's and
+# the atlas copied it, and a refused atlas build printed its refusal while
+# this script went on to say "refreshed". The drift check cannot catch the
+# first, because a rebuild reads the same stale file: that is F171's
+# compare-stale-against-stale one layer up.
+#
+# Throughput is not gating. It feeds a panel, and blocking a valid
+# campaign's publication because a timing summary failed would be the
+# wrong trade: it warns.
+STEP_LOG="$(mktemp -t nobble_refresh_step)"
+trap 'rm -f "$STEP_LOG"' EXIT
+
 echo "--- score"
-"$SCI" -m nobble.score.run --campaign "$CAMPAIGN" 2>&1 | tail -3
+"$SCI" -m nobble.score.run --campaign "$CAMPAIGN" > "$STEP_LOG" 2>&1
+SCORE_CODE=$?
+tail -3 "$STEP_LOG"
+if [ "$SCORE_CODE" -ne 0 ]; then
+  echo "refresh: scoring failed (exit $SCORE_CODE), so nothing is published." >&2
+  echo "        scores.jsonl still holds the previous run's values and the" >&2
+  echo "        atlas build would copy them. The published atlas stands," >&2
+  echo "        which is stale rather than wrong (F59)." >&2
+  exit 1
+fi
 
 echo "--- validate"
 "$SCI" -c "
@@ -63,7 +88,15 @@ if [[ "$NO_PUBLISH" == "1" ]]; then
   echo "    skipped (--no-publish): data/throughput.json is shared state and"
   echo "    still describes whatever campaign last measured it"
 else
-"$SCI" -m nobble.execute.runner --campaign "$CAMPAIGN" --throughput 2>&1 \
+"$SCI" -m nobble.execute.runner --campaign "$CAMPAIGN" --throughput > "$STEP_LOG" 2>&1
+THROUGHPUT_CODE=$?
+if [ "$THROUGHPUT_CODE" -ne 0 ]; then
+  echo "    throughput failed (exit $THROUGHPUT_CODE): data/throughput.json still" >&2
+  echo "    describes whatever last measured it. Not fatal, because this feeds" >&2
+  echo "    a panel rather than the science, and refusing to publish a good" >&2
+  echo "    campaign over a timing summary is the wrong trade (F194)." >&2
+fi
+cat "$STEP_LOG" \
   | python3 -c "
 import json,sys
 try:
@@ -83,6 +116,15 @@ if [[ "$NO_PUBLISH" == "1" ]]; then
   echo "--- atlas skipped (--no-publish): $CAMPAIGN scored but not published"
 else
   echo "--- atlas"
-  "$SCI" deploy/build_atlas.py "$CAMPAIGN" 2>&1 | tail -4
+  "$SCI" deploy/build_atlas.py "$CAMPAIGN" > "$STEP_LOG" 2>&1
+  ATLAS_CODE=$?
+  tail -4 "$STEP_LOG"
+  if [ "$ATLAS_CODE" -ne 0 ]; then
+    echo "refresh: the atlas build refused (exit $ATLAS_CODE). Nothing was" >&2
+    echo "        published and the previously published atlas stands. The" >&2
+    echo "        reason is above: a refusal on stale inputs is the build" >&2
+    echo "        working, not failing." >&2
+    exit 1
+  fi
 fi
 echo "=== refreshed. Deploy separately with deploy/deploy.sh ==="
