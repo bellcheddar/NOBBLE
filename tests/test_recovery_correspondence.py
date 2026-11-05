@@ -35,10 +35,17 @@ sys.path.insert(0, str(ROOT))
 from nobble import paths  # noqa: E402
 from nobble.score import poses  # noqa: E402
 from nobble.validate.layers import RECOVERY_TARGETS  # noqa: E402
+from nobble.execute.campaign import latest_or_absent as _newest  # noqa: E402
 
 
-def _jobs(campaign_name: str) -> dict[str, dict]:
-    campaign = ROOT / "campaigns" / campaign_name
+def _jobs(prefix: str) -> dict[str, dict]:
+    """Completed ternary jobs from the newest campaign with this prefix.
+
+    Took a campaign directory name, which meant these tests went quiet
+    rather than failing once that campaign was superseded: `_jobs` returned
+    {} and every caller skipped.
+    """
+    campaign = _newest(prefix)
     results = campaign / "results.jsonl"
     if not results.exists():
         return {}
@@ -65,8 +72,7 @@ def test_the_floor_comes_from_config():
     )
 
 
-@pytest.mark.parametrize("campaign", ["benchmark_20261103T192126Z",
-                                      "corrected_20261103T214331Z"])
+@pytest.mark.parametrize("campaign", ["benchmark", "corrected"])
 def test_every_benchmark_target_aligns_to_its_own_residues(campaign):
     """The measurement that nothing had made. All seven depositions, both
     construct generations, including GSPT1 whose frame is 138 residues away
@@ -96,7 +102,7 @@ def test_a_single_substitution_does_not_discard_the_measurement():
     """CDK12 is the live case: 6TD3 chain B carries an R where Q9NYV4 has a
     K, at one position out of 294. The RMSD is reported and the difference is
     said rather than swallowed."""
-    jobs = _jobs("corrected_20261103T214331Z")
+    jobs = _jobs("corrected")
     job = jobs.get("bench07_CDK12_DDB1")
     if job is None:
         pytest.skip("the corrected CDK12 pair has not run")
@@ -119,7 +125,7 @@ def test_a_misaligned_frame_is_refused(monkeypatch):
     Without this the shifted mapping returns a number: the receptor anchor is
     untouched, so it superposes exactly as well as before.
     """
-    jobs = _jobs("benchmark_20261103T192126Z") or _jobs("corrected_20261103T214331Z")
+    jobs = _jobs("benchmark") or _jobs("corrected")
     if not jobs:
         pytest.skip("no completed ternary results")
     pair, job = sorted(jobs.items())[0]

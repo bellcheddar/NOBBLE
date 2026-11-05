@@ -31,6 +31,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from nobble.execute.campaign import latest_or_absent as _newest  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -242,7 +243,7 @@ def test_the_live_correction_has_exactly_one_reference():
     failure is visible, and this says so before the chain does.
     """
     module = _module()
-    main = ROOT / "campaigns" / "campaign_20261104T004632Z"
+    main = _newest("campaign")
     if not (main / "queue.jsonl").exists():
         return
 

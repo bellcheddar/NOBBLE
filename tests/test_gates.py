@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from nobble import paths
 from nobble.execute import runner
+from nobble.execute.campaign import latest_or_absent as _newest  # noqa: E402
 
 
 def test_the_gate_reads_its_floor_from_config():
@@ -173,8 +174,8 @@ def test_a_complete_campaign_gets_no_provisional_qualifier():
     from pathlib import Path
     from nobble.validate import compare as cmp
 
-    report = cmp.compare(Path("campaigns/benchmark_20261103T192126Z"),
-                         Path("campaigns/corrected_20261103T214331Z"))
+    report = cmp.compare(_newest("benchmark"),
+                         _newest("corrected"))
     if report["pairs_incomplete"] == 0:
         assert "Provisional" not in report["conclusion"]
     else:
@@ -223,8 +224,8 @@ def test_the_conclusion_reports_bridge_agreement_without_changing_the_verdict():
 
     from nobble.validate import compare as cmp
 
-    baseline = Path("campaigns/benchmark_20261103T192126Z")
-    corrected = Path("campaigns/corrected_20261103T214331Z")
+    baseline = _newest("benchmark")
+    corrected = _newest("corrected")
     if not (baseline / "scores.jsonl").exists() or not (corrected / "scores.jsonl").exists():
         pytest.skip("campaigns not scored")
 

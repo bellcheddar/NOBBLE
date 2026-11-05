@@ -9569,3 +9569,55 @@ The reason string is branched as well. "The YAML the queue row names is not
 on disk" describes a file the row never claimed to have, and a campaign whose
 inputs were moved is not the same fault as a row that names nothing: one
 message for two input cases, which is F198 through F201 exactly.
+
+## F209. Eighteen test files were wired to campaigns that are about to change
+
+Found by reading the skip list rather than the code.
+`test_the_live_tier2_queue_shares_the_tier1_yaml` skipped with "tier 2 has
+not been selected on this checkout" while the benchmark campaign had held a
+ten-row `queue_tier2.jsonl` the whole time. It was keyed on the main
+campaign's directory name, so the property it guards, that tier 2 names only
+YAML that tier 1 also names and therefore that correcting a tier-1 input
+corrects the refinement, had never been checked against the one campaign
+that could check it.
+
+That was one visible skip. Behind it, eighteen files named a campaign
+directory by its timestamp, twenty-nine references in all. A pinned name is
+right until the campaign it names is superseded or pruned, and then the test
+does not fail. It finds nothing, its own `.exists()` guard returns false, and
+it skips. Both triggers were already in the diary: the campaign running now
+will produce a new directory, and G5 prunes old ones when disk gets tight.
+
+This is F190 again, which fixed exactly this in the shell after `ls -d
+campaigns/design_* | tail -1` handed a failed assembly to the design runner,
+and noted at the time that the fix had landed "in one file out of four". It
+turns out the Python side of the test suite was the fifth through
+twenty-second.
+
+They now resolve through `campaign.latest_or_absent(prefix)`: `latest`, but
+returning a path that does not exist instead of None. That choice is what
+kept the change small and safe. Every call site already guarded on
+`.exists()`, so with no campaign of that prefix the tests skip exactly as
+before, and with one they read the newest complete one. One definition, in
+the module that already owns the rule, rather than a copy per file, which is
+what F181, F183 and F187 were each about.
+
+The check that the rewrite was behaviour-neutral is the skip count, not the
+pass count. Before: 1,223 passed, 3 skipped. After: 1,227 passed, the same 3
+skipped. A test that had quietly stopped reading its campaign would have
+shown up as a fourth skip, which is the whole defect in one number.
+
+Three references remain and are all something else: prose in a docstring
+recording a historical fact, a string handed to a path-shape matcher that
+reads nothing, and synthetic campaigns built in a `tmp_path` fixture to test
+`campaign.latest` itself.
+
+Two mistakes of my own, both the kind this session keeps producing. The
+mechanical rewrite inserted an import inside a multi-line `import (`, which
+is the sort of thing that only shows up when every file is compiled, so the
+fix was to compile every file. And the guard's first version matched any
+dated name anywhere in a test, which flagged nine files that invent one in a
+fixture: the discriminator is not the shape of the name but whether it is
+joined to the real campaigns root. The guard also found its own allowlist
+going stale in the same run, which is the property
+`tests/test_template_cutoffs.py` already asks of its own.

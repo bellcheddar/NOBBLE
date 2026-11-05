@@ -20,6 +20,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from nobble.execute.campaign import latest_or_absent as _newest  # noqa: E402
 
 _spec = importlib.util.spec_from_file_location(
     "check_prediction", ROOT / "tools" / "check_prediction.py"
@@ -114,8 +115,8 @@ def test_the_summary_accounts_for_every_tested_prediction():
     could not express (F121).
     """
     module = check_prediction
-    baseline = ROOT / "campaigns" / "benchmark_20261103T192126Z"
-    corrected = ROOT / "campaigns" / "corrected_20261103T214331Z"
+    baseline = _newest("benchmark")
+    corrected = _newest("corrected")
     if not (baseline.exists() and corrected.exists()):
         pytest.skip("both campaigns are needed")
 
@@ -130,8 +131,8 @@ def test_the_three_counts_come_from_the_three_verdicts():
     """Counted off the rows rather than trusted, so a verdict string renamed
     on one side and not the other shows up here."""
     module = check_prediction
-    baseline = ROOT / "campaigns" / "benchmark_20261103T192126Z"
-    corrected = ROOT / "campaigns" / "corrected_20261103T214331Z"
+    baseline = _newest("benchmark")
+    corrected = _newest("corrected")
     if not (baseline.exists() and corrected.exists()):
         pytest.skip("both campaigns are needed")
 

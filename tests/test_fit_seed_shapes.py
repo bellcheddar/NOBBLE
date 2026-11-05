@@ -30,6 +30,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from nobble.score.weights import fit  # noqa: E402
+from nobble.execute.campaign import latest_or_absent as _newest  # noqa: E402
 
 
 def _campaign(tmp_path: Path, rows: list[dict]) -> Path:
@@ -110,7 +111,7 @@ def test_the_live_panel_shows_the_dropped_conditioned_arm():
     """The real case. The benchmark panel has one pair whose conditioned arm
     was dropped for having no pocket, so it contributes 5 ternary against the
     other six at 10."""
-    campaign = ROOT / "campaigns" / "benchmark_20261103T192126Z"
+    campaign = _newest("benchmark")
     if not (campaign / "scores.jsonl").exists():
         pytest.skip("no benchmark scores")
     result = fit(campaign)

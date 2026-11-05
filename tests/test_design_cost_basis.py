@@ -32,6 +32,7 @@ sys.path.insert(0, str(ROOT))
 from nobble import paths  # noqa: E402
 from nobble.curate import diversity  # noqa: E402
 from nobble.design import report  # noqa: E402
+from nobble.execute.campaign import latest_or_absent as _newest  # noqa: E402
 
 PARENT = "benchmark_888fd2c63e"
 
@@ -113,7 +114,7 @@ def test_the_preview_passes_the_tokens():
     _requires_throughput()
     from nobble.app import data
 
-    campaign = paths.CAMPAIGNS / "campaign_20261104T004632Z"
+    campaign = _newest("campaign")
     if not campaign.exists():
         pytest.skip("no main campaign on this checkout")
     data.configure(str(campaign))

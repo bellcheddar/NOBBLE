@@ -34,6 +34,7 @@ sys.path.insert(0, str(ROOT))
 from nobble import paths  # noqa: E402
 from nobble.execute import watchdog  # noqa: E402
 from nobble.execute.runner import write_throughput  # noqa: E402
+from nobble.execute.campaign import latest_or_absent as _newest  # noqa: E402
 
 GOOD = {"job_id": "a", "pair_id": "p", "tier": "benchmark",
         "status": "done", "seconds": 100.0, "tokens": 200}
@@ -120,7 +121,7 @@ def test_the_live_measurement_is_unchanged(tmp_path, monkeypatch):
     for exactly this and said so on the next mutation run.
     """
     monkeypatch.setattr(paths, "THROUGHPUT", tmp_path / "throughput.json")
-    campaign = ROOT / "campaigns" / "benchmark_20261103T192126Z"
+    campaign = _newest("benchmark")
     if not (campaign / "results.jsonl").exists():
         pytest.skip("no benchmark campaign")
     payload = write_throughput(campaign)

@@ -20,9 +20,10 @@ import json
 import random
 import shutil
 from pathlib import Path
+from nobble.execute.campaign import latest_or_absent as _newest  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
-BENCHMARK = ROOT / "campaigns" / "benchmark_20261103T192126Z"
+BENCHMARK = _newest("benchmark")
 DESIGN = sorted((ROOT / "campaigns").glob("design_*"))
 
 

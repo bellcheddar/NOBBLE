@@ -30,6 +30,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from nobble.execute.campaign import latest_or_absent as _newest  # noqa: E402
 
 TEMPLATE = ROOT / "nobble" / "app" / "templates" / "campaign.html"
 
@@ -133,7 +134,7 @@ def test_the_live_benchmark_pair_is_marked():
     """bench03_BRD4_CRBN is the real one: dBET57 has no CCD entry."""
     from nobble.score import metrics
 
-    results = ROOT / "campaigns" / "benchmark_20261103T192126Z" / "results.jsonl"
+    results = _newest("benchmark") / "results.jsonl"
     if not results.exists():
         pytest.skip("no benchmark campaign on this checkout")
 

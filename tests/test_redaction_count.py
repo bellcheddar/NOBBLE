@@ -30,6 +30,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "deploy"))
+from nobble.execute.campaign import latest_or_absent as _newest  # noqa: E402
 
 import build_atlas  # noqa: E402
 
@@ -86,7 +87,7 @@ def test_a_real_build_reports_a_count_that_matches_the_bundle(tmp_path):
     The count has to agree with the bundle it describes: that agreement is
     the thing that was false, not the arithmetic.
     """
-    campaign = ROOT / "campaigns" / "benchmark_20261103T192126Z"
+    campaign = _newest("benchmark")
     if not campaign.exists():
         pytest.skip("no benchmark campaign on this checkout")
 

@@ -29,9 +29,10 @@ sys.path.insert(0, str(ROOT))
 from nobble.numeric import finite_values, median_of  # noqa: E402
 from nobble.score import poses  # noqa: E402
 from nobble.validate.layers import RECOVERY_TARGETS  # noqa: E402
+from nobble.execute.campaign import latest_or_absent as _newest  # noqa: E402
 
-FRAGMENT = ROOT / "campaigns" / "benchmark_20261103T192126Z"
-DOMAIN = ROOT / "campaigns" / "corrected_20261103T214331Z"
+FRAGMENT = _newest("benchmark")
+DOMAIN = _newest("corrected")
 
 
 def _median(campaign: Path, pair: str) -> float | None:

@@ -35,8 +35,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from nobble.validate import inputs  # noqa: E402
+from nobble.execute.campaign import latest_or_absent as _newest  # noqa: E402
 
-CORRECTED = ROOT / "campaigns" / "corrected_20261103T214331Z"
+CORRECTED = _newest("corrected")
 
 
 def test_the_substrate_is_found_by_chain_id_not_by_length():
@@ -178,7 +179,7 @@ def test_the_conclusion_no_longer_carries_the_superseded_caveat():
     beside it agreeing (F107)."""
     from nobble.validate import compare
 
-    baseline = ROOT / "campaigns" / "benchmark_20261103T192126Z"
+    baseline = _newest("benchmark")
     if not (baseline.exists() and CORRECTED.exists()):
         pytest.skip("both campaigns are needed")
     report = compare.run(baseline, CORRECTED)

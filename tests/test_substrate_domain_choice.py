@@ -32,6 +32,7 @@ from nobble.curate import interpro, numbering  # noqa: E402
 from nobble.curate.peptides import (  # noqa: E402
     benchmark_substrate_constructs, domain_context,
 )
+from nobble.execute.campaign import latest_or_absent as _newest  # noqa: E402
 
 CSNK1A1 = "P48729"
 
@@ -212,7 +213,7 @@ def test_the_plan_matches_what_the_corrected_campaign_submitted():
     agree about CSNK1A1 again, so there is nothing left to caveat."""
     from nobble.validate import inputs
 
-    corrected = ROOT / "campaigns" / "corrected_20261103T214331Z"
+    corrected = _newest("corrected")
     if not (corrected / "yaml").exists():
         pytest.skip("no corrected campaign on this checkout")
 

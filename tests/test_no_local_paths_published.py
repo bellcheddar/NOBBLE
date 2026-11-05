@@ -26,6 +26,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from nobble.execute.campaign import latest_or_absent as _newest  # noqa: E402
 
 PUBLISHED = ROOT / "deploy" / "atlas"
 
@@ -94,7 +95,7 @@ def test_the_diagnostic_that_caused_this_is_stable_under_both_invocations():
     check disagreed about a value neither of them was describing."""
     from nobble.design import report
 
-    campaign = ROOT / "campaigns" / "benchmark_20261103T192126Z"
+    campaign = _newest("benchmark")
     if not (campaign / "validation.json").exists():
         pytest.skip("no benchmark validation to read")
 

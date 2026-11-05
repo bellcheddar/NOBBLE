@@ -28,8 +28,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from nobble.validate import inputs  # noqa: E402
+from nobble.execute.campaign import latest_or_absent as _newest  # noqa: E402
 
-MAIN = ROOT / "campaigns" / "campaign_20261104T004632Z"
+MAIN = _newest("campaign")
 
 
 def _campaign(tmp_path, jobs):

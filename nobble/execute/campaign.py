@@ -68,6 +68,27 @@ def latest(prefix: str = "benchmark") -> Path | None:
     return candidates[-1] if candidates else None
 
 
+def latest_or_absent(prefix: str = "benchmark") -> Path:
+    """`latest`, but a path that does not exist rather than None.
+
+    For callers that resolve a campaign at import time and then guard on
+    `.exists()`, which is how the test suite reads the campaigns on disk.
+    Eighteen test files named a campaign directory by its timestamp, so
+    they went quiet rather than failing the moment that campaign was
+    superseded or pruned: the check still ran, found nothing, and skipped.
+    That is F190's lesson, which fixed the same thing in the shell, and
+    F195's, which is that a step reporting success for work it did not do
+    is worse than one that fails.
+
+    Returning a missing path rather than raising keeps every one of those
+    `.exists()` guards meaningful: with no campaign of this prefix the
+    tests skip as they always did, and with one they use the newest
+    complete one instead of a name frozen into the file.
+    """
+    found = latest(prefix)
+    return found if found is not None else paths.CAMPAIGNS / f"_no_{prefix}_campaign"
+
+
 # Appended to, never rewritten: a failed assembly is an event, and the
 # previous failure is the context for the next one. Three identical
 # skeletons 20 minutes apart said more together than any one of them did.
