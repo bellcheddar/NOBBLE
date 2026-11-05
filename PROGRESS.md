@@ -893,6 +893,24 @@ refuses while that is true. The decision is to let it finish and then rerun
 and deploys (D-NOB-069). Every stage is resumable, so the second run's queue
 pass costs minutes.
 
+**Deployed twice today, and the second deploy closed two defects that were
+live.** `nobble.mdeller.com` serves `7fbe332a3de6083a`, the tree that was
+shipped, verified by the droplet reporting its own fingerprint. Thirteen
+routes answer 200, the nine fixed ones plus one URL per parameterised route
+built from the bundle: that last part is new, and it exists because
+`/crystal/<id>.cif` returned 500 for every pair while the nine fixed paths
+all passed (F196). The crystal overlay on the pose page works now, and the
+pair table's Tier facet offers the arms the data holds rather than `A` and
+`B`, which matched nothing (F191). Both were found by asking the running
+site, and both were confirmed there afterwards.
+
+**The suite's assertions were audited, not just counted.**
+`tools/vacuous_tests.py` traces the suite and reports which assertions never
+execute: 2,379 of 2,392 run, and the thirteen that do not are deliberate
+skips or data-dependent branches, one of them carrying a comment written for
+that sweep. It also caught a test of mine that passed by looping over an
+empty glob, twenty minutes after I wrote it.
+
 **The spec's own open list is down to one item.** BUILD_SPEC.md section 9
 asked Marc four questions and three were answerable from the system: the
 Studio is an M2 Ultra with 128 GB probed into `config/hardware.toml`, Boltz
