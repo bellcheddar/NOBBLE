@@ -42,8 +42,24 @@ def gpu_cores() -> int | None:
 
 
 def free_disk_gb(path: Path) -> float:
+    """Free space in GB, decimal, which is what the G5 gate compares against.
+
+    This divided by 1024**3 and returned the answer under a `_gb` name, so
+    it was gibibytes labelled gigabytes: 7.4 per cent low, and 37 GB out at
+    the volume this runs on. `nobble.execute.runner.free_disk_gb` already
+    divided by 1e9, and the gate's floor in `thresholds.toml` is 50 GB as
+    CLAUDE.md states it, so the gate was right and this was the one out of
+    step. Two functions of the same name in one project disagreeing about
+    their unit (F179).
+
+    Nothing decides on this one: it is recorded in `config/hardware.toml`
+    and printed by the probe. The divergence still mattered, because the
+    probe's line is where a reader goes to find out how much room there is,
+    and a figure that disagrees with the gate by 37 GB is worse than no
+    figure.
+    """
     usage = shutil.disk_usage(path)
-    return round(usage.free / 1024 ** 3, 1)
+    return round(usage.free / 1e9, 1)
 
 
 def mps_state() -> dict:

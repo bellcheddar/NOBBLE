@@ -27,11 +27,60 @@ TOOL = ROOT / "qc" / "copy_budget.mjs"
 HARNESS = ROOT / "qc" / "qc.mjs"
 
 
-def test_the_tool_exists_and_states_the_budget():
-    source = TOOL.read_text()
-    assert "> 40" in source and "> 150" in source, (
-        "the tool no longer compares against the budget CLAUDE.md states"
+CLAUDE_MD = ROOT / "CLAUDE.md"
+
+
+def budget_from_the_rule() -> tuple[int, int]:
+    """The two numbers, read out of the file that states the rule.
+
+    They were written into this test as the literals `> 40` and `> 150`,
+    which pinned the tool to a number rather than to the rule, and made the
+    test the second place the budget was written down. CLAUDE.md is the
+    first, and the only one anybody would edit to change the rule, so it is
+    where this reads them from.
+    """
+    rule = CLAUDE_MD.read_text()
+    found = re.search(r"under (\d+) words per\s+panel, under (\d+) per\s+page", rule)
+    assert found, "CLAUDE.md no longer states the copy budget in words"
+    return int(found.group(1)), int(found.group(2))
+
+
+def code_only(source: str) -> str:
+    """The tool's source with its comments removed.
+
+    Needed because the comments explain the boundary and quote the old
+    comparison, so a check for a bare `> 40` matched the explanation of why
+    there is no longer a bare `> 40`. That is the third time in this session
+    a check has matched prose rather than code, after the two in F175, and
+    the remedy is the same each time: look at what runs.
+    """
+    source = re.sub(r"/\*.*?\*/", "", source, flags=re.S)
+    return re.sub(r"//[^\n]*", "", source)
+
+
+def test_the_tool_compares_against_the_budget_the_rule_states():
+    panel, page = budget_from_the_rule()
+    source = code_only(TOOL.read_text())
+    assert f">= {panel}" in source and f">= {page}" in source, (
+        f"the tool does not compare against {panel} and {page}, which is what "
+        "CLAUDE.md states"
     )
+
+
+def test_the_comparison_is_inclusive_because_the_rule_says_under():
+    """A panel at exactly 40 words is not under 40 (F177).
+
+    The tool read `> 40`, so a panel sitting exactly on the limit passed,
+    and one did: the construct-comparison panel measured 40 after its
+    rewrite and was reported as within budget.
+    """
+    panel, page = budget_from_the_rule()
+    source = code_only(TOOL.read_text())
+    for limit in (panel, page):
+        assert f"> {limit}" not in source.replace(f">= {limit}", ""), (
+            f"the tool still has a bare `> {limit}` somewhere, which passes a "
+            f"page or panel sitting exactly on {limit}"
+        )
 
 
 def test_browser_qc_runs_it_and_keys_on_its_exit_code():

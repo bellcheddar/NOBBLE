@@ -217,6 +217,19 @@ def main() -> int:
         if not source.exists():
             continue
         payload = redact(json.loads(source.read_text()))
+        # Campaigns assembled before F185 carry no model version, and the
+        # one on the GPU is one of them: it was assembled before this
+        # existed and will not be reassembled. Measuring at publish time is
+        # the best available answer for those, and it is labelled as a
+        # different claim rather than written in as though the assembler had
+        # recorded it. The distinction matters because a publish-time
+        # reading describes the environment now, and only the assembler's
+        # describes the one the jobs ran in.
+        if name == "campaign.json" and not payload.get("software"):
+            from nobble.execute import software as _software
+
+            payload["software"] = dict(_software.versions(),
+                                       recorded="at publish, not at assembly")
         text = json.dumps(payload, indent=2)
         (OUT / name).write_text(text)
         summary["files"][name] = len(text)
@@ -367,7 +380,11 @@ def main() -> int:
                 "convergence": row.get("convergence_score"),
             })
         payload = {"points": points, "n": len(points)}
-        if len(points) >= 3:
+        # From config, because it decides whether a correlation is published
+        # at all, which is what makes a number a threshold (F184).
+        minimum_points = int(paths.thresholds()["validation"]
+                             ["recovery_correlation_minimum_points"])
+        if len(points) >= minimum_points:
             xs = [item["bridge_rate"] for item in points]
             ys = [item["median_rmsd"] for item in points]
             r_value, p_value = _stats.pearsonr(xs, ys)

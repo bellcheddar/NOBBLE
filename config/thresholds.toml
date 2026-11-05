@@ -18,6 +18,13 @@ tumour_enrichment_above_median = true  # not applied
 # right that a number deciding an acceptance belongs in config (F163).
 construct_peptide_residues = 15
 construct_glue_heavy_atoms = 59
+# Shortest InterPro annotation listed as a candidate receptor construct.
+# Below this a domain is a motif rather than a fold that can present a
+# surface, and listing it adds an option nobody would take. The form's
+# header already stated 60, and `tools/tier_b_candidates.py` had it written
+# into the comparison, which is the inconsistency F181 is about repeated in
+# a tool written an hour later (F183).
+construct_min_residues = 60
 take_top = 15
 min_ligases_for_gate = 10
 
@@ -198,6 +205,15 @@ wide_bounds_below_per_side = 5
 # Spec 5: reporting a curve without the matched negatives is itself the
 # failure, so refusing here is correct behaviour rather than a gap.
 roc_minimum_per_side = 3
+# Fewest points before the recovery-against-bridge panel computes a Pearson
+# and a Spearman coefficient at all. It decides whether a correlation is
+# published, which makes it a threshold and not an incidental literal: it was
+# a bare `>= 3` in deploy/build_atlas.py, in the integer gap the cutoff sweep
+# did not walk (F184). Three is the fewest points for which a coefficient is
+# defined rather than a judgement that three is enough; the panel says in one
+# sentence that the number is a hypothesis, and the tile beside it reads "far
+# too few to validate on".
+recovery_correlation_minimum_points = 3
 
 [app]
 # Bytes of embedded pair payload per pair, above which the campaign and
@@ -213,6 +229,14 @@ roc_minimum_per_side = 3
 # omitted keys alone, so the bound has headroom for ordinary growth and
 # still fails if per-seed or per-contact detail comes back.
 page_payload_bytes_per_pair_max = 6000
+# Kilobytes an `/api/ask` answer may reach at the schema's 100-row maximum.
+# The sibling of the budget above and here for the same reason: it decides an
+# acceptance, and a reader tuning one should find the other beside it. The
+# answer panel renders ten pair ids from whatever this allows. Measured at 49
+# KB once the default projection became the published schema, against 2,056
+# KB before it, so the bound is generous and still an order of magnitude
+# below the behaviour it exists to catch (F176, F181).
+lm_answer_kilobytes_max = 200
 
 [deploy]
 # Megabytes that must still be free on the droplet after the atlas has been

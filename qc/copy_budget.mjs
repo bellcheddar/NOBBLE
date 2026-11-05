@@ -81,8 +81,14 @@ for (const r of out) {
   const worst = Math.max(0, ...r.perPanel);
   const flags = [];
   const exempt = EXPOSITION.includes(r.path);
-  if (!exempt && worst > 40) flags.push('PANEL>40');
-  if (!exempt && r.pageWords > 150) flags.push('PAGE>150');
+  /* `under 40 words per panel, under 150 per page`, so 40 and 150 are
+   * themselves over. This read `> 40`, which passed a panel sitting exactly
+   * on the limit, and a panel at exactly 40 is not under 40. One notch, and
+   * the sixth boundary drawn a notch too wide or too narrow in this session
+   * after F139, F158, F161, F166 and F172, so it is worth the two
+   * characters (F177). */
+  if (!exempt && worst >= 40) flags.push('PANEL>=40');
+  if (!exempt && r.pageWords >= 150) flags.push('PAGE>=150');
   if (exempt) flags.push('exposition, not held to the budget');
   if (flags.length && !exempt) bad += 1;
   console.log(r.path.padEnd(15) + String(r.panels).padStart(7)

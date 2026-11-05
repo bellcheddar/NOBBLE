@@ -8080,3 +8080,488 @@ a large one. The two that feed a renderer are bounded, one by a per-pair
 byte budget and one by the schema; the one that exists to hand over
 everything still does. Naming it here rather than leaving it to be
 rediscovered, which is what F172 asked for.
+
+## F177. An 87-word disclaimer on a 40-word panel, and a checker that allowed 40
+
+Browser QC on the trimmed pages came back clean on every count but one:
+`/benchmark` was over the copy budget, worst panel 110 words against 40 and
+page total 219 against 150.
+
+The panel was the recovery-against-bridge correlation, and 87 of those words
+were a single paragraph. It said the correlation is a hypothesis rather than
+a metric, that it was noticed after looking at seven points rather than
+predicted, that it displaced an earlier hypothesis about the substrate
+construct, that RBM39 recovers at 6.0 A from a 15-mer cut out of a folded
+domain which the earlier idea said should fail, and that the Sievers arm
+multiplies the sample and is the test that matters.
+
+Every clause of that is true and most of it is reasoning, which CLAUDE.md
+puts in FINDINGS.md rather than on screen, and which allows a disclaimer
+"only where a figure would be actively misread without one, and then one
+sentence". The disclaimer earns its place, because a correlation shown beside
+a p-value reads as a measurement. The rest does not. It is one sentence now:
+a hypothesis, not a metric, the correlation noticed in these seven points
+rather than predicted before them. The sample size was never the problem,
+since the tile beside it already reads "far too few to validate on" and a
+stat tile is not counted as prose.
+
+The construct-comparison panel went from 71 words to 37 the same way, and one
+of its sentences moved rather than going: the definition of the Bridged
+column is now a tooltip on the column header, where it is a label rather than
+narrative and is not counted. That is the better home regardless of the
+budget, because a reader wanting to know what a column means looks at the
+column.
+
+Then the part worth more than the copy. With the panel at 40 words the
+checker passed it, because it flagged `worst > 40`, and a panel at exactly 40
+is not under 40. That is the sixth boundary this session drawn a notch wide
+or narrow, after F139, F158, F161, F166 and F172. It is now `>= 40` and
+`>= 150`, and the panel is at 39. Every other page still passes, with Delta
+at 39, which is worth knowing: it is one word from the limit, and the next
+sentence added to it will be caught rather than absorbed.
+
+The test that was supposed to hold this was part of the problem. It asserted
+the literal strings `> 40` and `> 150` appear in the tool, which pinned the
+tool to a number rather than to the rule and made the test the second place
+the budget was written down. It now reads both numbers out of CLAUDE.md,
+which is the only file anybody would edit to change the rule, and a second
+test requires the comparison to be inclusive. Both were checked against a
+loose source, a tight one and a tight one whose comment quotes the loose
+form, because the first version of the inclusive test failed by matching my
+own explanation of why there is no longer a bare `> 40`. That is the third
+check in this session to match prose rather than code, after the two in
+F175, and the remedy is the same each time: strip the comments and look at
+what runs.
+
+One process note. The first remeasurement after the rewrite reported the same
+110 words, because Flask caches templates and the server was still serving
+the old ones. That is F159 exactly, which was about QC verifying against a
+stale server, and it took a restart to see the change. The QC harness prints
+a build fingerprint for this reason and it moved, from `63ca5ccb786e7f46` to
+`03c53510b53074d7`, which is how the clean run is known to be a run against
+the new templates rather than a second look at the old ones.
+
+## F178. The publish path's two remaining unknowns, both measured
+
+Not a defect, a pair of answers. The chain has thirty-eight hours of queue
+left and then runs a sequence that has never run at this size, so the useful
+thing now is to find out what it will cost and whether it will work, while
+there is time to act on the answer.
+
+**The atlas build.** Four seconds for 100 structures and 25 MB, measured by
+building the benchmark campaign into a scratch directory through
+`NOBBLE_ATLAS_OUT` rather than over the published bundle. At 2,360
+structures and 265 MB that is around two minutes. Scoring is ten minutes,
+projected from a full rescore of the benchmark campaign at 25.6 s for 7
+pairs over 100 jobs. So nothing slow is hiding behind the queue: the whole
+post-compute path is minutes, and the long stages after it are tier 2 and the
+design scan, which are compute rather than bookkeeping.
+
+**The F47 correction.** This is the one that mattered, because the atlas
+build refuses while `bench02_BRD4_VHL` holds results run on a YAML the fixed
+rule no longer emits, and `tools/rerun_pair.py` refuses outright when any job
+has no known-good reference. If that refusal fired, the campaign would not
+publish and the thirty-eight hours would buy nothing.
+
+It will not fire. `_known_good` resolves a reference for all fifteen jobs,
+each from the benchmark campaign, which is the F145 fix working on the real
+layout rather than on a fixture. And the references are checked rather than
+counted: the benchmark YAML carries no `modifications` block at all, while
+the live one carries `ccd: HYP`. A reference that happened to share the bug
+would have made the correction a copy of it, and counting fifteen references
+would have looked exactly the same.
+
+Worth saying what this does not establish. `--apply` has still never run,
+and the dry run does not exercise the lookup, which is why the lookup was
+called directly. What is established is that the precondition the refusal
+tests is satisfied on the live campaign today, and that the file it would
+copy from is correct.
+
+## F179. Two functions called free_disk_gb, 37 GB apart
+
+Found by making the mistake the divergence invites. `tools/status.sh` had
+reported 535.6 GB free, I read 498 from `df -g` half an hour later, and spent
+a few minutes looking for what had eaten 37 GB. Nothing had: `df -g` reports
+gibibytes whatever the flag is called, and 535.6 GB is 498.8 GiB. The same
+number twice.
+
+That is my error, not the project's. But it sent me to look at how the G5
+gate measures free space, and there the project has the same confusion
+written down twice:
+
+- `nobble/execute/runner.py` divides by `1e9` and the gate compares the
+  result against `min_free_disk_gb = 50`, which is CLAUDE.md's "below 50 GB".
+  Correct.
+- `tools/hwprobe.py` divided by `1024 ** 3` and returned it from a function
+  of the same name, under the key `free_gb_project_volume`, printed as
+  "free disk : 507.0 GB". Gibibytes labelled gigabytes, 7.4 per cent low, 37
+  GB out on this volume.
+
+Nothing decides on the probe's figure: it is recorded in
+`config/hardware.toml` and printed once. It still mattered. That printed line
+is where a reader goes to find out how much room there is, and a number
+there that disagrees with the gate by 37 GB is worse than no number, because
+it reads as a measurement of the same thing. It is what I compared the gate's
+reading against.
+
+Fixed in the probe, since the gate and CLAUDE.md agree on decimal GB and the
+probe was the one out of step. The two are now pinned by a test rather than
+merged: the probe deliberately imports nothing from the `nobble` package,
+because it is Phase 0 and runs before the package is necessarily usable, and
+that is worth keeping. So the test requires the two to return the same number
+for the same path, with a tolerance of 1 GB that admits two readings a moment
+apart and not a unit disagreement, which on any volume large enough for this
+project is tens of gigabytes. A second test reads both function bodies with
+their docstrings stripped, after F177 taught me that a check on source text
+matches its own explanation, and requires `1e9` and no power of 1024 in
+either.
+
+`config/hardware.toml` still records 507.0 from its last probe and corrects
+itself the next time the probe runs. It is not hand-edited: it is generated,
+and writing a figure into it that no probe measured is the worse of the two
+states. Re-running the probe now would rewrite `config/tuning.toml`, which
+the campaign on the GPU is reading, and that is not a risk worth taking for
+a number nothing decides on.
+
+## F180. A test of mine named a distinction its function cannot represent
+
+Re-reading yesterday's additions for the patterns that keep recurring, one
+of F175's ten tests was called
+`test_it_compares_the_whole_bundle_not_the_difference` and asserted that a
+bundle larger than free space is refused.
+
+A difference-based check would have passed that assertion too. `judge` takes
+`free_kb`, `bundle_kb` and `margin_mb` and has no parameter for what is
+already on the droplet, so the design the name contrasts itself with is not
+representable in the signature: there is nothing for the test to tell apart.
+The name read as a guarantee and the body was a weaker statement that
+happened to be true.
+
+Renamed to what it checks, `the whole bundle is subtracted from free space`,
+and it now asserts the identity rather than one consequence of it:
+`remaining_after_mb` equals free minus bundle. The reason the function takes
+no existing size, that `--delete` removes the old copy after the transfer so
+the peak is both at once, stays in the module docstring where it was, which
+is the right place for a decision no test can enforce.
+
+Worth separating the two failure modes, because I have now hit both in two
+days. F139, F158, F161, F166, F172 and F177 were checks narrower than their
+names, where the name was right and the code fell short. This is the
+opposite: the code is right and the name promised a check that cannot exist.
+The first kind leaves a defect uncaught. The second leaves a reader believing
+something is pinned when it is only documented, which is worse in one
+specific way, because the next person to change `judge`'s signature will
+read the test name and think the test will stop them.
+
+## F181. I put one of two sibling budgets in config and left the other in a test
+
+F174 created a per-pair page payload budget and put it in
+`config/thresholds.toml`, because a number deciding an acceptance belongs
+there. F176 created its sibling two hours later, a bound on how large an
+`/api/ask` answer may be, and left it as a bare `200` inside the assertion.
+
+Neither is read by anything but its own test, so the inconsistency is not
+between a product setting and a test fixture: it is between two identical
+things treated differently. `tests/test_no_hardcoded_cutoffs.py` walks
+`nobble/`, `tools/`, `deploy/` and `qc/` and deliberately not `tests/`,
+which is the right scope, since a test tree is full of expected values that
+are not cutoffs. So nothing was going to tell me.
+
+Both are now in `config/thresholds.toml` under `[app]`, beside each other,
+which is the point: a reader tuning the page's weight should see the answer's
+weight in the same place. The test reads it rather than carrying it.
+
+A second thing in the same re-read. `test_no_sync_conflict_files.py` had a
+bare `return` where the published bundle is missing, which makes a test that
+examined nothing indistinguishable from one that examined everything and
+found it clean. That is the shape F152 was built to find, in a file I wrote
+yesterday. It skips now, and the suite's skip count is the thing that would
+have told me: it has stayed at 4 through twenty-nine added tests.
+
+Three of the last four findings are about my own work from the preceding
+hours rather than about the pipeline: F180's name claiming an unrepresentable
+distinction, this one's inconsistency, and the bare return. That is the
+re-read earning its place. Writing a check and reading it back an hour later
+catches a different class of thing than writing it carefully does, and the
+class it catches is the one where the check looks right.
+
+## F182. Making the Tier B gate cheaper to answer without answering it
+
+D-NOB-068 keeps `config/tier_b_constructs.toml` a form: which domain of a
+ligase binds its substrate is science knowledge, both mechanical routes are
+ruled out, and no code closes the gap. It also says what code can do is make
+answering cheap, and the form as it stood did half of that. It lists each
+ligase's InterPro candidates with ranges and lengths, which shows what fits
+the tier-1 cap and nothing about whether a candidate is folded.
+
+`tools/tier_b_candidates.py` adds two measured columns: the mean pLDDT over
+each candidate's own range, read from the same cached AlphaFold models the
+Tier B selection used, and how much of the candidate falls inside the frozen
+selection's best 200-residue window.
+
+That turns out to matter. KCND2's IPR024587 at 471-545 sits at pLDDT 42.0 and
+RAG1's importin-binding region at 12-291 at 59.2: both are annotated domains
+within the cap that the model places in disorder, and ruling them out is a
+modelling fact rather than a biology claim. The reverse case is just as
+useful. CCNF's whole-model pLDDT is 71.5, which reads as a poor target, while
+its cyclin boxes are 94 to 97: exactly the shape spec 3.3's domain-window
+proxy was introduced for, now visible per candidate rather than once per
+protein.
+
+The line not crossed is ranking. Ordering by pLDDT would be a recommendation
+in all but name, since the most confident domain would head every list, and
+that is the mechanical route F41 and D-NOB-068 both reject. The order stays
+the form's, longest first, and a test asserts it: if the listing is ever
+sorted by confidence the test fails.
+
+Two bugs while writing it, both mine and both worth the record. The frozen
+`best_window` column is text, `"[302, 501]"`, not a list, and `list()` on it
+yields ten single characters, so the first run printed `n/a` in every window
+cell: a string that iterates without complaining, which is the shape F130's
+NaN had. And `interpro.domains` returns member database signatures beside the
+InterPro entries, so CCNF's seven choices came out as thirteen rows
+describing the same handful of regions, which is the opposite of making a
+decision cheap. Both are now covered, including the case that decides how
+wide the collapse may be: CCNF carries IPR013763 twice, at 315-399 and
+416-494, and those are two options rather than one annotated twice.
+
+The form now points at the tool rather than embedding its output, so there is
+one place the numbers come from and the file the reader edits stays a form.
+
+## F183. I wrote F181 and then did it again in the next hour
+
+F181 was about putting one of two sibling budgets in config and leaving the
+other as a literal in a test. The tool I wrote immediately afterwards,
+F182's, compared candidate domain lengths against a bare `60`.
+
+It is the same mistake with the same shape. The number decides an
+acceptance, which domains are offered as candidates at all, and it already
+existed in a second place, the form's header prose, which states "between 60
+residues and 326". The 326 was derived from config properly, through the same
+`thresholds` lookup the validator uses, because that one looked like a
+threshold. The 60 did not look like one, and that is the whole of the error:
+a cutoff is a number that decides an acceptance, not a number that looks
+important.
+
+Now `tier_b.construct_min_residues`, read by a `floor()` function, with a
+test that asserts no literal is compared against a length again.
+
+The test for it had a flaw of its own, caught by reading it back rather than
+by running it. It strips docstrings before searching the source, because the
+docstrings discuss the very literal it forbids, and the pattern was written
+`"""].*?"""` with a stray bracket, so it matched nothing and the search ran
+over the prose as well. It passed, and would have raised a false alarm the
+moment a docstring quoted `length < 60`. The strip is now verified by the
+test itself, which asserts no triple quote survives it.
+
+Three notes on this pair of findings, because two instances in two hours is
+a pattern rather than a slip. The rule in CLAUDE.md is mechanical and the
+judgement it needs is not: deciding whether a number is a cutoff requires
+asking what it decides, and the literals that get missed are the ones that
+read as facts about the domain rather than as policy. The cutoff sweep cannot
+help here, because it walks `nobble/`, `tools/`, `deploy/` and `qc/` for
+floats and `nobble/` for integers, and a new integer in a tool falls in the
+gap. And the thing that caught both was reading my own work back an hour
+later, which is now four findings in a row from that habit.
+
+## F184. Closing the gap F183 fell through, and one real cutoff in it
+
+F183 ended by naming the gap rather than closing it: the cutoff sweep walks
+`nobble/`, `tools/`, `deploy/` and `qc/` for float literals in comparisons,
+but only `nobble/` for integers. A new integer in a tool is invisible to
+both, which is how a bare `60` got into F182's tool an hour after F181
+recorded the same mistake.
+
+Measured before widening, because a sweep that names fifty things to read is
+a sweep nobody runs twice: there are seven integer comparisons across the
+three directories. Six are not cutoffs. Two are display truncations in
+messages, `and N more` after six moved keys in the drift report and after
+three paths in `rerun_pair`'s refusal, and in both the decision itself is
+made elsewhere on a non-empty list. Two are structural tests in `preflight`
+for whether a pair has more than one arm, where the thing detected is
+disagreement rather than a quantity. One is argument parsing. One is my own
+guard against dividing by an empty range.
+
+The seventh was real. `deploy/build_atlas.py` had `if len(points) >= 3`
+deciding whether the recovery-against-bridge panel computes a Pearson and a
+Spearman coefficient at all, which is to say whether a correlation is
+published. That is a threshold by the only definition that matters, a number
+deciding an acceptance, and it is now
+`validation.recovery_correlation_minimum_points`. The config comment says
+what it is and is not: three is the fewest points for which a coefficient is
+defined, not a judgement that three points are enough, and what says the
+latter is F177's one-sentence caveat on the panel and the tile beside it
+reading "far too few to validate on".
+
+The new sweep allowlists by comparison rather than by file, because a file
+may hold both a cutoff and a truncation, and it carries three tests rather
+than one: no unaccounted comparison, no stale allowance, and a floor on how
+many comparisons the scan finds at all. That last one is there because both
+of the others pass by scanning nothing, which is the shape that has now
+caught me several times. Verified by simulation too: a reintroduced
+`len(points) >= 3` in `build_atlas.py` is flagged, and the scan finds exactly
+the six allowed comparisons and no seventh.
+
+The refactor is behaviour-preserving, checked rather than assumed. Rebuilding
+the benchmark atlas into a scratch directory produces a
+`recovery_vs_bridge.json` identical to the published one, which is the
+property that matters for a change to a published statistic.
+
+## F185. The atlas published its settings and not which model produced them
+
+`campaign.json` records the tuning a campaign ran under: token caps, recycle
+counts, diffusion samples, seeds, the pocket list. It did not record the
+model version. Every number in the atlas is a Boltz-2 prediction, so the one
+fact needed to reproduce a pose was the one fact missing, and the About page
+said "Boltz-2" and named no version either.
+
+Measured rather than written down, for the same reason nothing here
+hard-codes a core count: the environment is the fact and a version in a
+config file is a claim about it. `nobble/execute/software.py` reads
+`boltz` and `torch` from the BoltzMaker environment that the runner invokes,
+following `hwprobe.mps_state()`'s pattern including its sentinel prefix,
+because a pixi environment can print a warning and the last line of stdout
+is not reliably the answer. Boltz 2.2.1 and torch 2.10.0, in 40 ms: metadata
+only, never an import, since `importlib.metadata.version("torch")` reads the
+distribution's metadata without importing torch and the atlas build runs this
+on every publish.
+
+Recorded in three places, deliberately differently.
+
+Both campaign assemblers record it at assembly, because that is when the
+environment is the one the queue will run in. The atlas build fills it in for
+campaigns assembled before this existed, which includes the one on the GPU
+and which will not be reassembled, and labels it `at publish, not at
+assembly`. That label is the point: a publish-time reading describes the
+environment now and only the assembler's describes the one the jobs ran in,
+and publishing the weaker claim as the stronger one would be worse than
+publishing nothing. The app reads the published record and never measures,
+because the droplet is not the machine that ran the jobs and has no Boltz
+install at all: measuring there would report a version confidently and
+wrongly.
+
+Two things found by doing it. The probe was built with `str.format` and its
+own source contains `out = {}`, which format read as a positional field, so
+it raised IndexError before the subprocess started. It surfaced as the
+recorded status `unreadable: IndexError` rather than as a traceback, which is
+the failure path working on my own bug, and a test now forbids `format` in
+that file. And the edit to the assembler was refused by its own guard: the
+line I was replacing appears twice, once in each of two campaign summaries,
+and asserting a single occurrence stopped me editing one and believing I had
+done both. Both now record it, and a test counts two.
+
+The knock-on was predictable and worth chasing before committing rather than
+after. A rebuild now adds five keys the published bundle lacks, so
+`atlas_drift` reported drift: `campaign.json` 7502 to 7677 bytes, naming the
+five `software.*` leaves. The right resolution is to rebuild rather than to
+record a known drift, because the drift is real and the published atlas
+should carry its model version. Rebuilt, back in step at 11,214 leaves
+compared against 11,209, and browser QC clean on a moved fingerprint: 14
+pages, no non-200, within the copy budget, no console errors, no serious axe
+violations. The version sits in the About page's Provenance panel as a `mono`
+paragraph, which the copy budget counts as a figure rather than as prose, and
+renders nothing at all when no version is recorded.
+
+One note on the test that guards the published bundle. It skips when the
+bundle predates this and asserts when it does not, and I wrote here that the
+suite's skipped count would therefore move from 4 to 5 "until the next atlas
+build". That was already false when I wrote it, because the rebuild in the
+paragraph above is that build: the test asserts now and the count stays at 4.
+Written and corrected inside one finding, which is the same stale-figure
+habit as F136, F157, F167 and F168, and the reason this project stopped
+writing counts into PROGRESS.md at all.
+
+## F186. The same sync-conflict copy again, caught earlier, and the gap it showed
+
+A second iCloud sync-conflict copy appeared in the published bundle:
+`bench06_RBM39_DCAF15__ternary__unconstrained__seed3 2.cif`, byte-identical
+to the real file, mode `-rw-------`, carrying the pre-rebuild mtime of
+18:14:54 beside the real file's 19:21:50. That is F173's mechanism confirmed
+rather than inferred: iCloud held its copy of the file the rebuild replaced
+and restored it afterwards, with its own timestamp and its own permissions.
+
+Two things are better this time and one was missing.
+
+Better: F173's check caught it while it was still untracked, so I found it in
+`git status` before `git add -A` could commit it, which is exactly the
+failure F173 was about. And the mechanism is now evidence rather than a
+hypothesis, because the duplicate's mtime is the previous build's.
+
+Missing: the thing that publishes the bundle is `deploy/deploy.sh`, and it
+does not run the suite. A check living only in `pytest` does not stop a
+conflict copy reaching the droplet on any run where nobody ran the tests, and
+I was about to deploy. So the deploy now refuses before it sends anything,
+listing the offending paths and the `rm` to clear them, using the same
+pattern as the test rather than a second one: two checks for one thing that
+disagreed about what a conflict name looks like would be worse than one.
+
+Verified by planting a file rather than by reading the regex. A planted
+`planted 2.cif` is named and refused, and four names the project does
+generate are not: `nobble_icon_300.png`, `peptide_v2.html`, `scores.jsonl`
+and `bench01__seed5.cif`. That last pair matters most, since a check firing
+on `_v2.html` or on a seed number would be worse than none.
+
+The refusal message needed the same treatment as the pattern, and did not
+get it first time. It held the paths in one string, so with two conflicts the
+listing indented only the first line and the suggested command came out as
+`rm a\ 2.cif$'\n'b\ 3.json`: one mangled argument instead of two commands.
+Running it with two planted files is what showed that, and the paths are now
+an array printed one per line. A guard that refuses correctly and then prints
+an unusable command is a guard someone will work around, and the only way to
+know was to trigger it in the plural rather than the singular.
+
+What I am not doing is making the builder sweep its own output, which was the
+first idea. iCloud restores the copy asynchronously, after the build has
+finished: a sweep at the end of a build would have missed both of these,
+which arrived minutes later. The net has to be at the point of publication,
+and now there are two, one in the suite and one in the deploy.
+
+## F188. The sweep caught F185, and the way I was reading the suite could not
+
+Two things, found together, both about whether the suite's answer reaches me.
+
+**The sweep worked.** `nobble/execute/software.py`, written for F185, declares
+`def versions(timeout: int = 60)`. The cutoff sweep's default-argument scan
+walks `nobble/` and caught it, which is the rule F183 and F184 are about
+catching me on, in the module I wrote immediately after them.
+
+The number is allowed, and allowed in the project's existing terms rather
+than by exception. It is how long to wait for a child process, the same kind
+of number as `KILL_GRACE_SECONDS` in the module-level allowances, and it is
+runtime control flow and not a judgement about data: the probe it bounds
+takes 40 ms, so sixty seconds fires only when something is badly wrong, and
+when it fires the result is a recorded `status` saying the version is
+unavailable rather than a number that was thresholded. An allowlist records
+what was looked at and waved through, so it is recorded with that reasoning.
+
+What I did wrong was not re-running the sweep after adding a module under
+`nobble/`. I ran it after F184, before `software.py` existed, and then wrote
+three findings without running it again.
+
+**The way I was reading the suite could not have told me cleanly.** Every
+full-suite run this session ended with `pytest … | tail -6; echo "SUITE
+EXIT=${PIPESTATUS[0]}"`. `PIPESTATUS` is a bash array. This shell is zsh,
+where the variable is `pipestatus` and is one-indexed, so `${PIPESTATUS[0]}`
+expanded to nothing: every `SUITE EXIT=` line I printed was blank. What sat
+below it was the harness's own `[exited with code 0]`, which is the pipeline's
+status, meaning `tail` succeeded.
+
+So the check F168 taught me to make, reading the suite's status as a step of
+its own rather than letting `&&` bind to the wrong command, was inert for the
+whole session. No wrong conclusion came of it, because pytest's summary line
+is authoritative and that is what I actually read. But it is a safeguard that
+reported success unconditionally, which is worse than no safeguard, and it is
+the same shape as the thing it was built to prevent.
+
+It also cost real time here. `tail -6` keeps the summary line and discards
+the `FAILED` line above it when a run is long, so "1 failed, 1111 passed"
+arrived without a name and I spent several turns running subsets to find it.
+`--tb=line` with the exit status captured before any pipe gives both, and
+that is the pattern from here:
+
+    pytest tests/ -q --tb=line > out 2>&1; code=$?; tail -5 out; echo "exit=$code"
+
+The lesson I take is narrower than "test your tooling". It is that a status
+line nobody has ever seen fail is not evidence of anything, and the way to
+find that out is to make it fail on purpose: `(exit 3) | tail -1` prints an
+empty `PIPESTATUS[0]` here in one line.

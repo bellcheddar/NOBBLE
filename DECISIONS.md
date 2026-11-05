@@ -2085,3 +2085,54 @@ order and not merely a repeat.
 that is already the documented next step. The risk it accepts is a window
 between the two runs in which the published atlas is the benchmark one,
 which is stale rather than wrong, and is what the site serves today.
+
+## D-NOB-070. Three of the spec's four open items are answered by measurement
+
+**Decision.** BUILD_SPEC.md section 9 lists four open items for Marc. Three
+of them ask for a confirmation the system can make for itself, so they are
+closed here from measured values rather than left waiting. The fourth is a
+real decision and stays open.
+
+**Item 1, the Studio's chip and unified memory.** Measured by
+`tools/hwprobe.py` into `config/hardware.toml`: Apple M2 Ultra, 128.0 GB
+unified memory, 16 performance and 8 efficiency cores over 24 logical, 60 GPU
+cores, torch 2.10.0 with MPS available and built. The token cap and the
+compute budget are derived from those rather than estimated, which is what
+the item asked for, and CLAUDE.md's rule that nothing hard-codes a core
+count, a memory figure or a device is what keeps it that way. Note the one
+figure in that file still to be re-probed: `free_gb_project_volume` reads
+507.0 because it was written in gibibytes under a gigabyte name, fixed in
+F179, and it corrects itself at the next probe.
+
+**Item 2, the Boltz version and the optional-kernels path.** Boltz 2.2.1 is
+installed in BoltzMaker's environment, which satisfies the spec's "2.2.x or
+later". The optional-kernels question is answered by what the runner does and
+why: `nobble/execute/runner.py` passes `--no_kernels` on every job, because
+the optional kernels are a CUDA path and MPS cannot use them. Disabling them
+explicitly rather than relying on an import failing is what makes the run
+deterministic. So the answer is not "installed" or "not installed" but "not
+applicable on this accelerator", which no confirmation from Marc would
+change.
+
+**Item 4, the domain.** Resolved in service: `nobble.mdeller.com` answers 200
+and serves the published atlas, with its own nginx vhost and TLS, rather than
+a sub-route of `binman.mdeller.com`. The deploy script's final check fetches
+every route on that host, so the choice is enforced by the thing that ships.
+
+**Item 3, how the Tier B exploratory arm publishes**, stays open: a ranked
+list, or an abstention-heavy list where BINMAN-LM Head C declines below a
+confidence floor. That is a judgement about how to present an unproven tier
+and not a measurement, and it is not blocking, because Tier B cannot run
+until the fifteen constructs in `config/tier_b_constructs.toml` are filled in
+(D-NOB-068, G1). The two questions arrive together, so the presentation
+decision is best made when the constructs are chosen rather than now.
+
+**Alternatives.** Leave all four waiting, which is what had happened: three
+items had been answerable for some time and nothing recorded them, so the
+spec's own open list overstated what was outstanding. Or answer item 3 by
+picking one, which would be writing spec content into the build when
+BUILD_SPEC.md is authoritative and the question is explicitly Marc's.
+
+**How to reverse it.** Each closure is a measurement or a running service, so
+re-probing or re-reading contradicts it directly if any of them changes: a
+different chip, a different Boltz version, or the site moving to a sub-route.

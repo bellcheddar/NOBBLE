@@ -115,9 +115,11 @@ def test_the_default_answer_is_small_enough_to_serve(atlas_rows):
             grown.append(dict(row, pair_id=f"{row['pair_id']}__{len(grown)}"))
             if len(grown) >= 158:
                 break
+    from nobble import paths
+    bound = int(paths.thresholds()["app"]["lm_answer_kilobytes_max"])
     biggest = lm.execute({"limit": 100}, grown)
     kilobytes = len(json.dumps(biggest)) / 1024
-    assert kilobytes < 200, (
-        f"a 100-row answer is {kilobytes:.0f} KB; the panel renders ten "
-        "pair ids from it"
+    assert kilobytes < bound, (
+        f"a 100-row answer is {kilobytes:.0f} KB against a {bound} KB bound; "
+        "the panel renders ten pair ids from it"
     )

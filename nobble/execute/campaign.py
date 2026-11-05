@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from nobble import paths
+from nobble.execute import software
 from nobble.curate import constructs as C
 from nobble.curate import ligands as L
 from nobble.curate import manifest as M
@@ -222,6 +223,12 @@ def assemble_benchmark(reuse_latest: bool = True) -> dict:
             "manifest_warnings": manifest["warnings"],
             "pair_detail": manifest["pairs"],
             "tuning": paths.tuning()["campaign"],
+            # Which Boltz will produce the coordinates. Recorded at
+            # assembly, because that is when the environment is the one the
+            # queue will run in, and because every number the atlas
+            # publishes is a prediction from this version: the tuning on the
+            # line above was already recorded and the model was not (F185).
+            "software": software.versions(),
             "pockets": {
                 pair_id: (pocket.positions if pocket else None)
                 for pair_id, pocket in pocket_cache.items()
@@ -353,6 +360,12 @@ def assemble_campaign(reuse_latest: bool = True) -> dict:
             "manifest_warnings": manifest["warnings"],
             "unroutable": manifest["unroutable"],
             "tuning": paths.tuning()["campaign"],
+            # Which Boltz will produce the coordinates. Recorded at
+            # assembly, because that is when the environment is the one the
+            # queue will run in, and because every number the atlas
+            # publishes is a prediction from this version: the tuning on the
+            # line above was already recorded and the model was not (F185).
+            "software": software.versions(),
             "pockets": {
                 f"{construct}/{ligand}": (pocket.positions if pocket else None)
                 for (construct, ligand), pocket in pocket_cache.items()

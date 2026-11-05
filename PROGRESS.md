@@ -891,6 +891,26 @@ refuses while that is true. The decision is to let it finish and then rerun
 and deploys (D-NOB-069). Every stage is resumable, so the second run's queue
 pass costs minutes.
 
+**The spec's own open list is down to one item.** BUILD_SPEC.md section 9
+asked Marc four questions and three were answerable from the system: the
+Studio is an M2 Ultra with 128 GB probed into `config/hardware.toml`, Boltz
+is 2.2.1 with `--no_kernels` because the optional kernels are a CUDA path MPS
+cannot use, and `nobble.mdeller.com` is live on its own vhost rather than a
+sub-route. Closed in D-NOB-070. What remains is item 3, whether the Tier B
+exploratory arm publishes as a ranked list or an abstention-heavy one, which
+is a presentation judgement that arrives with the construct choices at G1 and
+blocks nothing.
+
+**The publish path is measured and the correction is ready.** The atlas
+build is four seconds for 100 structures, so about two minutes at 2,360, and
+scoring is ten minutes; neither is hiding behind the queue. The F47
+correction, which the atlas build refuses to publish without, resolves a
+known-good reference for all fifteen jobs, and the reference carries no
+`modifications` block while the live YAML carries `ccd: HYP` (F178). The
+live site answers 200 and still serves the benchmark atlas, on a build
+predating `source_fingerprint` in `/healthz`, which the chain's last stage
+replaces.
+
 **Both halves of G1 are closed, checked rather than assumed.** Tier 1
 projects to 52.6 hours against a 96-hour budget, with 28.32 hours spent over
 861 jobs across all campaigns. Tier 2 has never run, so its cost is bounded

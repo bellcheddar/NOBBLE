@@ -19,6 +19,19 @@
 # range is still allowed: set exception = true and say why, as spec 1.1 does
 # for VHL and DCAF15.
 #
+# For the same list with measured evidence beside each candidate, run:
+#
+#   PYTHONPATH=. python tools/tier_b_candidates.py            # all fifteen
+#   PYTHONPATH=. python tools/tier_b_candidates.py --gene CCNF
+#
+# It adds the mean pLDDT over each candidate's own range and how much of it
+# sits in the frozen best 200-residue window. That rules out candidates the
+# model places in disorder, which is a modelling fact rather than a biology
+# claim: KCND2's IPR024587 sits at pLDDT 42 and RAG1's importin-binding
+# region at 59, while CCNF's cyclin boxes are 94 to 97 against a whole-model
+# 71.5. It does not rank or recommend, and the ordering stays by length, for
+# the reason in the note above (F182).
+#
 # Entries are read as:
 #
 #   [constructs.DCAF8L1_EXAMPLE]

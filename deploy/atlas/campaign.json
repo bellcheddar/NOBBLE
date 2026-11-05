@@ -283,5 +283,12 @@
       139,
       158
     ]
+  },
+  "software": {
+    "measured_at": "2026-11-05T00:21:50Z",
+    "boltz": "2.2.1",
+    "torch": "2.10.0",
+    "status": "ok",
+    "recorded": "at publish, not at assembly"
   }
 }

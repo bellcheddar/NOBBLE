@@ -261,6 +261,17 @@ ALLOWED_DEFAULTS = {
     "budget_report.peptide_length": "an example length for the printed budget",
     "budget_report.ligand_heavy_atoms": "an example size for the printed budget",
     "campaign_budget.default_pairs": "an example pair count for the printed budget",
+    # How long to wait for a child process, which is the same kind of number
+    # as `KILL_GRACE_SECONDS` in the module-level allowances above and is
+    # allowed for the same reason: runtime control flow, not a judgement
+    # about data. The probe it bounds takes 40 ms, so 60 seconds fires only
+    # when something is badly wrong, and when it does fire the result is a
+    # recorded `status` saying the version is unavailable rather than a
+    # number that was thresholded. Added after this sweep caught it in
+    # F185's new module, which is the sweep doing its job (F188).
+    "versions.timeout": "how long to wait for the version probe's child "
+                        "process; runtime control flow with no effect on "
+                        "any result",
 }
 
 
@@ -497,3 +508,114 @@ def test_the_scan_finds_something_to_judge():
     found = _float_cutoffs_outside_the_package()
     assert found, "no float cutoff found in tools, deploy or qc at all"
     assert "tools/check_prediction.py" in found, sorted(found)
+
+
+# The same sweep for integers, which the float one above could not see. F183
+# put a bare `60` into a new tool an hour after F181 recorded the identical
+# mistake, and nothing caught it: integers were scanned in `nobble/` only,
+# and a new integer in `tools/` fell between the two scans (F184).
+#
+# Measured before the allowlist was written. Seven integer comparisons exist
+# across the three directories and six are not cutoffs, which is why the
+# allowlist is by comparison rather than by file: a file may hold both.
+INTEGER_ALLOWED = {
+    "tools/atlas_drift.py:len(report['moved']) > 6":
+        "how many moved keys to print before `and N more`. A display "
+        "truncation in a message, not a cutoff applied to data: the verdict "
+        "is `report['moved']` being non-empty, decided elsewhere",
+    "tools/rerun_pair.py:len(outside) > 3":
+        "the same truncation in the refusal message. The refusal itself "
+        "fires on `if outside`, so this changes how much is printed and "
+        "never whether the correction is refused",
+    "tools/preflight.py:len(arms) > 1":
+        "structural: whether a pair has more than one arm to compare. One "
+        "is the smallest number that can disagree with another, not a "
+        "threshold anyone could tune",
+    "tools/preflight.py:len(set(arms.values())) > 1":
+        "the same structural test on the arms' values, and the thing it "
+        "detects is disagreement rather than a quantity",
+    "tools/readme_forge.py:len(argv) > 1":
+        "argument parsing: whether a path was passed on the command line",
+    "tools/tier_b_candidates.py:length > 0":
+        "a guard against dividing by zero when a candidate range is empty, "
+        "which is arithmetic safety and not a judgement about length. The "
+        "judgement that file does make, the shortest annotation worth "
+        "listing, is `tier_b.construct_min_residues` in config (F183)",
+}
+
+
+def _integer_cutoffs_outside_the_package() -> dict[str, list[str]]:
+    import ast
+
+    ordered = (ast.Lt, ast.LtE, ast.Gt, ast.GtE)
+    found: dict[str, list[str]] = {}
+    for root in ("tools", "deploy", "qc"):
+        base = ROOT / root
+        if not base.exists():
+            continue
+        for path in sorted(base.rglob("*.py")):
+            if any(part == "__pycache__" for part in path.parts):
+                continue
+            relative = str(path.relative_to(ROOT))
+            try:
+                tree = ast.parse(path.read_text())
+            except SyntaxError:
+                continue
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Compare):
+                    continue
+                for op, comparator in zip(node.ops, node.comparators):
+                    if (isinstance(op, ordered)
+                            and isinstance(comparator, ast.Constant)
+                            and isinstance(comparator.value, int)
+                            # `True < 2` is a bool, and a bool is an int.
+                            and not isinstance(comparator.value, bool)):
+                        key = f"{relative}:{ast.unparse(node)}"
+                        found.setdefault(key, []).append(f"line {node.lineno}")
+    return found
+
+
+def test_no_tool_or_deploy_script_hides_an_integer_cutoff():
+    """The gap F183 fell through, closed (F184)."""
+    offenders = {key: lines for key, lines
+                 in _integer_cutoffs_outside_the_package().items()
+                 if key not in INTEGER_ALLOWED}
+    assert not offenders, (
+        "integer literals compared in tools, deploy or qc that are not "
+        f"accounted for: {offenders}. If one decides an acceptance it belongs "
+        "in config/thresholds.toml; if it does not, add it to "
+        "INTEGER_ALLOWED with the reason."
+    )
+
+
+def test_the_integer_allowlist_outside_the_package_is_not_stale():
+    """An allowance for a comparison that no longer exists reads as evidence
+    that it was considered, which is F119's shape."""
+    present = set(_integer_cutoffs_outside_the_package())
+    stale = sorted(set(INTEGER_ALLOWED) - present)
+    assert not stale, (
+        f"INTEGER_ALLOWED names comparisons that are gone: {stale}"
+    )
+
+
+def test_the_integer_scan_finds_something_to_judge():
+    """Otherwise the two tests above pass by scanning nothing."""
+    found = _integer_cutoffs_outside_the_package()
+    assert len(found) >= 5, (
+        f"the integer scan found only {len(found)} comparisons, which is "
+        "fewer than the six measured when it was written: it is probably "
+        "walking the wrong tree"
+    )
+
+
+def test_the_recovery_correlation_minimum_resolves_from_config():
+    """F184: it was a bare `>= 3` deciding whether a correlation is published."""
+    from nobble import paths as _paths
+
+    value = _paths.thresholds()["validation"]["recovery_correlation_minimum_points"]
+    assert isinstance(value, int) and value >= 2
+    builder = (ROOT / "deploy" / "build_atlas.py").read_text()
+    assert "recovery_correlation_minimum_points" in builder
+    assert "len(points) >= 3" not in builder, (
+        "the literal is still there beside the configured lookup"
+    )

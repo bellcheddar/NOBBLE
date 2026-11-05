@@ -1,7 +1,7 @@
 {
   "campaign": "benchmark_20261103T192126Z",
   "files": {
-    "campaign.json": 7502,
+    "campaign.json": 7677,
     "validation.json": 39654,
     "weights.json": 893,
     "scores.jsonl": 7,
@@ -16,7 +16,7 @@
   "outstanding": [
     {
       "campaign": "campaign_20261104T004632Z",
-      "jobs_done": 632,
+      "jobs_done": 695,
       "jobs_total": 2360
     },
     {
@@ -29,7 +29,7 @@
   "jobs_total": 100,
   "pairs_total": 7,
   "structures": 100,
-  "bytes": 25755560,
+  "bytes": 25755735,
   "redacted_ligands": [
     "dBET57"
   ]

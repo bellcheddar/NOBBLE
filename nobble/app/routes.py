@@ -229,6 +229,11 @@ def about():
         validation=data.precomputed("validation.json"),
         throughput=data.throughput(),
         components=data.COMPONENTS,
+        # Which Boltz produced the coordinates. Read from the published
+        # campaign record rather than measured here: the droplet's
+        # environment is not the one that ran the jobs, so measuring on the
+        # server would report the wrong thing confidently (F185).
+        software=(data.campaign_meta() or {}).get("software") or {},
     )
 
 

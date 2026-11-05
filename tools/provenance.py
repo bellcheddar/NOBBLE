@@ -24,6 +24,24 @@ else:
     if dropped is not None:
         print(f"   {campaign.name}: {meta.get('jobs_emitted')} job(s) emitted, "
               f"{dropped} conditioned dropped for having no pocket")
+    # Which Boltz the campaign recorded at assembly, and what to do when it
+    # recorded none. A campaign assembled before F185 has no block, and the
+    # honest line says that rather than measuring the environment now and
+    # presenting it as what ran: the environment is probably the same and
+    # "probably" is not provenance.
+    recorded = meta.get("software") or {}
+    if recorded.get("boltz"):
+        detail = f"Boltz {recorded['boltz']}"
+        if recorded.get("torch"):
+            detail += f", torch {recorded['torch']}"
+        if recorded.get("recorded"):
+            detail += f" ({recorded['recorded']})"
+        print(f"   model         {detail}")
+    else:
+        print("   model         not recorded: this campaign was assembled "
+              "before the version was captured, and the atlas build fills it "
+              "in at publish")
+
     stale = inputs.stale_inputs(campaign)
     if stale:
         pairs = sorted({r["pair_id"] for r in stale if r.get("pair_id")})

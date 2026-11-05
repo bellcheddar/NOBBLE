@@ -43,15 +43,19 @@
           <span class="stat__sub">far too few to validate on</span>
         </div>
       </div>
+      {# One sentence, because CLAUDE.md allows one: "Disclaimers only where
+         a figure would be actively misread without one, and then one
+         sentence." This one earns its place, since a correlation shown with
+         a p-value reads as a measurement. What it replaced was 87 words
+         against a 40-word panel budget, carrying the RBM39 story, the
+         earlier construct hypothesis it displaced and what the Sievers arm
+         will do: reasoning, which belongs in FINDINGS.md (F177). The
+         sample size is already on the tile beside it, which reads "far too
+         few to validate on" and is not counted as prose. #}
       <p class="panel__hint" style="margin-top:0.7rem">
-        <strong>Read this as a hypothesis, not a metric.</strong> It is
-        {{ recovery_vs_bridge.n }} points, and the correlation was noticed
-        after looking at them rather than predicted before, which is the
-        weakest form this kind of claim comes in. It also replaced an earlier
-        hypothesis of ours that the substrate construct was to blame: RBM39
-        recovers at 6.0 A from a 15-mer cut out of a folded domain, which that
-        earlier idea said should fail. The Sievers arm multiplies the sample
-        by an order of magnitude and is the test that matters.
+        <strong>A hypothesis, not a metric:</strong> the correlation was
+        noticed in these {{ recovery_vs_bridge.n }} points, not predicted
+        before them.
       </p>
     </div>
   </div>
@@ -61,8 +65,8 @@
 {% if comparison and comparison.get('comparisons') %}
 <section class="panel">
   <h2>Construct comparison: does the whole domain recover the pose?</h2>
-  <p class="panel__hint">Six pairs submitted their substrate as a 15-mer cut from a folded domain. The corrected campaign re-runs them as whole domains.</p>
-  <p class="panel__hint">IKZF1 is the control: it keeps its 15-mer in both campaigns, so if its recovery moves, something other than the construct changed.</p>
+  <p class="panel__hint">Six pairs were submitted as a 15-mer cut from a folded domain; the corrected campaign re-runs them whole.</p>
+  <p class="panel__hint">IKZF1 keeps its 15-mer in both, so it is the control.</p>
 
   {# The control has three states, not two: held, moved, and not yet run.
      Rendering it as a boolean announced "control MOVED" for a control that
@@ -84,7 +88,8 @@
         <th>Pair</th><th>Substrate</th>
         <th class="num">15-mer RMSD</th><th class="num">Domain RMSD</th>
         <th class="num">Change</th>
-        <th class="num">Bridged</th>
+        <th class="num" data-tip="Seeds whose glue touched both chains. Needs no crystal, so it is measurable on every pair."
+            data-tip-title="Bridged" tabindex="0">Bridged</th>
         <th>Verdict</th>
       </tr></thead>
       <tbody>
@@ -113,10 +118,12 @@
       </tbody>
     </table>
   </div>
+  {# The definition of Bridged moved onto the column header it defines,
+     where it is a label rather than prose and is not counted. That is the
+     right home for it anyway: a reader wanting to know what a column means
+     looks at the column (F177). #}
   <p class="panel__hint" style="margin-top:0.5rem">
-    RMSD is peptide backbone superposed on the receptor, against the same
-    deposited structures in both campaigns. Bridged counts seeds whose glue
-    touched both chains, which needs no crystal.
+    RMSD is peptide backbone against the same depositions.
   </p>
 </section>
 {% endif %}

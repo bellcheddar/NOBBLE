@@ -310,6 +310,13 @@
 <section class="panel">
   <h2>Provenance</h2>
   <p class="panel__hint">Every judgement is recorded with its alternatives and how to reverse it.</p>
+  {# The model version, which the page named as "Boltz-2" and never pinned.
+     Every coordinate here is a prediction from one build, so this is
+     provenance rather than detail (F185). A `mono` paragraph, so the copy
+     budget counts it as a figure and not as prose. #}
+  {% if software.get('boltz') %}
+  <p class="panel__hint mono">Boltz {{ software.boltz }}{% if software.get('torch') %}, torch {{ software.torch }}{% endif %}{% if software.get('recorded') %} ({{ software.recorded }}){% endif %}</p>
+  {% endif %}
   <p class="panel__hint">
     <a href="https://github.com/bellcheddar/NOBBLE" target="_blank" rel="noopener noreferrer">github.com/bellcheddar/NOBBLE</a>
     · built on <a href="https://github.com/bellcheddar/BoltzMaker" target="_blank" rel="noopener noreferrer">BoltzMaker</a>

@@ -71,13 +71,24 @@ def test_the_boundary_is_inclusive():
                              bundle_kb=260_000, margin_mb=1024)["fits"]
 
 
-def test_it_compares_the_whole_bundle_not_the_difference():
+def test_the_whole_bundle_is_subtracted_from_free_space():
     """`--delete` removes the old copy after the transfer, so the peak is both.
 
     A check that compared only the growth would pass on a droplet with room
     for 1 MB of change and none for the 265 MB that briefly sits beside the
-    old atlas.
+    old atlas, which is why `judge` takes no notion of what is already
+    there.
+
+    That is also why this asserts the arithmetic rather than claiming to
+    tell the two designs apart. It was called
+    `test_it_compares_the_whole_bundle_not_the_difference` and asserted that
+    a bundle larger than free space is refused, which a difference-based
+    check would also have done: the name claimed a distinction the function
+    signature makes unrepresentable. What is testable is the identity, and
+    the design decision is recorded in the module's own docstring.
     """
+    verdict = space_check.judge(free_kb=500_000, bundle_kb=260_000, margin_mb=0)
+    assert verdict["remaining_after_mb"] == round((500_000 - 260_000) / 1024, 1)
     assert not space_check.judge(free_kb=30_000, bundle_kb=260_000,
                                  margin_mb=0)["fits"]
 

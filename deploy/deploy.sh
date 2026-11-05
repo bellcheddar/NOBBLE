@@ -47,6 +47,41 @@ if [[ ! -d deploy/atlas ]]; then
   exit 2
 fi
 
+# iCloud sync-conflict copies in the bundle, refused before anything is sent.
+#
+# The project root is iCloud-backed, and after a rebuild iCloud restores its
+# copy of a file the build replaced, byte-identical, owner-only, carrying the
+# pre-rebuild mtime. It has happened twice: F173 found one that `git add -A`
+# had already committed and shipped, and a second appeared in the bundle
+# minutes after the rebuild that resolved F173's drift.
+#
+# A test in the suite catches these, and a deploy must not depend on someone
+# having run the suite. The pattern is the same one `tests/
+# test_no_sync_conflict_files.py` uses, deliberately: a space, digits, then
+# the extension, which no name this project generates carries.
+# Read into an array, one path per element. A single string held them all on
+# the first attempt, and with two conflicts the listing indented only the
+# first line and the suggested command came out as
+# `rm a\ 2.cif$'\n'b\ 3.json`: one mangled argument rather than two
+# commands. A refusal that prints an unusable command is worse than one that
+# prints none, and the way to find that out was to run it with two.
+CONFLICTS=()
+while IFS= read -r line; do
+  [[ -n "$line" ]] && CONFLICTS+=("$line")
+done < <(find deploy/atlas -type f -print | grep -E ' [0-9]+\.[A-Za-z0-9]+$' || true)
+if (( ${#CONFLICTS[@]} > 0 )); then
+  echo "deploy: the bundle holds iCloud sync-conflict copies, which nothing" >&2
+  echo "        references and which rsync would publish:" >&2
+  for conflict in "${CONFLICTS[@]}"; do
+    printf '          %s\n' "$conflict" >&2
+  done
+  echo "        Delete them and re-run:" >&2
+  for conflict in "${CONFLICTS[@]}"; do
+    printf '          rm %q\n' "$conflict" >&2
+  done
+  exit 2
+fi
+
 mkdir -p "$HOME/.ssh/cm" && chmod 700 "$HOME/.ssh/cm"
 SSH=(ssh -i "$KEY_PATH" -o BatchMode=yes -o IdentitiesOnly=yes
      -o ControlMaster=auto -o ControlPath="$HOME/.ssh/cm-nobble-%C"
