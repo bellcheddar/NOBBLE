@@ -9241,3 +9241,50 @@ With F198, F199 and F200 this is the fourth measurement-to-prose defect in
 one session, and the branch counting is now mechanical: `_verdict` three
 cases three branches, the design caveat three and three, `compare` four
 directions and four labels, `gate_g1` four cases and four conclusions.
+
+## F202. A deliberate 404 crashed the page that asked for it
+
+The browser QC harness had only ever run against a seven-pair atlas. Pointed
+at a campaign-scale one for the first time, it reported four console errors
+that seven pairs never produce:
+
+    Failed to load resource: the server responded with a status of 404
+    Uncaught (in promise) SyntaxError: Unexpected token '<', "<!doctype "...
+
+`pose.html` fetches `/api/pair/<pair_id>/structures` and called `r.json()`
+whatever came back, so a 404 handed `JSON.parse` the error page's HTML and
+the promise rejected unhandled. The seed overlay then fails without saying
+anything, and browser QC counts the rejection as a console error, which is a
+gate this project holds at zero.
+
+The 404 is correct and must stay. F122 changed that route from 200 with an
+empty list precisely because "a pair that produced nothing" and "a pair this
+campaign has no record of" are different states, and the viewer would
+otherwise render an empty overlay for a pair that was never run. So the fix
+belongs on the client: a 404 now yields an empty catalogue that records why
+it is empty, in `unavailable`, and a network failure is caught separately
+rather than being read as a 404.
+
+The guard is on `r.ok` rather than on the number 404, so a 500 is handled
+too, and a test checks that rather than trusting it.
+
+What the fixture did and did not show. My first campaign-scale atlas had 158
+scored pairs against results rows for the original seven, which is what fired
+the 404; a real atlas has scores as a subset of results and never does. So I
+built a consistent one, 158 pairs with 2,255 results rows and 2,255
+structures, close to the shape the running campaign will publish, and the
+harness came back clean: fourteen pages, no non-200, within the copy budget,
+no console errors, no serious axe violations. That is the answer to the
+question I had actually set out to ask, and it is worth separating from the
+defect the inconsistent fixture happened to expose.
+
+The handling gap is real either way. The route 404s by design, so a client
+that cannot survive one is wrong regardless of how rare the state is, and an
+atlas whose scores and results disagree is a state the fallback ladder
+permits: a pair can be scored from tier-2 results alone.
+
+The test runs the template's own `fetchCatalogue` under node against a
+stubbed fetch, rather than matching the source, which is F50's lesson. And it
+was checked against the original unguarded form, which rejects with exactly
+the SyntaxError the QC run reported, so the test is known to bite rather than
+assumed to.

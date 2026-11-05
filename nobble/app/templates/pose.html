@@ -225,8 +225,32 @@
   function fetchCatalogue() {
     if (catalogue) { return Promise.resolve(catalogue); }
     return fetch('/api/pair/' + encodeURIComponent(pairId) + '/structures')
-      .then(function (r) { return r.json(); })
-      .then(function (d) { catalogue = d; return d; });
+      .then(function (r) {
+        /* The route 404s deliberately: F122 made it distinguish "a pair
+         * that produced nothing" from "a pair this campaign has no record
+         * of", because the viewer would otherwise render an empty overlay
+         * for a pair that does not exist. Parsing regardless gave
+         * `JSON.parse` the 404 page's HTML and an uncaught promise
+         * rejection, which browser QC counts as a console error and which
+         * the seed overlay then fails on in silence (F202).
+         *
+         * An empty catalogue is the honest client-side answer: the toggle
+         * has nothing to offer and says so, rather than throwing. */
+        if (!r.ok) {
+          return { pair_id: pairId, crystal: null, structures: [],
+                   unavailable: r.status };
+        }
+        return r.json();
+      })
+      .then(function (d) { catalogue = d; return d; })
+      .catch(function (e) {
+        /* A network failure is not a 404 and must not be swallowed as one,
+         * but it must not reject unhandled either. */
+        console.warn('structure catalogue unavailable', e);
+        catalogue = { pair_id: pairId, crystal: null, structures: [],
+                      unavailable: 'error' };
+        return catalogue;
+      });
   }
 
   /* The conditioned ternary if there is one, because that is the arm the
