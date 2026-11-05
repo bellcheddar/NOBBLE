@@ -30,16 +30,39 @@ echo "--- select the top decile"
 # what is left of max_compute_hours. Refining nothing is the point, so stop
 # here rather than running the refiner against a queue that was not written
 # (F135).
+# Output captured as well as shown, so the decision below reads the
+# selector's own answer rather than inferring it from an exit code. Exit 0
+# covers a selection, a refusal with nothing rankable and an unpriceable
+# refusal alike, and only the first writes a queue (F193).
+SELECT_LOG="$(mktemp -t nobble_tier2_select)"
+trap 'rm -f "$SELECT_LOG"' EXIT
 if [ -n "$CAMPAIGN" ]; then
-  "$PY_SCI" -m nobble.execute.tier2 "$CAMPAIGN"
+  "$PY_SCI" -m nobble.execute.tier2 "$CAMPAIGN" 2>&1 | tee "$SELECT_LOG"
 else
-  "$PY_SCI" -m nobble.execute.tier2
+  "$PY_SCI" -m nobble.execute.tier2 2>&1 | tee "$SELECT_LOG"
 fi
-SELECT_CODE=$?
+# zsh is not in play here (this script declares bash), but the status still
+# has to come from the pipeline's first element rather than from tee (F188).
+SELECT_CODE="${PIPESTATUS[0]}"
 if [ "$SELECT_CODE" -eq 3 ]; then
   echo "=== GATE G1: refinement does not fit the compute budget. Not refining. ==="
   exit 3
 fi
+
+# The postcondition, not the status: refine only what this selection queued.
+QUEUE="$(sed -n 's/^TIER2_QUEUE=//p' "$SELECT_LOG" | tail -1)"
+if [ -z "$QUEUE" ]; then
+  echo "=== tier 2: the selector printed no TIER2_QUEUE line, so this is an" >&2
+  echo "    older build or it died before reporting. Not refining, because a" >&2
+  echo "    refiner with nothing to read logs as though it had refined. ===" >&2
+  exit 4
+fi
+if [ "$QUEUE" = "none" ]; then
+  echo "=== tier 2: the selection wrote no queue, so there is nothing to"
+  echo "    refine. See tier2.json for which refusal it was. ==="
+  exit 0
+fi
+echo "--- refining the queue this selection wrote: $QUEUE"
 
 echo "--- refine"
 export KMP_DUPLICATE_LIB_OK=TRUE

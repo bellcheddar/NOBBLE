@@ -8767,3 +8767,60 @@ A test asserting the script still prints exactly one model line and still
 calls the function stays, because the point of extracting it was that the
 script and the function cannot drift. Testing the function alone would leave
 `provenance.py` free to format its own line again.
+
+## F193. Tier 2 would have refined a selection it did not make
+
+`tools/tier2.sh` runs the selector, then the refiner, then the scorer. It
+keyed the decision to refine on the selector's exit code and handled one
+value, 3, for Gate G1. Its own comment explains why that guard exists, and
+the explanation is wider than the guard: "without that the refiner runs next
+with no queue to read, which is harmless and reads in the log as though the
+refinement had been done".
+
+Exit 0 covers four outcomes. A selection that queued jobs. A refusal with
+nothing rankable, which `main()` deliberately returns 0 for, because "a
+selection that refused is not a failure of this step". An unpriceable
+refusal, which F161 made distinct from Gate G1. And "no tier-1 queue to
+refine", which I found only by running the thing and had not enumerated when
+I wrote the finding up the first time. Only the first writes
+`queue_tier2.jsonl`, so no exit code can carry the decision.
+
+And it is worse than the no-op the comment describes, because the queue file
+persisted between runs.
+`campaigns/benchmark_20261103T192126Z/queue_tier2.jsonl` holds ten jobs for
+`bench02_BRD4_VHL`, written on 3 November, with `tier2.json` recording that
+selection as `selected`. A refusal on that campaign would have sent the
+refiner at those ten jobs: twenty-five diffusion samples each, hours of GPU
+time on a selection made days earlier, logged as a fresh decile. I had
+described this as "the refiner does nothing"; the evidence on disk says it
+would have done the wrong thing.
+
+Two changes, because the problem has two halves.
+
+`run()` clears any existing queue before it selects. That makes "the queue
+exists" mean "this call wrote one", which is the property the shell needs and
+which every caller should have: arranging it is not a shell script's job. The
+order is load-bearing and a test pins it, because clearing after the
+selection would delete the queue the selection had just written.
+
+The selector then prints `TIER2_QUEUE=<path>` or `TIER2_QUEUE=none`, and the
+shell reads that instead of inferring from a status. A sentinel prefix rather
+than the last line, for the reason `hwprobe.mps_state` and F185's probe both
+use one: a pixi environment can print a warning and the last line of stdout
+is not reliably the answer. The shell distinguishes three cases, and the
+third is the one I would have missed: no sentinel at all, meaning an older
+build or a selector that died before reporting, which exits 4 rather than
+falling through.
+
+Proven by running each path rather than by reading. A planted stale queue is
+gone after a refusal. The selector prints exactly one sentinel and prints
+`none` on a fixture with no tier-1 queue, while still exiting 0. And the
+shell's parse was exercised on three outputs: `none` skips, a real path
+refines that path, and no sentinel refuses.
+
+This is the third postcondition-versus-status finding in a row, after F188
+and F190, and they share a shape worth naming. A status says what a step
+thinks happened. A postcondition says what is on disk. When the two can
+disagree, the step that follows should read the second, and the way to find
+out that they can disagree is to make the step refuse and see what the next
+one does.

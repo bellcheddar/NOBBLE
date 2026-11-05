@@ -332,6 +332,20 @@ def run(campaign: Path, fraction: float | None = None) -> dict:
     if nothing is affordable, which is what the gate is defined against: the
     minimum viable set, after automatic scope reduction.
     """
+    # Any previous queue goes before anything is selected, so that after
+    # this call the queue exists if and only if this call wrote one. It did
+    # not, and the file is written only on the path that reaches the end:
+    # every refusal returned with a days-old queue still on disk. One was,
+    # ten jobs for bench02_BRD4_VHL written on 3 November, and a refusal
+    # here would have had the refiner spend GPU hours on that selection
+    # while the log read as a fresh decile (F193).
+    #
+    # Here rather than in `main()` because it is a property every caller
+    # should get: "the queue reflects this selection" is not something a
+    # shell script should have to arrange.
+    stale = campaign / "queue_tier2.jsonl"
+    stale.unlink(missing_ok=True)
+
     selection = select_top_decile(campaign, fraction)
     report = {"selection": selection.to_dict()}
     if selection.status == "selected":
@@ -400,6 +414,20 @@ def main() -> int:
 
     report = run(Path(campaign), fraction=args.fraction)
     print(json.dumps(report, indent=2, default=str))
+
+    # Whether a queue was written, as one line a shell can read. The exit
+    # code cannot carry this: 0 covers a selection, a refusal with nothing
+    # rankable, and an unpriceable refusal alike, and only the first writes
+    # a queue. `tools/tier2.sh` keyed on exit 3 alone and would refine on
+    # the other two (F193).
+    #
+    # A sentinel prefix rather than the last line, for the reason
+    # `hwprobe.mps_state` and `software.versions` use one: a pixi
+    # environment can print a warning and the last line of stdout is not
+    # reliably the answer.
+    queue = Path(campaign) / "queue_tier2.jsonl"
+    written = queue.exists() and queue.stat().st_size > 0
+    print("TIER2_QUEUE=" + (str(queue) if written else "none"))
     # 3 for an open gate, matching `curate.library.main`. tools/tier2.sh
     # keys on it to skip refinement: without that the refiner runs next with
     # no queue to read, which is harmless and reads in the log as though the
