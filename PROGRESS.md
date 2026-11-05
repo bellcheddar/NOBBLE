@@ -985,3 +985,37 @@ page, 99 per cent of it in four keys neither page reads. Trimmed to
 514 KB, 18 KB gzipped (F174). Memory holds at 84 MB for the whole
 atlas and the projected published bundle is 265 MB of structures, both
 comfortable on the droplet.
+
+## The interface survey is finished
+
+Every state the app can be in has now been rendered with the data that
+reaches it, which is F203's method and the one that produced most of this
+session's findings. The two that were left are closed.
+
+**The weights panel with a fit** (F205). `weights.json` has reported
+`fitted: false` on every campaign the project has run, so the fitted branch
+had never been on screen. Fitting on the Sievers fixture selected two of five
+components and the other three kept their hand-set defaults, which put the
+ledger's composite column at 0.6578 for IKZF1 against the 0.6189 the pipeline
+had stored, under the panel's own sentence saying the weights were fitted and
+never by hand. A component the fit left out now starts at zero on both sides
+of the page.
+
+**The design tab with a completed scan** (F206). No design campaign has run.
+Rendering the scan put fifteen measured lifts, three lost bridges and the
+per-position profile on screen, all correct, inside a panel headed "Planned
+scan" and footed with a projection of the hours the scan had already spent.
+Three states now, computed in the route.
+
+Both were one campaign away from being the first thing read: the fit needs
+the Sievers arm and the scan needs the design arm, and each would have come
+up wrong the moment it arrived. Neither was reachable on the live site, which
+is why nothing caught them and why rendering the unreachable states was worth
+the time.
+
+## Next action, once the chain exits (unchanged)
+
+`bash tools/run_chain.sh`, per D-NOB-069, which carries the
+`tools/rerun_pair.py bench02_BRD4_VHL --campaign <campaign> --apply`
+correction inside it. The chain is at 820 of 2,360 jobs. 496 GiB free, so
+G5 is not near. The stall watchdog has reported nothing.

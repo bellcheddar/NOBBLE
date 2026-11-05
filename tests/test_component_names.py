@@ -78,9 +78,18 @@ def test_fitted_weight_resolves_the_alias():
 
 
 def test_fitted_weight_falls_back_only_when_there_is_nothing_to_show():
+    """"Nothing to show" means no fit, not a fit that omits this component.
+
+    This test asserted the third case the other way, 0.15 rather than 0,
+    and that assertion was the defect F205 fixed: a fit that leaves a
+    component out of `components_used` has answered zero for it, and
+    falling back there put hand-set weights into a column the panel
+    presents as fitted. The distinction is the whole of the difference
+    between the two findings, so both cases are pinned here.
+    """
     assert app_data.fitted_weight({}, "lysine_reach", 0.15) == 0.15
     assert app_data.fitted_weight(None, "lysine_reach", 0.15) == 0.15
-    assert app_data.fitted_weight({"other": 1.0}, "lysine_reach", 0.15) == 0.15
+    assert app_data.fitted_weight({"other": 1.0}, "lysine_reach", 0.15) == 0
     # A fitted zero is a decision, not an absence, and must not be replaced
     # by the default.
     assert app_data.fitted_weight(

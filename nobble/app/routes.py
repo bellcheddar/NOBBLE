@@ -208,6 +208,10 @@ def design():
     return render_template(
         "design.html", page_title="Design", active="design",
         design=document,
+        # Computed after the parent switch above, because that switch can
+        # blank the profile, and a heading claiming a scan the table does
+        # not show is the defect this closes (F206).
+        scan=data.scan_state(document),
     )
 
 
@@ -422,6 +426,30 @@ def api_pair_structures(pair_id: str):
     coarse = next((row for row in data.scores()
                    if row.get("pair_id") == pair_id), None)
     refinement = sampling.compare(coarse, refined) if refined else None
+    if refinement:
+        # A label per row, so the panel reads "Bridge percentile" rather
+        # than "bridge_percentile". Rendered for the first time in this
+        # session, with tier-2 data, and it showed raw field names where
+        # every other table on the site shows labels (F203).
+        #
+        # Taken from `data.COMPONENTS`, which is where the site's labels
+        # live, rather than adding a second list to `nobble/sampling.py`:
+        # three of the four keys are already labelled there, and a parallel
+        # list is the duplication F181, F183 and F187 were each about. The
+        # fourth, `bridge_formation_rate`, has no entry because it is not a
+        # composite component, so it falls back to its key with the
+        # underscores opened out rather than inventing a label here that
+        # would then disagree with the one in campaign.html's header.
+        for row in refinement.get("rows", []):
+            meta = data.COMPONENTS.get(row.get("key")) or {}
+            fallback = str(row.get("key", "")).replace("_", " ")
+            # Capitalised to sit beside the three that are labelled, which
+            # is a mechanical transformation of the key rather than a name
+            # invented here. The ledger's own header abbreviates this same
+            # quantity to "Bridge rate", so the two differ: the row's
+            # tooltip carries `what`, "proportion of seeds whose glue
+            # bridged both chains", which is the thing that identifies it.
+            row["label"] = meta.get("label") or (fallback[:1].upper() + fallback[1:])
 
     return jsonify({
         "pair_id": pair_id,

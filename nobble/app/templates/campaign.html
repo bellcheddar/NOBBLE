@@ -256,8 +256,19 @@
     const source = FITTED_ALIASES[k] || k;
     if (FITTED_RAW[source] !== undefined) { FITTED[k] = FITTED_RAW[source]; }
   });
+  /* When a fit exists, a component it did not use weighs zero, because that
+     is the fit's answer for it: `components_used` names the ones it picked
+     and the rest carry no weight. Falling back to the hand-set default here
+     put this column at 0.658 for IKZF1 while the pipeline had stored 0.6189,
+     under a sentence saying the weights were fitted (F205).
+     With no fit the defaults are right, and the panel says they are starting
+     values. The same rule is in data.fitted_weight, which the Jinja above
+     uses: two copies of one rule, as the alias map already is, because the
+     server renders the slider and this initialises it. */
+  const HAS_FIT = Object.keys(FITTED_RAW).length > 0;
   Object.keys(COMPONENTS).forEach(k => {
-    defaults[k] = FITTED[k] !== undefined ? FITTED[k] : COMPONENTS[k].default_weight;
+    if (FITTED[k] !== undefined) { defaults[k] = FITTED[k]; }
+    else { defaults[k] = HAS_FIT ? 0 : COMPONENTS[k].default_weight; }
   });
   let weights = NOBBLE.weights.load(defaults);
 

@@ -24,7 +24,7 @@
 
 {% if design.get('preview') %}
 <section class="panel">
-  <h3>Planned scan</h3>
+  <h3>{{ scan.heading }}</h3>
   {% set preview = design.preview %}
   {% set parent = preview.parent %}
   <p class="panel__hint">
@@ -72,7 +72,22 @@
     </tbody>
   </table>
 
-  {% if preview.get('cost') %}
+  {# A projection of the work, which is the right line to show before the
+     scan runs and the wrong one after: it described jobs still to do while
+     the table above reported their results. Once every variant is scored
+     the projection is a forecast of nothing, so the panel reports what was
+     scored instead, and while the scan is part way through it says both
+     (F206). Counts come from data.scan_state. #}
+  {% if scan.status != 'planned' %}
+    <p class="panel__hint">
+      {{ scan.scored }} of {{ scan.of }} variants scored.
+      {%- if scan.status == 'partial' and preview.get('cost') %}
+        The full scan is {{ preview.cost.variants }} variants,
+        {{ preview.cost.jobs }} jobs, about {{ preview.cost.projected_hours }}
+        hours.
+      {%- endif %}
+    </p>
+  {% elif preview.get('cost') %}
     <p class="panel__hint">
       {{ preview.cost.variants }} variants, {{ preview.cost.jobs }} jobs,
       about {{ preview.cost.projected_hours }} hours.

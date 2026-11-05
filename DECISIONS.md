@@ -2136,3 +2136,41 @@ BUILD_SPEC.md is authoritative and the question is explicitly Marc's.
 **How to reverse it.** Each closure is a measurement or a running service, so
 re-probing or re-reading contradicts it directly if any of them changes: a
 different chip, a different Boltz version, or the site moving to a sub-route.
+
+## D-NOB-071. A fit that omits a component has answered zero for it
+
+**Decision.** When `weights.json` reports `fitted: true`, a component absent
+from the fitted weights renders at zero rather than at its hand-set default.
+The panel's sliders then show the fit's answer for all five components and
+nothing else, and the composite column agrees with the `nobble_score` the
+pipeline stored.
+
+**Why.** Spec 4.8 lets `components_used` be a subset: the fitter selects, and
+`W.apply` renormalises over the weights that contribute. Falling back to the
+default for a component the fit passed over mixes a hand-set number into a
+figure the panel describes as "Fitted on N labelled pairs, never by hand",
+and it does so silently, because the composite still looks like a composite.
+Measured on the Sievers fixture, the disagreement was 0.6578 against 0.6189
+on the first row of the ledger (F205).
+
+**Alternatives.** Render the omitted components as the defaults they are, but
+say so in the panel: rejected because the sentence would have to explain that
+some sliders are fitted and others are not, and the copy budget for that
+panel is one line. Hide the omitted sliders entirely: rejected because they
+are the controls a reader uses to explore away from the fit, which is the
+panel's purpose, and a missing slider cannot be moved. Have the fitter emit
+an explicit zero for every component it did not select: tempting, and it
+would make the app's job trivial, but it would also change what
+`components_used` means and put a weight in the artefact the fitter never
+chose.
+
+**How to reverse.** `nobble/app/data.py:fitted_weight` returns `default`
+instead of `0`, and `campaign.html`'s initialiser drops its `HAS_FIT` test.
+Both have to move together or the server and the browser disagree on load;
+`tests/test_unfitted_components_start_at_zero.py` pins both halves.
+
+**Note.** This reverses one assertion in `tests/test_component_names.py`,
+which was written for F106 and treated "the fit has no value for this
+component" as "no fit applies here". That reading is right when nothing has
+been fitted and wrong for every component a fit passed over, and the test now
+pins both cases with the distinction stated.

@@ -321,7 +321,7 @@
     body.innerHTML = '';
     report.rows.forEach(function (row) {
       const tr = document.createElement('tr');
-      [row.key, fmt(row.tier1), fmt(row.tier2), fmt(row.change)]
+      [row.label || row.key, fmt(row.tier1), fmt(row.tier2), fmt(row.change)]
         .forEach(function (value, index) {
           const cell = document.createElement(index === 0 ? 'th' : 'td');
           if (index === 0) {

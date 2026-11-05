@@ -226,6 +226,39 @@ def weight_fit() -> dict:
     return _cached("weights", path, lambda p: json.loads(p.read_text()))
 
 
+def scan_state(document: dict) -> dict:
+    """Whether the design tab's scan has run, and how much of it.
+
+    The panel was headed "Planned scan" and footed with a projection of the
+    work it would take, both of them static, while the table between them
+    reported measured lifts for every variant. The Lift column used to say
+    "not run" in the same state and was fixed for the same reason, with a
+    comment saying the page "disagreed with itself about whether the scan
+    had run"; the heading and the cost line were left behind (F206).
+
+    Keyed on the substitutions the profile has a lift for, which is the
+    mapping the Lift column already builds, so the heading cannot claim a
+    scan the table does not show. Counted here rather than in the template:
+    the route blanks the profile when the chosen parent is not the one that
+    was scanned, so the count has to follow that and not the atlas.
+    """
+    variants = ((document.get("preview") or {}).get("variants")) or []
+    positions = ((document.get("profile") or {}).get("positions")) or []
+    measured = {row.get("substitution") for row in positions
+                if row.get("substitution") and row.get("lift") is not None}
+    scored = sum(1 for variant in variants
+                 if variant.get("substitution") in measured)
+    total = len(variants)
+    if not scored:
+        status, heading = "planned", "Planned scan"
+    elif scored < total:
+        status, heading = "partial", "Scan in progress"
+    else:
+        status, heading = "complete", "Completed scan"
+    return {"status": status, "heading": heading,
+            "scored": scored, "of": total}
+
+
 def throughput() -> dict:
     if not paths.THROUGHPUT.exists():
         return {}
@@ -313,12 +346,28 @@ def fitted_weight(fitted: dict | None, key: str, default=None):
 
     One function so the template cannot resolve the name one way and the
     JavaScript another.
+
+    A component the fit did not use starts at zero, not at its hand-set
+    default, and that is the whole of F205. When a fit exists, the weight it
+    gives a component it left out is zero: `components_used` names the two it
+    selected and the fit's answer for the other three is that they carry no
+    weight. Falling back to the default there put the ledger's composite
+    column at 0.6578 for IKZF1 while the pipeline had stored 0.6189, under a
+    sentence saying "Fitted on 127 labelled pairs, never by hand".
+
+    That is F106's shape surviving for the components the fit did not pick.
+    F106 made the sliders show fitted values rather than defaults, which
+    fixed the ones the fit used; the ones it did not use kept their defaults
+    and kept contributing to a column the page presents as the fit's.
+
+    With no fit at all the defaults are right: they are the starting values
+    the page says they are, and the panel says so in as many words.
     """
     if not fitted:
         return default
     source = FITTED_ALIASES.get(key, key)
     value = fitted.get(source)
-    return default if value is None else value
+    return 0 if value is None else value
 
 
 COMPONENTS = {

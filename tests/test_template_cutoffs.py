@@ -44,6 +44,8 @@ ALLOWED = {
         "near-miss band, the chart's own: beyond this is a different site",
     "p.lift < 0":
         "a sign test, not a cutoff: negative lift is coloured as a loss",
+    "length > 0":
+        "an emptiness test, not a cutoff: whether a fit exists at all (F205)",
 }
 
 

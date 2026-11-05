@@ -9288,3 +9288,205 @@ stubbed fetch, rather than matching the source, which is F50's lesson. And it
 was checked against the original unguarded form, which rejects with exactly
 the SyntaxError the QC run reported, so the test is known to bite rather than
 assumed to.
+
+## F203. A panel that had only ever been rendered empty
+
+`#refinement` on the pose page sits beside the pose and compares what the
+refined structure measured against the coarse one. It is hidden until a
+refinement exists, and none ever has: `measured_scaling` reports no tier-2
+job has completed on any campaign, which is why F135's budget had to bound
+the cost rather than measure it. So the panel had been rendered only in its
+empty state, and the empty state is the one thing about it that was known to
+work.
+
+Built an atlas with `scores_tier2.jsonl` and `results_tier2.jsonl` for one
+pair and rendered it. The mechanics are sound: the wrapper unhides, four rows
+appear with their tier-1 and tier-2 values and the change, the withheld note
+explains why the ipTM minima are absent, and there are no console errors.
+`nobble/sampling.py`'s partition held too, with `iptm_min_ternary` moved
+deliberately in the fixture and correctly not shown.
+
+What it did show is that the rows were labelled with field names:
+`bridge_formation_rate`, `bridge_percentile`, `convergence_score`,
+`plip_fingerprint_match`, in a panel beside a ledger whose own columns read
+"Bridge %ile", "Converge" and "PLIP". Nobody had seen it because seeing it
+required data that does not exist yet.
+
+The labels come from `data.COMPONENTS`, attached in the route. Three of the
+four keys are labelled there already, and the alternative, a parallel list in
+`nobble/sampling.py`, is the duplication F181, F183 and F187 were each about.
+It is attached in the route rather than in `sampling.compare` for layering:
+a scoring module importing the app's label table inverts the dependency, and
+a test asserts `nobble/sampling.py` does not import `nobble.app`.
+
+`bridge_formation_rate` is not in COMPONENTS, because COMPONENTS drives the
+weight sliders and that rate is not a composite component. It falls back to
+its key with the underscores opened out and the first letter raised, which is
+a transformation of the key rather than a name invented in the route. That
+leaves the ledger calling the same quantity "Bridge rate" and this panel
+calling it "Bridge formation rate", which is a difference I am recording
+rather than hiding: what identifies the row is its tooltip, "proportion of
+seeds whose glue bridged both chains", and inventing a fourth COMPONENTS
+entry to make the two agree would make a non-component look like one.
+
+The useful generalisation is about when a thing gets looked at. This panel,
+the crystal overlay in F196 and the Tier facet in F191 were all broken or
+rough in a state nobody had reached: no refinement, no request to that route,
+no atlas with more than one arm. Three defects in one session from the same
+cause, which is that a conditional branch of the interface is as untested as
+the data that would reach it.
+
+## F204. The headline statistic is computed twice and nothing compared them
+
+Rendering the ROC panel with a computed curve, which F203's method says to
+do because no campaign has ever produced one, showed the AUC twice on one
+page:
+
+- the sentence above the chart: `AUC 0.7747`, `roc_summary.auc`, computed in
+  Python from the rank statistic and published in `validation.json`
+- the chart's own title: `AUC 0.775`, a trapezoid the browser integrates over
+  points the browser builds from `PAIRS`
+
+They agree, and that is the same number to the precision the title shows.
+Nothing compared them. `tests/test_composite_agreement.py` exists for exactly
+this pair one statistic down, and its reasoning transfers without alteration:
+"They are also the kind of pair that agrees until it does not, and nothing
+compared them: a normalisation changed on one side would silently give the
+page a different ranking from the pipeline, and the page is where the ranking
+is read." For the ROC the stake is higher, because the AUC is the project's
+one falsifiable result.
+
+So `qc/roc_harness.mjs` now runs `delta.html`'s own `buildRoc` under node and
+reports the AUC from the title it builds, and a test drives both
+implementations over the same rows and compares. The JavaScript is run rather
+than transcribed, which is F123's point: a Python copy of the formula would
+test the copy.
+
+Getting the harness to run the real function took three stubs and each one
+is a fact about the code worth knowing. `ROC_MINIMUM_PER_SIDE` is injected
+into the template from `config/thresholds.toml`, so the harness takes it as
+an argument rather than carrying a literal, and a test asserts it carries
+none. `NOBBLE.plotLayout` is nobble.js's shared layout helper, returned
+unchanged here because this measures the number and not the palette. And the
+page writes its counts into `#roc-counts`, which is how the harness reports
+an empty curve rather than guessing from an absent title.
+
+Two tests guard against the comparison passing vacuously: both values must
+be a plausible AUC strictly between 0 and 1, and Python's must exceed 0.5,
+because the fixture is built to separate and an AUC at chance would mean the
+fixture had changed rather than the implementations agreeing.
+
+What this does not do is reduce the two implementations to one. The browser
+needs points to draw a curve, so it has to build them, and once it has them
+the trapezoid is free. The duplication is reasonable; the absence of a
+comparison was not.
+
+## F205. Three sliders went on contributing to a column labelled as fitted
+
+`weights.json` has reported `fitted: false` on every campaign the project has
+run, so the weights panel had never once been rendered with a fit. F203's
+method says to render the states that have never been rendered, so I fitted on
+the Sievers fixture: 127 labelled pairs, objective 0.8515, and
+`components_used` naming two of the five components, `bridge_percentile` at
+0.2 and `delta_iptm` at 0.8.
+
+The fitted branch rendered correctly, down to its sentence: "Fitted on 127
+labelled pairs, never by hand." Under that sentence the ledger's composite
+column read 0.6578 for `bench04_IKZF1_CRBN`, while the `nobble_score` Python
+had computed and stored for the same pair was 0.6189.
+
+The three components the fit did not select had kept their hand-set defaults,
+0.25, 0.15 and 0.00, and were still contributing:
+
+```
+fitted two only          0.6189
+fitted + defaults        0.6578
+fitted + explicit zeros  0.6189
+```
+
+A fit that leaves a component out has not declined to answer for it. It has
+answered zero: `components_used` names the two it selected, and the fit's
+answer for the other three is that they carry no weight. Falling back to the
+hand-set default there puts a hand-set number into a figure presented as
+fitted, which is the one thing the panel's sentence promises it is not.
+
+This is F106's shape surviving one layer down. There, the alias map meant a
+component the fit *had* used rendered as its default; the fix made the lookup
+go through one function so the template and the JavaScript could not resolve
+the name differently. The miss was that the same function still treated "the
+fit has no value for this" as "no fit applies here", which is right when
+nothing has been fitted and wrong for every component a fit passed over.
+
+So `data.fitted_weight` now returns zero rather than the default when a fit
+exists, and the sliders read 0.20, 0.80, 0.00, 0.00, 0.00 with the ledger's
+first composite at 0.619, matching the stored score. With no fit the defaults
+stand and the panel still says they are starting values, which is the branch
+the live site is in.
+
+Fixing the server alone did not fix the page. `campaign.html` initialises the
+sliders in JavaScript, because the browser recomputes the composite on every
+move, and it carried its own copy of the fallback: `FITTED[k] !== undefined ?
+FITTED[k] : COMPONENTS[k].default_weight`. The server rendered zero into the
+input's `value` and the script immediately overwrote it with 0.25. The rule
+has to exist on both sides, the same necessity the alias map already carries,
+so the test pins both and the comment on each points at the other.
+
+The defect was not reachable on the live site, and it was one campaign away
+from being the first thing anyone read. It needed a fit to exist, and the fit
+needs the Sievers arm, which runs after the panel.
+
+## F206. A plan, an estimate, and fifteen measured results between them
+
+No design campaign has run, so `design.json` carries `lifts: {"status": "no
+design campaign has run yet", "lifts": []}` and the design tab had only ever
+been rendered unscanned. Rendering it with a completed alanine scan, by
+computing lifts through `nobble/design/lift.py` from synthesised scores for
+IKZF1's fifteen variants, put the measured state on screen for the first
+time.
+
+The measurements were right. Fifteen lifts, ordered as the construction
+intended, with `C7A` most sensitive at -0.2806; three substitutions that lost
+the bridge outright and six more that weakened it without losing it, the
+latter correctly excluding the three that had lost it. The per-position
+profile, the chart, the scan-parent line and the two bridge sentences all
+rendered.
+
+The two lines wrapped around them did not. The panel's heading read "Planned
+scan", and under the table sat a projection: "15 variants, 225 jobs, about
+4.4 hours." Both were static. A reader saw a proposal, and an estimate of
+what the proposal would cost, bracketing its own results.
+
+The Lift column had the same defect and was already fixed. Its comment in
+`design.html` says the column "said 'not run' regardless, so after a scan the
+same page disagreed with itself about whether the scan had run". That is this
+finding's sentence too. The fix stopped at the column, which is the part that
+shows a number, and left the prose that frames it.
+
+This keeps happening and the shape is always the same. A panel's state is not
+one field. F203 found a panel whose mechanics worked and whose row labels were
+field names; F160's lesson, quoted in this same template, is that getting the
+data right and leaving the label wrong is worse than the silence it replaced.
+Here the data was right in every cell and the heading above it named a
+different state of the world.
+
+`data.scan_state` now returns the heading and the counts, keyed on the
+substitutions the profile has a lift for, which is the mapping the Lift
+column already builds: the heading cannot claim a scan the table does not
+show. Three states, because there are three. Unscanned keeps the plan and the
+projection, which is the right line before the scan runs and the branch the
+live site is in. Part way through says "Scan in progress", reports what has
+been scored and keeps the projection, because the rest of the work still
+costs what it costs. Complete says "Completed scan" and reports the count
+alone: a forecast of work already done is a forecast of nothing.
+
+It is computed in the route rather than the template because the route blanks
+the profile when the chosen parent is not the one that was scanned, so the
+count has to follow the profile and not the atlas. Switching parents on a
+scanned atlas is tested for exactly that: the heading goes back to "Planned
+scan" with the profile panel gone, rather than inheriting a completion that
+belongs to another peptide, which is F147's defect one field over.
+
+One thing the profile computes and nothing renders: `most_sensitive` and
+`least_sensitive`. The chart carries the ordering those two summarise, and the
+ordering is the arm's durable claim, so this is left as it is rather than
+spending panel copy restating the chart.
