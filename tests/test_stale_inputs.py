@@ -236,17 +236,30 @@ def test_each_report_names_the_queue_it_came_from(tmp_path):
 def test_the_live_tier2_queue_shares_the_tier1_yaml():
     """The property that makes the fix in tools/rerun_pair.py sufficient:
     regenerating the tier-1 YAML corrects tier 2 as well, which is why the
-    chain corrects before it refines rather than after."""
-    if not MAIN.exists() or not (MAIN / "queue_tier2.jsonl").exists():
-        pytest.skip("tier 2 has not been selected on this checkout")
-    tier1 = {json.loads(line)["yaml"]
-             for line in (MAIN / "queue.jsonl").read_text().splitlines()
-             if line.strip()}
-    tier2 = {json.loads(line)["yaml"]
-             for line in (MAIN / "queue_tier2.jsonl").read_text().splitlines()
-             if line.strip()}
-    assert tier2, "the tier 2 queue is empty"
-    assert tier2 <= tier1, (
-        "tier 2 names YAML files that tier 1 does not, so correcting a "
-        "pair's tier-1 input would no longer correct its refinement"
-    )
+    chain corrects before it refines rather than after.
+
+    Every campaign that has selected a tier-2 queue, not just the main one.
+    Keyed on MAIN it skipped with "tier 2 has not been selected on this
+    checkout" while the benchmark campaign had a ten-row tier-2 queue on
+    disk the whole time: a check waiting for data it already had.
+    """
+    queues = sorted((ROOT / "campaigns").glob("*/queue_tier2.jsonl"))
+    if not queues:
+        pytest.skip("no campaign has selected a tier-2 queue")
+    for tier2_queue in queues:
+        campaign = tier2_queue.parent
+        tier1_queue = campaign / "queue.jsonl"
+        if not tier1_queue.exists():
+            continue
+        tier1 = {json.loads(line)["yaml"]
+                 for line in tier1_queue.read_text().splitlines()
+                 if line.strip()}
+        tier2 = {json.loads(line)["yaml"]
+                 for line in tier2_queue.read_text().splitlines()
+                 if line.strip()}
+        assert tier2, f"{campaign.name}: the tier 2 queue is empty"
+        assert tier2 <= tier1, (
+            f"{campaign.name}: tier 2 names YAML files that tier 1 does "
+            "not, so correcting a pair's tier-1 input would no longer "
+            "correct its refinement"
+        )
