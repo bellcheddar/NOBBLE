@@ -1019,3 +1019,36 @@ the time.
 `tools/rerun_pair.py bench02_BRD4_VHL --campaign <campaign> --apply`
 correction inside it. The chain is at 820 of 2,360 jobs. 496 GiB free, so
 G5 is not near. The stall watchdog has reported nothing.
+
+## Tier 2 has now been rehearsed, without the GPU
+
+Tier 2 had never run, and it runs unattended when the chain exits, wrapped in
+`|| true`. So a defect in it would have cost the refinement silently at
+whatever hour the chain finished. Rehearsed instead, by relabelling real
+benchmark outputs as tier-2 results against the benchmark's own
+`queue_tier2.jsonl`, which exercises the real mmCIF rather than a fixture and
+needs no GPU.
+
+It works. `nobble.score.run --tier 2` writes `scores_tier2.jsonl` and leaves
+`scores.jsonl` and `weights.json` byte-identical, which is the claim
+`tools/tier2.sh` makes in its own comments. Identical poses through both
+tiers return identical numbers, so the tier-2 path differs only in which
+files it reads and writes. `build_atlas` publishes both tier-2 files and the
+ten refined structures, 110 in all, with the licensing redaction check
+passing. The pose API serves the refinement from the published bundle with
+four labelled rows, and a refined mmCIF fetches at 200.
+
+One thing that is worth stating plainly, because it is easy to read as a
+fault and is not. **Tier 2 produces no Delta-ipTM and no composite.** The
+selector refines ternary arms only, so there is no tier-2 binary minimum to
+subtract, and `Delta-ipTM` comes out null along with the nine other
+minimum-over-seeds quantities. That is correct and deliberate: a 25-sample
+ternary minimum against a 1-sample binary one is the downward bias
+`tier_files` warns about, and the panel withholds all ten with the reason on
+screen. What tier 2 delivers is better coordinates plus the four quantities
+whose shape survives a change of sample count, bridge percentile among them.
+
+**Still never run:** the design scan (`tools/run_design.sh`). Its analysis
+half is exercised by F206's fixture, which computes lifts and the profile
+through the real `nobble/design/lift.py`. The inference half is not, and
+cannot be without the GPU.

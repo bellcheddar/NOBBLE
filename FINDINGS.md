@@ -9534,3 +9534,38 @@ when the text being matched is the check's own data. An AST walk over the
 call sites does, because it reads what the code does rather than how the file
 reads, and it is the same lesson as F123: run the thing rather than
 transcribe it.
+
+## F208. The check that decides whether to publish crashed instead of refusing
+
+`stale_inputs` compares every queue row against the YAML it names, and
+`deploy/build_atlas.py` calls it before publishing: it is what stops a
+fifty-hour run reaching the site when the inputs on disk are not the inputs
+the code would emit. It has a branch for the row whose YAML is missing.
+
+A row with no `yaml` field at all went past that branch. `Path("")` is not
+absolute, so `campaign / Path("")` is the campaign directory, and a directory
+exists, so `path.exists()` was true and `path.read_text()` raised
+`IsADirectoryError`. The guard written to produce a refusal produced a
+`pathlib` traceback mentioning neither queues nor YAML, in the publish step
+of an unattended chain.
+
+`is_file()` rather than `exists()`, which covers the empty field and any
+other path that exists without being a file.
+
+Two honest qualifications. The current selector builds each tier-2 row by
+copying the whole tier-1 job dict, so it always writes `yaml`, and no queue
+on disk has a row without one: 2,810 rows across five campaigns, all
+carrying it. This hardens a guard rather than fixing a reachable defect. And
+I found it by writing bad queue rows myself, while building a tier-2
+rehearsal, rather than by reasoning about the code.
+
+It was still worth fixing, for the same reason the guard exists: the cost of
+a bad refusal here is measured in days of GPU time, and a diagnostic that
+dies on the input it was written to diagnose is the shape this project keeps
+finding (F193 and F195 were both "the script reports success for a thing
+that did not happen", one layer out).
+
+The reason string is branched as well. "The YAML the queue row names is not
+on disk" describes a file the row never claimed to have, and a campaign whose
+inputs were moved is not the same fault as a row that names nothing: one
+message for two input cases, which is F198 through F201 exactly.

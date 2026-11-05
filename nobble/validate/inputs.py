@@ -108,11 +108,27 @@ def _stale_in(campaign: Path, queue: Path) -> list[dict]:
         path = Path(row.get("yaml", ""))
         if not path.is_absolute():
             path = campaign / path
-        if not path.exists():
+        # is_file, not exists. A row with no `yaml` field gives Path(""),
+        # and `campaign / ""` is the campaign directory, which exists: the
+        # row sailed past this branch and crashed on read_text() with
+        # IsADirectoryError, from inside the atlas build, which is the
+        # unattended publish step. The branch below is what should have
+        # caught it. The current selector copies the whole job dict so it
+        # always writes `yaml`, and this is unreachable from it; a row from
+        # an older build or a torn write is what it guards (F208).
+        if not path.is_file():
+            # Two cases, and they are not the same fault. A row naming a
+            # file that is missing is a campaign whose inputs were moved or
+            # deleted; a row naming nothing cannot be checked at all, and
+            # saying its YAML "is not on disk" describes a file it never
+            # claimed to have.
             stale.append({
                 "job_id": row.get("job_id"), "pair_id": row.get("pair_id"),
                 "queue_file": queue.name,
-                "reason": "the YAML the queue row names is not on disk",
+                "reason": ("the queue row names no YAML, so the input it "
+                           "was run on cannot be checked")
+                          if not row.get("yaml") else
+                          "the YAML the queue row names is not on disk",
                 "queue": _required(row), "yaml": None,
             })
             continue
