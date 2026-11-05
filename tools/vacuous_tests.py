@@ -15,6 +15,13 @@ loop over something that cannot be empty, such as every template or every
 construct. A static sweep that names 68 tests to read is not a sweep anyone
 runs twice.
 
+Usage. Bare, it traces all of `tests/`, which is what the gate runs and
+takes several minutes under settrace. Given test files, it traces only those,
+which is the form to use after writing one: two files is under a second. It
+used to accept the paths and trace everything anyway (F207). A test in this
+suite that invokes this tool must point it at a file the test generated,
+never at `tests/` or at itself, or the bare run recurses.
+
 The measurement that is actually decisive is whether each assertion
 *executed*. An assertion that never runs cannot fail, whatever it says, and
 that is true whether it sits behind an empty loop, an early return, a skip, a
@@ -38,7 +45,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 TESTS = ROOT / "tests"
 
 
-def assertion_lines() -> dict[str, dict[int, str]]:
+def assertion_lines(targets: list[pathlib.Path] | None = None
+                    ) -> dict[str, dict[int, str]]:
     """Every assert in tests/, by file and line, with the function it is in.
 
     Every function, not only the ones called `test_*`. The first version of
@@ -53,7 +61,7 @@ def assertion_lines() -> dict[str, dict[int, str]]:
     at import time runs or the file does not load.
     """
     found: dict[str, dict[int, str]] = {}
-    for path in sorted(TESTS.glob("test_*.py")):
+    for path in sorted(targets if targets else TESTS.glob("test_*.py")):
         tree = ast.parse(path.read_text())
         owner: dict[int, str] = {}
 
@@ -72,8 +80,25 @@ def assertion_lines() -> dict[str, dict[int, str]]:
     return found
 
 
-def main() -> int:
-    wanted = assertion_lines()
+def main(argv: list[str] | None = None) -> int:
+    """Trace the whole suite, or only the test files named on the command
+    line.
+
+    It took paths and ignored them, tracing all of tests/ regardless, which
+    on this suite is several minutes under settrace. A tool that accepts an
+    argument and discards it is worse than one that refuses it: I gave it two
+    files, waited, and stopped it on the assumption it was doing what I
+    asked.
+    """
+    argv = sys.argv[1:] if argv is None else argv
+    targets = []
+    for item in argv:
+        path = pathlib.Path(item)
+        if not path.exists():
+            print(f"no such test file: {item}", file=sys.stderr)
+            return 2
+        targets.append(path.resolve())
+    wanted = assertion_lines(targets or None)
     seen: set[tuple[str, int]] = set()
     files = set(wanted)
 
@@ -89,7 +114,8 @@ def main() -> int:
 
     sys.settrace(trace)
     try:
-        code = pytest.main(["-q", "-p", "no:cacheprovider", str(TESTS)])
+        code = pytest.main(["-q", "-p", "no:cacheprovider"]
+                           + [str(item) for item in (targets or [TESTS])])
     finally:
         sys.settrace(None)
 

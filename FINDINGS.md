@@ -9490,3 +9490,47 @@ One thing the profile computes and nothing renders: `most_sensitive` and
 `least_sensitive`. The chart carries the ordering those two summarise, and the
 ordering is the arm's durable claim, so this is left as it is rather than
 spending panel copy restating the chart.
+
+## F207. The tool that finds silent failures was failing silently
+
+`tools/vacuous_tests.py` traces the suite under `sys.settrace` and reports
+every assertion that never executed. Under settrace this suite takes minutes,
+so having just written two test files I ran it on those two files.
+
+It accepted the paths and discarded them. `main` called `assertion_lines()`,
+which globs all of `tests/`, and then `pytest.main([..., str(TESTS)])`, which
+runs all of it. The two arguments reached neither. I waited past the timeout
+and stopped it, having concluded from the delay that it was doing something
+other than what I had asked for, which was the right conclusion for the wrong
+reason.
+
+A tool that ignores an argument is worse than one that refuses it. The
+refusal is information; the silence is a wrong answer delivered slowly, and
+the only reason I noticed is that this particular wrong answer is slow. Had
+the suite been small the tool would have printed a correct-looking report
+about the wrong set of files.
+
+So the paths now narrow both halves, the AST sweep and the pytest run, and a
+path that does not exist exits 2 with its name rather than being skipped.
+Two files now take 0.68 seconds instead of minutes.
+
+Two things came out of testing it that are worth more than the fix.
+
+**The test file recursed.** Its first draft pointed the tool at itself, since
+that was a real test file that was cheap to run. The tool runs pytest on what
+it is given, so pytest ran the file, which ran the tool, which ran pytest. It
+hung. The constraint generalises past the hang: the gate runs the tracer bare
+over all of `tests/`, so any test in this suite that invokes this tool must
+target a file it generated, or the gate recurses. Every subprocess here does,
+and a test checks that they do.
+
+**The check on that constraint had the session's own recurring defect.** I
+wrote it as a list of forbidden spellings searched for in the file's own
+source, and it matched the list it was written with: it failed against clean
+code, pointing at its own line. That is the seventh time this session a
+source check has matched its own text, after F175 twice, F177, F183, F196,
+F200 and F201. The adopted remedy, stripping comments first, does not help
+when the text being matched is the check's own data. An AST walk over the
+call sites does, because it reads what the code does rather than how the file
+reads, and it is the same lesson as F123: run the thing rather than
+transcribe it.
