@@ -225,10 +225,26 @@ def compare(baseline: Path, corrected: Path) -> dict:
             "recovery, so the limitation is the model or the sampling, not the "
             "construct"
         )
-    else:
+    elif worse and not improved:
+        # The direction this function had no word for. "mixed" was used
+        # for it, and nothing is mixed when every pair that changed got
+        # worse: it is F6 contradicted, the whole domain recovering poses
+        # less well than the 15-mer, which is a result and the kind this
+        # project publishes rather than softens (F200).
         conclusion = (
-            f"mixed: {len(improved)} improved, {len(worse)} worse, control "
-            f"{'held' if control_ok else 'moved'}"
+            f"F6 contradicted: {len(worse)} pair(s) got worse by more than "
+            f"{CHANGE_MARGIN_A:g} A with the whole domain, the control held, "
+            "and none improved. The 15-mer was not the limitation for these "
+            "pairs and the whole domain is worse for them"
+        )
+    else:
+        # Both directions present, which is the only reading of "mixed".
+        # The control is held by construction here: the two branches above
+        # the F6 ones return for every state in which it is not, so this
+        # said `'held' if control_ok else 'moved'` with a false arm that
+        # could never run (F200).
+        conclusion = (
+            f"mixed: {len(improved)} improved, {len(worse)} worse, control held"
         )
 
     # Bridge formation, reported beside the verdict rather than folded into

@@ -426,7 +426,14 @@ def _verdict(low: float, high: float) -> str:
     """
     level = f"{confidence_level():g} per cent confidence"
     if low > 0.5:
-        return "above chance"
+        # The level is stated here too, and that is the whole of F198. This
+        # branch returned a bare "above chance" while both others carried
+        # "at N per cent confidence", so the project's headline claim was
+        # the one outcome reported without its qualifier and the two
+        # unfavourable ones carried it. Reading a positive result as more
+        # certain than a negative one, from the same interval, is the
+        # opposite of what this file is careful about everywhere else.
+        return f"above chance at {level}"
     if high < 0.5:
         return (
             f"below chance at {level}: the statistic separates the two "

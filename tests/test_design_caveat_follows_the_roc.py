@@ -199,3 +199,63 @@ def test_the_live_build_reads_a_file_that_exists():
     assert validation["matched_control_roc"], validation
     assert validation["read_from"], validation["searched"]
     assert Path(validation["read_from"]).exists()
+
+
+def test_a_curve_below_chance_is_not_called_indistinguishable(tmp_path):
+    """The third case, which the two-branch form swallowed (F199).
+
+    `_verdict` produces three interpretations and this caveat had two, so a
+    curve whose whole interval sits below 0.5 fell into the else and was
+    described as "not distinguishable from chance". An AUC of 0.25 with a
+    CI of 0.12 to 0.38 is distinguishable from chance: it separates the
+    controls backwards, which the layer itself calls "a result rather than
+    an absence of one". Reporting it as an absence understates a finding.
+    """
+    campaign = _campaign(tmp_path, {
+        "status": "computed",
+        "summary": {"auc": 0.25, "ci95": [0.12, 0.38],
+                    "interpretation": "below chance at 95 per cent confidence: "
+                                      "the statistic separates the two classes "
+                                      "in the opposite direction to the "
+                                      "prediction, which is a result rather "
+                                      "than an absence of one"},
+    })
+    caveat = report.build(campaign=campaign)["caveat"]
+
+    assert "0.25" in caveat, caveat
+    assert "not distinguishable" not in caveat, (
+        "a curve below chance is reported as showing no separation: " + caveat
+    )
+    assert "opposite direction" in caveat, caveat
+    assert "not validated" in caveat, (
+        "a backwards composite is still not a validated one"
+    )
+    assert ORDERING in caveat
+
+
+def test_each_of_the_layers_three_verdicts_gets_its_own_caveat(tmp_path):
+    """Enumerated, so a fourth verdict cannot silently reuse a third's words."""
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from nobble.validate.layers import _verdict
+
+    seen = {}
+    for index, (low, high) in enumerate(((0.62, 0.91), (0.12, 0.38), (0.41, 0.73))):
+        interpretation = _verdict(low, high)
+        root = tmp_path / f"c{index}"
+        root.mkdir(parents=True, exist_ok=True)
+        campaign = _campaign(root, {
+            "status": "computed",
+            "summary": {"auc": round((low + high) / 2, 3),
+                        "ci95": [low, high],
+                        "interpretation": interpretation},
+        })
+        seen[interpretation.split(" at ")[0]] = report.build(
+            campaign=campaign)["caveat"]
+
+    assert set(seen) == {"above chance", "below chance",
+                         "not distinguishable from chance"}, sorted(seen)
+    assert len(set(seen.values())) == 3, (
+        "two verdicts produce the same caveat, so one of them is being "
+        f"described as the other: {seen}"
+    )

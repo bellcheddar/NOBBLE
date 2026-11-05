@@ -138,4 +138,8 @@ def test_a_real_separation_is_reported_as_above_chance(tmp_path):
     summary = matched_control_roc(_arm(tmp_path, edge=0.12)).summary
 
     assert summary["ci95"][0] > 0.5, summary["ci95"]
-    assert summary["interpretation"] == "above chance"
+    # "above chance at N per cent confidence". The equality check here was
+    # what pinned the bare form, which stated no confidence level while the
+    # two unfavourable verdicts both did (F198).
+    assert summary["interpretation"].startswith("above chance at ")
+    assert "per cent confidence" in summary["interpretation"]

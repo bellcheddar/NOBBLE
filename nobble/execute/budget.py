@@ -298,8 +298,16 @@ def gate_g1(campaign: Path, pair_ids: list[str] | None = None) -> dict:
         "gate_g1_open": not fits,
         "judged_on": "measured factor" if collapsed else "upper bound",
         "verdict": (
-            (f"refinement costs {projection['hours_high']} h against "
-             f"{round(remaining, 2)} h remaining of the {max_hours} h budget"
+            # "exceeds" here too. This branch is the measured case of a
+            # cost that does not fit, and it was the only one of the four
+            # that stated no conclusion: "refinement costs 150.0 h against
+            # 67.7 h remaining of the 96 h budget", leaving the reader to
+            # do the comparison. It is also the branch that opens Gate G1,
+            # and it read almost identically to the passing verdict, where
+            # the distinguishing words were "or less" (F201).
+            (f"refinement costs {projection['hours_high']} h, which exceeds "
+             f"the {round(remaining, 2)} h remaining of the {max_hours} h "
+             "budget"
              if collapsed else
              f"refinement costs {projection['hours_low']} to "
              f"{projection['hours_high']} h, and the upper end exceeds the "

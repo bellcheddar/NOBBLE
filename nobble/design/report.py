@@ -277,9 +277,23 @@ def _score_validation(campaign: Path | None = None) -> tuple[dict, str]:
         level = summary.get("confidence_level") or confidence_level()
         band = (f", {level:g} per cent CI {low} to {high}"
                 if low is not None else "")
+        # Three cases, because the layer produces three. This was `if above
+        # chance ... else "is not distinguishable from chance"`, so a curve
+        # separating in the opposite direction was described as showing no
+        # separation at all: an AUC of 0.25 with its whole interval below
+        # 0.5 read as indistinguishable from chance. That is the mistake
+        # `_verdict`'s own comment records, "reads as exhaustive and is
+        # not", repeated a module away, and it understates a real finding:
+        # a composite that orders pairs backwards is a result (F199).
         if interpretation.startswith("above chance"):
             caveat = (f"The composite separates the matched controls at AUC "
                       f"{summary['auc']}{band}, above chance. {ordering}")
+        elif interpretation.startswith("below chance"):
+            caveat = (f"The composite is not validated: the matched-control "
+                      f"ROC computed at AUC {summary['auc']}{band} and "
+                      f"separates the controls in the opposite direction to "
+                      f"the prediction, which is a result rather than an "
+                      f"absence of one. {ordering}")
         else:
             caveat = (f"The composite is not validated: the matched-control "
                       f"ROC computed at AUC {summary['auc']}{band} and is not "

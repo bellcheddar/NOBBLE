@@ -33,8 +33,14 @@ from nobble.validate import layers  # noqa: E402
 
 
 def test_an_interval_above_a_half_is_above_chance():
-    assert layers._verdict(0.68, 0.92) == "above chance"
-    assert layers._verdict(0.51, 0.99) == "above chance"
+    """Shape, not equality. The equality form pinned a bare "above chance",
+    which stated no confidence level while both other verdicts did (F198).
+    The test below this one already asserted a shape; this one did not."""
+    for low, high in ((0.68, 0.92), (0.51, 0.99)):
+        verdict = layers._verdict(low, high)
+        assert verdict.startswith("above chance"), verdict
+        assert "per cent confidence" in verdict, verdict
+        assert "not distinguishable" not in verdict
 
 
 def test_an_interval_below_a_half_says_so_and_says_what_it_means():

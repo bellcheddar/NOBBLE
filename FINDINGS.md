@@ -9050,3 +9050,194 @@ serious axe violations. The harness was built to interrogate a server and had
 only ever interrogated one on this machine, which is the same subject
 confusion F138 and F159 were about; asking it about the live site was overdue
 and found nothing wrong.
+
+## F198. The headline verdict stated its confidence for every outcome but the good one
+
+`_verdict` turns the ROC's bootstrap interval into one of three sentences.
+Two carried a qualifier and one did not:
+
+- above chance: `"above chance"`
+- below chance: `"below chance at 95 per cent confidence: the statistic
+  separates the two classes in the opposite direction to the prediction,
+  which is a result rather than an absence of one"`
+- neither: `"not distinguishable from chance at 95 per cent confidence"`
+
+The interval is the same object in all three branches, so this was not about
+how much evidence there was. It meant the project's headline claim, the one
+falsifiable test in the whole build, would have been published without the
+qualifier that both unfavourable outcomes carry. A reader comparing "above
+chance" against "not distinguishable from chance at 95 per cent confidence"
+would reasonably take the first as the firmer statement, when they are the
+same statement about the same interval in opposite directions.
+
+It is out of character for the file it sits in. That file refuses to draw a
+curve at all without matched negatives, insists that a below-chance result
+"is a result rather than an absence of one", and has a comment explaining
+that this very function was written as three branches because two of them
+used to collapse into "reads as exhaustive and is not". The level was already
+computed, in a local variable, and used twice out of three.
+
+Now stated in all three. The test holds the property rather than the strings,
+since the wording will change and the property should not: every branch names
+the configured level, all three branches are shown reachable so the check
+cannot pass by never seeing one, an interval touching or straddling 0.5 is
+never called above chance, and the below-chance sentence still says it is a
+result.
+
+One test had to move with it. `test_roc_scope` asserted
+`interpretation == "above chance"` by equality, which is what pinned the bare
+form in place; it now asserts the prefix and the level separately. The two
+other places that mention the phrase use substring checks and needed nothing,
+which is the difference between pinning a value and pinning a shape.
+
+Found by reading what the site will say when the campaign finishes, rather
+than by a test failing. Nothing was broken: the number was right, the
+interval was right, and the sentence reporting them was quietly asymmetric.
+That is a class of defect no suite catches, because every assertion about it
+passed.
+
+## F199. The design caveat had two branches where the layer has three
+
+Found by continuing F198's method: reading what the site will say when the
+campaign lands, rather than waiting for a test to fail.
+
+`_score_validation` in `nobble/design/report.py` turns the ROC's verdict into
+the sentence under the design tab's lift chart. It read:
+
+    if interpretation.startswith("above chance"):
+        ... "above chance"
+    else:
+        ... "and is not distinguishable from chance"
+
+The layer produces three verdicts. A curve separating in the opposite
+direction fell into the `else` and was described as showing no separation at
+all: an AUC of 0.25 with its whole interval below 0.5, reported as "not
+distinguishable from chance". That is not a hedge, it is wrong. An interval
+wholly below 0.5 is distinguishable from chance, and the layer that computed
+it says so in as many words, calling it "a result rather than an absence of
+one".
+
+It also understates the more interesting outcome. A composite that orders
+pairs backwards is a finding about the composite, and the project's whole
+posture is that a failed control is published rather than hidden. Describing
+it as an absence of signal is the one reading that loses the information.
+
+This is the mistake `_verdict`'s own comment records, two files away: "the
+middle case is the one that used to swallow the third: `low > 0.5` else 'not
+distinguishable' reads as exhaustive and is not". The function was split into
+three branches for that reason. The code consuming it kept two.
+
+Three now, with the below-chance branch saying the composite separates the
+controls in the opposite direction to the prediction, and still saying the
+composite is not validated, because a backwards composite is not a validated
+one either.
+
+The test enumerates rather than illustrates. It drives all three of the
+layer's verdicts through the caveat, asserts the three verdict kinds are
+covered, and asserts the three caveats are distinct, so a fourth verdict
+cannot silently reuse a third's words and two verdicts cannot collapse into
+one sentence again. That last assertion is the one that would have caught
+this: the two-branch form produced the same caveat for below chance and for
+indistinguishable.
+
+F198 and F199 are the same defect in two places, and neither was a broken
+number. Both were correct arithmetic reported in a sentence that said
+something else, which is a class of defect the suite cannot reach by
+asserting on values. The only way I found them was to ask what the page will
+read like, which is worth doing once more before the campaign finishes rather
+than after it publishes.
+
+## F200. "Mixed" was doing the work of two opposite results
+
+`compare`'s conclusion is the sentence on the benchmark page that says
+whether F6 held: whether submitting a substrate as its whole domain rather
+than a 15-mer recovers poses better. It had a label for better, a label for
+nothing changed, and `mixed` for everything else.
+
+Everything else is two results. Some better and some worse is mixed. None
+better and several worse is not mixed at all: it is F6 contradicted, the
+whole domain recovering poses less well than the fragment. Rendered, the
+all-worse case read "mixed: 0 improved, 4 worse, control held", which is a
+sentence whose first word contradicts its own numbers.
+
+Nothing was hidden, because the counts are printed either way. The headline
+word was wrong for one of its two cases, and since the function has explicit
+F6 labels for the other directions, the omission is an asymmetry rather than
+a decision not to judge. It also softens the result the project's posture
+says to publish plainly: a failed control is reported, not described as an
+absence.
+
+There is now a branch for it, saying the pairs got worse, the control held,
+and none improved, which is the mirror of the supported sentence.
+
+A second thing in the same branch, which the exercise turned up rather than
+the reading. `control {'held' if control_ok else 'moved'}` has a false arm
+that cannot run: the two branches above the F6 ones return for every state in
+which the control has not held, so `control_ok` is True by construction
+there. The conditional is gone and the sentence says what it always said.
+
+The test checks the ordering rather than only the presence of the new label,
+because a contradicted branch placed after the catch-all would leave every
+all-worse run reporting mixed exactly as before, and a test that only
+asserted the words existed would pass.
+
+F198, F199 and F200 are one defect three times: a number computed correctly
+and a sentence that does not say what the number means. None of them was
+reachable by asserting on values, which is why a suite of 1,166 assertions
+had nothing to say about any of them. What found them was asking what the
+page will read like when the campaign lands, and the useful generalisation is
+narrow: wherever a function turns a measurement into prose, count its
+branches against the cases its input can take.
+
+One more of my own, for the record. Verifying the dead arm was gone, my check
+matched the comment I had just written explaining that it was gone: the sixth
+prose match of the session and the first in a verification rather than a
+test. The habit is now to strip comments by default, and I had still not
+applied it to an ad-hoc check.
+
+## F201. The verdict that opens a gate was the one that stated no conclusion
+
+`gate_g1`'s verdict is what a person reads when refinement is priced, and
+`tier2.sh` prints it after "GATE G1 OPEN:". Four cases, rendered:
+
+- fits:                  "costs 20.0 h or less against 67.7 h remaining"
+- over, bounded range:   "costs 29.2 to 219.3 h, and the upper end exceeds
+                          the 67.7 h remaining of the 96 h budget"
+- over, measured factor: "costs 150.0 h against 67.7 h remaining of the 96 h
+                          budget"
+- unpriceable:           "a refusal to guess"
+
+The third says nothing. It states two numbers and leaves the reader to
+compare them, and it is the branch for a cost that is *known* to exceed the
+budget rather than bounded above it: the strongest case of the four and the
+one that opens the gate. It also reads almost exactly like the passing
+verdict, where the distinguishing words are "or less". "Costs 150.0 h against
+67.7 h remaining" and "costs 20.0 h or less against 67.7 h remaining" are
+one glance apart and mean opposite things.
+
+It is mitigated where `tier2.sh` prints it, because that prefixes "GATE G1
+OPEN:", and not mitigated in `tier2.json` or the atlas, where the sentence
+stands alone.
+
+It says "which exceeds" now, like its sibling.
+
+The tests are worth a note of their own, because I wrote them twice. The
+first version asserted on source text, and failed twice on my own fix: the
+f-string wraps across lines so "which exceeds the" is not a substring of the
+file, and `code.index('"verdict": (')` found the unpriceable dict rather than
+the main one. Its own docstring said to drive the function rather than read
+the source. I read the source anyway, which is the seventh time this session
+a check on source text has gone wrong and the first where the method was
+written down in the same file and then not followed.
+
+They drive `gate_g1` now, by substituting the two things it reads, and one of
+them checks the thing neither the old nor the first new version did: that the
+sentence and the flag agree. A verdict saying "exceeds" while
+`gate_g1_open` is False, or the reverse, would be worse than either alone,
+and that is F161's shape, where an unmeasured campaign priced at 0.0 hours
+with `fits` True.
+
+With F198, F199 and F200 this is the fourth measurement-to-prose defect in
+one session, and the branch counting is now mechanical: `_verdict` three
+cases three branches, the design caveat three and three, `compare` four
+directions and four labels, `gate_g1` four cases and four conclusions.
