@@ -71,12 +71,9 @@ say "watchdog armed, every ${WATCHDOG_EVERY}s"
 # newest of them was what this would have handed to run_design.sh. The
 # Python side learned this in campaign.latest(); this is the same rule in
 # the other language, which is where F54 and F55 both ended up (F57).
-newest_complete() {
-  local prefix="$1" directory
-  for directory in campaigns/"$prefix"_*; do
-    [[ -f "$directory/campaign.json" ]] && echo "$directory"
-  done | sort | tail -1
-}
+# shellcheck source=tools/newest_complete.sh
+source "$ROOT/tools/newest_complete.sh"
+newest_complete() { nobble_newest_complete "$@" || true; }
 
 # shellcheck source=tools/wait_for_gpu.sh
 source "$ROOT/tools/wait_for_gpu.sh"

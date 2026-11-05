@@ -29,7 +29,9 @@ export KMP_DUPLICATE_LIB_OK=TRUE PYTORCH_ENABLE_MPS_FALLBACK=1 PYTHONPATH="$ROOT
 source "$ROOT/tools/wait_for_gpu.sh"
 nobble_wait_for_gpu
 
-CAMPAIGN="${1:-$(ls -d campaigns/design_* 2>/dev/null | tail -1)}"
+# shellcheck source=tools/newest_complete.sh
+source "$ROOT/tools/newest_complete.sh"
+CAMPAIGN="${1:-$(nobble_newest_complete design || true)}"
 if [[ -z "$CAMPAIGN" ]]; then
   echo "no design campaign to run: assemble one with nobble.design.assemble" >&2
   exit 2

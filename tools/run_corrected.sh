@@ -12,11 +12,19 @@ echo "=== waiting for the benchmark queue to finish $(date -u +%H:%M:%SZ) ==="
 while tmux has-session -t nobble-bench 2>/dev/null; do sleep 60; done
 echo "=== benchmark queue finished, starting corrected campaign $(date -u +%H:%M:%SZ) ==="
 
-CAMPAIGN="$(ls -d campaigns/corrected_* 2>/dev/null | tail -1)"
+# shellcheck source=tools/newest_complete.sh
+source "$ROOT/tools/newest_complete.sh"
+CAMPAIGN="$(nobble_newest_complete corrected || true)"
 if [[ -z "$CAMPAIGN" ]]; then echo "no corrected campaign to run" >&2; exit 2; fi
 # shellcheck source=tools/wait_for_gpu.sh
 source "$ROOT/tools/wait_for_gpu.sh"
 nobble_wait_for_gpu
 
 caffeinate -dimsu "$BENV/bin/python" -m nobble.execute.runner --campaign "$CAMPAIGN"
-echo "=== finished $(date -u +%Y-%m-%dT%H:%M:%SZ) exit=$? ==="
+# Captured before the echo. `$(date ...)` is a command substitution, it runs
+# a subshell, and expansion is left to right, so `exit=$?` on the same line
+# reported date's status: this said exit=0 whether the runner succeeded or
+# failed, and status.sh scans these logs for failures that exit=0 can never
+# match (F190).
+STATUS=$?
+echo "=== finished $(date -u +%Y-%m-%dT%H:%M:%SZ) exit=$STATUS ==="

@@ -49,7 +49,13 @@ cat > "$BLOCK_LOCAL" <<'GZIP'
     gzip_proxied any;
     gzip_comp_level 5;
     gzip_min_length 1024;
-    gzip_types text/plain text/css text/javascript application/javascript application/json application/manifest+json image/svg+xml;
+    # `chemical/x-mmcif` is the one that matters most and was missing.
+    # Measured on the published bundle: mmCIF compresses 3.5x, so a pose
+    # download drops from 243 KB to 37 KB, and the campaign-scale bundle
+    # from 265 MB to 75 MB. Structures are the only thing a reader fetches
+    # repeatedly, one per pose viewed, and they were the largest thing not
+    # on this list (F189).
+    gzip_types text/plain text/css text/javascript application/javascript application/json application/manifest+json image/svg+xml chemical/x-mmcif;
 GZIP
 
 echo "==> sending the block"

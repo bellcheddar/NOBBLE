@@ -7982,10 +7982,20 @@ pair and `plip` 3,869, both of which breach it, while `contact_map` adds
 half of the problem a list of names cannot reach, not a replacement for it.
 
 One consequence for the pending work. `deploy/enable_gzip.sh` has been
-waiting on a shell on the droplet and reads as a refinement. At campaign
-scale it is not: without it the landing page is a 514 KB download rather
-than 18 KB, and before this trim it would have been 3.3 MB rather than
-427 KB. The trim does more than gzip here, and both are worth having.
+waiting on a shell on the droplet and reads as a refinement.
+
+That paragraph originally said the landing page is "a 514 KB download rather
+than 18 KB" without the script, which is wrong, and the live site disproved
+it the moment this build was deployed: nginx compresses `text/html`
+whatever `gzip_types` says, so the page has always been served gzipped. This
+file's own `enable_gzip.sh` says as much in a comment, and I wrote the claim
+anyway from the local measurement, where there is no nginx. The measured
+truth is 52,632 bytes plain and 14,064 gzipped, served, today, without the
+script having been run (F189).
+
+What the script is actually for is the types nginx does not compress by
+default, and the trim in this finding stands on its own: 3.3 MB of HTML
+would have been 427 KB gzipped, which is still a bad landing page.
 
 ## F175. The deploy never asked whether the bundle would fit
 
@@ -8565,3 +8575,110 @@ The lesson I take is narrower than "test your tooling". It is that a status
 line nobody has ever seen fail is not evidence of anything, and the way to
 find that out is to make it fail on purpose: `(exit 3) | tail -1` prints an
 empty `PIPESTATUS[0]` here in one line.
+
+## F189. Deploying answered three questions I had been guessing at
+
+The deploy ran end to end and verified: the space check reported 88,406.9 MB
+free against a 24.6 MB bundle and a 1,024 MB margin, the sync-conflict guard
+passed, the atlas was in step at 11,214 leaves, all nine routes returned 200,
+and the droplet's `/healthz` now reports `source_fingerprint
+ff0a3791278352e9`, which is the tree that was shipped. That last one matters
+because the fingerprint check treats *absent* as a failure, and absent is what
+the droplet reported before this: the comparison was vacuous until now and is
+not any more.
+
+Three things I had been asserting turned out to be wrong or imprecise, and
+all three were settled by measuring the live site rather than reasoning about
+it.
+
+**The droplet has 86 GB free, not an unknown.** F175 added the space check
+without knowing the answer, which was the right order, and the answer is that
+the projected 265 MB bundle fits with room to spare. The check is still worth
+having; the gate it guards is simply not close.
+
+**HTML was already being gzipped.** I had written in F174 that
+`enable_gzip.sh` is what takes the landing page from 514 KB to 18 KB, and
+repeated it. It is wrong: nginx compresses `text/html` whatever `gzip_types`
+says, and the live page serves 52,632 bytes plain and 14,064 gzipped today,
+with the script not yet run. `enable_gzip.sh`'s own comment says the default
+is `gzip_types text/html`, so the information was in the file I was citing. I
+measured locally, where there is no nginx, and carried the conclusion across.
+F174's paragraph is corrected in place.
+
+**The script was missing the type that matters most.** Its `gzip_types`
+covers CSS, JavaScript, JSON, SVG and plain text, and not
+`chemical/x-mmcif`, which is what the structures are served as. Measured on
+the published bundle, mmCIF compresses 3.5 times: a pose download drops from
+243 KB to 37 KB and the campaign-scale bundle from 265 MB to 75 MB.
+Structures are the only thing a reader fetches repeatedly, one per pose
+viewed, and they were the largest thing not on the list. Added.
+
+So the pending item is unchanged in name and different in substance. It was
+"gzip, which makes the pages lighter"; it is now "compress the JSON and the
+structures, because the pages already are". The value is also higher than I
+had it, since 265 MB to 75 MB across a campaign is the dominant transfer and
+the pages were never the problem.
+
+The general lesson is the one this session keeps producing: a measurement
+taken on the build machine is not a measurement of the service. F138 and F159
+were the same thing for browser QC against a stale server, and F140 for the
+deploy trusting 200s. This is it for compression, and the fix is the same
+each time, which is to ask the thing that is actually serving.
+
+## F190. F57's lesson was learned in one file out of four
+
+A campaign is complete when it has written `campaign.json`, which every
+assembler writes last. `ls -d campaigns/<prefix>_* | tail -1` names the
+newest directory instead, and a failed assembly leaves one holding an empty
+`yaml/` and an empty `outputs/`. F57 recorded that: three such directories
+sat in `campaigns/` from a failing design scan, and the newest was what the
+chain would have handed to `run_design.sh`.
+
+F57 fixed `run_chain.sh`. It did not fix `refresh.sh`, which used the naive
+form twice, or `run_corrected.sh`, or `run_design.sh`. So a finding about a
+rule that must be applied everywhere was applied in one of four places and
+left for a year of build-hours in the others, which is the shape F172 asked
+me to stop repeating: when a fix names a category, enumerate the category.
+
+The rule is now `tools/newest_complete.sh`, sourced the way
+`tools/wait_for_gpu.sh` already is, and `run_chain.sh`'s local copy is a
+one-line wrapper around it. One definition per language, with
+`campaign.latest()` the Python side. It also returns exit 1 and prints
+nothing when no complete campaign exists, which the naive form cannot: with
+no match the glob stays unexpanded, `ls -d` prints an error, and the variable
+ends up holding a path that does not exist.
+
+Verified behaviour-preserving on the real tree. All four scripts resolve the
+same campaigns they did before: corrected, design, benchmark, and the main
+campaign with its 718 scored rows. And the difference is demonstrated rather
+than described, in a temporary tree with three design campaigns where the
+newest is incomplete: the helper picks the newest complete one, the naive
+rule picks the incomplete one, and the test asserts both halves so it fails
+if either stops being true.
+
+**The second defect in the same file.** `run_corrected.sh` logged
+
+    echo "=== finished $(date -u +%Y-%m-%dT%H:%M:%SZ) exit=$? ==="
+
+A command substitution runs a subshell and sets `$?`, and expansion is left
+to right, so `$(date ...)` clobbered the runner's status before `exit=$?`
+was read. That line reported `exit=0` whether the corrected campaign's
+runner succeeded or failed, and `tools/status.sh` scans these logs for
+failure patterns that `exit=0` can never match: a failure of that stage was
+invisible in the one line written to report it. The status is captured into a
+variable now, and the test demonstrates the mechanism with `bash -c 'false;
+echo "x $(true) exit=$?"'` printing `exit=0` against the captured form
+printing `exit=1`.
+
+That is the same family as F188's `PIPESTATUS` and F168's `&&` binding to
+`tail`: three different ways for a status line to be unable to say "failed",
+two of them in my own work and one in the project's. The common thread is
+that none of them can be found by reading, only by making the command fail
+on purpose and looking at what the line says.
+
+One more instance of a smaller habit. The test asserting `exit=$?` is gone
+matched the comment above the fix, which quotes the bug it describes. That is
+the fourth check today to match prose rather than code, after two in F175 and
+one in F177. Comments are stripped before the search now, and I should treat
+"searching source text" as implying "strip the comments" rather than
+rediscovering it each time.

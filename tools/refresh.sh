@@ -16,13 +16,20 @@ export KMP_DUPLICATE_LIB_OK=TRUE PYTHONPATH="$ROOT"
 # Default to the main campaign once one has results, else the benchmark
 # panel. Hard-defaulting to the benchmark meant a finished main campaign
 # was silently never scored or published.
+# shellcheck source=tools/newest_complete.sh
+source "$ROOT/tools/newest_complete.sh"
+
 CAMPAIGN="${1:-}"
 if [[ -z "$CAMPAIGN" ]]; then
-  for candidate in $(ls -d campaigns/campaign_* 2>/dev/null | tail -1); do
-    [[ -s "$candidate/results.jsonl" ]] && CAMPAIGN="$candidate"
-  done
+  # Completeness first, then "has it produced anything to score". A campaign
+  # that never wrote campaign.json is a failed assembly, and the naive
+  # `ls -d | tail -1` here would have handed one to the scorer (F57, F190).
+  candidate="$(nobble_newest_complete campaign || true)"
+  if [[ -n "$candidate" && -s "$candidate/results.jsonl" ]]; then
+    CAMPAIGN="$candidate"
+  fi
 fi
-[[ -n "$CAMPAIGN" ]] || CAMPAIGN="$(ls -d campaigns/benchmark_* 2>/dev/null | tail -1)"
+[[ -n "$CAMPAIGN" ]] || CAMPAIGN="$(nobble_newest_complete benchmark || true)"
 [[ -n "$CAMPAIGN" ]] || { echo "refresh: no campaign found" >&2; exit 2; }
 echo "=== refreshing $CAMPAIGN ==="
 
