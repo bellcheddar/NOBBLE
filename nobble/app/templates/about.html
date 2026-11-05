@@ -317,6 +317,14 @@
   {% if software.get('boltz') %}
   <p class="panel__hint mono">Boltz {{ software.boltz }}{% if software.get('torch') %}, torch {{ software.torch }}{% endif %}{% if software.get('recorded') %} ({{ software.recorded }}){% endif %}</p>
   {% endif %}
+  {# The depositions the bundle carries, credited and listed. A `mono`
+     paragraph: these are identifiers, which the copy budget counts as
+     figures rather than prose (F197). #}
+  {% if crystals %}
+  <p class="panel__hint">Deposited structures from the
+    <a href="https://www.rcsb.org/" target="_blank" rel="noopener noreferrer">RCSB Protein Data Bank</a>.</p>
+  <p class="panel__hint mono">{{ crystals | join(' · ') }}</p>
+  {% endif %}
   <p class="panel__hint">
     <a href="https://github.com/bellcheddar/NOBBLE" target="_blank" rel="noopener noreferrer">github.com/bellcheddar/NOBBLE</a>
     · built on <a href="https://github.com/bellcheddar/BoltzMaker" target="_blank" rel="noopener noreferrer">BoltzMaker</a>

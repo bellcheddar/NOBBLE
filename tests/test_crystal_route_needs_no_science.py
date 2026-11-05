@@ -190,3 +190,46 @@ def test_the_deploy_checks_every_parameterised_route():
         f"the deploy verifies no URL for {missing}, so a 500 there would "
         "pass the same way /crystal/ did"
     )
+
+
+def test_the_about_page_credits_what_the_bundle_redistributes():
+    """The panel lists published files, not referenced ids (F197).
+
+    PDB content is CC0 so no credit is required, and the viewer already
+    labels each overlay `deposited <id>`. The reason to name them is that
+    this page credits every other source the project draws on, and from
+    F196 the bundle carries seven depositions.
+
+    It reads the `crystals/` directory rather than `crystal_by_pair`,
+    because those differ: the mapping says what a pair refers to, and if an
+    assembly is missing from the cache `build_atlas` warns and publishes
+    nothing for it. Crediting a structure the bundle does not carry would be
+    the wrong claim.
+    """
+    routes = ROUTES.read_text()
+    assert 'crystals' in routes and '.cif.gz' in routes
+    assert "crystal_by_pair" not in routes.split("def about(")[1].split("def ")[0], (
+        "the About page lists referenced ids rather than published files, so "
+        "a deposition the bundle lacks would still be credited"
+    )
+
+    template = (ROOT / "nobble" / "app" / "templates" / "about.html").read_text()
+    assert "Protein Data Bank" in template
+    assert "{% if crystals %}" in template, (
+        "the credit is unconditional, so an atlas carrying no assemblies "
+        "would claim to redistribute them"
+    )
+
+
+def test_the_credited_ids_are_exactly_the_published_files():
+    published = sorted(p.name[: -len(".cif.gz")]
+                       for p in (ATLAS / "crystals").glob("*.cif.gz"))
+    if not published:
+        pytest.skip("no crystals published yet")
+    assert len(published) == len(set(published)), "duplicate crystal files"
+    # Every one is named by the mapping, so nothing unexplained is shipped.
+    referenced = referenced_ids()
+    unexplained = sorted(set(published) - referenced)
+    assert not unexplained, (
+        f"the bundle carries {unexplained}, which no pair refers to"
+    )

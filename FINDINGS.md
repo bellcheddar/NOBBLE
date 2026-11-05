@@ -9011,3 +9011,42 @@ And one of the six tests passed before the fix existed, because it looped
 over a glob of a directory that did not exist. An assertion inside an empty
 loop, which is exactly what `tools/vacuous_tests.py` reports, found by
 running that sweep twenty minutes after writing the file. It skips now.
+
+## F197. The bundle began redistributing structures and credited nobody
+
+F196 put seven deposited assemblies into the published bundle. The About
+page, whose job is to record where everything comes from, mentioned neither
+the RCSB nor the Protein Data Bank.
+
+Nothing required it. PDB content is CC0, and the viewer already labels each
+overlay `deposited <id>`, so a reader looking at a superposition can see
+which structure it is. The reason to name them is consistency: that page
+credits every other source the project draws on, lists which were reachable,
+and since F185 states the model version that produced every coordinate.
+Beginning to redistribute someone else's structures without saying so was out
+of step with the page's own standard rather than with any licence.
+
+The panel names the RCSB and lists the identifiers, as a `mono` paragraph
+because identifiers are figures rather than prose as far as the copy budget
+is concerned, and renders nothing at all when no assembly is published.
+
+One thing worth getting right rather than nearly right. The list is built
+from the `crystals/` directory, not from `crystal_by_pair`. Those differ: the
+mapping says which deposition a pair refers to, and when an assembly is
+missing from the cache `build_atlas` warns and publishes nothing for it. A
+panel built from the mapping would credit a structure the bundle does not
+carry, which is a worse error than silence, because it is a claim about
+redistribution that is not true. The list is also deduplicated, since two
+pairs may name one deposition: BRD4 appears twice here, on VHL and on CRBN.
+
+A test holds both halves, that the ids credited are exactly the files
+published and that nothing is published which no pair refers to.
+
+Also this session, and clean: the browser QC harness was pointed at
+production for the first time rather than at localhost. It reports the build
+it tested, `7fbe332a3de6083a`, which is the tree that was shipped, and then
+fourteen pages, no non-200, within the copy budget, no console errors and no
+serious axe violations. The harness was built to interrogate a server and had
+only ever interrogated one on this machine, which is the same subject
+confusion F138 and F159 were about; asking it about the live site was overdue
+and found nothing wrong.

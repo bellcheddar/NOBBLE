@@ -245,6 +245,23 @@ def about():
         # environment is not the one that ran the jobs, so measuring on the
         # server would report the wrong thing confidently (F185).
         software=(data.campaign_meta() or {}).get("software") or {},
+        # The depositions the bundle redistributes, named on the page that
+        # records where things come from. PDB content is CC0 so nothing is
+        # required, and the viewer already labels each overlay "deposited
+        # <id>", but the bundle began carrying seven assemblies in F196 and
+        # this page credits every other source it draws on (F197).
+        # Read from the bundle rather than from the mapping. The mapping
+        # says which deposition a pair refers to; this panel says which
+        # files are redistributed, and they differ when an assembly is
+        # missing from the cache, in which case build_atlas warns and
+        # publishes nothing for it. Crediting a structure the bundle does
+        # not carry would be the wrong claim. Deduplicated because two
+        # pairs may name one deposition: BRD4 appears twice here, on VHL
+        # and on CRBN.
+        crystals=sorted(
+            path.name[: -len(".cif.gz")]
+            for path in ((data.campaign_dir() or Path(".")) / "crystals").glob("*.cif.gz")
+        ),
     )
 
 
