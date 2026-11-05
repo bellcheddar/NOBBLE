@@ -126,33 +126,43 @@ def test_the_published_atlas_either_carries_a_version_or_predates_this():
     assert block.get("boltz") or block.get("status"), block
 
 
-def test_the_provenance_report_states_the_model_or_says_it_is_not_recorded():
-    """One line either way, never silence (F185).
+def test_the_provenance_line_says_the_version_or_why_there_is_none():
+    """One line either way, never silence (F185), tested without running it.
 
-    `tools/provenance.py` runs at module level and prints, so this runs it
-    rather than importing it. The two acceptable outputs are a version and an
-    explanation of why there is none: what is not acceptable is the section
-    omitting the model, because a provenance block that is silent about the
-    model reads as though the model were not part of the provenance.
+    This used to run `tools/provenance.py` as a subprocess. That script
+    prints at module level and its atlas check rebuilds the whole bundle, so
+    asserting on one line of its output cost about seven seconds and a full
+    rebuild on every suite run, and it wrote `validation.json` and
+    `weights.json` into the campaign directory as a side effect. The line is
+    a pure function now and the script calls it (F192).
     """
-    import subprocess
+    assert software.provenance_line(None) == software.NOT_RECORDED
+    assert software.provenance_line({}) == software.NOT_RECORDED
 
-    done = subprocess.run(
-        [sys.executable, str(ROOT / "tools" / "provenance.py")],
-        capture_output=True, text=True, cwd=ROOT,
-        env={**__import__("os").environ, "PYTHONPATH": str(ROOT),
-             "KMP_DUPLICATE_LIB_OK": "TRUE"},
+    recorded = {"boltz": "9.9.9", "torch": "8.8.8", "status": "ok"}
+    assert software.provenance_line(recorded) == "Boltz 9.9.9, torch 8.8.8"
+
+    # The atlas build's weaker claim carries its label through.
+    labelled = dict(recorded, recorded="at publish, not at assembly")
+    assert software.provenance_line(labelled) == (
+        "Boltz 9.9.9, torch 8.8.8 (at publish, not at assembly)")
+
+    # A record whose probe failed is a third case, not the first: the
+    # campaign recorded something and what it recorded is a failure.
+    failed = software.provenance_line({"status": "unreadable: TimeoutExpired"})
+    assert failed.startswith("model version unavailable")
+    assert failed != software.NOT_RECORDED
+
+
+def test_the_report_prints_exactly_one_model_line_through_that_function():
+    source = (ROOT / "tools" / "provenance.py").read_text()
+    assert "software.provenance_line" in source
+    assert source.count("model         ") == 1, (
+        "the provenance report has more or fewer than one model line"
     )
-    if done.returncode != 0:
-        pytest.skip(f"provenance.py could not run here: {done.stderr[:120]}")
-    lines = [line for line in done.stdout.splitlines()
-             if line.strip().startswith("model")]
-    assert len(lines) == 1, (
-        f"the provenance report has {len(lines)} model lines, not one:\n"
-        f"{done.stdout}"
-    )
-    line = lines[0]
-    assert ("Boltz" in line) or ("not recorded" in line), line
+    # And it must not have gone back to formatting the line itself, which is
+    # how the two copies would drift.
+    assert "detail +=" not in source
 
 
 def test_the_report_does_not_measure_the_environment_to_fill_the_gap():

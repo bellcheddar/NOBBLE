@@ -24,12 +24,15 @@
             <option value="protac">PROTAC</option>
           </select>
         </label>
+        {# Built from the arms the payload carries, so a dead option is
+           impossible and a new arm appears without an edit. Underscores
+           become spaces for reading: the value sent back is the arm. #}
         <label>Tier
           <select id="f-tier">
             <option value="">all</option>
-            <option value="benchmark">benchmark</option>
-            <option value="A">A</option>
-            <option value="B">B</option>
+            {% for arm in tiers %}
+            <option value="{{ arm }}">{{ arm.replace('_', ' ') }}</option>
+            {% endfor %}
           </select>
         </label>
         <label><input type="checkbox" id="f-bridged"> bridging seeds only</label>

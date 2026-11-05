@@ -108,3 +108,37 @@ def summary(measured: dict | None = None) -> str:
             parts.append(f"torch {measured['torch']}")
         return ", ".join(parts)
     return f"model version unavailable: {measured.get('status', 'unknown')}"
+
+
+# What a campaign with no recorded version should say, which is not the same
+# as what an unreadable probe should say. `summary()` answers "the probe ran
+# here and this is what it found"; this answers "the campaign's own record
+# says nothing", and the honest line for that is not a version measured now.
+# The environment on this machine is probably the one that ran the jobs, and
+# probably is not provenance (F185).
+NOT_RECORDED = ("not recorded: this campaign was assembled before the version "
+                "was captured, and the atlas build fills it in at publish")
+
+
+def provenance_line(recorded: dict | None) -> str:
+    """One line for a provenance report, from a campaign's own record.
+
+    Separated from `tools/provenance.py` so it can be tested without running
+    it. That script prints at module level and its atlas check rebuilds the
+    whole bundle, so asserting on one line of its output cost seven seconds
+    and a full rebuild per run (F192).
+
+    Three cases, because they are three different claims: no record at all,
+    a record carrying versions, and a record whose probe failed. The middle
+    one is `summary()`, reused rather than reimplemented, with the `recorded`
+    label appended when the atlas build filled the block in at publish time
+    instead of the assembler recording it.
+    """
+    recorded = recorded or {}
+    if not recorded:
+        return NOT_RECORDED
+    line = summary(recorded)
+    label = recorded.get("recorded")
+    if label:
+        line = line + " (" + str(label) + ")"
+    return line

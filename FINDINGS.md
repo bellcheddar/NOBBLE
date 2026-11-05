@@ -8682,3 +8682,88 @@ the fourth check today to match prose rather than code, after two in F175 and
 one in F177. Comments are stripped before the search now, and I should treat
 "searching source text" as implying "strip the comments" rather than
 rediscovering it each time.
+
+## F191. Two of the ledger's four Tier options were dead in production
+
+The pair table's Tier control offered `all`, `benchmark`, `A` and `B`, and
+compared its value with `p.tier === tier`. A score row's `tier` is the arm
+the pair belongs to: `benchmark`, `sievers_zf`, `scramble` or `design`. The
+LM schema says so in as many words, "this is the arm the pair belongs to, not
+the Tier A/Tier B curation tier", which is the distinction the control
+collapsed: it was built against the curation tier and wired to the arm.
+
+Measured on the live site by driving the control rather than reading the
+code. `benchmark` returned all 7 rows, `A` returned 0 and `B` returned 0. Two
+of four options were dead in production, today, not at some future scale.
+
+And the file explains the rule it broke, three lines above, in the comment
+saying why `furniture` is deliberately not offered: "a control that can never
+match anything is worse than no control". That comment was written about a
+field whose value is permanently null. The Tier control had two such options
+and nobody noticed, because with seven benchmark pairs the correct answer and
+the broken answer look identical for the only option anyone would use.
+
+At campaign scale it stops being cosmetic. Of the 158 pairs the running
+campaign will publish, 120 are `sievers_zf` and the rest `scramble` and
+`design`: 151 of them could not be selected at all.
+
+The fix is not to retype the list. That is the same failure waiting for the
+next arm, and it is what produced this one. The options are derived from the
+arms the payload carries, so a dead option is impossible and a new arm
+appears without an edit. Derived in the route rather than in Jinja, because
+`map(attribute='tier')` yields Undefined for a row without the key and
+`reject('none')` does not filter Undefined, which would put a blank option in
+the list for a sparse row.
+
+Verified in three steps rather than one. The test was written first and
+failed for the right reason, naming `['A', 'B']` as matching nothing. Then
+the options were checked against a 158-pair atlas carrying all four arms, and
+all four are offered, with `sievers_zf` shown as "sievers zf" while the value
+stays the arm. Then the control was driven in a browser against that atlas:
+40, 39, 39 and 40 rows for the four arms and 158 for "all", which sums
+correctly and is the thing a reader will actually do.
+
+The tests hold both directions, because each catches a different mistake.
+"Every arm in the data can be selected" is the one that matters at campaign
+scale. "No option matches nothing" is the one that was live. A fourth test
+forbids writing any arm into the template as a literal, since a correct
+hard-coded list would pass the first two and fail the next time an arm is
+added.
+
+## F192. A test that rebuilt the atlas to check one line of text
+
+`tests/test_model_version_is_recorded.py` verified that the provenance report
+names the model by running `tools/provenance.py` as a subprocess and reading
+its output. That script prints at module level, so running it is the only way
+to see what it prints, and one of the things it does on the way is a drift
+check, which rebuilds the whole atlas.
+
+So a test asserting one line of text cost about seven seconds and a full
+atlas rebuild on every suite run. It also wrote `validation.json` and
+`weights.json` into the campaign directory, because `atlas_drift` refreshes
+the derived documents before comparing, which is F172's fix doing exactly
+what it should in a context that had no business triggering it.
+
+I first called that a race. It is not: pytest is single-threaded, the rewrite
+completes inside one test, and the content is idempotent, so no other test
+can see a partial file. The honest objections are cost and purity, which are
+enough on their own. A test session that rewrites campaign files is a test
+session whose results depend on what else ran, and seven seconds for one
+assertion is seven seconds.
+
+The line is a function now, `software.provenance_line`, and the script calls
+it. Three cases rather than two, because they are three different claims: a
+campaign with no record at all, a record carrying versions, and a record
+whose probe failed. The middle one reuses `summary()` instead of
+reimplementing the formatting, and the third is the one a two-case split
+would have collapsed into "not recorded", which would report a failed probe
+as an absent one.
+
+Measured rather than assumed: the file runs in 0.20 s against 7.58 s, and
+`validation.json`'s mtime is unchanged across a run of it, which is the side
+effect being gone rather than merely faster.
+
+A test asserting the script still prints exactly one model line and still
+calls the function stays, because the point of extracting it was that the
+script and the function cannot drift. Testing the function alone would leave
+`provenance.py` free to format its own line again.

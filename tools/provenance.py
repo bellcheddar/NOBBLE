@@ -29,18 +29,9 @@ else:
     # honest line says that rather than measuring the environment now and
     # presenting it as what ran: the environment is probably the same and
     # "probably" is not provenance.
-    recorded = meta.get("software") or {}
-    if recorded.get("boltz"):
-        detail = f"Boltz {recorded['boltz']}"
-        if recorded.get("torch"):
-            detail += f", torch {recorded['torch']}"
-        if recorded.get("recorded"):
-            detail += f" ({recorded['recorded']})"
-        print(f"   model         {detail}")
-    else:
-        print("   model         not recorded: this campaign was assembled "
-              "before the version was captured, and the atlas build fills it "
-              "in at publish")
+    from nobble.execute import software
+
+    print(f"   model         {software.provenance_line(meta.get('software'))}")
 
     stale = inputs.stale_inputs(campaign)
     if stale:

@@ -30,11 +30,22 @@ def _pair_or_404(pair_id: str) -> dict:
 @bp.route("/")
 @bp.route("/campaign")
 def campaign():
+    pairs = data.scores_for_pages()
     return render_template(
         "campaign.html",
         page_title="Campaign",
         active="campaign",
-        pairs=data.scores_for_pages(),
+        pairs=pairs,
+        # The arms the payload actually carries, for the ledger's Tier
+        # facet. Offered `benchmark`, `A` and `B` and compared against
+        # `row["tier"]`, which holds the arm and never a curation tier, so
+        # `A` and `B` matched nothing on the live site and `sievers_zf`,
+        # `scramble` and `design` could not be selected at all (F191).
+        #
+        # Derived here rather than in Jinja: `map(attribute='tier')` yields
+        # Undefined for a row without the key and `reject('none')` does not
+        # filter that, so a sparse row would put an empty option in the list.
+        tiers=sorted({row["tier"] for row in pairs if row.get("tier")}),
         components=data.COMPONENTS,
         meta=data.campaign_meta(),
         throughput=data.throughput(),
