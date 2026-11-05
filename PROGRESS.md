@@ -415,6 +415,37 @@ hydroxyproline YAML and the atlas would have gone on refusing (F146).
   (F140). Every route answering 200 says the app works, not that it is this
   version.
 
+**And what the rerun gains from the guards added after that.** These matter
+because every one of them sits on the path between the queue finishing and
+the atlas being published, and none of them had ever run.
+
+- **The refresh can no longer say it refreshed when it did not** (F194). It
+  piped the score and atlas steps into `tail`, which makes `$?` tail's, so a
+  refused atlas build printed its refusal and the script then printed
+  "=== refreshed. Deploy separately ===". That is exactly what the chain
+  running now will do, since `build_atlas.py` returns 1 while the F47
+  correction is pending: it would have logged a successful refresh after
+  thirty-six hours of queue. Score and atlas gate now; throughput warns,
+  because it feeds a panel and blocking a valid campaign over a timing
+  summary is the wrong trade.
+- **Tier 2 refines the queue this selection wrote, or nothing** (F193). It
+  keyed on exit 3 alone, and exit 0 covers four outcomes of which only one
+  writes a queue. Worse, the queue persisted between runs:
+  `benchmark_20261103T192126Z/queue_tier2.jsonl` held ten jobs for
+  `bench02_BRD4_VHL` from 3 November, so a refusal would have spent GPU hours
+  on a days-old selection and logged it as a fresh decile. `run()` clears any
+  previous queue before selecting and the selector prints `TIER2_QUEUE=`,
+  which the shell reads instead of guessing.
+- **Every runner can report failure** (F195). Four could not, one of them
+  because F190 fixed its log line and not its exit status.
+- **The deploy verifies every parameterised route** (F196). It checked nine
+  fixed paths while `/crystal/<id>.cif` returned 500 for every pair, which
+  is why the pose page's crystal overlay had never worked in production.
+- **The campaign scale is no longer untested** (F174, F191, F202). The app
+  was measured against a 158-pair atlas with 2,255 results rows: the landing
+  page came down from 3,289 KB, a dead Tier facet was found and fixed, and a
+  deliberate 404 that crashed the pose page was guarded.
+
 **What to check when it finishes.** `bash tools/status.sh` covers most of
 it; the five lines worth reading are the stale-input count reaching zero,
 the atlas reporting in step, the matched-control ROC moving from
