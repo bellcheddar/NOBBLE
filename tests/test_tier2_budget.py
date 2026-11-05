@@ -15,6 +15,26 @@ from nobble import paths
 from nobble.execute import budget, tier2
 
 
+def _ternary_seconds(pairs: int, over_by: float, spent: float = 10.0) -> float:
+    """Seconds per tier-1 job that put the arm `over_by` times the budget.
+
+    Derived from the configured ceiling and the configured scaling range,
+    not quoted. Both of these tests sized their fixture at 150 hours
+    "against the 96-hour gate" in a comment, and when Marc raised
+    max_compute_hours to 240 the over-budget cases quietly became
+    under-budget ones: one test asserted the gate was open and it was shut,
+    the other asserted a selection had been reduced and nothing had
+    (D-NOB-073).
+    """
+    from nobble import paths
+
+    ceiling = float(paths.tuning()["campaign"]["max_compute_hours"])
+    _, high = budget.scaling_range()
+    remaining = ceiling - spent
+    assert remaining > 0, "nothing left of the budget, so neither branch is reachable"
+    return remaining * over_by * 3600.0 / (pairs * high)
+
+
 def _campaign(root, *, pairs=3, seconds=600.0, tier2_seconds=None):
     """A campaign with a ternary queue and completed tier-1 results."""
     directory = root / "campaign_fixture"
@@ -67,13 +87,20 @@ def test_the_range_brackets_the_two_possible_splits():
     )
 
 
-def test_the_gate_is_judged_on_the_upper_bound(tmp_path):
+def test_the_gate_is_judged_on_the_upper_bound(tmp_path, monkeypatch):
     """A budget judged on its optimistic end is how a budget is overrun."""
-    # Sized against the real budget: three ternary jobs of two hours each at
-    # the high factor is 150 hours, over the 96-hour gate, and at the low
-    # factor is 20 hours, under it. The two ends disagree, which is the case
-    # the choice of end decides.
-    directory = _campaign(tmp_path, pairs=3, seconds=7200.0)
+    # Sized from the configured ceiling so the upper bound is over it and
+    # the lower bound is under it, which is the case the choice of end
+    # decides. Spend is pinned rather than read from the campaigns on disk,
+    # because those are a live measurement and this fixture must not depend
+    # on how far the chain has got (F45).
+    spent = 10.0
+    monkeypatch.setattr(budget, "hours_spent", lambda *a, **k: {
+        "hours": spent, "jobs": 100, "by_campaign": {},
+    })
+    directory = _campaign(
+        tmp_path, pairs=3,
+        seconds=_ternary_seconds(3, over_by=1.5, spent=spent))
     report = budget.gate_g1(directory)
     assert report["judged_on"] == "upper bound"
     assert report["tier2"]["hours_low"] < report["hours_remaining"]
@@ -212,9 +239,16 @@ def test_run_refuses_rather_than_queueing_an_unaffordable_decile(tmp_path, monke
 
 
 def test_run_reduces_and_says_so(tmp_path, monkeypatch):
-    # Six ternary jobs of an hour each: 150 hours at the high factor against
-    # a 96-hour gate, so three of the six are affordable.
-    directory = _campaign(tmp_path, pairs=6, seconds=3600.0)
+    # Sized from the configured ceiling at twice the budget, so about half
+    # the six pairs are affordable and the rest are reduced away. Spend
+    # pinned for the reason in _ternary_seconds.
+    spent = 10.0
+    monkeypatch.setattr(budget, "hours_spent", lambda *a, **k: {
+        "hours": spent, "jobs": 100, "by_campaign": {},
+    })
+    directory = _campaign(
+        tmp_path, pairs=6,
+        seconds=_ternary_seconds(6, over_by=2.0, spent=spent))
     ranked = [f"p{index:02d}" for index in range(6)]
     selection = tier2.Selection(
         campaign=str(directory), ranking_key="delta_iptm",

@@ -72,10 +72,21 @@ def test_a_version_is_never_computed_from_a_literal():
         )
 
 
-def test_both_assemblers_record_it():
+def test_every_assembler_records_it():
+    """One per assembler, counted rather than pinned at two.
+
+    This asserted exactly 2 and broke when a third assembler arrived for
+    the Tier B arm, which is a test that fails when the thing it guards
+    gets wider rather than when it gets wrong.
+    """
     source = (ROOT / "nobble" / "execute" / "campaign.py").read_text()
-    assert source.count('"software": software.versions(),') == 2, (
-        "one of the two campaign summaries does not record the model version"
+    assemblers = [line for line in source.splitlines()
+                  if line.startswith("def assemble_")]
+    assert len(assemblers) >= 2, assemblers
+    recorded = source.count('"software": software.versions(),')
+    assert recorded == len(assemblers), (
+        f"{len(assemblers)} assembler(s) and {recorded} recording the model "
+        f"version: {assemblers}"
     )
 
 

@@ -47,11 +47,23 @@ def _verdict(monkeypatch, *, fits: bool, collapsed: bool) -> str:
     the main one. The docstring above said to drive the function; I scanned
     the source anyway.
     """
+    from nobble import paths
     from nobble.execute import budget
 
-    low, high = (20.0, 20.0) if collapsed else (10.0, 40.0)
+    # Derived from the configured ceiling, not quoted. These were literals,
+    # 150 h for the collapsed over-budget case and 29.2 to 219.3 for the
+    # bounded one, chosen when max_compute_hours was 96. Marc raised it to
+    # 240 and every over-budget case silently became an under-budget one:
+    # four of these tests failed asserting that a verdict said "exceeds"
+    # while the fixture no longer exceeded anything (D-NOB-073).
+    spent = 28.3
+    remaining = float(paths.tuning()["campaign"]["max_compute_hours"]) - spent
+    assert remaining > 0, "the budget is already spent, so neither branch is reachable"
+    under, over = remaining * 0.2, remaining * 1.5
+
+    low, high = (under, under) if collapsed else (under / 2, under)
     if not fits:
-        low, high = (150.0, 150.0) if collapsed else (29.2, 219.3)
+        low, high = (over, over) if collapsed else (under, over)
     # `collapsed` is read from measured_scaling.factor: a measured factor
     # collapses the range to one number, and None leaves it bounded.
     monkeypatch.setattr(budget, "tier2_projection", lambda *a, **k: {
@@ -60,7 +72,7 @@ def _verdict(monkeypatch, *, fits: bool, collapsed: bool) -> str:
         "measured_scaling": {"factor": 3.4 if collapsed else None},
     })
     monkeypatch.setattr(budget, "hours_spent", lambda *a, **k: {
-        "hours": 28.3, "jobs": 861, "by_campaign": {},
+        "hours": spent, "jobs": 861, "by_campaign": {},
     })
     return budget.gate_g1(Path("campaigns/does_not_matter"))["verdict"]
 

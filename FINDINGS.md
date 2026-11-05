@@ -9621,3 +9621,119 @@ fixture: the discriminator is not the shape of the name but whether it is
 joined to the real campaigns root. The guard also found its own allowlist
 going stale in the same run, which is the property
 `tests/test_template_cutoffs.py` already asks of its own.
+
+## F210. The answer to a gate was recorded where nothing could read it
+
+Two findings from closing Gate G1's construct half, both about a thing being
+correct and out of reach.
+
+**The candidate floor hid the only right answer for SMURF2.**
+`tier_b.construct_min_residues` was 60, on the stated reasoning that "below
+this a domain is a motif rather than a fold that can present a surface, and
+listing it adds an option nobody would take". SMURF2 falsified it. Its
+substrate recognition runs through WW domains of about 40 residues, so at 60
+the shortlist could offer only its HECT catalytic domain, its C2
+membrane-binding domain and the whole protein: three options nobody would
+take, with the one anybody would take filtered out. Lowered to 35, so a WW
+domain sits inside the floor rather than on it.
+
+The lower floor added 23 rows across the fifteen genes and all but SMURF2's
+three were machinery: SOCS boxes, F-boxes, RINGs, B-boxes. So the original 60
+was right about the general case and wrong about the one gene whose answer it
+was hiding, which is the harder kind of wrong to notice: the filter looked
+well calibrated everywhere a reader would have checked.
+
+**The eleven named constructs were unreachable.**
+`config/tier_b_constructs.toml` is the form F163 built, and filling it in
+made `tier_b_constructs.report()` say `ready` with eleven constructs and no
+problems. Nothing could use them. `nobble/execute/campaign.py` resolved a
+receptor with `C.CONSTRUCTS[construct_name]`, indexing spec 1.1's six Tier A
+constructs directly, so a Tier B name would have raised `KeyError` at
+assembly. The arm was selected, frozen, gate-passed, *answered*, and still
+unrunnable.
+
+Widened rather than given a second lookup at the call site, which is
+D-NOB-007's rule and F181's lesson: `constructs.by_name` consults the Python
+registry and then the form, and the assembler goes through it. A test
+asserts the two key sets are disjoint, because `by_name` lets Tier A win a
+collision rather than checking there is none.
+
+**And the form could not express a "no".** Four of the fifteen cannot have a
+construct, and `missing()` returned every gene not covered by one, so
+excluding a gene left Tier B permanently unassemblable: `assemblable`
+required `not absent`. Exclusions now carry a required reason, and an
+exclusion without one is reported as a problem rather than counted as
+covered. Without that the table is a way to make a gate pass by deleting the
+genes that fail it, which is the shape of F193 and F195 one level up: a step
+reporting success for work it did not do.
+
+`report()` also checks spec 3.3's `min_ligases_for_gate` of 10, since
+excluding genes shrinks the arm and a short arm answers a narrower question
+than the gate was written for. Eleven constructs clear it by one.
+
+**One trap avoided by reading rather than testing.** Three constructs name an
+InterPro entry annotated more than once, so each needs an `occurrence`.
+`domain_by_accession` counts occurrences from the N-terminus, and the
+candidate shortlist prints in order of length. Had I taken the shortlist's
+index, FBXW4 would have got 266-412 instead of 133-265 and SMURF2 would have
+got a WW domain modelled in disorder at pLDDT 58 instead of the one at 82.5,
+and nothing would have failed: both are valid annotations of the right entry.
+F41 and F107 are both exactly this, and the docstring says so in the file.
+The residue counts are now pinned per construct, which is what turns a wrong
+occurrence into a failure.
+
+## F211. I wrote the defect I had spent the session fixing, twice, in one function
+
+Building the Tier B manifest produced two faults of my own, both of them
+shapes this session has a name for.
+
+**I asserted a count instead of deriving it.** The builder returned
+`"errors": 0` as a literal. It was false. `validate()` had found ten
+`token_cap_exceeded` errors, DCAF8L1's 326-residue propeller against the
+69-heavy-atom 759 glue coming to 410 tokens against a cap of 400, and the
+literal would have carried them straight past `assemble_tier_b`'s refusal,
+which keys on exactly that field. So the arm would have assembled 1,540 jobs
+with ten of them over the cap and nothing would have said so.
+
+That is F193 and F195 precisely: a step reporting success for work it did
+not do. I had read both earlier in the same session, written about both, and
+then typed a zero into a field whose entire purpose is to be counted. The
+count is now `sum(... if issue.severity == "error")`, and the finding it
+exposed was real.
+
+**The fix for the cap overrun then did nothing, twice.** Marc declared
+DCAF8L1_WD40 an exception, the form recorded it, 140 jobs carried the
+`token_cap_declared_exception` flag, and the manifest went on reporting ten
+errors. `validate()` built its set of permitted constructs as
+`{name for name, item in C.CONSTRUCTS.items() if item.exception}`, over the
+six Tier A receptors, so a Tier B construct could not be in it whatever the
+form said. `tools/preflight.py` held the same comprehension verbatim, so
+preflight would have rejected the same ten jobs for the same reason.
+
+Two copies of one rule is F181. A rule that spans one of two registries is
+F210. This was both, which is why it is one fix: `constructs.declared_exceptions()`,
+built from `all_constructs()`, called from both places.
+
+**And my own guard had the same blind spot as the bug it guarded.** F210's
+sweep replaced fourteen `CONSTRUCTS[...]` subscripts and added a test
+forbidding them. The test matched `CONSTRUCTS[` and `CONSTRUCTS.get(` and
+nothing else, so it was blind to the two call sites that reached the
+registry by iterating it, `.items()`, and to a third, `msa.required_sequences`,
+which used `.values()` and which I had found by reading rather than by the
+guard. A guard that enumerates one spelling of an access pattern is the same
+error as fixing one call site of fourteen: I enumerated the instances I had
+just edited rather than the thing they had in common.
+
+Widened to `.items()`, `.values()`, `.keys()` and `in CONSTRUCTS`, and it
+immediately flagged a line of mine that was correct but hand-rolled, the
+union `[*C.CONSTRUCTS.values(), *T.load().values()]` in `msa.py`, which is a
+third place expressing "both registries" where `all_constructs()` now
+exists. That is the guard earning its place on the first run after being
+widened.
+
+**What this says about the method.** Every one of these was found by running
+the thing and reading what it printed: the ten errors by building the
+manifest, the inert exception by rebuilding it after the form changed, the
+iteration blind spot by widening a regex and watching it fail. None of them
+would have been found by reading the code I had just written, which I had
+done.

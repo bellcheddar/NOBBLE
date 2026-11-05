@@ -90,7 +90,7 @@ def preflight(campaign: Path) -> dict:
     # disagrees with the validation the manifest already passed.
     from nobble.curate import constructs as C
 
-    declared = {name for name, item in C.CONSTRUCTS.items() if item.exception}
+    declared = C.declared_exceptions()
 
     errors: list[dict] = []
     layouts: Counter = Counter()

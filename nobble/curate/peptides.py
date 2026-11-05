@@ -907,7 +907,7 @@ def benchmark_substrate_constructs() -> list[dict]:
         context = peptide.domain_context or {}
         construct_name = M.E3_TO_CONSTRUCT.get(member["e3"])
         receptor_residues = (
-            C.CONSTRUCTS[construct_name].residue_count() if construct_name else 0
+            C.by_name(construct_name).residue_count() if construct_name else 0
         )
         ligand = ligand_map.get(member["index"])
         ligand_atoms = (ligand.heavy_atoms or 0) if ligand else 0

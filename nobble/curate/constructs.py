@@ -205,6 +205,91 @@ CONSTRUCTS: dict[str, Construct] = {
 }
 
 
+def by_name(name: str) -> Construct:
+    """A receptor construct by name, from either tier's registry.
+
+    `CONSTRUCTS` above holds spec 1.1's six Tier A receptors, written in
+    Python because they are part of the spec. Spec 3.3's Tier B receptors
+    are named in `config/tier_b_constructs.toml` instead, because which
+    domain of a ligase binds its substrate is a judgement someone has to
+    make and a form is where a judgement gets recorded (F163).
+
+    Two registries, one lookup. `campaign.py` indexed `CONSTRUCTS` directly,
+    so the eleven Tier B constructs were recorded, validated and unreachable:
+    the assembler could not have found one if it had asked. Widened here
+    rather than given a second lookup at the call site, which is D-NOB-007's
+    rule and F181's lesson both (F210).
+
+    Tier A wins a name collision, and there is none today: the six Tier A
+    keys and the eleven Tier B keys are disjoint, which a test asserts
+    rather than this function assuming.
+    """
+    if name in CONSTRUCTS:
+        return CONSTRUCTS[name]
+    # Imported here, not at module scope: tier_b_constructs imports this
+    # module for Construct and Segment, so a top-level import is a cycle.
+    from nobble.curate import tier_b_constructs
+
+    tier_b = tier_b_constructs.load()
+    if name in tier_b:
+        return tier_b[name]
+    raise KeyError(
+        f"no receptor construct named {name!r}. Tier A: "
+        f"{sorted(CONSTRUCTS)}. Tier B, from "
+        f"config/tier_b_constructs.toml: {sorted(tier_b)}"
+    )
+
+
+def by_name_or_none(name: str | None) -> Construct | None:
+    """`by_name`, or None for a missing or unknown name.
+
+    For the one caller that treats an unknown construct as a status rather
+    than an error: `score/geometry.py` reports `unknown_construct` and
+    carries on, because a geometry row that cannot name its receptor chains
+    is a row to skip rather than a reason to abandon a scoring run.
+    """
+    if not name:
+        return None
+    try:
+        return by_name(name)
+    except KeyError:
+        return None
+
+
+def all_constructs() -> dict[str, Construct]:
+    """Every receptor construct, Tier A and Tier B.
+
+    For callers that need the whole set rather than one by name: the
+    declared-exception set below, and `msa.required_sequences`.
+
+    Not `budget_report`, deliberately. That feeds the About page's
+    construct table through `about.json`, and widening it put eleven Tier B
+    rows onto a published page as a side effect of a refactor. It is spec
+    1.1's cap report for the six receptors the spec names; Tier B has its
+    own in `tier_b_constructs.report()`. The atlas drift check caught it,
+    which is what that check is for.
+    """
+    from nobble.curate import tier_b_constructs
+
+    return {**tier_b_constructs.load(), **CONSTRUCTS}
+
+
+def declared_exceptions() -> set[str]:
+    """Constructs allowed past the tier-1 token cap.
+
+    One definition. This set was built twice, by `manifest.validate` and by
+    `tools/preflight.py`, from identical comprehensions over `CONSTRUCTS`
+    alone, so declaring a Tier B construct an exception changed nothing in
+    either: DCAF8L1_WD40 was marked `exception = true` in the form and the
+    manifest still reported ten token_cap_exceeded errors, because the set
+    it was checked against only ever held Tier A names.
+
+    Two copies of one rule is F181, and a rule that spans one of two
+    registries is F210. This is both, so it is both fixes (F211).
+    """
+    return {name for name, item in all_constructs().items() if item.exception}
+
+
 def token_estimate(construct: Construct, peptide_length: int, ligand_heavy_atoms: int) -> int:
     """Boltz token count for a job: one per polymer residue, one per ligand heavy atom."""
     return construct.residue_count() + peptide_length + ligand_heavy_atoms

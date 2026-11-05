@@ -168,6 +168,59 @@ if [[ -n "$DESIGN" ]]; then
   bash tools/run_design.sh "$DESIGN" || true
 fi
 
+# --- 4b. Tier B ----------------------------------------------------------
+# Eleven ligandable-unproven ligases against the seven proven glue-degron
+# pairs, each with its degron's scramble: 154 pairs, 1,540 jobs, about 39
+# hours (D-NOB-073). Gate G1's construct half closed when Marc named the
+# domains (D-NOB-072); its compute half closed when he lifted the 96-hour
+# ceiling as arbitrary on his own hardware.
+#
+# After the design scan rather than before it, for the same reason the scan
+# goes last: this arm reads nothing the scan produces, but it is the longest
+# single stage left and putting it ahead of the scan would delay the scan by
+# a day and a half for no gain.
+#
+# Assembled here rather than reused from disk if a complete one exists,
+# because the arm depends on the form and the library and both can change
+# between runs. assemble_tier_b reuses a complete campaign by default, which
+# is what makes rerunning this script cheap.
+say "assembling Tier B"
+TIERB_ASSEMBLE="$("$SENV/bin/python" -c "
+import json, sys
+sys.path.insert(0, '$ROOT')
+from nobble.execute.campaign import assemble_tier_b
+out = assemble_tier_b()
+print(json.dumps({k: out.get(k) for k in
+                  ('path', 'reused', 'pairs', 'jobs_emitted')}))
+" 2>&1)"
+ASSEMBLE_CODE=$?
+printf '%s\n' "$TIERB_ASSEMBLE"
+if [ "$ASSEMBLE_CODE" -ne 0 ]; then
+  echo "Tier B assembly failed, so the arm is skipped. The rest of the chain" >&2
+  echo "    is unaffected: nothing downstream reads Tier B." >&2
+else
+  TIERB="$(newest_complete tier_b)"
+  if [[ -z "$TIERB" ]]; then
+    echo "Tier B assembled but no complete campaign is on disk: not running" >&2
+  else
+    say "preflight $TIERB"
+    if "$SENV/bin/python" tools/preflight.py "$TIERB"; then
+      say "running Tier B"
+      bash tools/run_queue.sh --campaign "$TIERB" || true
+      # Checked, not ignored: the arm's whole output is these scores, and a
+      # silent scoring failure would leave 39 hours of inference unread
+      # (F194, F195).
+      say "scoring Tier B"
+      if ! "$SENV/bin/python" -m nobble.score.run --campaign "$TIERB"; then
+        echo "Tier B scoring failed: the poses are on disk, rerun the scorer" >&2
+        echo "    rather than the GPU." >&2
+      fi
+    else
+      echo "Tier B preflight failed: refusing to spend 1,540 jobs on it" >&2
+    fi
+  fi
+fi
+
 # --- 5. publish, once, at the end ----------------------------------------
 # The atlas was built straight after the main campaign, before tier 2 and
 # the design scan existed. Without rebuilding here, both would run for

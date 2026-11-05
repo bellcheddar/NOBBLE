@@ -157,7 +157,7 @@ PAIR_LEVEL_FIELDS = (
 
 def peptide_chain_index(construct_name: str) -> int:
     """Index of the peptide chain in the YAML's chain order."""
-    return len(C.CONSTRUCTS[construct_name].segments)
+    return len(C.by_name(construct_name).segments)
 
 
 def _receptor_peptide_iptm(confidence: dict, construct_name: str) -> tuple:
@@ -185,7 +185,7 @@ def _receptor_peptide_iptm(confidence: dict, construct_name: str) -> tuple:
     Returns (value, chains_used, first_chain_only) so the number is auditable
     and the previous definition stays recoverable from the record.
     """
-    chains = C.CONSTRUCTS[construct_name].substrate_receptor_chains()
+    chains = C.by_name(construct_name).substrate_receptor_chains()
     peptide = peptide_chain_index(construct_name)
     values = [_pair_iptm(confidence, chain, peptide) for chain in chains]
     # Defence in depth, not a fix. `_pair_iptm` already requires `finite`

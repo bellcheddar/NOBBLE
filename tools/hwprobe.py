@@ -172,9 +172,20 @@ def main() -> int:
             # throughput figure in data/throughput.json from a real timing run.
             "token_cap_tier1": 400,
             "token_cap_exceptions": ["VHL_VCB", "DCAF15_DDB1_DDA1"],
-            "max_compute_hours": 96,
+            # Lifted from 96 on 2026-11-05. Marc's instruction: the Studio
+            # is his own machine, the compute is free, and 96 was an
+            # arbitrary figure from the spec rather than a measurement of
+            # anything. 240 covers everything planned (48 spent, ~10 h of
+            # tier 1 left, 38.9 h of Tier B at full depth with scrambles)
+            # with headroom, and still trips on genuine runaway: tier 2's
+            # full decile is priced at 120 to 904 h, and the upper end is a
+            # month of wall-clock, which is a decision rather than a budget
+            # line (D-NOB-073).
+            "max_compute_hours": 240,
             "wall_clock_budget_hours": 48,
             "seeds": 5,
+            # Tier B's depth, its own key: see config/tuning.toml.
+            "tier_b_seeds": 5,
             # Longest one tier-1 job may run before it is killed. Tier 2
             # is given four times this (runner.settings_from_config).
             "job_timeout_seconds": 5400,

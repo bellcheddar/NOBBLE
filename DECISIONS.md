@@ -2174,3 +2174,129 @@ which was written for F106 and treated "the fit has no value for this
 component" as "no fit applies here". That reading is right when nothing has
 been fitted and wrong for every component a fit passed over, and the test now
 pins both cases with the distinction stated.
+
+## D-NOB-072. The fifteen Tier B receptor constructs, named
+
+**Decision.** Marc named a substrate-binding domain for eleven of the fifteen
+Tier B ligases on 2026-11-05 and excluded four. `config/tier_b_constructs.toml`
+holds the answers; `tools/tier_b_candidates.py` produced the evidence each was
+chosen against. Gate G1's construct half is closed.
+
+| Gene | Construct | Range | aa | Chosen over |
+|---|---|---|---|---|
+| ASB8 | Ankyrin repeat superfamily | 25-231 | 207 | nothing: the only non-SOCS-box annotation |
+| CCNF | Cyclin, N-terminal | 290-405 | 116 | the full 275-499 cyclin, both lobes |
+| DCAF8L1 | WD40-repeat superfamily | 183-508 | 326 | nothing: the only annotated candidate |
+| FBXO11 | Right-handed beta helix | 388-543 | 156 | the larger 523-826 pectin lyase fold |
+| FBXW4 | WD40/YVTN superfamily | 133-265 | 133 | the wider 153-399 propeller |
+| KCTD4 | KCTD4 C-terminal domain | 138-259 | 122 | the N-terminal BTB, which binds Cul3 |
+| NEURL2 | Neuralized-like NHR/SPRY | 25-242 | 218 | the five-residue-wider Neuralized entry |
+| SMURF2 | WW domain, third occurrence | 291-331 | 41 | a span covering both ordered WW domains |
+| TRIM17 | B30.2/SPRY | 277-475 | 199 | nothing: no other substrate interface |
+| TRIM55 | FN3/SPRY-containing | 119-301 | 183 | nothing: the only ordered non-RING candidate |
+| TRIP12 | WWE domain, subgroup | 806-881 | 76 | the 292-residue Armadillo region |
+
+**Excluded, with the reason in the form.** KCNC1 (Kv3.1) and KCND2 (Kv4.2)
+are voltage-gated potassium channels that passed spec 3.3's filters on pocket
+druggability and best-window confidence, neither of which asks for a
+substrate interface; their BTB domains were offered as Cul3-adaptor
+constructs and declined. RAG1 is the V(D)J recombinase, a genuine E3 whose
+every ordered domain binds DNA or catalyses; its nonamer-binding domain was
+offered and declined because what it recognises is DNA. RNF175 annotates
+nothing but its RING and its membrane span.
+
+**Why eleven is enough.** Spec 3.3's `min_ligases_for_gate` is 10, and
+`report()` now checks it, so the exclusions are visibly above the floor
+rather than assumed to be. One more exclusion would have taken the arm below
+the number the gate was written for.
+
+**Alternatives.** Fill the four in mechanically from the longest annotated
+domain: ruled out by F41, and in these four cases it would have named an ion
+transport domain, a DNA-binding domain and a RING. Drop Tier B: rejected,
+spec 3.3 says "do not defer it" and eleven ligases answers the question the
+arm exists for. Widen the candidate floor further than 35 to look for shorter
+interfaces in the four: not done, because the limit for those four is the
+absence of an annotated substrate interface rather than its length.
+
+**How to reverse.** Any entry can be re-pointed by editing its
+`interpro_entry` and `occurrence`, and an exclusion becomes a construct by
+moving it out of `[exclusions]`. `tests/test_tier_b_constructs_are_named.py`
+pins each residue count, so a wrong edit fails rather than silently changing
+a receptor.
+
+**Note on the occurrence indices.** Three constructs name an InterPro entry
+annotated more than once, and `occurrence` counts from the N-terminus while
+the candidate shortlist prints in order of length. Taking the shortlist's
+index would have given FBXW4 the other half of its propeller and SMURF2 a WW
+domain modelled in disorder at pLDDT 58. That is the failure F41 and F107
+were both about, and it was caught here by checking the docstring rather than
+by a test.
+
+## D-NOB-073. The Tier B arm, and the ceiling that was gating it
+
+**Decision.** Tier B runs as its own campaign stage: the eleven named
+receptors (D-NOB-072) against the seven proven glue-degron pairs from the
+benchmark panel, each with that degron's composition-matched scramble. 154
+pairs, 1,540 jobs, 38.9 hours measured from the real construct and glue
+sizes. Assembled as `tier_b_20261105T202811Z` and queued in
+`tools/run_chain.sh` as stage 4b, after the design scan and before the
+publish.
+
+**The design, and what it buys.** A pair holds a known-working glue and
+degron together and swaps only the receptor: lenalidomide with the IKZF1
+zinc finger it actually degrades, against ASB8 instead of CRBN. The
+benchmark panel therefore already contains that same glue and degron with
+its proven receptor, which is a matched positive control costing no jobs.
+The alternative offered was a single shared probe degron across all pairs,
+which is simpler to describe and has no matched control, because no proven
+receptor was ever run with that exact combination.
+
+Scrambles were offered, declined and then asked for again, which is why they
+are here. They give the arm an internal negative rather than one that
+depends on cross-arm comparison, and the library already carried a
+composition-matched scramble for all seven benchmark degrons, so they cost
+jobs and no curation.
+
+**Two arms, not three.** Conditioning places the ligand in a pocket derived
+from the receptor's own deposited structure. A Tier B receptor has none, and
+the pocket in the benchmark pair it borrows from belongs to a different
+protein, so a conditioned arm would place the ligand in the wrong protein's
+pocket. `expand_pair` now takes its axes as arguments for this.
+
+**The ceiling.** `max_compute_hours` was 96. Marc lifted it: his own
+machine, free compute, and the figure was an arbitrary spec number rather
+than a measurement. Set to 240, which covers everything planned with
+headroom and still trips on genuine runaway. Changed in `tools/hwprobe.py`
+as well as `config/tuning.toml`, because the probe writes that file and the
+next probe would have put 96 back.
+
+This is also why the arm runs at full depth. Asked to choose under the old
+ceiling, Marc took breadth over depth, all seven chemotypes at three seeds;
+with the ceiling gone the question dissolved and both are affordable, so it
+is seven chemotypes at five seeds.
+
+**What the ceiling does not fix.** Tier 2's full decile is priced at 120 to
+902 hours for 1,570 jobs, and the upper end is a month of wall-clock. Gate
+G1 still reports it as not fitting, correctly: that is a wall-clock decision
+rather than a budget line, and one completed refinement replaces the range
+with a measured factor.
+
+**DCAF8L1's token cap exception.** DCAF8L1's WD40 domain is 326 residues,
+which is exactly the cap against the median 59-atom glue and ten tokens over
+it against the largest benchmark glue, the 759 VHL PROTAC at 69 heavy atoms:
+410 against 400, on ten of the arm's 1,540 jobs. Declared an exception on the
+ground spec 1.1 declares VHL_VCB and DCAF15_DDB1_DDA1: the domain is what it
+is, and trimming it to fit would trim the binding surface. The jobs carry
+`token_cap_declared_exception`, so the overrun is visible in the data.
+
+**What the arm can and cannot show.** Every pair is expected to fail: these
+ligases have no known glue. A hit is a hypothesis, and a uniform absence of
+hits is the likely result and still informative, because it says the
+chemotypes that work on CRBN and VHL do not transfer. That is what
+"ligandable but unproven" predicts, and the arm is worth running because
+nothing had tested it.
+
+**How to reverse.** Delete the campaign directory and drop stage 4b from
+`run_chain.sh`; nothing downstream reads Tier B. The ceiling goes back by
+setting `max_compute_hours` in both `config/tuning.toml` and
+`tools/hwprobe.py`.

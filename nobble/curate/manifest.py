@@ -29,6 +29,9 @@ from nobble.curate import ligands as L
 # Which construct serves each E3. Only receptors with a defined
 # substrate-binding domain can be built: a peptide whose annotated E3 has no
 # construct is recorded as unroutable rather than silently reassigned to CRBN.
+# Spec 1.1's six Tier A receptors. Tier B's are added below from the form
+# rather than written out here, so the map and the form cannot disagree
+# about which construct a gene uses.
 E3_TO_CONSTRUCT = {
     "CRBN": "CRBN_CULT",
     "VHL": "VHL_VCB",
@@ -37,6 +40,25 @@ E3_TO_CONSTRUCT = {
     "KEAP1": "KEAP1_KELCH",
     "FEM1B": "FEM1B_ANK",
 }
+
+
+def _tier_b_routes() -> dict[str, str]:
+    """Gene to construct name for the Tier B receptors that are named.
+
+    Derived, not transcribed. A second copy of these eleven pairs is the
+    duplication F181, F183 and F187 were each about, and the form is where
+    the judgement lives (D-NOB-072).
+    """
+    try:
+        from nobble.curate import tier_b_constructs as T
+
+        return {c.e3_gene: name for name, c in T.load().items() if c.e3_gene}
+    except Exception:                                   # noqa: BLE001
+        return {}
+
+
+# Tier A wins a collision, which there is none of: the genes are disjoint.
+E3_TO_CONSTRUCT = {**_tier_b_routes(), **E3_TO_CONSTRUCT}
 
 # From config, not written here. `config/tuning.toml` declares
 # `campaign.seeds = 5` and nothing read it: two hard-coded copies of
@@ -115,8 +137,21 @@ def expand_pair(
     construct: C.Construct,
     peptide,
     ligand: L.Ligand | None,
+    seeds: tuple[int, ...] | None = None,
+    conditions: tuple[str, ...] | None = None,
 ) -> list[Job]:
-    """Expand one (receptor, peptide, ligand) triple into its job set."""
+    """Expand one (receptor, peptide, ligand) triple into its job set.
+
+    `seeds` and `conditions` default to the campaign's axes. Tier B passes
+    `conditions=("unconstrained",)` because conditioning needs a ligand
+    pocket derived from the receptor's own deposited structure, and a Tier B
+    receptor has none: the pocket in the benchmark pair it borrows its glue
+    and degron from belongs to the proven receptor, not to this one. A
+    conditioned arm there would place the ligand in another protein's
+    pocket (D-NOB-073).
+    """
+    seeds = SEEDS if seeds is None else seeds
+    all_conditions = CONDITIONS if conditions is None else conditions
     jobs: list[Job] = []
     # A structural zinc is one heavy atom, so one token, and it is present in
     # both arms (see yaml_gen). Counting it in only one would understate the
@@ -133,9 +168,10 @@ def expand_pair(
         tokens = base_tokens + ligand_atoms
         # Conditioning places the ligand in a pocket, so it only applies to the
         # ternary arm.
-        conditions = CONDITIONS if complex_type == "ternary" else ("unconstrained",)
-        for conditioning in conditions:
-            for seed in SEEDS:
+        arm_conditions = (all_conditions if complex_type == "ternary"
+                          else ("unconstrained",))
+        for conditioning in arm_conditions:
+            for seed in seeds:
                 flags: list[str] = []
                 if construct.exception:
                     flags.append("token_cap_declared_exception")
@@ -187,7 +223,7 @@ def validate(jobs: list[Job]) -> list[ValidationIssue]:
     limits = paths.thresholds()["manifest"]
     cap = int(limits["token_cap_tier1"])
     issues: list[ValidationIssue] = []
-    declared = {name for name, item in C.CONSTRUCTS.items() if item.exception}
+    declared = C.declared_exceptions()
 
     for job in jobs:
         # Token cap (spec 1.1).
@@ -262,7 +298,7 @@ def build_benchmark_manifest() -> dict:
             unroutable.append({"peptide": peptide.peptide_id, "e3": member["e3"],
                                "reason": "no receptor construct defined"})
             continue
-        construct = C.CONSTRUCTS[construct_name]
+        construct = C.by_name(construct_name)
         ligand = ligand_map.get(member["index"])
         pair_id = f"bench{member['index']:02d}_{peptide.gene}_{member['e3']}"
         pair_jobs = expand_pair(pair_id, "benchmark", construct, peptide, ligand)
@@ -321,6 +357,143 @@ def write(manifest: dict, name: str = "benchmark") -> dict:
         indent=2,
     ))
     return {"manifest": str(path), "summary": str(summary_path)}
+
+
+def tier_b_seeds() -> tuple[int, ...]:
+    """Seeds per arm for the Tier B arm, from config.
+
+    Its own key rather than borrowing `design.minimum_seeds` or
+    `scoring.collapse_minimum_seeds`, both of which are 3 and mean something
+    else. One number serving two meanings is what F181 and F183 were about,
+    and a later change to either of those for its own reasons would silently
+    change the depth of this arm.
+    """
+    return tuple(range(1, int(paths.tuning()["campaign"]
+                              .get("tier_b_seeds", len(SEEDS))) + 1))
+
+
+def build_tier_b_manifest(library: list | None = None) -> dict:
+    """The Tier B arm: unproven ligases against proven glue-degron pairs.
+
+    Spec 3.3 selects fifteen ligandable-unproven ligases and names no
+    receptor construct for any of them. Marc named eleven and excluded four
+    (D-NOB-072); this is the arm those constructs make possible.
+
+    The design is D-NOB-073's. A Tier B pair holds a known-working glue and
+    degron together and swaps only the receptor: lenalidomide with the IKZF1
+    zinc finger it actually degrades, against ASB8 instead of CRBN. So the
+    benchmark panel contains the same glue and degron with its proven
+    receptor, which makes it the matched positive control without spending a
+    job on one. Each pair also gets its degron's composition-matched
+    scramble, which the library already carries for all seven benchmark
+    degrons, so the arm has an internal negative too.
+
+    Two arms rather than three: see `expand_pair` on why conditioning cannot
+    apply to a receptor whose pocket belongs to a different protein.
+
+    What this arm can show is narrow and worth stating. Every pair is
+    expected to fail, because these ligases have no known glue. A hit is a
+    hypothesis and a uniform absence of hits is the likely and still
+    informative result: it says the chemotypes that work on CRBN and VHL do
+    not transfer, which is what "ligandable but unproven" predicts.
+    """
+    from nobble.curate import library as library_module
+    from nobble.curate import peptides as P
+    from nobble.curate import tier_b_constructs as T
+
+    if library is None:
+        persisted = library_module.load()
+        if persisted is None:
+            return {"status": "no library manifest: run nobble.curate.library first",
+                    "pairs": [], "jobs": [], "unroutable": []}
+        library = persisted["peptides"]
+
+    receptors = sorted(T.load().items())
+    if not receptors:
+        return {"status": "no Tier B constructs: see config/tier_b_constructs.toml",
+                "pairs": [], "jobs": [], "unroutable": []}
+
+    # The glue and degron pairs, from the builder that already resolved each
+    # benchmark member's deposited chain, CCD and ligand object. Taken from
+    # its routing rather than rebuilt, because a SMILES-encoded degrader has
+    # no CCD to reconstruct from.
+    benchmark = build_benchmark_manifest()
+    routing = benchmark.get("routing", {})
+    by_id = {row["peptide_id"]: row for row in library}
+    scramble_of: dict[str, dict] = {}
+    for row in library:
+        if row["source"] == "scramble" and row.get("parent_peptide_id") in routing:
+            scramble_of[row["parent_peptide_id"]] = row
+
+    seeds = tier_b_seeds()
+    jobs: list[Job] = []
+    pairs: list[dict] = []
+    unroutable: list[dict] = []
+
+    for construct_name, construct in receptors:
+        for parent_id, resolved in sorted(routing.items()):
+            parent_row = by_id.get(parent_id)
+            ligand = resolved.get("ligand")
+            if parent_row is None or ligand is None:
+                unroutable.append({
+                    "construct": construct_name, "peptide": parent_id,
+                    "reason": ("the degron is not in the library" if parent_row is None
+                               else "the benchmark pair resolved no ligand"),
+                })
+                continue
+            members = [("pos", parent_row)]
+            scramble = scramble_of.get(parent_id)
+            if scramble is not None:
+                members.append(("neg", scramble))
+            else:
+                unroutable.append({
+                    "construct": construct_name, "peptide": parent_id,
+                    "reason": "no composition-matched scramble for this degron",
+                })
+            for label, row in members:
+                peptide = P.Peptide(**{k: v for k, v in row.items() if k != "length"})
+                pair_id = (f"tb_{label}_{construct.e3_gene}_"
+                           f"{parent_row.get('gene') or 'unknown'}_{ligand.key}")
+                pair_jobs = expand_pair(
+                    pair_id, "tier_b", construct, peptide, ligand,
+                    seeds=seeds, conditions=("unconstrained",),
+                )
+                jobs.extend(pair_jobs)
+                pairs.append({
+                    "pair_id": pair_id,
+                    "tier": "tier_b",
+                    "construct": construct.name,
+                    "e3_gene": construct.e3_gene,
+                    "peptide_id": row["peptide_id"],
+                    "peptide_sequence": row["sequence"],
+                    "peptide_gene": parent_row.get("gene"),
+                    "role": "positive" if label == "pos" else "scramble",
+                    "scramble_of": parent_id if label == "neg" else None,
+                    "borrowed_from": resolved.get("pair_id"),
+                    "ligand": ligand.to_dict(),
+                    "jobs": len(pair_jobs),
+                })
+
+    issues = validate(jobs)
+    return {
+        "pairs": pairs,
+        "jobs": jobs,
+        "unroutable": unroutable,
+        "jobs_per_pair": len(seeds) * len(COMPLEXES),
+        "seeds": list(seeds),
+        "receptors": [name for name, _ in receptors],
+        "glue_degron_pairs": sorted(routing),
+        # Derived, never asserted. I wrote `"errors": 0` here and it was
+        # false: validate() found ten token_cap_exceeded errors, DCAF8L1
+        # against the largest glue, and a hard-coded zero would have carried
+        # them past assemble_campaign's refusal, which keys on this field.
+        # The same shape as F193 and F195, in a builder written minutes
+        # after reading both (F211).
+        "errors": sum(1 for issue in issues if issue.severity == "error"),
+        "warnings": sorted({issue.code for issue in issues
+                            if issue.severity == "warning"}),
+        "issues": [issue.to_dict() for issue in issues],
+    }
 
 
 def build_campaign_manifest(library: list | None = None) -> dict:
@@ -382,7 +555,7 @@ def build_campaign_manifest(library: list | None = None) -> dict:
                            else "no IMiD assigned: see D-NOB-033"),
             })
             continue
-        construct = C.CONSTRUCTS[construct_name]
+        construct = C.by_name(construct_name)
         peptide = P.Peptide(**{k: v for k, v in row.items() if k != "length"})
         label = "pos" if row.get("label") == "degraded" else "neg"
         pair_id = f"sv_{label}_{row.get('gene') or 'unknown'}_{row['peptide_id'][-6:]}"

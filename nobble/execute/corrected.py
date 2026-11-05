@@ -137,7 +137,7 @@ def assemble() -> dict:
                 construct_name = M.E3_TO_CONSTRUCT.get(member["e3"])
                 if not construct_name:
                     continue
-                construct = C.CONSTRUCTS[construct_name]
+                construct = C.by_name(construct_name)
                 ligand = ligand_map.get(member["index"])
                 substrate = substrate_chain(plan)
                 if not substrate["sequence"]:

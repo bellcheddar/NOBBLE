@@ -91,7 +91,7 @@ class RecoveryResult:
 
 
 def _receptor_chain_ids(construct_name: str) -> set[str]:
-    return set("ABCDEFGH"[: len(C.CONSTRUCTS[construct_name].segments)])
+    return set("ABCDEFGH"[: len(C.by_name(construct_name).segments)])
 
 
 def _load(path: str):
@@ -297,7 +297,7 @@ def recovery_against_crystal(
     deposited = structures.read_assembly(pdb_id)
 
     # Receptor frame: map the construct's residues onto the deposition.
-    construct = C.CONSTRUCTS[job["construct"]]
+    construct = C.by_name(job["construct"])
     segment_index = next(
         (index for index, segment in enumerate(construct.segments)
          if segment.accession == receptor_accession), None

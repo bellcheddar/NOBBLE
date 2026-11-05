@@ -58,11 +58,18 @@ def save_index(index: dict) -> None:
 
 
 def required_sequences() -> list[dict]:
-    """Every distinct receptor segment sequence the constructs need."""
+    """Every distinct receptor segment sequence the constructs need.
+
+    Both tiers. This iterated `C.CONSTRUCTS`, spec 1.1's six Tier A
+    receptors, so `precompute()` had nothing to fetch for Tier B and every
+    Tier B job would have gone to Boltz with `msa: empty`. Single-sequence
+    against a panel predicted with MSAs is not a comparison, which is the
+    one thing the arm exists to make (F210).
+    """
     from nobble.curate import constructs as C
 
     wanted: dict[str, dict] = {}
-    for construct in C.CONSTRUCTS.values():
+    for construct in C.all_constructs().values():
         for segment in construct.segments:
             try:
                 sequence = segment.sequence()

@@ -77,10 +77,35 @@ def load() -> dict[str, Construct]:
     return out
 
 
+def exclusions() -> dict[str, str]:
+    """Tier B genes deliberately left without a construct, and why.
+
+    The form was built assuming all fifteen would get one. Four cannot.
+    KCNC1 and KCND2 are voltage-gated potassium channels that passed spec
+    3.3's filters on pocket druggability and model confidence rather than on
+    having a substrate interface, and their only ordered non-BTB domain
+    transports potassium. RAG1 is a recombinase whose every ordered domain
+    binds DNA or catalyses, and whose ligase activity is on histones. RNF175
+    annotates nothing but its RING and its membrane span.
+
+    Recorded rather than left missing, because "no construct was named" and
+    "no construct can be named, for this reason" are different states and
+    only the second is an answer. A reason is required: without one this
+    would be a way to make the gate pass by deleting the genes that fail it.
+    """
+    if not FORM.exists():
+        return {}
+    document = tomllib.loads(FORM.read_text())
+    return {str(gene): str(entry.get("reason") or "")
+            for gene, entry in (document.get("exclusions") or {}).items()}
+
+
 def missing() -> list[str]:
-    """Tier B genes with no construct, which is what blocks the arm."""
+    """Tier B genes with neither a construct nor a reasoned exclusion."""
     covered = {construct.e3_gene for construct in load().values()}
-    return [gene for gene in _tier_b_genes() if gene not in covered]
+    excluded = {gene for gene, reason in exclusions().items() if reason}
+    return [gene for gene in _tier_b_genes()
+            if gene not in covered and gene not in excluded]
 
 
 def problems() -> list[dict]:
@@ -127,10 +152,33 @@ def report() -> dict:
     defined = load()
     absent = missing()
     wrong = problems()
+    excluded = exclusions()
+    unreasoned = sorted(gene for gene, reason in excluded.items() if not reason)
+    floor = int(paths.thresholds()["tier_b"]["min_ligases_for_gate"])
+    if unreasoned:
+        wrong = wrong + [{"exclusion": gene, "problem": "excluded with no reason"}
+                         for gene in unreasoned]
+    # Spec 3.3's floor, checked here rather than left implicit: excluding
+    # genes shrinks the arm, and an arm below the floor answers a narrower
+    # question than the one the gate was written for.
+    #
+    # Capped at the size of the selection being judged. A bare `< floor`
+    # demanded ten ligases from a one-gene fixture, which broke
+    # test_a_filled_form_reports_ready: the floor is a statement about the
+    # real selection of fifteen, and asking it of a selection of one is a
+    # category error rather than a strict check.
+    required = min(floor, len(_tier_b_genes()) or floor)
+    if defined and len(defined) < required:
+        wrong = wrong + [{
+            "problem": f"{len(defined)} construct(s) against spec 3.3's "
+                       f"floor of {floor} ligases",
+        }]
     return {
         "tier_b_genes": len(_tier_b_genes()),
         "constructs_defined": len(defined),
         "genes_without_a_construct": absent,
+        "excluded": excluded,
+        "ligase_floor": floor,
         "problems": wrong,
         "assemblable": not absent and not wrong and bool(defined),
         # Project-relative where it can be, absolute otherwise.

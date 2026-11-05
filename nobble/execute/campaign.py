@@ -200,7 +200,7 @@ def assemble_benchmark(reuse_latest: bool = True) -> dict:
             ligand = ligand_by_index.get(member["index"])
             ccd = ligand.ccd if ligand and ligand.encoding == "ccd" else None
             pocket_cache[pair_id] = Y.derive_pocket(
-                C.CONSTRUCTS[construct_name], member["pdb_id"], ccd, member["e3"]
+                C.by_name(construct_name), member["pdb_id"], ccd, member["e3"]
             )
 
         queue_path = directory / "queue.jsonl"
@@ -269,6 +269,123 @@ IMID_POCKET_SOURCE = {
 }
 
 
+def assemble_tier_b(reuse_latest: bool = True) -> dict:
+    """Emit the Tier B arm: eleven unproven ligases against proven pairs.
+
+    The design is D-NOB-073's and the manifest is
+    `M.build_tier_b_manifest`. This turns it into a campaign directory.
+
+    Simpler than the main campaign in one way and fiddlier in another. No
+    pockets, because conditioning needs a pocket from the receptor's own
+    deposited structure and these receptors have none, so every job is
+    unconstrained and `build_yaml` gets `pocket=None`. But the ligand cannot
+    be rebuilt from the pair's stored dict: dBET57 is SMILES-encoded with no
+    CCD, so `by_ccd` cannot reconstruct it. Each Tier B pair records the
+    benchmark pair it borrowed its glue and degron from, and the ligand is
+    taken from there, which is the same reason `build_campaign_manifest`
+    carries `benchmark_routing` rather than rebuilding.
+    """
+    if reuse_latest:
+        existing = latest("tier_b")
+        if existing:
+            summary = json.loads((existing / "campaign.json").read_text())
+            return {"path": str(existing), "reused": True, **summary}
+
+    from nobble.curate import library as LM
+    from nobble.curate import tier_b_constructs as T
+
+    blocked = T.report()
+    if not blocked["assemblable"]:
+        raise RuntimeError(
+            f"Tier B is not assemblable: {blocked['status']}. "
+            "See config/tier_b_constructs.toml"
+        )
+
+    library = LM.load()
+    if library is None:
+        raise RuntimeError(
+            "no library manifest: run nobble.curate.library before assembling"
+        )
+
+    manifest = M.build_tier_b_manifest(library=library["peptides"])
+    if manifest.get("errors"):
+        raise RuntimeError(
+            f"{manifest['errors']} manifest validation error(s): refusing to "
+            "emit the Tier B arm. See the issues in the manifest summary"
+        )
+    if not manifest["jobs"]:
+        raise RuntimeError(f"Tier B manifest emitted no jobs: {manifest.get('status')}")
+
+    with fresh_campaign("tier_b") as directory:
+        rows = {row["peptide_id"]: row for row in library["peptides"]}
+        pair_by_id = {pair["pair_id"]: pair for pair in manifest["pairs"]}
+        ligand_by_index = L.benchmark_ligands()
+        member_by_pair = {
+            f"bench{item['index']:02d}_{item['gene']}_{item['e3']}": item
+            for item in P.BENCHMARK_CHAINS
+        }
+
+        queue_path = directory / "queue.jsonl"
+        written = 0
+        with queue_path.open("w") as queue:
+            for job in manifest["jobs"]:
+                pair = pair_by_id.get(job.pair_id)
+                row = rows.get(job.peptide_id)
+                if pair is None or row is None:
+                    continue
+                peptide = P.Peptide(**{k: v for k, v in row.items() if k != "length"})
+
+                # From the benchmark pair this one borrowed, so a
+                # SMILES-encoded degrader survives the round trip.
+                member = member_by_pair.get(pair.get("borrowed_from") or "")
+                ligand = ligand_by_index.get(member["index"]) if member else None
+                if ligand is None:
+                    ccd = (pair.get("ligand") or {}).get("ccd")
+                    ligand = L.by_ccd(ccd, modality="glue") if ccd else None
+
+                document = Y.build_yaml(job, peptide, ligand, None)
+                yaml_path = directory / "yaml" / f"{job.job_id}.yaml"
+                yaml_path.write_text(Y.to_yaml_text(document))
+
+                record = job.to_dict()
+                record["yaml"] = str(yaml_path)
+                record["pocket_residues"] = None
+                record["pocket_provenance"] = None
+                record["role"] = pair.get("role")
+                record["scramble_of"] = pair.get("scramble_of")
+                record["borrowed_from"] = pair.get("borrowed_from")
+                queue.write(json.dumps(record) + "\n")
+                written += 1
+
+        by_role: dict[str, int] = {}
+        for pair in manifest["pairs"]:
+            role = pair.get("role") or "unknown"
+            by_role[role] = by_role.get(role, 0) + 1
+
+        summary = {
+            "campaign_id": directory.name,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "pairs": len(manifest["pairs"]),
+            "pairs_by_role": by_role,
+            "jobs_emitted": written,
+            "jobs_per_pair": manifest["jobs_per_pair"],
+            "seeds": manifest["seeds"],
+            "receptors": manifest["receptors"],
+            "glue_degron_pairs": manifest["glue_degron_pairs"],
+            "excluded_genes": sorted(T.exclusions()),
+            "manifest_warnings": manifest["warnings"],
+            "unroutable": manifest["unroutable"],
+            "conditioned_jobs_dropped_no_pocket": 0,
+            "conditioning": "unconstrained only: a Tier B receptor has no "
+                            "deposited structure to derive a pocket from",
+            "tuning": paths.tuning()["campaign"],
+            "software": software.versions(),
+        }
+        (directory / "campaign.json").write_text(
+            json.dumps(summary, indent=2, default=str))
+        return {"path": str(directory), "reused": False, **summary}
+
+
 def assemble_campaign(reuse_latest: bool = True) -> dict:
     """Emit the main campaign: benchmark panel, Sievers arm and scrambles.
 
@@ -326,7 +443,7 @@ def assemble_campaign(reuse_latest: bool = True) -> dict:
             pocket = None
             if pdb_id and ccd:
                 pocket = Y.derive_pocket(
-                    C.CONSTRUCTS[construct_name], pdb_id, ccd,
+                    C.by_name(construct_name), pdb_id, ccd,
                     pair.get("e3_gene") or "",
                 )
             pocket_cache[key] = pocket

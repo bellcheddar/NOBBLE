@@ -53,13 +53,32 @@ def test_the_form_lists_a_candidate_for_every_tier_b_gene():
     )
 
 
-def test_an_empty_form_blocks_and_names_every_gene():
+def test_an_empty_form_blocks_and_names_every_gene(tmp_path, monkeypatch):
+    """The refusal, which is what the form does until someone fills it in.
+
+    This used to call `report()` against the real form and rely on it being
+    empty. It is not empty any more (D-NOB-072 filled it), so the test was
+    asserting a property of the repository rather than of the code, and it
+    failed the moment the gate it was written for was closed. Built as a
+    fixture now, like every other test in this file.
+    """
     from nobble.curate import tier_b_constructs as module
 
+    _form(tmp_path, "[constructs]\n", monkeypatch)
     report = module.report()
     assert report["assemblable"] is False
     assert len(report["genes_without_a_construct"]) == report["tier_b_genes"]
     assert "blocked" in report["status"]
+
+
+def test_the_real_form_is_filled_in():
+    """The other side of the test above, now that it is a fixture: the form
+    checked into the repository is the answered one."""
+    from nobble.curate import tier_b_constructs as module
+
+    report = module.report()
+    assert report["status"] == "ready", report["status"]
+    assert report["genes_without_a_construct"] == []
 
 
 def test_a_filled_entry_loads_as_a_construct(tmp_path, monkeypatch):

@@ -19,12 +19,22 @@ tumour_enrichment_above_median = true  # not applied
 construct_peptide_residues = 15
 construct_glue_heavy_atoms = 59
 # Shortest InterPro annotation listed as a candidate receptor construct.
-# Below this a domain is a motif rather than a fold that can present a
-# surface, and listing it adds an option nobody would take. The form's
-# header already stated 60, and `tools/tier_b_candidates.py` had it written
-# into the comparison, which is the inconsistency F181 is about repeated in
-# a tool written an hour later (F183).
-construct_min_residues = 60
+# The form's header already stated this, and `tools/tier_b_candidates.py`
+# had it written into the comparison, which is the inconsistency F181 is
+# about repeated in a tool written an hour later (F183).
+#
+# Was 60, on the reasoning that "below this a domain is a motif rather than
+# a fold that can present a surface, and listing it adds an option nobody
+# would take". SMURF2 falsified that. Its substrate recognition runs through
+# WW domains of about 40 residues, and at 60 the only things the shortlist
+# could offer for it were its HECT catalytic domain, its C2 membrane-binding
+# domain and the whole protein: three options nobody would take, and the one
+# anybody would take was filtered out. A short domain that is the documented
+# substrate interface is not a motif.
+#
+# 35 rather than 40, so a WW domain sits inside the floor rather than on it
+# (F210).
+construct_min_residues = 35
 take_top = 15
 min_ligases_for_gate = 10
 

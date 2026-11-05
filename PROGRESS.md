@@ -12,41 +12,47 @@ Rewritten after every phase and at least every 30 minutes during long compute.
 | 3 Scoring and validation | **complete** | Every component, the three validation layers and the composite weight fitter are built and running. The fitter and two of the three layers correctly report `not_computed` with their reasons until the Sievers arm supplies matched negatives |
 | 4 Application | **complete** | Seven tabs on the Depot system (the seventh is the design arm, DESIGN_ARM.md, which is an addition rather than part of the spec), Mol* wired, BINMAN-LM query head with a deterministic executor. Playwright: 14 captures at two viewports, 0 non-200, 0 console errors, 0 serious axe violations |
 
-## Gate G1 open: Tier B has no pairs
+## Gate G1 closed: Tier B is assembled and queued
 
-Spec 3.3 says "Tier B is in the first campaign (decision D-NOB-002). Do not
-defer it." The selection is frozen and correct. No Tier B pair exists in any
-campaign, and the phase-1 gate does not ask: it is worded about the manifest.
+Both halves of it. Spec 3.3 selected fifteen ligandable-unproven ligases and
+named no receptor construct for any of them, so the arm was selected,
+frozen, gate-passed and unrunnable.
 
-Measured, not estimated. A Tier B job is 274 tokens (200-residue receptor
-window, 59-heavy-atom glue at the recall set's median, 15-mer peptide), which
-at the campaign's measured 0.4825 s/token is 0.55 hours per pair at 15 jobs
-per pair. After automatic scope reduction to 6 jobs per pair (two arms rather
-than three, three seeds rather than five, which is the floor
-`config/thresholds.toml` sets for an interpretable Delta-ipTM) the smallest
-design that can answer a question about "any known glue chemotype" is 15
-ligases against 5 chemotypes, 75 pairs, 16.5 hours.
+**The constructs.** Marc named a substrate-binding domain for eleven and
+excluded four, on 2026-11-05, against the candidate evidence in
+`tools/tier_b_candidates.py` (D-NOB-072). The four are KCNC1 and KCND2,
+potassium channels that passed spec 3.3's druggability filters without
+having a substrate interface, RAG1, whose every ordered domain binds DNA,
+and RNF175, which annotates nothing but its RING and its membrane span.
+Eleven clears spec 3.3's `min_ligases_for_gate` of 10 by one, and
+`tier_b_constructs.report()` now checks that rather than assuming it.
 
-Budget: 22.9 hours spent, roughly 57 hours of tier-1 queue left,
-`max_compute_hours` 96. There is no room for 16.5 hours.
+**The compute.** Marc lifted `max_compute_hours` from 96 to 240: his own
+machine, free compute, and the figure was an arbitrary spec number. Changed
+in `tools/hwprobe.py` as well as `config/tuning.toml`, because the probe
+writes that file.
 
-Needs a decision, and the decision is not only about compute. Tier B cannot
-be assembled at all: spec 1.1 defines six receptor constructs, all for named
-Tier A ligases, and none of the fifteen Tier B genes has one. The two
-mechanical routes are both ruled out by decisions already taken, the longest
-annotated domain by F41 and the frozen `best_window` because it states which
-part of the model is confident rather than which part binds substrate.
+**The arm.** `campaigns/tier_b_20261105T202811Z`: the eleven receptors
+against the seven proven glue-degron pairs from the benchmark panel, each
+with that degron's composition-matched scramble. 154 pairs, 1,540 jobs, 10
+per pair over 5 seeds and two arms, 38.9 hours priced from the real
+construct and glue sizes. Preflight passes. Queued in `tools/run_chain.sh`
+as stage 4b, after the design scan.
 
-So any of the three ways out, a separate campaign, a larger budget or a GPU,
-still leaves Tier B unrunnable until someone names a substrate-binding domain
-for fifteen proteins. F163 records the candidate counts, 220 domains of 60
-residues or more across the fifteen, which of the top-ranked ones are ligase
-machinery rather than substrate interface, and the four that already exceed
-the 400-token tier-1 cap. Naming them should be a sitting down with that
-table rather than a research project.
+A pair holds a known-working glue and degron together and swaps only the
+receptor, so the benchmark panel is a matched positive control that costs no
+jobs, and the scramble is an internal negative (D-NOB-073). Conditioning
+does not apply: a Tier B receptor has no deposited structure, and the pocket
+in the pair it borrows from belongs to a different protein.
 
-Nothing is blocked on it meanwhile; the running campaign and every other
-phase continue.
+Every receptor sequence now has a cached MSA, fetched on 2026-11-05. Without
+them the arm would have run single-sequence against a panel predicted with
+MSAs, which is not a comparison.
+
+**What the arm can show.** Every pair is expected to fail: these ligases
+have no known glue. A hit is a hypothesis, and a uniform absence of hits is
+the likely result and still informative, because it says the chemotypes that
+work on CRBN and VHL do not transfer.
 
 ## Waiting on Marc
 

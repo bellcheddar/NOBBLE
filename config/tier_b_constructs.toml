@@ -12,9 +12,14 @@
 # and the frozen best_window because it says which part of the model is
 # confident rather than which part binds substrate.
 #
-# The candidates below are InterPro entries on each accession between 60
+# The candidates below are InterPro entries on each accession between 35
 # residues and 326, which is the tier-1 token cap of 400 less a 15-mer
-# peptide and a glue at the recall set's median of 59 heavy atoms. Member
+# peptide and a glue at the recall set's median of 59 heavy atoms.
+#
+# The floor was 60 until SMURF2 falsified the reasoning behind it: its
+# substrate recognition runs through WW domains of about 40 residues, so
+# at 60 the only things on offer were its HECT catalytic domain, its C2
+# membrane-binding domain and the whole protein (F210). Member
 # database duplicates of the same region are collapsed. A domain outside that
 # range is still allowed: set exception = true and say why, as spec 1.1 does
 # for VHL and DCAF15.
@@ -46,6 +51,12 @@
 #   note = ""
 
 [constructs]
+# The candidate listing below was generated at the old 60-residue floor and
+# is kept as the reference it was written to be. It is therefore missing the
+# sub-60 candidates the floor change admitted, SMURF2's WW domains among
+# them, which is how SMURF2's construct was chosen. For the current list,
+# including those, run tools/tier_b_candidates.py (F210).
+
 
 
 # DCAF8L1 (A6NGE4): 1 candidate(s) within the cap
@@ -136,3 +147,136 @@
 #   IPR058553    V(D)J recombination-activating protein 1, pr   521-594 (74 aa)
 #   IPR023336    RAG nonamer-binding domain                     390-460 (71 aa)
 #   IPR058555    V(D)J recombination-activating protein 1, Zn   728-790 (63 aa)
+
+# Named by Marc on 2026-11-05, one domain per gene, from the candidate
+# evidence in tools/tier_b_candidates.py. Each rationale is his reason and
+# not a derivation: see D-NOB-072 for the alternatives offered and declined.
+
+[constructs.ASB8_ANKYRIN]
+e3_gene = "ASB8"
+rationale = "Ankyrin repeats are the substrate-recognition fold in the ASB family; the only other annotation is the SOCS box, which is the Cul5-binding side"
+exception = false
+[[constructs.ASB8_ANKYRIN.segments]]
+accession = "Q9H765"
+label = "Ankyrin repeat-containing domain superfamily"
+interpro_entry = "IPR036770"
+
+[constructs.CCNF_CYCLIN_N]
+e3_gene = "CCNF"
+rationale = "The N-terminal cyclin lobe carries the substrate-recognition surface in cyclin-family receptors; the full 275-499 cyclin was offered and the narrower lobe chosen"
+exception = false
+[[constructs.CCNF_CYCLIN_N.segments]]
+accession = "P41002"
+label = "Cyclin, N-terminal"
+interpro_entry = "IPR006671"
+
+[constructs.DCAF8L1_WD40]
+e3_gene = "DCAF8L1"
+rationale = "WD40 beta-propellers are the substrate-binding fold in DCAF receptors, and this is the only annotated candidate on the accession"
+# Declared on 2026-11-05, on the same ground spec 1.1 declares VHL_VCB and
+# DCAF15_DDB1_DDA1: the domain is what it is and trimming it to fit would
+# trim the binding surface. 326 residues plus a 15-mer peptide leaves 59
+# tokens of headroom, which the median glue uses exactly and the largest
+# benchmark glue, the 759 VHL PROTAC at 69 heavy atoms, exceeds by 10. That
+# is 410 tokens against a cap of 400, affecting 10 of the arm's 1,540 jobs.
+# The jobs carry token_cap_declared_exception so the overrun is visible in
+# the data rather than only here (D-NOB-073).
+exception = true
+[[constructs.DCAF8L1_WD40.segments]]
+accession = "A6NGE4"
+label = "WD40-repeat-containing domain superfamily"
+interpro_entry = "IPR036322"
+note = "326 residues, exactly the cap with no headroom: a later change to the peptide length or the glue median would push this construct over"
+
+[constructs.FBXO11_BETA_HELIX]
+e3_gene = "FBXO11"
+rationale = "Chosen over the larger 523-826 pectin lyase fold because it is the most confident annotation on the accession and sits mostly inside the frozen best window, so the construct and the window agree about which part of the protein matters"
+exception = false
+[[constructs.FBXO11_BETA_HELIX.segments]]
+accession = "Q86XK2"
+label = "Right handed beta helix domain"
+interpro_entry = "IPR039448"
+occurrence = 0
+
+[constructs.FBXW4_WD40]
+e3_gene = "FBXW4"
+rationale = "The narrower WD40/YVTN propeller, chosen over the wider 153-399 superfamily annotation: higher confidence at half the token cost"
+exception = false
+[[constructs.FBXW4_WD40.segments]]
+accession = "P57775"
+label = "WD40/YVTN repeat-like-containing domain superfamily"
+interpro_entry = "IPR015943"
+occurrence = 0
+
+[constructs.KCTD4_C_TERMINAL]
+e3_gene = "KCTD4"
+rationale = "Every annotation on KCTD4 is a BTB/POZ variant. This is the C-terminal domain, the only part that is not the Cul3-binding tetramerisation fold"
+exception = false
+[[constructs.KCTD4_C_TERMINAL.segments]]
+accession = "Q8WVF5"
+label = "BTB/POZ domain-containing protein KCTD4, C-terminal"
+interpro_entry = "IPR045740"
+
+[constructs.NEURL2_NHR]
+e3_gene = "NEURL2"
+rationale = "The NHR/SPRY fold is the substrate-recognition domain in neuralized-family ligases; chosen over the five-residue-wider Neuralized annotation of the same fold"
+exception = false
+[[constructs.NEURL2_NHR.segments]]
+accession = "Q9BR09"
+label = "Neuralized-like protein 2/4, NHR, SPRY domain"
+interpro_entry = "IPR065487"
+
+[constructs.SMURF2_WW]
+e3_gene = "SMURF2"
+rationale = "SMURF2 grips PPxY motifs through its WW domains. The more confident of the two ordered ones; the third at 153-192 is modelled in disorder. A span covering both ordered WW domains and their linker was offered and the single domain chosen"
+exception = false
+[[constructs.SMURF2_WW.segments]]
+accession = "Q9HAU4"
+label = "WW domain superfamily"
+interpro_entry = "IPR036020"
+occurrence = 2
+note = "41 residues, the shortest construct in the set, which is why the candidate floor moved from 60 to 35 (F210)"
+
+[constructs.TRIM17_SPRY]
+e3_gene = "TRIM17"
+rationale = "B30.2/SPRY is what TRIM-family ligases use to grip substrates. Only 15 per cent of it sits in the frozen best window, so the window is not what chose it"
+exception = false
+[[constructs.TRIM17_SPRY.segments]]
+accession = "Q9Y577"
+label = "B30.2/SPRY domain"
+interpro_entry = "IPR001870"
+
+[constructs.TRIM55_SPRY]
+e3_gene = "TRIM55"
+rationale = "The FN3/SPRY-containing region, the only ordered non-RING candidate, and the best-aligned construct in the Tier B set at 95 per cent inside the frozen window"
+exception = false
+[[constructs.TRIM55_SPRY.segments]]
+accession = "Q9BYV6"
+label = "E3 ubiquitin-protein ligases and FN3/SPRY domain-containing"
+interpro_entry = "IPR050617"
+note = "the whole model is pLDDT 67.5, below the 80 the selection asked of the best window, though this range itself is 92.3"
+
+[constructs.TRIP12_WWE]
+e3_gene = "TRIP12"
+rationale = "WWE domains read peptide motifs and poly-ADP-ribose, so this is the more specific substrate-reader; the 292-residue Armadillo region was offered and declined at four times the token cost"
+exception = false
+[[constructs.TRIP12_WWE.segments]]
+accession = "Q14669"
+label = "WWE domain, subgroup"
+interpro_entry = "IPR018123"
+
+# Genes that cannot have a construct, with the reason. Not the same state as
+# "none was named": a reason is required, because otherwise this table is a
+# way to make the gate pass by deleting the genes that fail it.
+
+[exclusions.KCNC1]
+reason = "Kv3.1, a voltage-gated potassium channel rather than a ligase. It passed spec 3.3's filters on pocket druggability and best-window confidence, neither of which asks for a substrate interface, and its only ordered non-BTB domain is the ion transport domain, which binds potassium rather than a degron. Its BTB/T1 domain at 5-122 was offered as a Cul3-adaptor construct and declined"
+
+[exclusions.KCND2]
+reason = "Kv4.2, the same case as KCNC1 and excluded for the same reason. Its BTB/POZ domain at 41-140 was offered and declined"
+
+[exclusions.RAG1]
+reason = "The V(D)J recombinase. A genuine E3 that ubiquitinates histone H3, but every ordered domain it carries binds DNA or catalyses: the nonamer-binding domain, the RNase-H-like core, the zinc-binding regions. The importin-binding region is modelled in disorder at pLDDT 59. Its nonamer-binding domain was offered and declined, because what it recognises is DNA and a glue built against it would not be a degron result"
+
+[exclusions.RNF175]
+reason = "A transmembrane RING ligase. All eleven annotations are either the RING finger or the whole RNF121/RNF175 protein, so there is no annotated substrate interface to name. The whole protein at 15-328 was offered and declined, because any signal from it could not be attributed to substrate binding"

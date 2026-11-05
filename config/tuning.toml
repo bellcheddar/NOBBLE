@@ -18,9 +18,19 @@ KMP_DUPLICATE_LIB_OK = "TRUE"
 [campaign]
 token_cap_tier1 = 400
 token_cap_exceptions = ["VHL_VCB", "DCAF15_DDB1_DDA1"]
-max_compute_hours = 96
+# Lifted from 96 on 2026-11-05: Marc's own machine, free compute, and 96 was
+# an arbitrary spec figure. Changed in tools/hwprobe.py too, which writes this
+# file, or the next probe would quietly put 96 back (D-NOB-073).
+max_compute_hours = 240
 wall_clock_budget_hours = 48
 seeds = 5
+# Seeds per arm for the Tier B arm. Its own key rather than borrowing
+# design.minimum_seeds or scoring.collapse_minimum_seeds, both of which are
+# 3 and mean something else: one number serving two meanings is F181, and a
+# later change to either for its own reasons would silently change the depth
+# of this arm. Equal to `seeds` today, because Marc lifted the compute
+# ceiling and the arm runs at full depth (D-NOB-073).
+tier_b_seeds = 5
 # Longest one tier-1 job may run before it is killed. F20: the kill itself
 # used to be the problem, not the limit.
 job_timeout_seconds = 5400

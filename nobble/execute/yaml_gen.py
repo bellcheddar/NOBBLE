@@ -150,7 +150,7 @@ def peptide_modifications(peptide) -> list[dict]:
 
 def build_yaml(job, peptide, ligand, pocket: PocketConstraint | None) -> dict:
     """The YAML document for one job, as a plain dict."""
-    construct = C.CONSTRUCTS[job.construct]
+    construct = C.by_name(job.construct)
     sequences: list[dict] = []
 
     for chain_id, _accession, _start, _end in _segment_positions(construct):

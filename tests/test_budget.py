@@ -148,14 +148,23 @@ def test_a_token_total_projects_from_real_job_sizes(monkeypatch, tmp_path):
 
     The per-token rate transfers between campaigns; a representative job
     does not."""
+    from nobble import paths
     from nobble.curate.diversity import projected_hours
 
-    _with_throughput(monkeypatch, tmp_path, 0.4, 397)
+    # The rate is derived from the configured ceiling so that the old method
+    # overruns it and the token-aware one does not, which is the whole
+    # comparison. It was a literal 0.4 s/token, sized when
+    # max_compute_hours was 96; at 240 the old method no longer overran and
+    # this test asserted an open gate against a shut one (D-NOB-073).
+    jobs, representative, real_mean = 2370, 397, 166
+    ceiling = float(paths.tuning()["campaign"]["max_compute_hours"])
+    rate = ceiling * 3600.0 / (jobs * representative) * 1.5
+    _with_throughput(monkeypatch, tmp_path, rate, representative)
 
     # 2,370 jobs of a 397-token representative: the old method.
     without = projected_hours(158)
     # The same campaign's real tokens: 2,370 jobs averaging 166 tokens.
-    with_tokens = projected_hours(158, total_tokens=2370 * 166)
+    with_tokens = projected_hours(158, total_tokens=jobs * real_mean)
 
     assert without["projected_hours"] > with_tokens["projected_hours"] * 2
     assert without["gate_g1_open"] is True

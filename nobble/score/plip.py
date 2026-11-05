@@ -347,7 +347,7 @@ def fingerprint(job: dict, workdir: Path | None = None) -> Fingerprint:
         # the construct before comparison.
         from nobble.curate import constructs as C
 
-        construct = C.CONSTRUCTS[job["construct"]]
+        construct = C.by_name(job["construct"])
         start, _end = construct.segments[0].range()
         expected = []
         for residue in canonical["receptor_residues"]:

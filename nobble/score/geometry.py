@@ -140,7 +140,7 @@ def _atom_groups(structure_path: Path, construct_name: str):
     structure.setup_entities()
     structure.remove_hydrogens()
 
-    receptor_chain_ids = set("ABCDEFGH"[: len(C.CONSTRUCTS[construct_name].segments)])
+    receptor_chain_ids = set("ABCDEFGH"[: len(C.by_name(construct_name).segments)])
     receptor = AtomGroup(label="receptor")
     peptide = AtomGroup(label="peptide")
     ligand = AtomGroup(label="ligand")
@@ -279,7 +279,7 @@ def contact_map(job: dict) -> dict:
     structure.setup_entities()
     structure.remove_hydrogens()
 
-    construct = C.CONSTRUCTS.get(job.get("construct"))
+    construct = C.by_name_or_none(job.get("construct"))
     if construct is None:
         result["status"] = "unknown_construct"
         return result

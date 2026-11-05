@@ -57,7 +57,7 @@ def build_manifest(parent_id: str, generator: str = "alanine_scan",
         return {"status": f"parent {parent_id} is not routed in the main campaign",
                 "jobs": [], "pairs": []}
 
-    construct = C.CONSTRUCTS[parent_pair["construct"]]
+    construct = C.by_name(parent_pair["construct"])
     ligand_dict = parent_pair.get("ligand") or {}
     if ligand_dict.get("ccd"):
         ligand = L.by_ccd(ligand_dict["ccd"], modality=ligand_dict.get("modality", "glue"))
@@ -202,7 +202,7 @@ def assemble(parent_id: str, generator: str = "alanine_scan",
             pdb_id = IMID_POCKET_SOURCE.get(ccd)
         pocket = None
         if pdb_id and ccd:
-            pocket = Y.derive_pocket(C.CONSTRUCTS[first["construct"]], pdb_id, ccd,
+            pocket = Y.derive_pocket(C.by_name(first["construct"]), pdb_id, ccd,
                                      first["e3_gene"])
 
         queue_path = directory / "queue.jsonl"
