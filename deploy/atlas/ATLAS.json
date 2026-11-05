@@ -7,6 +7,7 @@
     "scores.jsonl": 7,
     "results.jsonl": 100,
     "benchmark.json": 7,
+    "crystals": 7,
     "about.json": 16,
     "design.json": 31,
     "recovery_vs_bridge.json": 7,
@@ -16,7 +17,7 @@
   "outstanding": [
     {
       "campaign": "campaign_20261104T004632Z",
-      "jobs_done": 695,
+      "jobs_done": 753,
       "jobs_total": 2360
     },
     {
@@ -29,7 +30,7 @@
   "jobs_total": 100,
   "pairs_total": 7,
   "structures": 100,
-  "bytes": 25755735,
+  "bytes": 30138188,
   "redacted_ligands": [
     "dBET57"
   ]

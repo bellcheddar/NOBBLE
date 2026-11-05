@@ -107,9 +107,19 @@ def test_the_route_count_in_the_prose_matches_what_deploy_checks():
     import re
 
     deploy = (ROOT / "deploy" / "deploy.sh").read_text()
-    match = re.search(r"^for path in ((?:/\S*\s*)+); do", deploy, re.MULTILINE)
+    # The loop is a literal list followed by `$EXTRA_PATHS`, which carries
+    # one URL per parameterised route built from the bundle being shipped
+    # (F196). The prose counts the fixed ones, because the dynamic ones
+    # depend on what the bundle holds, and the regex has to allow them or
+    # it reports that the loop is gone.
+    match = re.search(r"^for path in ((?:/\S*\s*)+)(\$EXTRA_PATHS\s*)?; do",
+                      deploy, re.MULTILINE)
     assert match, "deploy.sh no longer loops over a literal list of routes"
     checked = match.group(1).split()
+    assert match.group(2), (
+        "the loop no longer includes $EXTRA_PATHS, so no parameterised route "
+        "is verified and a 500 there would pass as /crystal/ did (F196)"
+    )
 
     words = {8: "eight", 9: "nine", 10: "ten", 11: "eleven", 12: "twelve"}
     expected = words.get(len(checked))

@@ -285,7 +285,7 @@
     ]
   },
   "software": {
-    "measured_at": "2026-11-05T00:21:50Z",
+    "measured_at": "2026-11-05T01:22:00Z",
     "boltz": "2.2.1",
     "torch": "2.10.0",
     "status": "ok",

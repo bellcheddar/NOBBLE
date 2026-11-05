@@ -322,17 +322,32 @@ def structure(job_id: str):
 @bp.route("/crystal/<pdb_id>.cif")
 def crystal(pdb_id: str):
     """Serve a deposited assembly from BINMAN's cache, for superposition."""
-    from flask import Response
+    import gzip
 
-    from nobble.curate import structures as structure_module
+    from flask import Response
 
     if not pdb_id.isalnum() or len(pdb_id) != 4:
         abort(404, description="not a PDB identifier")
-    path = structure_module.assembly_path(pdb_id)
-    if not path.exists():
-        abort(404, description=f"{pdb_id} is not in the assembly cache")
-    import gzip
 
+    # From the published bundle, never from BINMAN's cache. This imported
+    # `nobble.curate.structures`, which imports gemmi at module level, and
+    # the droplet's virtualenv holds flask and gunicorn: the route returned
+    # 500 there for every pair while passing every local check, and
+    # `pose.html` loads it to superpose a prediction on its crystal. Four
+    # sibling routes already import that stack only behind `if not
+    # precomputed`, and two of them carry comments saying why (F196).
+    campaign = data.campaign_dir()
+    path = (campaign / "crystals" / f"{pdb_id}.cif.gz") if campaign else None
+    if path is None or not path.exists():
+        abort(404, description=f"{pdb_id} is not in the published bundle")
+
+    # The stored gzip, when the client will take it: 6H0F is 965 KB
+    # compressed against the 4,127,262 bytes it expands to. A client that
+    # sends no Accept-Encoding gets it expanded, which is not hypothetical,
+    # since plain curl sends none and that is how the 500 was found.
+    if request.accept_encodings["gzip"]:
+        return Response(path.read_bytes(), mimetype="chemical/x-mmcif",
+                        headers={"Content-Encoding": "gzip"})
     with gzip.open(path, "rt", errors="replace") as handle:
         return Response(handle.read(), mimetype="chemical/x-mmcif")
 

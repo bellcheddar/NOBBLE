@@ -196,8 +196,56 @@ if ! curl -s -o /dev/null --max-time 10 "${PUBLIC_HOST}/healthz"; then
   PUBLIC_HOST="${PUBLIC_HOST/https:/http:}"
   echo "    (no TLS yet: verifying over http)"
 fi
+# A crystal URL as well, with its id read from the bundle being shipped.
+# The nine fixed routes below all answered 200 while /crystal/<id>.cif
+# returned 500 for every pair, because none of them is parameterised and
+# so none of them exercised that route (F196).
+# One URL per parameterised route, with the ids read from the bundle being
+# shipped. All four were unverified: /crystal/<id>.cif returned 500 for
+# every pair and the nine fixed paths below all answered 200, because none
+# of them is parameterised (F196). Checking only the one that was broken
+# would leave the other three in the same position.
+EXTRA_PATHS="$("${ATLAS_PY:-../BINMAN/.pixi/envs/default/bin/python}" - <<'IDS' 2>/dev/null
+import json, pathlib
+
+atlas = pathlib.Path("deploy/atlas")
+
+
+def rows(name):
+    path = atlas / name
+    if not path.exists():
+        return []
+    return [json.loads(line) for line in path.read_text().splitlines()
+            if line.strip()]
+
+
+paths = []
+crystals = json.loads((atlas / "benchmark.json").read_text()).get(
+    "crystal_by_pair") or {} if (atlas / "benchmark.json").exists() else {}
+ids = sorted({str(v) for v in crystals.values() if v})
+if ids:
+    paths.append(f"/crystal/{ids[0]}.cif")
+
+structured = next((r for r in rows("results.jsonl") if r.get("structure")), None)
+if structured:
+    paths.append(f"/structure/{structured['job_id']}.cif")
+
+scored = next((r for r in rows("scores.jsonl") if r.get("pair_id")), None)
+if scored:
+    paths.append(f"/api/pair/{scored['pair_id']}")
+    paths.append(f"/api/pair/{scored['pair_id']}/structures")
+
+print(" ".join(paths))
+IDS
+)"
+if [[ -z "$EXTRA_PATHS" ]]; then
+  echo "    (nothing in the bundle to build a parameterised URL from)"
+else
+  echo "    also checking: $EXTRA_PATHS"
+fi
+
 FAILED=0
-for path in /healthz / /campaign /pose /interactions /delta /benchmark /design /about; do
+for path in /healthz / /campaign /pose /interactions /delta /benchmark /design /about $EXTRA_PATHS; do
   code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "${PUBLIC_HOST}${path}") || code=000
   printf '    %-16s %s\n' "$path" "$code"
   [[ "$code" == "200" ]] || FAILED=1

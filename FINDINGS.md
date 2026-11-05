@@ -8927,3 +8927,87 @@ last line is not an echo", which is a proxy rather than the property. A
 multi-step script may end on an echo if every failure path has already
 exited, which is exactly what `tier2.sh` does. The assertion is now the thing
 itself: somewhere the script exits with a status it captured.
+
+## F196. The crystal overlay was dead in production, and five routes knew why
+
+`curl https://nobble.mdeller.com/crystal/6H0F.cif` returned 500. The pose
+page loads that URL into the viewer to superpose a prediction on its
+deposited structure, so the crystal overlay was broken on the live site for
+every benchmark pair, and had been since the app was first deployed.
+
+The cause is one line. `crystal()` began with `from nobble.curate import
+structures`, which imports gemmi at module level, and the droplet's
+virtualenv holds flask and gunicorn and nothing else.
+
+The project had already learned this twice and fixed it four times. Every
+other route that touches that stack imports it only behind `if not
+precomputed`, and two carry the reasoning in comments: "Importing
+nobble.curate here is what made this route 500 on the droplet while passing
+every local check", and "Two routes have already returned 500 in production
+by importing that stack unconditionally". Even the crystal *mapping* was
+moved to read from the atlas for this reason. The file serving was the one
+place the lesson was not applied, which is the same shape as F190 and F195:
+a rule held everywhere but one.
+
+It survived because of how it was checked. The deploy fetches nine routes
+and every one of them is a fixed path, so a parameterised URL was never
+requested; locally gemmi is installed, so every local check passed. The one
+observation that would have caught it is the one nobody made: ask the live
+site for a crystal.
+
+The assemblies are published into the bundle now, seven files and 4.2 MB,
+and the route serves them with no scientific import. It serves the stored
+gzip when the client accepts it, 988,048 bytes for 6H0F against the
+4,127,262 it expands to, and expands it otherwise, because a client that
+sends no `Accept-Encoding` is not hypothetical: plain curl sends none, which
+is how the 500 was found. The deploy now fetches a crystal URL with its id
+read from the bundle it is shipping, so the gap that hid this closes with it.
+
+Nothing restricted travels with the assemblies, checked rather than assumed.
+An assembly carries coordinates and no SMILES, InChI or chem_comp
+descriptor, and spec 2.1's restrictions name PROTAC-DB, UbiBrowser and
+BioLiP2 rather than the PDB, whose content the bundle already publishes.
+
+The verification that matters is not that the route returns 200 here. It is
+that it returns 200 with gemmi, duckdb, scipy and numpy made unimportable by
+a meta-path hook, which is the droplet as far as this route can tell. 200
+and 988,048 bytes.
+
+One completion, because fixing the instance is the mistake this session
+keeps recording. The deploy now builds a URL for every parameterised route
+rather than only the one that was broken: `/crystal/<id>.cif`,
+`/structure/<job>.cif`, `/api/pair/<id>` and `/api/pair/<id>/structures`,
+with the ids read from the bundle being shipped. Asked of production before
+deploying, the crystal route was the only one of the four that was failing,
+which is the reason to check all four rather than evidence that checking one
+would have done.
+
+Adding the parameterised URLs broke an existing test, which is the second
+half of the same point. `test_docs_match_reality` parses the deploy's route
+loop and holds PROGRESS, DECISIONS and `run_chain.sh` to the number it finds,
+because PROGRESS said eight for as long as the design arm existed and nothing
+read it. Putting `$EXTRA_PATHS` in the loop made the parse fail, so the test
+reported that the loop was gone. Its regex now allows the variable and
+asserts it is there, which is a stronger check than before: the prose counts
+the fixed routes, since the dynamic ones depend on what the bundle holds, and
+PROGRESS now says what the dynamic ones are. A documentation test catching a
+change to the thing it documents is the behaviour wanted, not a nuisance.
+
+Three mistakes of mine on the way, all found by running the thing.
+
+The publishing step was placed 58 lines before `benchmark.json` is written,
+so its guard was falsy and the step was skipped in silence: a step that does
+nothing and says nothing, which is the bug this session has spent its day
+finding in other people's code. It reads the document it is given now, and
+says so when the mapping is absent rather than skipping quietly.
+
+The import check matched the route's own new comment, which names the import
+it exists to forbid. That is the fifth check today to match prose rather than
+code and the second written in full knowledge of the trap, so the strip is no
+longer a remedy I apply after being bitten: any check on source text strips
+comments first, and this one asserts the strip worked.
+
+And one of the six tests passed before the fix existed, because it looped
+over a glob of a directory that did not exist. An assertion inside an empty
+loop, which is exactly what `tools/vacuous_tests.py` reports, found by
+running that sweep twenty minutes after writing the file. It skips now.

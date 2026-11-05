@@ -312,6 +312,42 @@ def main() -> int:
     (OUT / "benchmark.json").write_text(json.dumps(benchmark, indent=2, default=str))
     summary["files"]["benchmark.json"] = len(benchmark["members"])
 
+    # The deposited assemblies the benchmark page names, copied as the
+    # gzip they are already stored as. `/crystal/<id>.cif` served these by
+    # importing `nobble.curate.structures`, which imports gemmi, and the
+    # droplet has flask and gunicorn: the route returned 500 there for
+    # every pair while passing every local check, and the pose page loads
+    # it to superpose a prediction on its crystal (F196).
+    #
+    # Published rather than fetched at request time for the same reason the
+    # crystal *mapping* already is. Nothing restricted travels with them:
+    # an assembly carries coordinates and no SMILES or InChI, and spec
+    # 2.1's restrictions name PROTAC-DB, UbiBrowser and BioLiP2.
+    # Read from the document just written above, not from `summary`. The
+    # first version of this sat 58 lines earlier, before benchmark.json
+    # existed, so its guard was falsy and the whole step was skipped in
+    # silence: a step that does nothing and says nothing, which is the bug
+    # this session has been chasing in other people's code.
+    crystal_map = benchmark.get("crystal_by_pair") or {}
+    if not crystal_map:
+        print("  no crystal mapping in benchmark.json, so no assemblies "
+              "published and /crystal/<id>.cif will 404", file=sys.stderr)
+    else:
+        from nobble.curate import structures as _structures
+
+        (OUT / "crystals").mkdir(exist_ok=True)
+        published_crystals = 0
+        for pdb_id in sorted({str(v) for v in crystal_map.values() if v}):
+            source = _structures.assembly_path(pdb_id)
+            if source.exists():
+                shutil.copy(source, OUT / "crystals" / f"{pdb_id}.cif.gz")
+                published_crystals += 1
+            else:
+                print(f"  crystal {pdb_id} is not in the assembly cache, so "
+                      f"/crystal/{pdb_id}.cif will 404", file=sys.stderr)
+        summary["files"]["crystals"] = published_crystals
+
+
     about = {
         "sources": binman_store.available(),
         "unavailable": list(binman_store.UNAVAILABLE),
