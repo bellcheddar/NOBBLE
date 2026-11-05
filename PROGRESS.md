@@ -55,9 +55,9 @@ other phase continue.
 
 | Item | What is needed |
 |---|---|
-| **G1 Compute**: Tier B has no pairs | A decision: Tier B as a separate campaign, a larger `max_compute_hours`, or a GPU. Measured cost above |
+| **G1 Compute**: Tier B has no pairs | Two things, in order. First the fifteen receptor constructs, because Tier B cannot be assembled without them: `config/tier_b_constructs.toml` is the form and `PYTHONPATH=. python tools/tier_b_candidates.py` now prints each candidate's mean pLDDT and its overlap with the frozen best window, which rules some out on modelling grounds without choosing (F182). KCND2's IPR024587 sits at pLDDT 42 and RAG1's importin-binding region at 59, while CCNF's cyclin boxes run 94 to 97 against a whole-model 71.5. Then the compute decision: a separate campaign, a larger `max_compute_hours`, or a GPU. Measured cost above |
 | **G4 Publish**: the branch is ahead of `origin/main` | `git push origin main` was declined by the permission classifier. Run `git rev-list --count origin/main..HEAD` for the figure: it changes with every commit, so a number written here is wrong by the time it is committed, which is how F167's own fix failed its own test (F168). `origin/main` also still carries absolute project paths F128 removed, which a push does not clear from history; `git grep -c /Users/dellboy origin/main -- deploy/atlas` counts them |
-| **F132**: static assets uncompressed | `bash deploy/enable_gzip.sh`. A direct ssh to the live vhost is declined to me, so the script is written to be read first. 10.1 MB to a first visitor, of which molstar is 5.1 and plotly 4.45 |
+| **F132**: static assets and structures uncompressed | `bash deploy/enable_gzip.sh`. A direct ssh to the live vhost is declined to me, so the script is written to be read first. Measured against production: `molstar.js` serves 5,227,830 bytes and `plotly.min.js` 4,558,696, both with no `content-encoding` when gzip is offered. The pages themselves were never the problem, because nginx compresses `text/html` whatever `gzip_types` says, which is a claim F174 got wrong and F189 corrected. The script now also carries `chemical/x-mmcif`, the largest type it can compress: mmCIF compresses 3.5 times, so a pose download drops from 243 KB to 37 and the campaign-scale bundle from 265 MB to 75 |
 
 ## Phase 1 gates: all passing
 
