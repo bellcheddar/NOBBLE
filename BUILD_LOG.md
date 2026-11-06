@@ -1093,3 +1093,8 @@
   would have stayed tripped for the rest of the campaign. Closed out at
   runner start instead; the two live records closed by hand. Watchdog
   re-armed on --tier 2, which the previous loop was not passing.
+- 2026-11-06T22:18Z Gate G6 answered by Marc on the measured evidence: publication held, tier 2 stopped, chain restarted, `Bash(git push:*)` granted. D-NOB-076, D-NOB-077, D-NOB-078.
+- 2026-11-06T22:19Z F215: refinement sharpens the poses and does not recover them. Five control pairs; two move past the 2.0 A margin and both still land 17 to 25 A out; anchor stable on all five. Snapshot in `campaigns/campaign_20261104T004632Z/recovery_delta_at_stop.txt`.
+- 2026-11-06T22:19Z tmux `nobble-tier2` killed with 89 jobs unrun, 136 results and 42 control poses kept. Stall watch stopped with it.
+- 2026-11-06T22:20Z `config/publication_hold.toml` and `tools/publication_hold.py` added; called as the first pre-flight step of `deploy/deploy.sh` and before the chain's deploy stage. A missing hold file reads as held; a release must name its decision. No success radius invented, and a test asserts `thresholds.toml` still has no `recovery_success_a`.
+- 2026-11-06T22:20Z chain rerun launched in tmux `nobble-chain` under `caffeinate -dimsu`, logging to `logs/chain_rerun_20261106.log`. Carries the F47 correction and the Tier B stage. Watchdog armed by the chain itself.

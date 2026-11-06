@@ -2380,3 +2380,95 @@ nothing waits on, which is the drift `tools/wait_for_gpu.sh` documents and
 would have let a later chain run start a second campaign on the one MPS
 device. Relaunched under the name the list knows rather than adding a name to
 the list.
+
+## D-NOB-076
+
+**Publication is held, and the hold is enforced by the scripts that can
+publish.** Gate G6 was put to Marc with the fallback ladder exhausted and the
+tier-2 measurement in hand. He chose to hold publication: nothing goes to
+nobble.mdeller.com until pose recovery passes its positive control or the
+headline is re-scoped.
+
+What the refinement measured, over the five control pairs that finished before
+tier 2 was stopped:
+
+| pair | n | tier 1 | tier 2 | move |
+|---|---|---|---|---|
+| bench01_GSPT1_CRBN | 10 | 29.14 | 24.91 | -4.98 |
+| bench03_BRD4_CRBN | 5 | 20.40 | 17.40 | -2.70 |
+| bench04_IKZF1_CRBN | 10 | 5.35 | 4.96 | -0.39 |
+| bench05_CSNK1A1_CRBN | 10 | 12.21 | 12.27 | +0.03 |
+| bench07_CDK12_DDB1 | 7 | 44.92 | 44.66 | -0.25 |
+
+Two pairs move by more than the 2.0 Å `campaign_change_margin_a`, so
+refinement does something; both land 17 to 25 Å from the deposited peptide, so
+what it does is not recovery. The receptor anchor is stable on every pair,
+which is what makes the two tiers comparable at all and rules out the move
+being a change of frame.
+
+**Enforced, not recorded.** The decision is in `config/publication_hold.toml`
+and read by `tools/publication_hold.py`, called as the first pre-flight step
+of `deploy/deploy.sh` and again, for the log's benefit, before the chain's
+deploy stage. This is the point of the change rather than a detail of it: the
+chain's last line is `bash deploy/deploy.sh`, so a hold living only in this
+file would have been overruled by a script a few hours after Marc set it. A
+missing hold file reads as held, because a gate that opens when its own
+configuration is deleted is not a gate, and releasing it requires naming the
+authorising decision in `released_by`.
+
+**No success radius was invented.** Deciding this in code would have meant
+choosing a radius inside which a pose counts as recovered, and this project is
+not entitled to invent that number: there is no `recovery_success_a` in
+`thresholds.toml` and `tools/publication_hold.py` reads no threshold at all. A
+test asserts both. The refusal does print the live pose-recovery curve, read
+out of the campaign's own `validation.json` rather than copied into the
+config, so whoever releases the hold sees what is true then and not what was
+true when it was written.
+
+**Alternatives.** Publishing with the negative result stated plainly was
+offered, and so was publishing the ranking and the ROC with the pose views
+removed. Both were declined. The second would have hidden the evidence rather
+than reported it, which is worth recording as the weaker of the two.
+
+**Reversal.** Edit `config/publication_hold.toml`: `held = false` and a
+decision in `released_by`. Nothing else changes, and the standing G3 approval
+Marc gave in the same exchange then applies without a further question.
+
+## D-NOB-077
+
+**Tier 2 stopped with 89 jobs unrun, and the chain restarted in its place.**
+The two informative control pairs had already answered G6, so the remaining
+jobs would have spent roughly 13 h, most of it on `bench06_RBM39_DCAF15` at
+11.66 h, confirming a question that was no longer open.
+
+94 decile jobs and 42 control poses are untouched in `results_tier2.jsonl`,
+and the runner skips completed job ids, so the chain's own tier-2 stage
+resumes the same queue rather than restarting it. F214 closes out the job that
+was mid-flight when the session was killed, so it reads as abandoned and gets
+re-run rather than looking hung for the rest of the run.
+
+The chain is the D-NOB-069 rerun, carrying the F47 `rerun_pair.py
+bench02_BRD4_VHL` correction and the Tier B stage, neither of which the
+4 November process ever had. It runs in tmux `nobble-chain`, which is in
+`NOBBLE_GPU_SESSIONS`, under `caffeinate -dimsu`, logging to
+`logs/chain_rerun_20261106.log`, and arms its own watchdog for its length.
+
+**Alternatives.** Waiting for tier 2 to drain first was offered and declined,
+as was leaving the chain parked indefinitely.
+
+**Reversal.** The unrun tier-2 jobs are still in `queue_tier2.jsonl` and the
+chain reaches them at its third stage, so nothing needs reinstating.
+
+## D-NOB-078
+
+**Standing approvals Marc gave at the same gate.** `Bash(git push:*)` is now
+in `.claude/settings.local.json`, so the end-of-phase commits reach the remote
+without a per-push question: G4 is answered once rather than each time. He
+also re-confirmed G3, which applies the moment D-NOB-076 is released, and
+approved pruning superseded Boltz structure outputs instead of opening G5 if
+free space falls toward 50 GB. The outputs are regenerable from the queue,
+which is why they are the right thing to prune; `results*.jsonl`,
+`state*.jsonl` and the YAML inputs are not, and are not covered.
+
+Delivering figures to his other device unprompted was offered and declined, so
+figures stay described in the logs and in chat.

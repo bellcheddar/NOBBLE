@@ -30,6 +30,14 @@ KEY_PATH="${SSH_KEY/#\~/$HOME}"
 HOST="${DROPLET_SSH#*@}"
 
 echo "==> pre-flight"
+# Is the atlas allowed out at all? Asked first, because it is answered
+# locally and a held atlas should not open a connection to the droplet, let
+# alone rsync 265 MB to it. The chain ends by calling this script, so without
+# this check "hold publication" would have survived exactly as long as it
+# took the chain to reach its last line (G6, D-NOB-076).
+PYTHONPATH=. KMP_DUPLICATE_LIB_OK=TRUE \
+  "${ATLAS_PY:-../BINMAN/.pixi/envs/default/bin/python}" \
+  tools/publication_hold.py
 [[ -f "$KEY_PATH" ]] || { echo "deploy: no key at $KEY_PATH" >&2; exit 2; }
 ssh-keygen -F "$HOST" >/dev/null 2>&1 || {
   echo "deploy: no known_hosts entry for '$HOST'. Add it by copying the" >&2

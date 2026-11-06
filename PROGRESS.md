@@ -2,7 +2,7 @@
 
 Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-06T17:25:52Z.
 
-## Gate G6: the headline is not readable yet
+## Gate G6 answered: the headline is a negative result, and publication is held
 
 **The campaign is complete and unpublished.** 2,360 of 2,360 jobs, scored,
 both computable validation layers computed. The atlas build refused on
@@ -28,27 +28,49 @@ conditioning does nothing (14.95 A against 17.92 A median, under 0.5 A per
 pair on six of seven), and tier 2 could not test the question at all, because
 the decile held no pair with a deposited structure.
 
+### What the gate measured
+
+Marc chose, on 2026-11-06, to refine the seven benchmark pairs and read the
+answer off them. Five finished before tier 2 was stopped:
+
+```
+pair                         n    tier1    tier2     move  anchor
+bench01_GSPT1_CRBN          10    29.14    24.91    -4.98  stable
+bench03_BRD4_CRBN            5    20.40    17.40    -2.70  stable
+bench04_IKZF1_CRBN          10     5.35     4.96    -0.39  stable
+bench05_CSNK1A1_CRBN        10    12.21    12.27    +0.03  stable
+bench07_CDK12_DDB1           7    44.92    44.66    -0.25  stable
+```
+
+Two pairs move past the 2.0 A `campaign_change_margin_a` and both still land
+17 to 25 A from the deposited peptide; the receptor anchor is stable on all
+five, so the moves are moves and not a change of frame. **Refinement sharpens
+the poses and does not recover them** (F215). More compute is not the remedy.
+
+### What was decided
+
+**Publication is held** (D-NOB-076), and held by the scripts rather than by a
+note: `config/publication_hold.toml` is read by `tools/publication_hold.py` as
+the first pre-flight step of `deploy/deploy.sh` and again before the chain's
+deploy stage, because the chain's last line is a deploy. A missing hold file
+reads as held, and releasing it must name the authorising decision. No success
+radius was invented to decide it, and a test asserts none appears in
+`thresholds.toml`.
+
+Publishing with the failure stated plainly was offered and declined, as was
+publishing the ranking and ROC with the pose views stripped out.
+
 ### Running now
 
-Tier 2 in tmux `nobble-tier2`: 131 jobs, the seven recovery controls first
-(65 jobs, 18.80 h) then the 66 remaining decile jobs (7.42 h). Controls
-ordered cheapest first on each pair's own measured tier-1 cost, so six pairs
-report before bench06_RBM39_DCAF15, which is 11.66 h by itself.
+The D-NOB-069 chain rerun, in tmux `nobble-chain` under `caffeinate -dimsu`,
+logging to `logs/chain_rerun_20261106.log`. It carries the F47
+`bench02_BRD4_VHL` correction and the Tier B stage, neither of which the
+4 November process ever had, and it resumes the stopped tier-2 queue at its
+third stage. Its progress is not written here, because it changes as a
+consequence of the work and would be stale before the file was saved (F168):
+`bash tools/status.sh` reports it.
 
-Priced at the **measured** tier-2 factor of 4.62, median over the 94 decile
-jobs already refined. That retires the 120 to 902 h bound this file quoted for
-the full decile. 26.22 h against 170.34 h left, so G1 stays closed.
-
-### What decides the gate
-
-When the controls finish, pose recovery is recomputed on
-`results_tier2.jsonl` and compared against tier 1's 17.54 A median. If
-refinement recovers the poses, the campaign is re-read against a working
-control and the ROC becomes interpretable. If it does not, the null is a clean
-negative result and the project says so.
-
-The chain rerun waits until then. It would compete for the one MPS device,
-and publishing an atlas whose control has failed is the case G6 exists for.
+It ends by consulting the hold and leaving the atlas local.
 
 ## Phases
 
@@ -56,8 +78,8 @@ and publishing an atlas whose control has failed is the case G6 exists for.
 |---|---|---|
 | 0 Probe | **complete** | Apple M2 Ultra, 16 performance + 8 efficiency cores, 128 GB unified memory, 60 GPU cores, 535 GB free (`config/hardware.toml` records 507.0, which is that figure in gibibytes under a gigabyte name: the probe divided by 1024**3 while the G5 gate divides by 1e9, fixed in F179, and the file corrects itself at the next probe), MPS on torch 2.10.0. `config/hardware.toml` and `config/tuning.toml` written |
 | 1 Curation and manifest | **complete for selection, Tier B execution at Gate G1** | All phase-1 gates pass. Tier A 17, Tier B 15 (frozen, and not paired into any campaign: F134), 25,519-candidate library reduced to 158 selected (`reduction_ratio` 0.0062, and `diverse: 0`: the mandatory benchmark and Sievers members plus their scrambles cost 158 against a budget of 156, so this campaign is calibration only and three of spec 3.4's five peptide sources contribute nothing to it), 11 MSAs cached, manifest emitted with 0 errors |
-| 2 Execution | **main campaign complete, tier 2 in flight** | Benchmark queue finished 99/99, exit 0, zero failures across the whole run. The corrected-construct campaign started automatically in tmux `nobble-corrected`. The main campaign finished 2,360 of 2,360 in tmux `nobble-chain`: `campaigns/campaign_20261104T004632Z`, 158 pairs. Tier 2 now runs in tmux `nobble-tier2`, carrying the seven recovery controls ahead of the decile remainder (D-NOB-075). Its progress is not written here, because it changes as a consequence of the work and would be stale before the file was saved (F168): `bash tools/status.sh` reports it |
-| 3 Scoring and validation | **complete, and the pose-recovery control has failed (F212)** | Every component, the three validation layers and the composite weight fitter are built and running. The composite is now fitted and the matched-control ROC is computed. Pose recovery is computed and **fails**: 0 of 65 poses within 3 A, median 17.54 A, in verified-correct frames. Gate G6 is open on it |
+| 2 Execution | **main campaign complete, chain rerun in flight** | Benchmark queue finished 99/99, exit 0, zero failures across the whole run. The corrected-construct campaign started automatically in tmux `nobble-corrected`. The main campaign finished 2,360 of 2,360 in tmux `nobble-chain`: `campaigns/campaign_20261104T004632Z`, 158 pairs. Tier 2 ran in tmux `nobble-tier2` carrying the seven recovery controls ahead of the decile remainder (D-NOB-075) and was stopped with 89 jobs unrun once G6 was answered (D-NOB-077); 136 results are kept and the chain resumes the same queue. The D-NOB-069 chain rerun now runs in tmux `nobble-chain`, carrying the F47 correction and the Tier B stage. Its progress is not written here, because it changes as a consequence of the work and would be stale before the file was saved (F168): `bash tools/status.sh` reports it |
+| 3 Scoring and validation | **complete; the pose-recovery control has failed (F212) and refinement does not fix it (F215)** | Every component, the three validation layers and the composite weight fitter are built and running. The composite is now fitted and the matched-control ROC is computed. Pose recovery is computed and **fails**: 0 of 65 poses within 3 A, median 17.54 A, in verified-correct frames. Tier-2 refinement moves two of five measured pairs past the 2.0 A margin and neither closer than 17 A, so it sharpens the poses without recovering them (F215). Gate G6 is answered: publication is held (D-NOB-076) |
 | 4 Application | **complete** | Seven tabs on the Depot system (the seventh is the design arm, DESIGN_ARM.md, which is an addition rather than part of the spec), Mol* wired, BINMAN-LM query head with a deterministic executor. Playwright: 14 captures at two viewports, 0 non-200, 0 console errors, 0 serious axe violations |
 
 ## Gate G1 closed: Tier B is assembled and queued
@@ -104,13 +126,17 @@ work on CRBN and VHL do not transfer.
 
 ## Waiting on Marc
 
-Three items, none of them blocking anything else. The campaign and every
-other phase continue.
+Two items, neither blocking anything else, plus a third that is now
+answered and kept here for the record. The chain and every other phase
+continue.
+
+Publication itself is not waiting on Marc: he held it (D-NOB-076), and it
+stays held until pose recovery passes or the headline is re-scoped.
 
 | Item | What is needed |
 |---|---|
 | **G1 Compute**: Tier B has no pairs | Two things, in order. First the fifteen receptor constructs, because Tier B cannot be assembled without them: `config/tier_b_constructs.toml` is the form and `PYTHONPATH=. python tools/tier_b_candidates.py` now prints each candidate's mean pLDDT and its overlap with the frozen best window, which rules some out on modelling grounds without choosing (F182). KCND2's IPR024587 sits at pLDDT 42 and RAG1's importin-binding region at 59, while CCNF's cyclin boxes run 94 to 97 against a whole-model 71.5. Then the compute decision: a separate campaign, a larger `max_compute_hours`, or a GPU. Measured cost above |
-| **G4 Publish**: the branch is ahead of `origin/main` | `git push origin main` was declined by the permission classifier. Run `git rev-list --count origin/main..HEAD` for the figure: it changes with every commit, so a number written here is wrong by the time it is committed, which is how F167's own fix failed its own test (F168). `origin/main` also still carries absolute project paths F128 removed, which a push does not clear from history; `git grep -c /Users/dellboy origin/main -- deploy/atlas` counts them |
+| **G4 Publish**: answered | `Bash(git push:*)` is in `.claude/settings.local.json` as of 2026-11-06, so end-of-phase commits reach the remote without a per-push question (D-NOB-078). For what is still local, `git rev-list --count origin/main..HEAD`: the figure changes with every commit, so a number written here is wrong by the time it is committed, which is how F167's own fix failed its own test (F168). `origin/main` still carries the absolute project paths F128 removed, which a push does not clear from history; `git grep -c /Users/dellboy origin/main -- deploy/atlas` counts them |
 | **F132**: static assets and structures uncompressed | `bash deploy/enable_gzip.sh`. A direct ssh to the live vhost is declined to me, so the script is written to be read first. Measured against production: `molstar.js` serves 5,227,830 bytes and `plotly.min.js` 4,558,696, both with no `content-encoding` when gzip is offered. The pages themselves were never the problem, because nginx compresses `text/html` whatever `gzip_types` says, which is a claim F174 got wrong and F189 corrected. The script now also carries `chemical/x-mmcif`, the largest type it can compress: mmCIF compresses 3.5 times, so a pose download drops from 243 KB to 37 and the campaign-scale bundle from 265 MB to 75 |
 
 ## Phase 1 gates: all passing

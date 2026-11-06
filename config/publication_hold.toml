@@ -1,0 +1,20 @@
+# Whether the atlas may be published, and why not.
+#
+# This is not a threshold. Nothing here is compared against a measurement,
+# because the question "is pose recovery good enough to publish" has no
+# number attached to it that this project is entitled to invent: see
+# DECISIONS.md D-NOB-076 and the absence of a `recovery_success_a` in
+# thresholds.toml.
+#
+# It is a recorded human decision, read fresh by deploy/deploy.sh on every
+# attempt so that the decision is re-read against the current numbers rather
+# than remembered. Releasing the hold means editing this file and saying in
+# `released_by` which decision record authorises it.
+held = true
+decision = "D-NOB-076"
+reason = """Pose recovery fails its positive control on all seven benchmark \
+pairs, and tier-2 refinement does not fix it: no pose reaches 3 A of the \
+deposited peptide and the best pair sits at 5.0 A. Publishing an atlas whose \
+structure views imply recovered poses would misrepresent that, so the atlas \
+stays local until the control passes or the headline is re-scoped."""
+released_by = ""

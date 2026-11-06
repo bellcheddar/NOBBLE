@@ -239,8 +239,19 @@ fi
 # 200 and the fingerprint the droplet reports is the tree that was shipped:
 # every route answering 200 says the app works, not that it is this version
 # of the app (F140).
+# The hold is checked before the deploy rather than inside it, so that a held
+# atlas reads as a decision in the chain log and not as a deploy that broke.
+# deploy.sh checks it again as its first pre-flight step: this one is for the
+# reader, that one is the gate.
 say "deploying"
-bash deploy/deploy.sh || echo "deploy failed: the atlas is built locally, rerun deploy/deploy.sh" >&2
+if ! PYTHONPATH=. KMP_DUPLICATE_LIB_OK=TRUE "$SENV/bin/python" \
+     tools/publication_hold.py >/dev/null 2>&1; then
+  say "publication is held, so the atlas stays local"
+  PYTHONPATH=. KMP_DUPLICATE_LIB_OK=TRUE "$SENV/bin/python" \
+    tools/publication_hold.py || true
+else
+  bash deploy/deploy.sh || echo "deploy failed: the atlas is built locally, rerun deploy/deploy.sh" >&2
+fi
 
 # Score the predictions recorded before any of this ran. Mechanical, so
 # the verdict is the thresholds' rather than a reading of the numbers

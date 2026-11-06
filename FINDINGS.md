@@ -9888,3 +9888,49 @@ near the top of the file and `tier2.sh` is executing: bash reads a script
 incrementally and keeps a file offset, so inserting lines above the point it
 has reached is what left the 4 November chain running a script that no longer
 existed on disk. It waits until the refinement finishes.
+
+## F215. Refinement sharpens the poses and does not recover them
+
+Gate G6's last untested rung, measured rather than argued. Tier 2 refines with
+25 ternary samples against tier 1's 1, and the question was whether the
+benchmark pairs' poses move toward the deposited peptide when it does.
+
+Five of the seven control pairs refined before tier 2 was stopped:
+
+```
+pair                         n    tier1    tier2     move  anchor
+bench01_GSPT1_CRBN          10    29.14    24.91    -4.98  stable
+bench03_BRD4_CRBN            5    20.40    17.40    -2.70  stable
+bench04_IKZF1_CRBN          10     5.35     4.96    -0.39  stable
+bench05_CSNK1A1_CRBN        10    12.21    12.27    +0.03  stable
+bench07_CDK12_DDB1           7    44.92    44.66    -0.25  stable
+```
+
+Two pairs move by more than the 2.0 Å `campaign_change_margin_a`, so this is
+not a null result in the sense of nothing happening: `bench01` improves by
+5.0 Å and `bench03` by 2.7 Å. Both still sit 17 to 25 Å away. `bench05` does
+not move at all, and `bench07`, the worst pair at 44.9 Å, moves a quarter of
+an angstrom. The receptor anchor is stable on all five, so the two tiers are
+measured in the same frame and the moves are moves rather than a reframing.
+
+The reading: more sampling converges the model on its own answer, and its own
+answer is in the wrong place. That is a different failure from a noisy one,
+and it is the more useful of the two to know, because it says the remedy is
+not compute.
+
+Three things this result does not say, worth writing down because each was
+tempting:
+
+- It is not evidence that Boltz-2 cannot fold ternaries. It is evidence about
+  this pipeline's inputs and this receptor-frame comparison on seven pairs.
+- `bench04` crossing from 5.35 to 4.96 Å moves six poses inside the 5.0 Å
+  breakpoint. That is a breakpoint being straddled by four hundredths of an
+  angstrom, not a recovery, and `tools/recovery_delta.py` is ordered so the
+  sub-margin verdict is stated first and the crossing second.
+- Two pairs never refined (`bench02_BRD4_VHL`, `bench06_RBM39_DCAF15`), so
+  this is five of seven. `bench06` was the one pair where tier 1 was close
+  (6.09 Å) and it is the one most likely to change the picture. The chain's
+  tier-2 stage resumes the same queue and will reach both.
+
+What follows from it is D-NOB-076: publication held, and held by the scripts
+rather than by a note.
