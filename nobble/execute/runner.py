@@ -72,6 +72,53 @@ def boltz_environment() -> dict:
     return environment
 
 
+def abandoned_in_progress(state_path: Path) -> list[str]:
+    """Jobs whose last record still says `running`, from a process that is gone.
+
+    The state log is append-only, so a job killed between its `running` record
+    and its outcome leaves `running` as its last word forever. `completed`
+    does not mind: `running` is not terminal, so the job is re-run, which is
+    what F111's resume tests are about.
+
+    The watchdog does mind. It reads the same log to tell a working campaign
+    from a stopped one, and a stale `running` record is indistinguishable from
+    a job that has hung: it reported two such jobs as 30.9 and 38.9 minutes
+    overdue against 5.8 expected, while the GPU was working through an
+    unrelated job. So after any kill the detector is tripped for the rest of
+    the campaign, and `run_chain.sh` prints only when the verdict stops being
+    "ok", which makes every later real stall arrive inside noise that never
+    stops. That is F112 again, one layer down: a detector that cannot stop
+    firing is not a detector.
+
+    Closed out here rather than in the watchdog, because here is where it is
+    knowable. A new runner process means the previous one is gone, and the GPU
+    guard in `tools/wait_for_gpu.sh` allows one runner at a time. The watchdog
+    reading the same file cannot tell "killed" from "hung" without asking the
+    operating system about a process that has already exited.
+
+    Recorded as `abandoned` rather than `failed`: nothing was learned about
+    the job, and `failed` carries a reason this does not have. It is not
+    terminal either, so the job is still re-run.
+    """
+    last: dict[str, str] = {}
+    if not state_path.exists():
+        return []
+    for line in state_path.read_text().splitlines():
+        if not line.strip():
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            # A torn tail, which the append-only log tolerates by design.
+            continue
+        job_id = record.get("job_id")
+        status = record.get("status")
+        if job_id and status:
+            last[job_id] = status
+    return sorted(job_id for job_id, status in last.items()
+                  if status == "running")
+
+
 def completed(state_path: Path) -> dict[str, dict]:
     """Job identifiers already finished, from the append-only checkpoint log."""
     done: dict[str, dict] = {}
@@ -444,6 +491,23 @@ def run_campaign(campaign: Path, limit: int | None = None, tier: int = 1) -> dic
     # torn tail, and skipping it would run 2,359 of 2,360 jobs in silence
     # (F111).
     jobs = paths.read_jsonl(queue_path)
+
+    # Before anything is counted: close out whatever the last process left
+    # mid-flight, so the stall detector is not reading this run's history as
+    # this run's present.
+    stale = abandoned_in_progress(state_path)
+    if stale:
+        with state_path.open("a") as state:
+            for job_id in stale:
+                state.write(json.dumps({
+                    "job_id": job_id, "status": "abandoned",
+                    "abandoned_at": time.time(),
+                    "reason": "a previous runner exited while this job was "
+                              "running, so no outcome was recorded",
+                }) + "\n")
+        print(f"closed out {len(stale)} job(s) left running by a previous "
+              f"runner; they are re-run below", flush=True)
+
     done = completed(state_path)
     pending = [job for job in jobs if job["job_id"] not in done]
     if limit:

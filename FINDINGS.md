@@ -9831,3 +9831,60 @@ The general shape, worth keeping: when a test fails after an unrelated change,
 the first question is whether it is asserting about the code or about the
 machine it is running on. Four of the twelve failures on the ceiling lift were
 the second kind, and so are both of these.
+
+## F214
+
+**After any kill, the stall detector was tripped for the rest of the
+campaign.** It fired on two jobs nobody was running, and that is the state
+every one of this build's kills has left behind.
+
+`state.jsonl` is append-only, and a job killed between its `running` record
+and its outcome leaves `running` as its last word forever. The resume path is
+built for that and does not mind: `running` is not in `TERMINAL_STATUSES`, so
+the job is re-run, which is what F111's eight resume tests establish.
+
+The watchdog reads the same log for a different question, and for that question
+a stale record is a lie. Run against tier 2 while the refinement was working
+normally:
+
+```
+   overdue  bench01_GSPT1_CRBN__ternary__conditioned__seed1__tier2 30.9 min against 5.8 min expected
+   overdue  sv_pos_ZN582_ba3680__ternary__conditioned__seed5__tier2 38.9 min against 5.7 min expected
+exit=1
+```
+
+Both were jobs I killed by hand, half an hour earlier, when I stopped the
+stale chain and relaunched the refinement. The GPU was working through
+`bench04_IKZF1_CRBN__ternary__unconstrained__seed1`, which is neither of them.
+Nothing was overdue, nothing was wrong, and the detector could no longer say
+so.
+
+This matters because of how it is consumed. `run_chain.sh` arms the watchdog
+on a ten-minute loop and prints only when the verdict stops being "ok", which
+is the right design: the chain log carries a line only when there is something
+to see. A permanently non-zero verdict turns that into a line every ten
+minutes for days, and every later real stall arrives inside noise that never
+stops. It is F112 one layer down. F112 was a detector nothing consulted; this
+is a detector that cannot stop firing, and the two fail the same way.
+
+Fixed in the runner rather than in the watchdog, because the runner is where
+it is knowable. A new runner process means the previous one is gone, and
+`tools/wait_for_gpu.sh` allows one runner at a time, so every `running` record
+present at startup is stale by construction. The watchdog reading the same
+file cannot tell "killed" from "hung" without asking the operating system
+about a process that has already exited.
+
+`abandoned_in_progress` reads the last record per job and the runner appends
+an `abandoned` record for each before it counts anything. Not `failed`, which
+carries a reason this does not have, and not terminal, so the job is still
+re-run. Idempotent, so a restart does not append a second record for the same
+job and grow the log without bound. Eight tests, including the torn-tail case,
+which is exactly the line a kill writes.
+
+**Still to do, and deliberately not done now:** `tools/tier2.sh` does not arm
+a watchdog at all. Only `run_chain.sh` does, so a refinement started on its
+own has no stall detection, which is how this run began. The arming has to go
+near the top of the file and `tier2.sh` is executing: bash reads a script
+incrementally and keeps a file offset, so inserting lines above the point it
+has reached is what left the 4 November chain running a script that no longer
+existed on disk. It waits until the refinement finishes.

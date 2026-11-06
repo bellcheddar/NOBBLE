@@ -1089,3 +1089,7 @@
   stopped, tier 2 stopped at 94/160 and restarted carrying all seven
   recovery controls, cheapest first. 131 jobs, 26.22 h at the measured
   tier-2 factor of 4.62. Running in tmux nobble-tier2.
+- 2026-11-06T17:57:30Z F214: the stall detector was tripped by two jobs killed by hand, and
+  would have stayed tripped for the rest of the campaign. Closed out at
+  runner start instead; the two live records closed by hand. Watchdog
+  re-armed on --tier 2, which the previous loop was not passing.
