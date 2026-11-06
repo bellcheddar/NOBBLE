@@ -49,6 +49,11 @@ class Selection:
     # conditioning. Reported rather than dropped: one that would have topped
     # the decile is a finding (spec 4.7, F48).
     forced_excluded: list = field(default_factory=list)
+    # Pairs added to the refinement because they have a deposited structure,
+    # not because they ranked. Kept in their own list rather than appended to
+    # `selected` so that `pairs_selected`, `arms` and the decile reporting
+    # keep meaning "the top decile" (F212).
+    recovery_controls: list = field(default_factory=list)
     status: str = "pending"
     notes: list = field(default_factory=list)
 
@@ -164,6 +169,28 @@ def select_top_decile(campaign: Path, fraction: float | None = None) -> Selectio
     # it is the thing worth saying, and a decile made entirely of controls is
     # the strongest version of it: the first condition tried here fired on the
     # mixed case and stayed silent on that one.
+    selection.recovery_controls = recovery_controls_for(
+        rows, {item["pair_id"] for item in selection.selected}
+    )
+    if selection.recovery_controls:
+        selection.notes.append(
+            f"{len(selection.recovery_controls)} pair(s) with a deposited "
+            "structure added to the refinement as recovery controls, outside "
+            "the decile and outside pairs_selected: "
+            + ", ".join(item["pair_id"] for item in selection.recovery_controls)
+            + ". Without them a refinement produces no RMSD against ground "
+            "truth and cannot be told from a refinement that changed nothing"
+        )
+    else:
+        # Said rather than left to inference. An empty list here means the
+        # campaign holds no pair with a crystal, which is a property of the
+        # campaign worth reading off the selection.
+        selection.notes.append(
+            "no pair in this campaign has a deposited structure, so the "
+            "refinement carries no recovery control and its effect on pose "
+            "accuracy cannot be measured"
+        )
+
     controls = sum(count for arm, count in selection.arms.items()
                    if arm in CONTROL_ARMS)
     if controls:
@@ -175,6 +202,47 @@ def select_top_decile(campaign: Path, fraction: float | None = None) -> Selectio
             "refinement budget is shared and this is where it went"
         )
     return selection
+
+
+def recovery_controls_for(rows: list[dict], already: set[str]) -> list[dict]:
+    """Pairs with a deposited structure, which make the refinement measurable.
+
+    A refinement selected purely by rank can contain no pair with ground
+    truth, and this campaign's did: the top decile took sixteen pairs by
+    `nobble_score` and not one of them had a crystal to compare against. So
+    the one rung of the fallback ladder that might have rescued a failed
+    pose-recovery control could not be tested with the compute it was
+    already spending (F212).
+
+    Carried as controls rather than as candidates. They do not enter the
+    ranking, they are not counted in `pairs_selected`, and reduction never
+    drops them: a refinement that cannot be measured is not a cheaper
+    refinement, it is an unfalsifiable one.
+    """
+    # Imported here rather than at module scope: the table lives with the
+    # validation layer that consumes it, and that module pulls in gemmi
+    # through nobble.score.poses, which this module otherwise does not need.
+    from nobble.validate.layers import recovery_target
+
+    controls = []
+    for row in rows:
+        pair_id = row.get("pair_id")
+        if not pair_id or pair_id in already:
+            continue
+        target = recovery_target(pair_id)
+        if target is None:
+            continue
+        if any(item["pair_id"] == pair_id for item in controls):
+            continue
+        controls.append({
+            "pair_id": pair_id,
+            "role": "recovery_control",
+            "pdb_id": target["pdb_id"],
+            "e3_gene": row.get("e3_gene"),
+            "peptide_gene": row.get("peptide_gene"),
+            "tier": row.get("tier"),
+        })
+    return sorted(controls, key=lambda item: item["pair_id"])
 
 
 def tier1_worst_seconds(campaign: Path) -> dict[str, float]:
@@ -269,14 +337,38 @@ def build_tier2_queue(campaign: Path, selection: Selection) -> dict:
         return {"status": "no tier-1 queue to refine"}
 
     chosen = {item["pair_id"] for item in selection.selected}
+    control_ids = {item["pair_id"] for item in selection.recovery_controls}
+    wanted = chosen | control_ids
     jobs = paths.read_jsonl(source_queue)
+    # Needed by the ordering below as well as by the per-pair timeout.
+    worst = tier1_worst_seconds(campaign)
     refine = [
         job for job in jobs
-        if job["pair_id"] in chosen and job.get("complex_type") == "ternary"
+        if job["pair_id"] in wanted and job.get("complex_type") == "ternary"
     ]
+    # Controls first, and within the controls cheapest first. The runner
+    # walks the queue in order, and the question the controls answer ("does
+    # refinement move the poses towards the crystal") decides whether the
+    # decile is worth refining at all, so ordering it behind the decile would
+    # answer it last (F212).
+    #
+    # Cheapest first because the controls are a panel and the answer wanted
+    # from them is "on how many pairs does refinement help", which is served
+    # by breadth. On this campaign one control costs 11.66 h of the 18.80 h
+    # the panel costs in total, and running it in pair-id order would spend
+    # most of a day before the last two pairs reported. Sorted on each pair's
+    # own measured tier-1 cost, so the ordering is the measurement's rather
+    # than a guess at which construct is large.
+    pair_cost = {
+        pair_id: (worst.get(pair_id) if worst.get(pair_id) is not None
+                  else float("inf"))
+        for pair_id in wanted
+    }
+    refine.sort(key=lambda job: (job["pair_id"] not in control_ids,
+                                 pair_cost[job["pair_id"]],
+                                 job["pair_id"], job["job_id"]))
 
     settings = paths.tuning()["campaign"]
-    worst = tier1_worst_seconds(campaign)
     budgets = {}
 
     target = campaign / "queue_tier2.jsonl"
@@ -285,6 +377,9 @@ def build_tier2_queue(campaign: Path, selection: Selection) -> dict:
             record = dict(job)
             record["job_id"] = job["job_id"] + "__tier2"
             record["tier_setting"] = 2
+            record["tier2_role"] = (
+                "recovery_control" if job["pair_id"] in control_ids else "decile"
+            )
             # Sized from this pair's own measured tier-1 cost rather than
             # from a global cap, so the largest construct is not abandoned
             # on a factor guessed for the smallest (F100).
@@ -296,7 +391,15 @@ def build_tier2_queue(campaign: Path, selection: Selection) -> dict:
         "status": "built",
         "queue": str(target),
         "jobs": len(refine),
-        "pairs": sorted(chosen),
+        "pairs": sorted(wanted),
+        "decile_pairs": sorted(chosen),
+        "recovery_control_pairs": sorted(control_ids),
+        "jobs_by_role": {
+            "decile": sum(1 for job in refine
+                          if job["pair_id"] not in control_ids),
+            "recovery_control": sum(1 for job in refine
+                                    if job["pair_id"] in control_ids),
+        },
         "settings": {
             "recycles": settings["tier2_recycles"],
             "diffusion_samples": settings["tier2_diffusion_samples"],
@@ -350,7 +453,12 @@ def run(campaign: Path, fraction: float | None = None) -> dict:
     report = {"selection": selection.to_dict()}
     if selection.status == "selected":
         ranked = [item["pair_id"] for item in selection.selected]
-        affordable = budget.affordable_pairs(campaign, ranked)
+        control_ids = [item["pair_id"] for item in selection.recovery_controls]
+        # Controls at the front, because `affordable_pairs` drops from the
+        # back. Pricing the decile alone understated the cost by whatever the
+        # controls add, and reduction would otherwise have dropped the pairs
+        # the refinement is measured by before the pairs it is measuring.
+        affordable = budget.affordable_pairs(campaign, control_ids + ranked)
         report["budget"] = affordable
         if affordable.get("unpriceable"):
             # Not a gate: a refusal to spend an unknown amount. Distinct
@@ -372,6 +480,24 @@ def run(campaign: Path, fraction: float | None = None) -> dict:
             return report
         if affordable["dropped"]:
             keep = set(affordable["affordable"])
+            dropped_controls = [pair_id for pair_id in control_ids
+                                if pair_id not in keep]
+            if dropped_controls:
+                # Reduction reached past the decile and into the controls, so
+                # what is left cannot be measured. That is the minimum viable
+                # set being unaffordable, which is what G1 is defined against.
+                selection.status = "refused: gate G1"
+                selection.notes.append(
+                    "GATE G1 OPEN: reduction could not fit even the "
+                    f"{len(control_ids)} recovery control(s) "
+                    f"({', '.join(control_ids)}), so any refinement that fits "
+                    "produces no RMSD against a deposited structure. "
+                    + affordable["report"]["verdict"]
+                )
+                report["selection"] = selection.to_dict()
+                (campaign / "tier2.json").write_text(
+                    json.dumps(report, indent=2, default=str))
+                return report
             selection.selected = [item for item in selection.selected
                                   if item["pair_id"] in keep]
             selection.pairs_selected = len(selection.selected)

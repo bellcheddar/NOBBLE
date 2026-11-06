@@ -173,10 +173,17 @@ def test_the_queue_builder_writes_a_budget_for_every_job(tmp_path, monkeypatch):
         {"pair_id": "light", "status": "done", "seconds": 166.44},
     ]) + "\n")
 
-    class Selection:
-        selected = [{"pair_id": "heavy"}, {"pair_id": "light"}]
+    # The real dataclass, not a stub with the two fields this test happens to
+    # need. A stub drifts: when `build_tier2_queue` learned to read
+    # `recovery_controls` (F212) the stub did not have it, and this test failed
+    # on the double rather than on the behaviour it is about.
+    selection = tier2.Selection(
+        campaign=campaign.name, ranking_key="nobble_score", decile_fraction=0.1,
+        pairs_considered=2, pairs_selected=2,
+        selected=[{"pair_id": "heavy"}, {"pair_id": "light"}],
+    )
 
-    report = tier2.build_tier2_queue(campaign, Selection())
+    report = tier2.build_tier2_queue(campaign, selection)
     assert report["status"] == "built"
     queued = [json.loads(line) for line
               in (campaign / "queue_tier2.jsonl").read_text().splitlines() if line.strip()]

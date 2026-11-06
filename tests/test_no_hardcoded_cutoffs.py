@@ -536,6 +536,12 @@ INTEGER_ALLOWED = {
         "detects is disagreement rather than a quantity",
     "tools/readme_forge.py:len(argv) > 1":
         "argument parsing: whether a path was passed on the command line",
+    "tools/recovery_delta.py:report['median_move'] < 0":
+        "the sign of a move, which picks the word \"closer\" or \"further\" in "
+        "the sentence. Zero is not tunable: it is where towards the crystal "
+        "stops and away from it starts. Whether the move counts at all is "
+        "decided above this line against `campaign_change_margin_a` from "
+        "config, and the branch cannot be reached unless it already did",
     "tools/tier_b_candidates.py:length > 0":
         "a guard against dividing by zero when a candidate range is empty, "
         "which is arithmetic safety and not a judgement about length. The "

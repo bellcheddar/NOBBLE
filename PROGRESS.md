@@ -1,6 +1,54 @@
 # NOBBLE progress
 
-Rewritten after every phase and at least every 30 minutes during long compute.
+Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-06T17:25:52Z.
+
+## Gate G6: the headline is not readable yet
+
+**The campaign is complete and unpublished.** 2,360 of 2,360 jobs, scored,
+both computable validation layers computed. The atlas build refused on
+`bench02_BRD4_VHL`'s stale F47 hydroxyproline, exactly as designed, so
+nobble.mdeller.com still serves the 100-pair benchmark bundle and not the
+158-pair campaign. Nothing wrong has been published.
+
+**The matched-control ROC is a null**: AUC 0.4583, 95 per cent CI 0.3316 to
+0.5842, over 24 positives and 96 matched negatives from the Sievers screen,
+which the code itself reads as "not distinguishable from chance".
+
+**But the pose-recovery positive control has failed** (F212), so that null
+cannot be interpreted. 0 of 65 poses within 3 A, 1.5 per cent within 5 A,
+median 17.54 A. The measurement is sound and was checked before it was
+believed: receptor anchors superpose at 0.539 to 1.883 A over 424 to 1,240
+backbone atoms, and peptide sequence identity is 1.0 on all seven pairs. So
+the poses really are 5 to 44 A out, while ternary ipTM reads 0.887 to 0.933.
+A Delta-ipTM that fails to separate glue from matched control is
+indistinguishable from a Delta-ipTM computed over poses in the wrong place.
+
+Two rungs of the ladder are already read off structures on disk: pocket
+conditioning does nothing (14.95 A against 17.92 A median, under 0.5 A per
+pair on six of seven), and tier 2 could not test the question at all, because
+the decile held no pair with a deposited structure.
+
+### Running now
+
+Tier 2 in tmux `nobble-tier2`: 131 jobs, the seven recovery controls first
+(65 jobs, 18.80 h) then the 66 remaining decile jobs (7.42 h). Controls
+ordered cheapest first on each pair's own measured tier-1 cost, so six pairs
+report before bench06_RBM39_DCAF15, which is 11.66 h by itself.
+
+Priced at the **measured** tier-2 factor of 4.62, median over the 94 decile
+jobs already refined. That retires the 120 to 902 h bound this file quoted for
+the full decile. 26.22 h against 170.34 h left, so G1 stays closed.
+
+### What decides the gate
+
+When the controls finish, pose recovery is recomputed on
+`results_tier2.jsonl` and compared against tier 1's 17.54 A median. If
+refinement recovers the poses, the campaign is re-read against a working
+control and the ROC becomes interpretable. If it does not, the null is a clean
+negative result and the project says so.
+
+The chain rerun waits until then. It would compete for the one MPS device,
+and publishing an atlas whose control has failed is the case G6 exists for.
 
 ## Phases
 
@@ -8,8 +56,8 @@ Rewritten after every phase and at least every 30 minutes during long compute.
 |---|---|---|
 | 0 Probe | **complete** | Apple M2 Ultra, 16 performance + 8 efficiency cores, 128 GB unified memory, 60 GPU cores, 535 GB free (`config/hardware.toml` records 507.0, which is that figure in gibibytes under a gigabyte name: the probe divided by 1024**3 while the G5 gate divides by 1e9, fixed in F179, and the file corrects itself at the next probe), MPS on torch 2.10.0. `config/hardware.toml` and `config/tuning.toml` written |
 | 1 Curation and manifest | **complete for selection, Tier B execution at Gate G1** | All phase-1 gates pass. Tier A 17, Tier B 15 (frozen, and not paired into any campaign: F134), 25,519-candidate library reduced to 158 selected (`reduction_ratio` 0.0062, and `diverse: 0`: the mandatory benchmark and Sievers members plus their scrambles cost 158 against a budget of 156, so this campaign is calibration only and three of spec 3.4's five peptide sources contribute nothing to it), 11 MSAs cached, manifest emitted with 0 errors |
-| 2 Execution | **benchmark complete, main campaign in flight** | Benchmark queue finished 99/99, exit 0, zero failures across the whole run. The corrected-construct campaign started automatically in tmux `nobble-corrected`. The main campaign is running in tmux `nobble-chain`: `campaigns/campaign_20261104T004632Z`, 158 pairs, 2,360 jobs, 2,360 YAMLs. Its progress is not written here, because it changes as a consequence of the work and would be stale before the file was saved (F168): `bash tools/status.sh` reports it |
-| 3 Scoring and validation | **complete** | Every component, the three validation layers and the composite weight fitter are built and running. The fitter and two of the three layers correctly report `not_computed` with their reasons until the Sievers arm supplies matched negatives |
+| 2 Execution | **main campaign complete, tier 2 in flight** | Benchmark queue finished 99/99, exit 0, zero failures across the whole run. The corrected-construct campaign started automatically in tmux `nobble-corrected`. The main campaign finished 2,360 of 2,360 in tmux `nobble-chain`: `campaigns/campaign_20261104T004632Z`, 158 pairs. Tier 2 now runs in tmux `nobble-tier2`, carrying the seven recovery controls ahead of the decile remainder (D-NOB-075). Its progress is not written here, because it changes as a consequence of the work and would be stale before the file was saved (F168): `bash tools/status.sh` reports it |
+| 3 Scoring and validation | **complete, and the pose-recovery control has failed (F212)** | Every component, the three validation layers and the composite weight fitter are built and running. The composite is now fitted and the matched-control ROC is computed. Pose recovery is computed and **fails**: 0 of 65 poses within 3 A, median 17.54 A, in verified-correct frames. Gate G6 is open on it |
 | 4 Application | **complete** | Seven tabs on the Depot system (the seventh is the design arm, DESIGN_ARM.md, which is an addition rather than part of the spec), Mol* wired, BINMAN-LM query head with a deterministic executor. Playwright: 14 captures at two viewports, 0 non-200, 0 console errors, 0 serious axe violations |
 
 ## Gate G1 closed: Tier B is assembled and queued

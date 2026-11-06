@@ -1071,3 +1071,21 @@
 - 2026-11-05T20:28:11Z Tier B assembled: tier_b_20261105T202811Z, 154 pairs (77 positive, 77 scramble), 1,540 jobs, 10 per pair over 5 seeds and 2 arms, 11 receptors against the 7 proven glue-degron pairs from the benchmark panel. Preflight passes with 770 binary and 770 ternary layouts and no cofactor asymmetry. Every receptor chain carries a real cached MSA; msa: empty appears only on peptide chains, per spec 1.3. Queued in run_chain.sh as stage 4b, after the design scan. Design, ceiling lift and the DCAF8L1 cap exception are D-NOB-073.
 - 2026-11-05T20:31:00Z Marc lifted max_compute_hours from 96 to 240: his own machine, free compute, an arbitrary spec figure. Changed in tools/hwprobe.py as well as config/tuning.toml, because the probe writes that file and the next probe would have put 96 back. 48.69 h spent, 191.31 h remaining. Tier 2's full decile still does not fit on its upper bound of 902 h, correctly, because that is a month of wall-clock rather than a budget line.
 - 2026-11-05T20:33:40Z F211: three faults of mine in the new builder, all shapes this session already had names for. I returned "errors": 0 as a literal and it was false, hiding ten token_cap_exceeded errors that would have passed assemble_tier_b's refusal, which keys on that field: F193 and F195 exactly, written after reading both. The exception Marc then declared for DCAF8L1 did nothing, because validate() built its permitted set from the Tier A registry alone and tools/preflight.py held the same comprehension verbatim: F181 and F210 in one place, fixed with constructs.declared_exceptions(). And F210's own guard matched only subscript access, so it was blind to the two sites that iterated the registry with .items(); widened to iteration forms, it immediately caught a hand-rolled union of mine in msa.py that all_constructs() now covers.
+
+- 2026-11-06T17:13:20Z main campaign complete, 2360/2360. Scored; validation
+  computed pose_recovery and matched_control_roc; throughput remeasured at
+  median 0.4812 s/token, 156 affordable pairs.
+- 2026-11-06T17:13:20Z the atlas build refused: bench02_BRD4_VHL's YAMLs still
+  carry the F47 hydroxyproline. Nothing published, the benchmark atlas stands
+  on the droplet, and the live site is still the 100-pair bundle.
+- 2026-11-06T17:13:20Z the running chain is the Nov 4 01:00 script (pid 42970,
+  started 01:02:45), which predates both the F47 correction stage and the
+  Tier B stage. The corrections are in the file, not in the running process.
+- 2026-11-06T17:13:20Z F212: pose recovery failed, 0/65 within 3 A, median
+  17.54 A, with correct frames (0.54-1.88 A anchors) and identity 1.0, recorded in
+  validation.json detail all along.
+  Conditioning does not help; tier 2 holds no benchmark pair. Gate G6 open.
+- 2026-11-06T17:24:42Z Gate G6 answered: refine the benchmark panel first. Stale chain
+  stopped, tier 2 stopped at 94/160 and restarted carrying all seven
+  recovery controls, cheapest first. 131 jobs, 26.22 h at the measured
+  tier-2 factor of 4.62. Running in tmux nobble-tier2.

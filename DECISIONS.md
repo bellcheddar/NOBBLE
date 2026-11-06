@@ -2300,3 +2300,83 @@ nothing had tested it.
 `run_chain.sh`; nothing downstream reads Tier B. The ceiling goes back by
 setting `max_compute_hours` in both `config/tuning.toml` and
 `tools/hwprobe.py`.
+
+## D-NOB-074
+
+**Gate G6 opened rather than proceeding to publish.** The pose-recovery
+positive control fails on the benchmark panel (F212) and the matched-control
+ROC is a null (AUC 0.4583, CI 0.3316-0.5842). Publishing the full campaign now
+would put a chance-level result on the site while the control that makes it
+readable has failed, which is the case G6 was written for.
+
+The fallback ladder is not exhausted, which is why this is a question rather
+than a verdict. Pocket conditioning is exhausted and does nothing (14.95 A
+against 17.92 A median). Tier-2 refinement is untested on any pair with a
+deposited structure, because the top-decile selection chose 16 pairs by
+`nobble_score` and none is a benchmark pair.
+
+**Alternatives.** Proceed and publish with the failure flagged on the page;
+spend roughly 7 h of GPU refining the seven benchmark pairs to find out
+whether refinement recovers the poses; or treat the null as the result and
+stop. Deferred to Marc because it is a science call about what the project
+claims, not a build call.
+
+**Reversal.** Nothing is published and no inference has been discarded, so
+every option remains open. The refinement experiment is additive: it writes
+`results_tier2.jsonl` rows for the benchmark pairs and changes nothing already
+measured.
+
+**Not decided here:** whether to restart the chain onto the current script.
+That is a build call and is taken in D-NOB-075.
+
+## D-NOB-075
+
+**The stale chain stopped, and tier 2 restarted carrying the benchmark
+panel.** Marc chose, at Gate G6, to refine the seven pairs with deposited
+structures before anything else, and to stop the decile now rather than let
+its remaining 66 jobs finish first.
+
+Three things were wrong with the state this found.
+
+The chain running since 4 November at 01:02 was the script as it stood at
+01:00, which predates both the F47 correction stage and the Tier B stage added
+on the 5th. A bash script is read as it runs, so editing the file changed the
+next run and not that one. The F47 correction therefore never fired, the atlas
+build refused on the stale hydroxyproline exactly as designed, and nothing was
+published: the droplet is still serving the 100-pair benchmark bundle. Said
+here because "the correction is in the chain" was true of the file and false
+of the process, and I reported the file.
+
+Tier 2 could not measure itself (F212). The decile took 16 pairs by
+`nobble_score` and none had a crystal, so `select_top_decile` now always
+carries the pairs with a deposited structure as `recovery_controls`: outside
+the ranking, outside `pairs_selected`, priced into the budget, and never
+dropped by reduction. If reduction cannot fit even the controls, that is G1,
+because a refinement that cannot be measured is not a cheaper refinement.
+
+The controls run cheapest first, on each pair's own measured tier-1 cost. One
+of them, bench06_RBM39_DCAF15, is 11.66 h of the panel's 18.80 h, and in
+pair-id order it ran sixth of seven: the last two pairs would have reported
+most of a day after the rest for no gain, when the question is how many pairs
+refinement helps on.
+
+**Measured, replacing a bound.** The tier-2 factor is 4.62, median over the 94
+decile jobs already refined. That retires the 120 to 902 h range quoted for
+the full decile: the 131 jobs now queued price at 26.22 h, of which the
+controls are 18.80 h and the decile remainder 7.42 h, against 170.34 h left.
+
+**Alternatives.** Letting the decile finish first was offered and declined, as
+was publishing with the failure flagged and stopping inference altogether.
+
+**Reversal.** The 94 refined decile jobs are untouched in
+`results_tier2.jsonl` and `state_tier2.jsonl`, and the runner skips them, so
+nothing was discarded and the decile resumes behind the controls. Tier 1 is
+immutable by construction. Reverting the selection change restores the
+decile-only queue.
+
+**Note on the session name.** The refinement runs in tmux `nobble-tier2`,
+which is in `NOBBLE_GPU_SESSIONS`. It was launched as `tier2b` first, a name
+nothing waits on, which is the drift `tools/wait_for_gpu.sh` documents and
+would have let a later chain run start a second campaign on the one MPS
+device. Relaunched under the name the list knows rather than adding a name to
+the list.

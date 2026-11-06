@@ -9737,3 +9737,97 @@ manifest, the inert exception by rebuilding it after the form changed, the
 iteration blind spot by widening a regex and watching it fail. None of them
 would have been found by reading the code I had just written, which I had
 done.
+
+## F212
+
+The pose-recovery positive control has failed across the benchmark panel, and
+the failure is real rather than a mapping artefact.
+
+Sixty-five ternary poses over seven deposited complexes: 0 per cent within
+3 A, 1.5 per cent within 5 A, median 17.54 A. Per pair, the best RMSD over
+five seeds:
+
+| pair | PDB | best RMSD | median |
+|---|---|---|---|
+| bench04_IKZF1_CRBN | 6H0F | 4.99 | 5.36 |
+| bench06_RBM39_DCAF15 | 6Q0W | 5.46 | 6.00 |
+| bench05_CSNK1A1_CRBN | 5FQD | 11.81 | 12.18 |
+| bench02_BRD4_VHL | 5T35 | 14.44 | 17.92 |
+| bench03_BRD4_CRBN | 6BNB | 17.99 | 20.40 |
+| bench01_GSPT1_CRBN | 5HXB | 24.54 | 29.06 |
+| bench07_CDK12_DDB1 | 6TD3 | 44.28 | 44.40 |
+
+Three things establish that this is a measurement of the prediction and not of
+the frame, which is the distinction `recovery_against_crystal` was written to
+make and which nothing had read off the current campaign:
+
+- the receptor anchors superpose at 0.539 to 1.883 A over 424 to 1,240
+  backbone atoms, so the frame each peptide is judged in is correct
+- peptide sequence identity is 1.0 on all seven pairs, so the residues being
+  compared are the residues intended, not a window at the wrong offset
+- both numbers are recorded, not inferred: `validation.json` carries all 65
+  per-pose records under `layers.pose_recovery.detail`, each with its
+  `receptor_rmsd`, `receptor_anchor_atoms` and `peptide_identity`, and an
+  independent recomputation reproduces them. The failure was legible on disk
+  from the moment the campaign scored; nothing had read it
+
+And ipTM is high while the poses are wrong. Median ternary ipTM on the same
+seven pairs runs 0.887 to 0.933: the model is confident about interfaces it
+has placed 5 to 44 A from where they sit in the crystal. A confident wrong
+answer is worse for this project than a diffident one, because the headline
+statistic is a difference of ipTM minima and nothing in it can notice.
+
+Two rungs of the fallback ladder, read off structures already on disk:
+
+- **pocket conditioning does nothing.** Conditioned median 14.95 A against
+  unconstrained 17.92 A, and per pair the two arms differ by less than 0.5 A
+  on six of seven. The conditioned arm restrains the glue into the E3 pocket
+  and moves the degron by less than the width of a residue.
+- **tier 2 cannot test it.** The top-decile selection took 16 pairs by
+  `nobble_score` and none of them is a benchmark pair, so the refinement
+  running now produces no recovery measurement at all. The one rung that
+  might rescue the poses is being spent entirely on pairs with no ground
+  truth.
+
+This is what Gate G6 is for. The matched-control ROC reads AUC 0.4583, 95 per
+cent CI 0.3316 to 0.5842, "not distinguishable from chance", over 24 positives
+and 96 matched negatives from the Sievers screen. With the positive control
+failing, that null cannot be read: a Delta-ipTM that does not separate glue
+from control is indistinguishable from a Delta-ipTM computed over poses that
+are in the wrong place. The campaign has measured something; it has not yet
+established what.
+
+## F213
+
+Two tests broke on F212's change, and neither broke for the reason it looked
+like. Both are the same category: **a test that asserts something about the
+environment while reading as an assertion about the code.**
+
+`tests/test_refinement_budget.py` stood a four-line stub in for `Selection`,
+carrying only the field the test needed. When `build_tier2_queue` learned to
+read `recovery_controls`, the stub did not have it, so a test about per-pair
+timeout budgets failed with an `AttributeError` about a field it does not
+care about. The stub is gone: it now builds the real dataclass, which cannot
+drift from the thing it stands in for.
+
+`tests/test_provenance_report.py::test_the_disagreement_is_marked_when_they_differ`
+is the more interesting one, because it was not failing at all. Its second
+half restores the published `design.json` and asserts the disagreement marker
+goes away. That only demonstrates something when the published bundle and the
+ranking agree to begin with, and they do not: the ranking reads the finished
+campaign and chooses `sievers_dc66fdefdc` (ZN565), while the published bundle
+is the 3 November benchmark and says `benchmark_888fd2c63e`. They differ
+because the atlas build is refusing on the F47 stale inputs, so publication is
+blocked and the published bundle is necessarily older.
+
+So the test was reporting the publication backlog as a defect in the marker.
+It now names that precondition and skips on it, quoting the live provenance
+line, which makes the skip a statement about the state of the build rather
+than a silent pass. The marker itself is working: F89 was the case where these
+two values disagreed for the project's life with nothing printing both, and
+here it printed both and was believed.
+
+The general shape, worth keeping: when a test fails after an unrelated change,
+the first question is whether it is asserting about the code or about the
+machine it is running on. Four of the twelve failures on the ceiling lift were
+the second kind, and so are both of these.
