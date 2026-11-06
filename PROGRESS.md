@@ -5,10 +5,21 @@ Rewritten after every phase and at least every 30 minutes during long compute. L
 ## Gate G6 answered: the headline is a negative result, and publication is held
 
 **The campaign is complete and unpublished.** 2,360 of 2,360 jobs, scored,
-both computable validation layers computed. The atlas build refused on
-`bench02_BRD4_VHL`'s stale F47 hydroxyproline, exactly as designed, so
-nobble.mdeller.com still serves the 100-pair benchmark bundle and not the
-158-pair campaign. Nothing wrong has been published.
+both computable validation layers computed. The atlas build refused for two
+days on `bench02_BRD4_VHL`'s stale F47 hydroxyproline, exactly as designed.
+The correction has now run and the atlas builds; nobble.mdeller.com still
+serves the 100-pair benchmark bundle, now because publication is held
+(D-NOB-076) rather than because the build refuses.
+
+**The correction changed no number, and that is a result rather than an
+anticlimax.** All fifteen re-run jobs returned ipTM bit-identical to sixteen
+significant figures, which for a deterministic model means the
+`modifications` block never reached it: the YAML claimed a hydroxyproline the
+molecule never carried (F217). So the refusal was about provenance and not
+about wrong figures, which is the opposite of what this file implied for two
+days. The live consequence is elsewhere: a peptide needing a PTM would be
+folded as its unmodified parent, so an undeliverable PTM is now a manifest
+error. No pair in this campaign needs one.
 
 **The matched-control ROC is a null**: AUC 0.4583, 95 per cent CI 0.3316 to
 0.5842, over 24 positives and 96 matched negatives from the Sievers screen,

@@ -1,5 +1,5 @@
 {
-  "campaign": "benchmark_20261103T192126Z",
+  "campaign": "campaign_20261104T004632Z",
   "layers": {
     "pose_recovery": {
       "name": "pose_recovery",
@@ -14,7 +14,7 @@
           "within_3.0A": 0.0,
           "within_5.0A": 0.0154,
           "n": 65,
-          "median_rmsd": 17.14
+          "median_rmsd": 17.535
         },
         "by_pair": {
           "bench01_GSPT1_CRBN": {
@@ -33,16 +33,16 @@
           },
           "bench02_BRD4_VHL": {
             "n": 10,
-            "best_rmsd": 15.311,
-            "median_rmsd": 19.235,
-            "worst_rmsd": 26.814,
+            "best_rmsd": 14.443,
+            "median_rmsd": 18.478,
+            "worst_rmsd": 65.566,
             "curve": {
               "within_1.0A": 0.0,
               "within_2.0A": 0.0,
               "within_3.0A": 0.0,
               "within_5.0A": 0.0,
               "n": 10,
-              "median_rmsd": 19.235
+              "median_rmsd": 18.478
             }
           },
           "bench03_BRD4_CRBN": {
@@ -256,146 +256,6 @@
           "receptor_rmsd": 1.773,
           "peptide_predicted_sequence": "CLVDKKSGEKSKTRP",
           "peptide_deposited_sequence": "CLVDKKSGEKSKTRP",
-          "peptide_identity": 1.0,
-          "notes": []
-        },
-        {
-          "pair_id": "bench02_BRD4_VHL",
-          "pdb_id": "5T35",
-          "job_id": "bench02_BRD4_VHL__ternary__conditioned__seed1",
-          "seed": 1,
-          "rmsd": 18.958,
-          "atoms_compared": 60,
-          "receptor_anchor_atoms": 560,
-          "receptor_rmsd": 0.537,
-          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
-          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
-          "peptide_identity": 1.0,
-          "notes": []
-        },
-        {
-          "pair_id": "bench02_BRD4_VHL",
-          "pdb_id": "5T35",
-          "job_id": "bench02_BRD4_VHL__ternary__conditioned__seed2",
-          "seed": 2,
-          "rmsd": 17.993,
-          "atoms_compared": 60,
-          "receptor_anchor_atoms": 560,
-          "receptor_rmsd": 0.615,
-          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
-          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
-          "peptide_identity": 1.0,
-          "notes": []
-        },
-        {
-          "pair_id": "bench02_BRD4_VHL",
-          "pdb_id": "5T35",
-          "job_id": "bench02_BRD4_VHL__ternary__conditioned__seed3",
-          "seed": 3,
-          "rmsd": 23.684,
-          "atoms_compared": 60,
-          "receptor_anchor_atoms": 560,
-          "receptor_rmsd": 0.675,
-          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
-          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
-          "peptide_identity": 1.0,
-          "notes": []
-        },
-        {
-          "pair_id": "bench02_BRD4_VHL",
-          "pdb_id": "5T35",
-          "job_id": "bench02_BRD4_VHL__ternary__conditioned__seed4",
-          "seed": 4,
-          "rmsd": 23.4,
-          "atoms_compared": 60,
-          "receptor_anchor_atoms": 560,
-          "receptor_rmsd": 0.772,
-          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
-          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
-          "peptide_identity": 1.0,
-          "notes": []
-        },
-        {
-          "pair_id": "bench02_BRD4_VHL",
-          "pdb_id": "5T35",
-          "job_id": "bench02_BRD4_VHL__ternary__conditioned__seed5",
-          "seed": 5,
-          "rmsd": 19.235,
-          "atoms_compared": 60,
-          "receptor_anchor_atoms": 560,
-          "receptor_rmsd": 0.568,
-          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
-          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
-          "peptide_identity": 1.0,
-          "notes": []
-        },
-        {
-          "pair_id": "bench02_BRD4_VHL",
-          "pdb_id": "5T35",
-          "job_id": "bench02_BRD4_VHL__ternary__unconstrained__seed1",
-          "seed": 1,
-          "rmsd": 15.457,
-          "atoms_compared": 60,
-          "receptor_anchor_atoms": 560,
-          "receptor_rmsd": 0.486,
-          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
-          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
-          "peptide_identity": 1.0,
-          "notes": []
-        },
-        {
-          "pair_id": "bench02_BRD4_VHL",
-          "pdb_id": "5T35",
-          "job_id": "bench02_BRD4_VHL__ternary__unconstrained__seed2",
-          "seed": 2,
-          "rmsd": 17.14,
-          "atoms_compared": 60,
-          "receptor_anchor_atoms": 560,
-          "receptor_rmsd": 0.607,
-          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
-          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
-          "peptide_identity": 1.0,
-          "notes": []
-        },
-        {
-          "pair_id": "bench02_BRD4_VHL",
-          "pdb_id": "5T35",
-          "job_id": "bench02_BRD4_VHL__ternary__unconstrained__seed3",
-          "seed": 3,
-          "rmsd": 15.311,
-          "atoms_compared": 60,
-          "receptor_anchor_atoms": 560,
-          "receptor_rmsd": 0.684,
-          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
-          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
-          "peptide_identity": 1.0,
-          "notes": []
-        },
-        {
-          "pair_id": "bench02_BRD4_VHL",
-          "pdb_id": "5T35",
-          "job_id": "bench02_BRD4_VHL__ternary__unconstrained__seed4",
-          "seed": 4,
-          "rmsd": 23.329,
-          "atoms_compared": 60,
-          "receptor_anchor_atoms": 560,
-          "receptor_rmsd": 0.744,
-          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
-          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
-          "peptide_identity": 1.0,
-          "notes": []
-        },
-        {
-          "pair_id": "bench02_BRD4_VHL",
-          "pdb_id": "5T35",
-          "job_id": "bench02_BRD4_VHL__ternary__unconstrained__seed5",
-          "seed": 5,
-          "rmsd": 26.814,
-          "atoms_compared": 60,
-          "receptor_anchor_atoms": 560,
-          "receptor_rmsd": 0.642,
-          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
-          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
           "peptide_identity": 1.0,
           "notes": []
         },
@@ -1028,6 +888,146 @@
           "peptide_deposited_sequence": "FYLVFEYMDHDLMGL",
           "peptide_identity": 1.0,
           "notes": []
+        },
+        {
+          "pair_id": "bench02_BRD4_VHL",
+          "pdb_id": "5T35",
+          "job_id": "bench02_BRD4_VHL__ternary__conditioned__seed1",
+          "seed": 1,
+          "rmsd": 18.748,
+          "atoms_compared": 60,
+          "receptor_anchor_atoms": 560,
+          "receptor_rmsd": 0.539,
+          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
+          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
+          "peptide_identity": 1.0,
+          "notes": []
+        },
+        {
+          "pair_id": "bench02_BRD4_VHL",
+          "pdb_id": "5T35",
+          "job_id": "bench02_BRD4_VHL__ternary__conditioned__seed2",
+          "seed": 2,
+          "rmsd": 17.535,
+          "atoms_compared": 60,
+          "receptor_anchor_atoms": 560,
+          "receptor_rmsd": 0.699,
+          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
+          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
+          "peptide_identity": 1.0,
+          "notes": []
+        },
+        {
+          "pair_id": "bench02_BRD4_VHL",
+          "pdb_id": "5T35",
+          "job_id": "bench02_BRD4_VHL__ternary__conditioned__seed3",
+          "seed": 3,
+          "rmsd": 65.566,
+          "atoms_compared": 60,
+          "receptor_anchor_atoms": 560,
+          "receptor_rmsd": 0.637,
+          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
+          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
+          "peptide_identity": 1.0,
+          "notes": []
+        },
+        {
+          "pair_id": "bench02_BRD4_VHL",
+          "pdb_id": "5T35",
+          "job_id": "bench02_BRD4_VHL__ternary__conditioned__seed4",
+          "seed": 4,
+          "rmsd": 18.506,
+          "atoms_compared": 60,
+          "receptor_anchor_atoms": 560,
+          "receptor_rmsd": 0.861,
+          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
+          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
+          "peptide_identity": 1.0,
+          "notes": []
+        },
+        {
+          "pair_id": "bench02_BRD4_VHL",
+          "pdb_id": "5T35",
+          "job_id": "bench02_BRD4_VHL__ternary__conditioned__seed5",
+          "seed": 5,
+          "rmsd": 17.817,
+          "atoms_compared": 60,
+          "receptor_anchor_atoms": 560,
+          "receptor_rmsd": 0.634,
+          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
+          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
+          "peptide_identity": 1.0,
+          "notes": []
+        },
+        {
+          "pair_id": "bench02_BRD4_VHL",
+          "pdb_id": "5T35",
+          "job_id": "bench02_BRD4_VHL__ternary__unconstrained__seed1",
+          "seed": 1,
+          "rmsd": 18.665,
+          "atoms_compared": 60,
+          "receptor_anchor_atoms": 560,
+          "receptor_rmsd": 0.549,
+          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
+          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
+          "peptide_identity": 1.0,
+          "notes": []
+        },
+        {
+          "pair_id": "bench02_BRD4_VHL",
+          "pdb_id": "5T35",
+          "job_id": "bench02_BRD4_VHL__ternary__unconstrained__seed2",
+          "seed": 2,
+          "rmsd": 17.348,
+          "atoms_compared": 60,
+          "receptor_anchor_atoms": 560,
+          "receptor_rmsd": 0.691,
+          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
+          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
+          "peptide_identity": 1.0,
+          "notes": []
+        },
+        {
+          "pair_id": "bench02_BRD4_VHL",
+          "pdb_id": "5T35",
+          "job_id": "bench02_BRD4_VHL__ternary__unconstrained__seed3",
+          "seed": 3,
+          "rmsd": 14.443,
+          "atoms_compared": 60,
+          "receptor_anchor_atoms": 560,
+          "receptor_rmsd": 0.687,
+          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
+          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
+          "peptide_identity": 1.0,
+          "notes": []
+        },
+        {
+          "pair_id": "bench02_BRD4_VHL",
+          "pdb_id": "5T35",
+          "job_id": "bench02_BRD4_VHL__ternary__unconstrained__seed4",
+          "seed": 4,
+          "rmsd": 18.478,
+          "atoms_compared": 60,
+          "receptor_anchor_atoms": 560,
+          "receptor_rmsd": 0.866,
+          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
+          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
+          "peptide_identity": 1.0,
+          "notes": []
+        },
+        {
+          "pair_id": "bench02_BRD4_VHL",
+          "pdb_id": "5T35",
+          "job_id": "bench02_BRD4_VHL__ternary__unconstrained__seed5",
+          "seed": 5,
+          "rmsd": 17.924,
+          "atoms_compared": 60,
+          "receptor_anchor_atoms": 560,
+          "receptor_rmsd": 0.598,
+          "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
+          "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
+          "peptide_identity": 1.0,
+          "notes": []
         }
       ],
       "notes": [],
@@ -1041,7 +1041,7 @@
         "retrospective": {
           "label": "deposited before the cutoff: may be memorised",
           "n": 7,
-          "median_rmsd": 19.235,
+          "median_rmsd": 18.478,
           "members": [
             {
               "pair_id": "bench01_GSPT1_CRBN",
@@ -1053,7 +1053,7 @@
               "pair_id": "bench02_BRD4_VHL",
               "pdb_id": "5T35",
               "release_date": "2017-03-08",
-              "median_rmsd": 19.235
+              "median_rmsd": 18.478
             },
             {
               "pair_id": "bench03_BRD4_CRBN",
@@ -1103,37 +1103,52 @@
     },
     "matched_control_roc": {
       "name": "matched_control_roc",
-      "status": "not_computed: 0 positive(s) and 0 matched negative(s) scored. The Sievers arm runs after the benchmark panel; a curve drawn from benchmark pairs alone would have no matched negatives and spec 5 forbids reporting one",
+      "status": "computed",
       "summary": {
         "statistic": "delta_iptm",
-        "positives": 0,
-        "matched_negatives": 0,
-        "pairs_outside_the_arm_excluded": 7,
+        "positives": 24,
+        "matched_negatives": 96,
+        "pairs_outside_the_arm_excluded": 38,
         "non_finite_dropped": 0,
         "source": "Sievers zinc-finger screen: negatives assayed in the same screen",
         "seed_counts": {
           "positives": {
-            "ternary": {},
-            "binary": {}
+            "ternary": {
+              "10": 24
+            },
+            "binary": {
+              "5": 24
+            }
           },
           "negatives": {
-            "ternary": {},
-            "binary": {}
+            "ternary": {
+              "10": 96
+            },
+            "binary": {
+              "5": 96
+            }
           }
         },
-        "seed_balance": "not assessable: one or both groups have no scored pairs",
-        "secondary_graded_test": "not_computed: slabicki_graded_labels_unavailable. Spec 5.3 specifies a secondary continuous test against Slabicki's graded degradation labels. BINMAN cites the paper and did not acquire the per-compound data, so the split below is binary only"
+        "seed_balance": "balanced: every pair on both sides contributed 10 ternary and 5 binary seeds",
+        "secondary_graded_test": "not_computed: slabicki_graded_labels_unavailable. Spec 5.3 specifies a secondary continuous test against Slabicki's graded degradation labels. BINMAN cites the paper and did not acquire the per-compound data, so the split below is binary only",
+        "auc": 0.4583,
+        "ci95": [
+          0.3316,
+          0.5842
+        ],
+        "confidence_level": 95.0,
+        "interpretation": "not distinguishable from chance at 95 per cent confidence"
       },
       "detail": [],
       "notes": [],
-      "computed": false
+      "computed": true
     }
   },
   "computed": [
-    "pose_recovery"
+    "pose_recovery",
+    "matched_control_roc"
   ],
   "not_computed": {
-    "time_split": "not_computed: no benchmark deposition was released after the 2021-09-30 training cutoff, so this campaign has no blind set. The retrospective number stands alone and must not be read as prospective performance",
-    "matched_control_roc": "not_computed: 0 positive(s) and 0 matched negative(s) scored. The Sievers arm runs after the benchmark panel; a curve drawn from benchmark pairs alone would have no matched negatives and spec 5 forbids reporting one"
+    "time_split": "not_computed: no benchmark deposition was released after the 2021-09-30 training cutoff, so this campaign has no blind set. The retrospective number stands alone and must not be read as prospective performance"
   }
 }

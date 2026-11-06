@@ -93,6 +93,82 @@ def redact(value):
     return value
 
 
+# Sources whose chemistry may be published, each with the reason it may.
+#
+# An allow-list, where redact() has a deny-list, and that is the whole point
+# of it rather than a stylistic preference. redact() nulls a SMILES when
+# `source in REDACT_WHEN_SOURCE`, so a record arriving with its source spelled
+# `PROTAC-DB`, or blank, or as something nobody has thought of yet, is
+# published untouched. A verifier keyed on the same field could only confirm
+# redact() agreed with itself. Keyed the other way round, an unrecognised
+# source fails closed.
+PUBLISHABLE_SMILES_SOURCES = {
+    "deposited_ternary": "wwPDB CCD chemistry, read from a deposited structure",
+}
+
+_verification_scope = "not run"
+
+
+def _published_smiles(root: Path) -> list[tuple[str, str, str, str]]:
+    """Every published SMILES, as (file, trail, source, smiles).
+
+    `source` is read from the record that carries the SMILES, which is where
+    redact() reads it from too, so the two are deciding on the same field and
+    disagreeing about it is possible rather than ruled out by construction.
+    """
+    found: list[tuple[str, str, str, str]] = []
+
+    def walk(node, name: str, trail: str):
+        if isinstance(node, dict):
+            smiles = node.get("smiles")
+            if isinstance(smiles, str) and smiles.strip():
+                found.append((name, trail, str(node.get("source") or ""),
+                              smiles.strip()))
+            for key, value in node.items():
+                walk(value, name, f"{trail}.{key}")
+        elif isinstance(node, list):
+            for index, value in enumerate(node):
+                walk(value, name, f"{trail}[{index}]")
+
+    for path in sorted(root.rglob("*")):
+        if not path.is_file() or path.suffix not in (".json", ".jsonl"):
+            continue
+        text = path.read_text(errors="replace")
+        try:
+            if path.suffix == ".jsonl":
+                documents = [json.loads(line) for line in text.splitlines()
+                             if line.strip()]
+            else:
+                documents = [json.loads(text)]
+        except json.JSONDecodeError:
+            continue
+        for document in documents:
+            walk(document, path.name, "")
+    return found
+
+
+def unattributable_chemistry_in(root: Path) -> list[tuple[str, str, str, str]]:
+    """Published SMILES whose provenance is not one that may be redistributed.
+
+    Provenance is the test, not the molecule. A molecule can sit in PROTAC-DB
+    and in the PDB at once: CCD 759 is MZ1 and so is PROTAC-DB 335, and
+    publishing wwPDB's version of it redistributes wwPDB's data. Checking the
+    chemistry against PROTAC-DB's table instead flags every such molecule and
+    catches nothing that this does not, which is how the first version of
+    this check came to refuse a clean bundle (F218).
+    """
+    global _verification_scope
+    published = _published_smiles(root)
+    if not published:
+        _verification_scope = "no SMILES published at all"
+        return []
+    _verification_scope = (
+        f"{len(published)} published SMILES against "
+        f"{len(PUBLISHABLE_SMILES_SOURCES)} permitted source(s)")
+    return [row for row in published
+            if row[2] not in PUBLISHABLE_SMILES_SOURCES]
+
+
 def _project_relative(value: str) -> str:
     """An absolute path under the project root, made relative to it.
 
@@ -484,7 +560,35 @@ def main() -> int:
     (OUT / "ATLAS.json").write_text(json.dumps(summary, indent=2))
 
     print(json.dumps(summary, indent=2))
-    print(f"\nverified: no PROTAC-DB chemistry in the published bundle")
+
+    # Verified, now. This line used to be printed unconditionally, with
+    # nothing behind it: an f-string with no interpolation and no condition,
+    # claiming the project's one verbatim licensing guarantee every time the
+    # build reached the end. F72 fixed a redaction *count* that was always
+    # zero; this was the same shape one level up, and worse, because a count
+    # of zero at least invites the question (F218).
+    #
+    # The check deliberately does not read `source`. redact() keys on it, so
+    # a scan that also keys on it can only confirm redact() agreed with
+    # itself: a record arriving with the source spelled differently would be
+    # published by redact() and then pronounced clean by the verifier. This
+    # compares the chemistry itself against PROTAC-DB's own table, which is
+    # the only thing that cannot be got wrong by a spelling.
+    leaked = unattributable_chemistry_in(OUT)
+    if leaked:
+        print("\nREFUSED: the built bundle publishes chemistry whose "
+              "provenance is not one that may be redistributed (spec 2.1):",
+              file=sys.stderr)
+        for name, trail, source, smiles in leaked[:10]:
+            print(f"    {name}{trail}: source={source or '(none)'} "
+                  f"{smiles[:50]}", file=sys.stderr)
+        print(f"    {len(leaked)} record(s). Permitted sources: "
+              f"{sorted(PUBLISHABLE_SMILES_SOURCES)}. The bundle is on disk "
+              "and is not publishable; redact these or add the source with "
+              "its licensing reason.", file=sys.stderr)
+        return 1
+    print(f"\nverified: every published SMILES has a redistributable "
+          f"provenance ({_verification_scope})")
     return 0
 
 

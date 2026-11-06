@@ -9988,3 +9988,147 @@ could have been worse than the bug:
 Both verdicts, immediately after, on the same campaign: tier 2 names the
 killed job and exits 3; tier 1 reports ok and exits 0, because the chain's
 tier-1 runner genuinely is alive. That contrast is the whole fix.
+
+## F217. The hydroxyproline was never in the model, so correcting it changed nothing
+
+The F47 correction fired for the first time in the 6 November chain rerun:
+`tools/rerun_pair.py bench02_BRD4_VHL --apply` rewrote the pair's fifteen
+YAMLs, dropping
+
+```
+    modifications:
+    - position: 1
+      ccd: HYP
+```
+
+from chain P, the peptide, and the runner re-ran all fifteen jobs against the
+corrected input. 0 failed, exit 0.
+
+I went to read what had changed and found pose recovery for the pair
+unmoved: n 10, best 14.443 A, median 18.478 A, worst 65.566 A, the same three
+figures as before. The first explanation to reach for is stale data, and two
+checks I ran to test it were both wrong in the same way: I appended a literal
+`Z` to a local-time `stat` format and passed a local timestamp to
+`-newermt`, on a machine running UTC-5. Corrected, the structures are
+unambiguously fresh: fifteen `_model_0.cif` files written between 22:22 and
+22:55 Z, exactly the fifteen jobs, and `validation.json` rewritten after
+them.
+
+So the comparison had to be made properly, and `rerun_pair.py` had already
+preserved the means: it keeps a `.bak` of every jsonl row it drops. Before
+against after, all fifteen jobs:
+
+```
+bench02_BRD4_VHL__ternary__conditioned__seed1   0.9321987628936768   0.9321987628936768
+bench02_BRD4_VHL__ternary__unconstrained__seed2 0.9445106387138367   0.9445106387138367
+...
+```
+
+Bit-identical ipTM to sixteen significant figures on every one. Boltz with a
+fixed seed is deterministic, so identical output means an identical input
+tensor: **the `modifications` block never reached the model.** The YAML
+claimed a hydroxyproline for the whole campaign and the molecule folded was
+the unmodified peptide throughout.
+
+Two consequences, pulling in opposite directions.
+
+The campaign's numbers were never contaminated. The atlas build was right to
+refuse on the stale input and the refusal was about provenance, not about
+wrong figures, which is the opposite of what this file and PROGRESS.md had
+implied for two days. Nothing that was published or scored needs revisiting.
+
+The second is the one that matters. `nobble/execute/yaml_gen.py`'s
+`peptide_modifications` exists to express spec 2.3's PTM-requiring degron
+classes: SEP and TPO for phosphodegrons, HYP for the hydroxyproline degrons
+VHL recognises. If that block does nothing, then any such peptide is folded
+as its unmodified parent and scored as the degron. For a phosphodegron that
+is not a degraded answer, it is a different molecule.
+
+Scope, measured rather than assumed: zero of the 2,360 YAMLs in this
+campaign carry a `modifications` block now, and no row in any manifest
+carries a `required_modification`, so this campaign has no affected pair and
+no headline moves. It is latent, for the next campaign whose selection
+includes a real phosphodegron.
+
+Fixed where a PTM requirement is already taken seriously rather than at the
+four assembler call sites, which would have meant changing campaign
+composition while a chain was mid-run. `nobble/curate/manifest.py` has
+validated PTM completeness since spec 2.3: a requirement whose residue is
+absent is an error. The residue being present was treated as sufficient and
+is not, so the same check now also refuses a requirement that cannot be
+delivered, with the same severity. A campaign that would fold the parent and
+call it the degron does not assemble.
+
+`peptide_modifications` stays. Its rule is correct and will be needed by
+whatever eventually expresses this chemistry in a form the model reads:
+every eligible residue is modified, because a DSGxxS motif has two serines
+and phosphorylating one of them is not the degron. What was wrong was
+relying on its output, not deriving it.
+
+Still open, and needing a GPU to settle: whether Boltz wants the block
+somewhere else in its schema or drops it outright. Until that is known there
+is no supported way to fold a phosphodegron here, which is why the manifest
+now says so instead of proceeding.
+
+## F218. The licensing guarantee was announced, not checked
+
+`deploy/build_atlas.py` ended with:
+
+```python
+    print(f"\nverified: no PROTAC-DB chemistry in the published bundle")
+```
+
+An f-string with nothing to interpolate, no condition in front of it, and no
+scan of the bundle anywhere above it. It was printed every time the build
+reached its last line, whatever the bundle held. The sentence it printed is
+the project's one verbatim licensing constraint (spec 2.1: "PROTAC-DB stays
+internal-use-only and is never redistributed").
+
+Found while explaining why two tests had started failing, which is worth
+saying: the failing tests were not the defect, they were the only thing that
+had ever actually looked inside the bundle, and they were looking for the
+wrong thing.
+
+F72 is the same shape one level down: a redaction count initialised to 0 and
+incremented nowhere, so the bundle reported `redactions: 0` while containing
+a `smiles_withheld` field. This is worse than F72, because a count of zero at
+least invites the question and a sentence beginning "verified" closes it.
+
+**The check now behind it.** `redact()` keys on `source in
+REDACT_WHEN_SOURCE`, a deny-list, so a record arriving with its source
+spelled `PROTAC-DB`, or blank, or as something nobody has thought of yet, is
+published untouched. A verifier keyed on the same field and the same list
+could only confirm redact() agreed with itself. So the verifier is keyed the
+other way round: an allow-list of sources whose chemistry may be
+redistributed, each with the reason it may, and an unrecognised source fails
+closed. That asymmetry is the whole value of having a second opinion, and the
+tests prove it by feeding four spellings that the deny-list does not contain.
+
+**I got this wrong first, and the way it failed is worth recording.** The
+first version compared every published SMILES against PROTAC-DB's own table
+(15,502 records, as RDKit canonical SMILES), on the reasoning that provenance
+can be misspelled and chemistry cannot. It passed its own negative controls
+and then refused a real build of the benchmark campaign, naming PROTAC-DB
+compound 335 in `campaign.json`. The record was CCD 759, MZ1, sourced
+`deposited_ternary`: wwPDB's chemistry, read from a deposited structure.
+
+MZ1 is in the PDB and in PROTAC-DB at once, and publishing wwPDB's version
+redistributes wwPDB's data. `redact()` says exactly this in a comment written
+long before I arrived: "What makes a record unpublishable is where the
+chemistry came from, not how it happens to be written." I had read that
+comment, quoted the half of it that supported the check I was building, and
+missed that the other half ruled it out. A chemistry comparison flags every
+molecule that appears in both and catches nothing a provenance check does
+not: not a stronger test, a different and wrong one.
+
+What survived from the wrong version is the part that was actually a finding:
+that a verifier must not key on the same field as the thing it verifies.
+
+**What the live bundle holds.** No `smiles` field anywhere: the 158-pair
+campaign publishes its ligands by CCD code, so the guarantee holds by a
+stronger route than redaction, and `redactions: 0` is the true answer rather
+than a detection that stopped firing. The two tests that failed had encoded
+the 100-pair benchmark bundle's assumption that chemistry is published and
+therefore redacted. They now precondition on the bundle publishing a SMILES
+at all and skip with the live figure quoted, which keeps their guard against
+passing vacuously while not failing on a true state.

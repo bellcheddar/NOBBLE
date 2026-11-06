@@ -1,18 +1,38 @@
 {
-  "status": "not_fitted: 7 positive(s) and 0 negative(s) scored, below the floor of 8 labelled pairs. Spec 4.8 fits on the benchmark panel and the Sievers matched set; the Sievers arm runs after the panel. A composite fitted on fewer pairs than it has components would be fitting noise",
-  "weights": {},
-  "objective": null,
-  "labelled_pairs": 7,
-  "positives": 7,
-  "negatives": 0,
-  "components_used": [],
-  "caveats": [
-    "1 of 7 labelled pair(s) contributed a different number of seeds from the modal 5 binary, 10 ternary, so their delta_iptm is a difference of differently sized minima. Reported rather than refused: the ROC refuses on this and is scoped to the Sievers arm, where every pair matches, while the fit spans the panel too (spec 4.8)"
-  ],
-  "per_component_auc": {},
-  "seed_shapes": {
-    "5 binary, 10 ternary": 6,
-    "5 binary, 5 ternary": 1
+  "status": "fitted",
+  "weights": {
+    "bridge_percentile": 0.2857,
+    "delta_iptm": 0.0,
+    "convergence_score": 0.1429,
+    "plip_fingerprint_match": 0.2857,
+    "lysine_reach_exposed_fraction": 0.2857
   },
-  "fitted": false
+  "objective": 0.7173,
+  "labelled_pairs": 158,
+  "positives": 31,
+  "negatives": 127,
+  "components_used": [
+    "bridge_percentile",
+    "delta_iptm",
+    "convergence_score",
+    "plip_fingerprint_match",
+    "lysine_reach_exposed_fraction"
+  ],
+  "caveats": [
+    "2 of 158 labelled pair(s) contributed a different number of seeds from the modal 5 binary, 10 ternary, so their delta_iptm is a difference of differently sized minima. Reported rather than refused: the ROC refuses on this and is scoped to the Sievers arm, where every pair matches, while the fit spans the panel too (spec 4.8)",
+    "AUC 0.7173 is in-sample: the grid maximised it on the same 158 labelled pairs. It describes the fit, not performance on unseen pairs",
+    "lysine_reach_exposed_fraction carries weight 0.2857 despite having no validated discriminating power: BINMAN measured its reach window at or below chance (D-NOB-024). On this few pairs that weight is as likely to be noise as signal"
+  ],
+  "per_component_auc": {
+    "bridge_percentile": 0.5627,
+    "delta_iptm": 0.5236,
+    "convergence_score": 0.595,
+    "plip_fingerprint_match": 0.5513,
+    "lysine_reach_exposed_fraction": 0.5855
+  },
+  "seed_shapes": {
+    "5 binary, 10 ternary": 156,
+    "5 binary, 5 ternary": 2
+  },
+  "fitted": true
 }

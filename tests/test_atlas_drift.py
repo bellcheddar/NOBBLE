@@ -66,10 +66,32 @@ def published_copy(tmp_path, monkeypatch):
 
 
 
+def _requires_a_settled_campaign():
+    """Skip while a runner is still producing results.
+
+    The published bundle is a snapshot. A rebuild taken while tier 2 is
+    running reads two more results and two more structures than the snapshot
+    holds, and reports drift, which is true and says nothing about the code
+    being out of step with the bundle. Quoting the live difference in the
+    skip, so a skip is not mistaken for the check having passed.
+    """
+    from nobble.execute import watchdog
+
+    for tier in (1, 2):
+        if watchdog.runner_alive(tier) is True:
+            report = atlas_drift.drift()
+            pytest.skip(
+                f"a tier-{tier} runner is producing results, so the bundle "
+                "cannot be in step with a rebuild: "
+                f"{report['moved'][:3]}"
+            )
+
+
 def test_the_published_atlas_is_in_step():
     """The state that should hold after every deploy. A failure here means
     the bundle on the droplet predates a change to the code."""
     _requires_atlas()
+    _requires_a_settled_campaign()
     report = atlas_drift.drift()
     assert report["status"] == "in step", report["moved"][:3]
     assert report["compared"] > 1000, report["compared"]
@@ -79,6 +101,11 @@ def test_it_detects_the_drift_that_f96_was(published_copy):
     """The negative control, and the exact case: a caveat present in the
     code's output and absent from the published conclusion."""
     _requires_atlas()
+    # The control ends by asserting the atlas is back in step, which it
+    # cannot be while a runner is still adding results to the campaign the
+    # rebuild reads. Without this the control reports a restore failure for
+    # something it never perturbed.
+    _requires_a_settled_campaign()
     comparison = published_copy / "comparison.json"
     if not comparison.exists():
         pytest.skip("no comparison in the published atlas")

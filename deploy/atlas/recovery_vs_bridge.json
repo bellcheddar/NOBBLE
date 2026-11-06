@@ -14,11 +14,11 @@
       "pair_id": "bench02_BRD4_VHL",
       "gene": "BRD4",
       "e3": "VHL",
-      "bridge_rate": 0.4,
-      "bridging": "4/10",
-      "median_rmsd": 19.235,
-      "best_rmsd": 15.311,
-      "convergence": 0.0
+      "bridge_rate": 0.2,
+      "bridging": "2/10",
+      "median_rmsd": 18.478,
+      "best_rmsd": 14.443,
+      "convergence": 0.5343
     },
     {
       "pair_id": "bench03_BRD4_CRBN",
@@ -72,8 +72,8 @@
     }
   ],
   "n": 7,
-  "pearson_r": -0.932,
-  "pearson_p": 0.0022,
-  "spearman_rho": -0.927,
-  "spearman_p": 0.0027
+  "pearson_r": -0.865,
+  "pearson_p": 0.0119,
+  "spearman_rho": -0.852,
+  "spearman_p": 0.0148
 }

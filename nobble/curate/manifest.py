@@ -246,6 +246,29 @@ def validate(jobs: list[Job]) -> list[ValidationIssue]:
                     f"{requirement['residue']} but the peptide carries no such residue",
                     job.job_id, job.pair_id,
                 ))
+            # The residue being present is necessary and not sufficient. The
+            # `modifications` block that nobble/execute/yaml_gen.py writes to
+            # express the PTM does not reach the model: bench02_BRD4_VHL's
+            # fifteen jobs re-ran against a YAML with the block removed and
+            # returned ipTM bit-identical to sixteen significant figures,
+            # which for a deterministic model means the input tensor never
+            # differed (F217).
+            #
+            # So a peptide that needs a PTM is folded as its unmodified
+            # parent. For a phosphodegron that is not a degraded answer, it is
+            # a different molecule, and its ipTM would be reported as the
+            # degron's. An error rather than a warning for that reason: the
+            # pair has to be excluded or the chemistry expressed another way,
+            # and no campaign should assemble past this quietly.
+            issues.append(ValidationIssue(
+                "error", "ptm_not_deliverable",
+                f"degron class requires {requirement['note']}, and Boltz does "
+                "not apply the `modifications` block that would express it "
+                "(F217), so this peptide would be folded as its unmodified "
+                "parent and scored as the degron. Express the chemistry in "
+                "the sequence or as a CCD ligand, or exclude the pair",
+                job.job_id, job.pair_id,
+            ))
 
         # Ligand encoding (spec 2.2).
         if job.complex_type == "ternary":

@@ -161,8 +161,20 @@ def test_no_published_file_carries_a_restricted_source_as_a_row_list():
 
 def test_the_build_still_runs_its_own_redaction_check():
     """`build_atlas` prints a verification line at the end. Losing it would
-    leave only these tests, which run when someone runs them."""
+    leave only these tests, which run when someone runs them.
+
+    The line used to be pinned by its wording, which was the only thing
+    holding it in place while the sentence behind it was printed
+    unconditionally (F218). So this pins the property instead: a refusal
+    exists, and the claim comes after the check that decides it.
+    """
     source = (ROOT / "deploy" / "build_atlas.py").read_text()
     assert "REDACT_WHEN_SOURCE" in source
     assert "protacdb" in source
-    assert "no PROTAC-DB chemistry in the published bundle" in source
+    assert "PUBLISHABLE_SMILES_SOURCES" in source, (
+        "the build no longer allow-lists publishable provenance"
+    )
+    assert "REFUSED" in source, "the build cannot refuse a bundle"
+    check = source.index("leaked = unattributable_chemistry_in(OUT)")
+    claim = source.index("verified: every published SMILES")
+    assert check < claim
