@@ -9934,3 +9934,57 @@ tempting:
 
 What follows from it is D-NOB-076: publication held, and held by the scripts
 rather than by a note.
+
+## F216. The watchdog called a killed campaign healthy
+
+Found by reading the output of a change rather than by the change failing.
+Having armed a tier-2 watchdog inside `tools/tier2.sh`, I ran it once against
+the campaign whose tier 2 I had killed ten minutes earlier, and it said:
+
+```
+   ok       campaign_20261104T004632Z: 1 running, none overdue
+```
+
+There was no tier-2 runner on the machine. The one job it counted as running
+was the job that was mid-flight when I killed the tmux session.
+
+The watchdog's whole purpose, in its own docstring, is to tell a running
+campaign apart from a stopped one, and F20 named the ambiguity precisely:
+"the queue sat still for 3h45m while every check that asked 'is the process
+alive' answered yes." The watchdog answered that question better than the
+checks F20 broke on, by comparing elapsed time against the campaign's own
+completed work and against the bound the runner allows. What it never did was
+ask whether there was a runner at all. Both of its signals are about a job
+taking too long, and a job that is not running takes no time.
+
+So the state after a kill reported ok, and would have gone on reporting ok
+until the record aged past the hard bound, at which point it would have
+reported STALLED: a job to go and kill, which was already dead. Two wrong
+answers in sequence, the first of them the worse, because a watchdog answering
+ok is the only evidence that anything checked.
+
+`abandoned` is now a third state rather than a degree of the other two, asked
+before the timings, with exit code 3. The remedy is what separates them: a
+stalled job needs the runner killed, an abandoned one needs it started, which
+is also the moment F214's close-out fires and re-runs the job.
+
+Three things the implementation had to get right, each of which is a way this
+could have been worse than the bug:
+
+- **Liveness is read per tier.** `tools/tier2.sh` produces a live tier-2
+  runner alongside an idle tier 1 on every chain run, so a single "is a runner
+  alive" answer would let the busier tier mask the other. The tier is read off
+  the command line, and a runner with no `--tier` flag is tier 1, matching the
+  runner's own default.
+- **"I cannot tell" is not "nothing is running".** `pgrep` missing, or exiting
+  above 1, returns None, which is read the same way as alive. An alarm raised
+  because the probe broke would train whoever reads it to ignore the alarm.
+- **The default is not a probe.** `stall_report(..., alive=True)` keeps every
+  existing caller and test describing the state it means to describe; only
+  `main` probes the machine. A function whose answer depends on what else is
+  running on the computer is not testable, and the tests that matter here are
+  the ones that feed it the same record with and without a runner.
+
+Both verdicts, immediately after, on the same campaign: tier 2 names the
+killed job and exits 3; tier 1 reports ok and exits 0, because the chain's
+tier-1 runner genuinely is alive. That contrast is the whole fix.

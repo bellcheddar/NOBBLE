@@ -242,6 +242,7 @@ ALLOWED_DEFAULTS = {
     "run_campaign.tier": "names the sampling tier",
     "hard_bound_seconds.tier": "names the sampling tier",
     "stall_report.tier": "names the sampling tier",
+    "runner_alive.tier": "names the sampling tier",
     "aggregate.sampling_tier": "names the sampling tier",
     "score_campaign.sampling_tier": "names the sampling tier",
     # Procedure parameters: precision and reproducibility, not data cutoffs.

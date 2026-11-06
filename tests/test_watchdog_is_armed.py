@@ -80,18 +80,51 @@ def test_the_exit_code_is_what_the_loop_assumes():
     assert result.returncode in (0, 1, 2), (result.returncode, result.stderr[-300:])
 
 
-def test_the_watchdog_only_reads():
-    """It is armed unattended for days beside a running campaign, so it must
-    not be able to act on one. The only `kill` in it is in prose."""
+def _watchdog_code() -> str:
+    """watchdog.py with comments and docstrings stripped, so prose about
+    killing a job does not read as code that kills one."""
+    import re
+
     source = (ROOT / "nobble" / "execute" / "watchdog.py").read_text()
     code = "\n".join(
         line for line in source.splitlines()
         if not line.strip().startswith("#")
     )
-    # Strip docstrings crudely: everything between triple quotes.
+    return re.sub(r'""".*?"""', "", code, flags=re.S)
+
+
+def test_the_watchdog_only_reads():
+    """It is armed unattended for days beside a running campaign, so it must
+    not be able to act on one. The only `kill` in it is in prose."""
+    for forbidden in ("os.kill", "write_text", "unlink", "os.remove",
+                      ".kill(", "rmtree", "os.system"):
+        assert forbidden not in _watchdog_code(), forbidden
+
+
+def test_the_only_command_the_watchdog_runs_is_pgrep():
+    """`subprocess` was banned outright here until F216, which needed the
+    watchdog to ask whether a runner is on the machine at all.
+
+    The ban was a proxy for "cannot act", and a blanket proxy that has to be
+    lifted stops protecting anything. So this names the one command instead:
+    pgrep, which reads the process table and changes nothing. A
+    `subprocess.run(["rm", ...])` would have been caught by the old ban and
+    is caught by this.
+    """
     import re
 
-    code = re.sub(r'""".*?"""', "", code, flags=re.S)
-    for forbidden in ("os.kill", "subprocess", "write_text", "unlink",
-                      "os.remove", ".kill("):
-        assert forbidden not in code, forbidden
+    code = _watchdog_code()
+    assert "shell=True" not in code, "a shell can run anything"
+    for construct in ("subprocess.Popen", "subprocess.call",
+                      "subprocess.check_output", "subprocess.check_call"):
+        assert construct not in code, (
+            f"{construct}: the watchdog uses subprocess.run with a list argv"
+        )
+    calls = re.findall(r'subprocess\.run\(\s*\[\s*"([^"]+)"', code)
+    assert calls, "no subprocess.run with a literal argv found"
+    assert set(calls) == {"pgrep"}, calls
+    # Every invocation is a literal list, so none of them is built at runtime
+    # from anything a campaign directory could contain.
+    assert len(calls) == code.count("subprocess.run("), (
+        "a subprocess.run call does not open with a literal argv list"
+    )

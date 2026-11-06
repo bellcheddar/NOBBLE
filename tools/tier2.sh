@@ -35,7 +35,16 @@ echo "--- select the top decile"
 # covers a selection, a refusal with nothing rankable and an unpriceable
 # refusal alike, and only the first writes a queue (F193).
 SELECT_LOG="$(mktemp -t nobble_tier2_select)"
-trap 'rm -f "$SELECT_LOG"' EXIT
+# One EXIT trap for the whole script. A second `trap ... EXIT` added later
+# would silently replace this one rather than adding to it, so the watchdog
+# armed below registers its pid here instead of taking the trap over.
+WATCHDOG_PID=""
+nobble_tier2_cleanup() {
+  rm -f "$SELECT_LOG"
+  [ -n "$WATCHDOG_PID" ] && kill "$WATCHDOG_PID" 2>/dev/null
+  return 0
+}
+trap nobble_tier2_cleanup EXIT
 if [ -n "$CAMPAIGN" ]; then
   "$PY_SCI" -m nobble.execute.tier2 "$CAMPAIGN" 2>&1 | tee "$SELECT_LOG"
 else
@@ -65,6 +74,46 @@ fi
 echo "--- refining the queue this selection wrote: $QUEUE"
 
 echo "--- refine"
+# A stall detector armed on the wrong queue is not a detector (F112).
+#
+# run_chain.sh arms `nobble.execute.watchdog` with no --tier, so it watches
+# tier 1. By the time the chain reaches this script tier 1 is complete, and a
+# watchdog over a complete queue answers "ok" indefinitely: a tier-2 job that
+# hangs for the rest of the run would be watched by something that cannot see
+# it and reported as healthy. That reads exactly like a working detector,
+# which is what made F112 cost a night.
+#
+# So the tier-2 watch is armed here, where the tier is known, rather than in
+# the caller, where it is not. It composes either way: standalone this is the
+# only watch, and under the chain it runs alongside the chain's tier-1 one for
+# the length of the refinement only.
+#
+# Read-only, like the chain's: it compares recorded timings and prints. The
+# runner's own timeout is what stops a job. Keyed on the exit code the
+# watchdog already provides (0 ok, 1 a job running longer than the slowest
+# comparable one it has finished, 2 past the bound the runner allows), because
+# grepping the printed verdict would couple this to its spacing (F54).
+WATCHDOG_EVERY="${NOBBLE_WATCHDOG_SECONDS:-600}"
+tier2_watchdog_loop() {
+  local verdict code
+  while true; do
+    sleep "$WATCHDOG_EVERY"
+    if [ -n "$CAMPAIGN" ]; then
+      verdict="$("$PY_SCI" -m nobble.execute.watchdog --campaign "$CAMPAIGN" --tier 2 2>&1)"
+    else
+      verdict="$("$PY_SCI" -m nobble.execute.watchdog --tier 2 2>&1)"
+    fi
+    code=$?
+    if [ "$code" -ne 0 ]; then
+      echo "=== TIER 2 WATCHDOG exit $code $(date -u +%Y-%m-%dT%H:%M:%SZ) ==="
+      printf '%s\n' "$verdict"
+    fi
+  done
+}
+tier2_watchdog_loop &
+WATCHDOG_PID=$!
+echo "    tier-2 watchdog armed, every ${WATCHDOG_EVERY}s"
+
 export KMP_DUPLICATE_LIB_OK=TRUE
 if [ -n "$CAMPAIGN" ]; then
   caffeinate -dimsu "$PY_BOLTZ" -m nobble.execute.runner --campaign "$CAMPAIGN" --tier 2

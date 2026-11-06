@@ -17,10 +17,24 @@ a slow job is not a stalled one.
 legitimately spend more than its timeout, times its retries, plus the grace it
 allows a kill. A job still running past that bound is not slow: the runner has
 lost control of it, which is precisely the state F20 left behind.
+
+`abandoned` is the third state, and it is not a degree of the other two. A
+`running` record whose runner is no longer on the machine describes a job that
+is not running at all, and until the next runner starts and closes it out
+(F214) that record is the newest thing the state file says about it. Reported
+separately because the remedy is different: a stalled job needs the runner
+killed, an abandoned one needs the runner started. Both were "ok" here until
+F216, which is worse than either, since a watchdog answering ok is the only
+evidence anything checked.
+
+Exit codes, which the callers key on rather than grepping the printed verdict
+(F54): 0 ok, 1 overdue, 2 stalled, 3 abandoned.
 """
 from __future__ import annotations
 
 import json
+import re
+import subprocess
 import time
 from pathlib import Path
 
@@ -29,6 +43,42 @@ from nobble.numeric import finite
 from nobble.execute import runner
 
 TERMINAL = ("done",)
+
+# The runner's own module path, which appears in its command line however it
+# is wrapped: `caffeinate -dimsu <python> -m nobble.execute.runner --tier 2`
+# matches, and this module (nobble.execute.watchdog) does not.
+RUNNER_PATTERN = r"nobble\.execute\.runner"
+
+
+def runner_alive(tier: int = 1) -> bool | None:
+    """Is a runner for this tier on the machine? None if that is unknowable.
+
+    None rather than False when pgrep is missing or errors, because "I cannot
+    tell" and "nothing is running" must not collapse into the same answer: the
+    second one raises an alarm and the first one must not.
+
+    The tier is read off the command line. A tier-1 runner is one that carries
+    no `--tier` above 1, since the runner defaults to tier 1 when the flag is
+    absent, and a tier-2 refinement running while tier 1 sits abandoned is a
+    real state that `tools/tier2.sh` produces on every chain run.
+    """
+    try:
+        found = subprocess.run(["pgrep", "-fl", RUNNER_PATTERN],
+                               capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    # pgrep exits 1 for "no match", which is an answer, and anything above
+    # that is a failure to ask, which is not.
+    if found.returncode > 1:
+        return None
+    for line in found.stdout.splitlines():
+        if not re.search(RUNNER_PATTERN, line):
+            continue
+        flag = re.search(r"--tier\s+(\d+)", line)
+        found_tier = int(flag.group(1)) if flag else 1
+        if found_tier == tier:
+            return True
+    return False
 
 
 def _last_record_per_job(state_path: Path) -> dict[str, dict]:
@@ -76,8 +126,16 @@ def hard_bound_seconds(tier: int = 1) -> float:
     return settings["job_timeout_seconds"] * attempts + runner.KILL_GRACE_SECONDS + margin
 
 
-def stall_report(campaign: Path, tier: int = 1, now: float | None = None) -> dict:
-    """What is running in this campaign, and whether any of it has stopped."""
+def stall_report(campaign: Path, tier: int = 1, now: float | None = None,
+                 alive: bool | None = True) -> dict:
+    """What is running in this campaign, and whether any of it has stopped.
+
+    `alive` says whether a runner for this tier is on the machine. It defaults
+    to True rather than to a probe so that every existing caller and test
+    keeps describing the state it means to describe; `main` probes and passes
+    the answer in. None means it could not be determined, and is read the same
+    way as True: an unanswerable question must not raise an alarm.
+    """
     now = time.time() if now is None else now
     files = runner.tier_files(campaign, tier=tier)
     state = Path(files["state"])
@@ -88,6 +146,8 @@ def stall_report(campaign: Path, tier: int = 1, now: float | None = None) -> dic
         "running": [],
         "overdue": [],
         "stalled": [],
+        "abandoned": [],
+        "runner_alive": alive,
         "hard_bound_seconds": round(hard_bound_seconds(tier), 1),
     }
     records = _last_record_per_job(state)
@@ -133,7 +193,13 @@ def stall_report(campaign: Path, tier: int = 1, now: float | None = None) -> dic
         }
         report["running"].append(entry)
 
-        if elapsed > bound:
+        # Asked before the timings, because how long an abandoned job has
+        # been "running" is not a fact about the job: it is the age of a
+        # record nobody closed. Calling such a job stalled would send whoever
+        # read it looking for a runner to kill.
+        if alive is False:
+            report["abandoned"].append(entry)
+        elif elapsed > bound:
             entry = dict(entry, bound_seconds=round(bound, 1))
             report["stalled"].append(entry)
         elif typical_rate is not None and tokens.get(job_id):
@@ -159,12 +225,22 @@ def main(argv: list[str] | None = None) -> int:
         else [Path(p) for p in sorted(glob.glob("campaigns/*"))]
     )
     worst = 0
+    # Asked once, outside the loop: it is a fact about the machine, not about
+    # a campaign, and probing per campaign would answer the same question
+    # once per directory in campaigns/.
+    alive = runner_alive(args.tier)
     for campaign in targets:
         if not (campaign / "queue.jsonl").exists():
             continue
-        report = stall_report(campaign, tier=args.tier)
+        report = stall_report(campaign, tier=args.tier, alive=alive)
         if not report["running"]:
             continue
+        for job in report["abandoned"]:
+            print(f"   ABANDONED {campaign.name} {job['job_id']}: the state "
+                  f"file says running and no tier-{args.tier} runner is on "
+                  f"this machine. Start the runner; it closes the record out "
+                  f"and re-runs the job.")
+            worst = max(worst, 3)
         for job in report["stalled"]:
             print(f"   STALLED  {campaign.name} {job['job_id']} "
                   f"{job['elapsed_seconds'] / 3600:.2f} h, past the "
@@ -175,7 +251,8 @@ def main(argv: list[str] | None = None) -> int:
                   f"{job['elapsed_seconds'] / 60:.1f} min against "
                   f"{job['expected_seconds'] / 60:.1f} min expected")
             worst = max(worst, 1)
-        if not report["stalled"] and not report["overdue"]:
+        if not report["stalled"] and not report["overdue"] \
+                and not report["abandoned"]:
             print(f"   ok       {campaign.name}: "
                   f"{len(report['running'])} running, none overdue")
     return worst
