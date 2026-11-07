@@ -170,12 +170,47 @@ def preflight(campaign: Path) -> dict:
                        "problem": "zinc present in one arm only: delta_iptm would "
                                   "report the cofactor, not the glue"})
 
+    # What the stage costs, from the queue it just checked.
+    #
+    # The docstring above opens with "before spending days of GPU on it" and
+    # every caller's refusal says so in as many words: run_design.sh prints
+    # "refusing to spend 240 jobs on it", run_chain.sh "refusing to start a
+    # 52-hour run on it". The report named the jobs and never the hours, so
+    # the one number the refusal is about had to be looked up somewhere else.
+    #
+    # Through `projected_hours`, which prices each job in its own token band.
+    # A single rate understates a mixed queue whenever the large jobs are a
+    # minority of the jobs and a majority of the cost, which is F45 and is
+    # already written down in `thresholds.toml` beside `token_bands`. I
+    # reproduced it by hand anyway in F225, which is the other half of why
+    # this belongs in the report rather than in the reader.
+    #
+    # Reporting only. A projection never contributes to `ok`: Gate G1 is
+    # decided by `budget.gate_g1` against `max_compute_hours`, and a
+    # preflight that refused on cost would be a second, quieter gate with no
+    # decision recorded.
+    cost: dict | None = None
+    tokens = [job["tokens"] for job in jobs if isinstance(job.get("tokens"), int)]
+    if tokens:
+        from nobble.curate.diversity import projected_hours
+
+        projection = projected_hours(len(cofactor_by_pair),
+                                     total_tokens=sum(tokens),
+                                     job_tokens=tokens)
+        cost = {
+            "projected_hours": projection.get("projected_hours"),
+            "priced_jobs": len(tokens),
+            "unpriced_jobs": len(jobs) - len(tokens),
+            "basis": projection.get("basis"),
+        }
+
     return {
         "campaign": campaign.name,
         "jobs": len(jobs),
         "pairs": len(cofactor_by_pair),
         "chain_layouts": {" ".join(str(i) for i in k): v for k, v in layouts.most_common()},
         "pairs_with_asymmetric_cofactor": len(asymmetric),
+        "cost": cost,
         "errors": errors,
         "ok": not errors,
     }
