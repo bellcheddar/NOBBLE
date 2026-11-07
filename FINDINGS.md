@@ -13328,3 +13328,49 @@ code written the same morning, and the fix needed a second return value
 rather than a flag smuggled into the mapping of per-label counts: putting it
 there leaked into a caller iterating the labels, and the test asserting the
 mapping equals two labels failed immediately.
+
+## F279
+
+Across all 65 poses: the 15-mers miss the site, the whole domains find it and
+get the pose right half the time.
+
+F278 compared each pair's best pose. The same measurement over every pose with
+an RMSD, 65 in each campaign, with the 3 A cutoff from
+`thresholds.toml` and no cutoff of any kind on the footprint:
+
+```
+                        within 3 A            beyond 3 A
+15-mer         0 pose(s)                65 pose(s), jaccard median 0.211
+whole domain  35 pose(s), jacc 0.941    30 pose(s), jaccard median 0.818
+```
+
+So the whole-domain campaign's thirty poses that fail the recovery test have a
+median contact overlap of 0.818 with the deposited degron's own receptor
+contacts, against 0.211 for the fifteen-mers that fail. Both campaigns' worst
+poses reach 0.000 and both their best reach 0.909, so the distributions
+overlap at the extremes; it is the middle that moves.
+
+Read with F236's headline, the picture is that the whole-domain representation
+finds the site essentially always and places the chain correctly about half
+the time, while the 15-mer representation does neither.
+
+**The qualification, which matters.** Footprint and RMSD are strongly
+anti-correlated in both campaigns, Spearman -0.948 for the 15-mers and -0.743
+for the whole domains. The footprint is therefore mostly agreeing with the
+RMSD rather than telling a different story: it does not reveal a population of
+poses the RMSD misjudged. What it adds is the level. A median Jaccard of 0.211
+among failures says the site was missed; 0.818 says it was found and the
+register is wrong. The RMSD says "failed" to both.
+
+The exception is one pair rather than a pattern. BRD4/CRBN's best whole-domain
+pose sits at 16.519 A with a footprint of 0.529, which is the case F227 and
+F228 built the measurement for, and it is the only clear instance of it.
+
+**One comparison I am not making.** The fraction of the deposited window the
+prediction touches is 0.200 for the failing 15-mers and 0.987 for the failing
+whole domains, and those are not the same statement. The 15-mer windows are
+uniformly 15 residues; the whole-domain windows run 15 to 294, the 15 being
+IKZF1's, which stays a 15-mer in both arms as the control. Touching 98.7 per
+cent of a 269-residue domain and 20 per cent of a 15-residue window are
+different claims about different denominators, so the Jaccard, which is
+normalised contact-set overlap, is the figure that carries the comparison.
