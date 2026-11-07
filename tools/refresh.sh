@@ -144,5 +144,31 @@ else
     echo "        working, not failing." >&2
     exit 1
   fi
+
+  # iCloud sync-conflict copies, scanned here because this is the only place
+  # that knows a rebuild just happened (F304).
+  #
+  # The project root is iCloud-backed, and iCloud restores its copy of a file
+  # the build replaced, beside the new one, under a " 2" suffix (F173, F186).
+  # `deploy/deploy.sh` refuses on them and `tests/
+  # test_no_sync_conflict_files.py` names the class, and neither runs between
+  # a rebuild and the next `git add -A`. That is the whole window: the
+  # 2026-11-07 rebuild left 2,014 of them and 706 were committed and pushed
+  # hours later.
+  #
+  # The build's own check covers `structures/` and `crystals/` by name, which
+  # is stronger where it applies and blind to the rest of the tree and to
+  # copies that arrive minutes after the build returns. This is the wider,
+  # later look.
+  # Removed, not refused. They reappear whenever an output directory is
+  # rewritten, which during a forty-hour run is constantly, and a gate that
+  # fires repeatedly on a known-harmless artefact is a gate that gets turned
+  # off. The tool refuses only for a conflict-shaped name with no plain
+  # sibling, which is not demonstrably a copy of anything.
+  if ! "$SCI" tools/clean_sync_conflicts.py; then
+    echo "refresh: a conflict-shaped name has no sibling, so it was left" >&2
+    echo "        alone. Look at it before the next build or commit." >&2
+    exit 1
+  fi
 fi
 echo "=== refreshed. Deploy separately with deploy/deploy.sh ==="

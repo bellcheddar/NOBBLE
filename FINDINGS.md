@@ -14618,12 +14618,28 @@ missed one and both verdicts are consequential. The main campaign now reports
 
 Twenty-six duplicate-named files across three job directories, all of them
 `binary__unconstrained` seeds of the two pairs the corrections touched, all in
-the main campaign. **The cause is not established.** `~/Documents` is a real
-local directory rather than a link into `Mobile Documents`, there are no
-`.icloud` placeholders in the project and no extended attributes on the
-duplicate, so the obvious suspect does not fit; nothing in the project copies
-an output directory, and `run_job` clears one before it runs. Recorded as
-unexplained rather than attributed to the first plausible mechanism.
+the main campaign.
+
+**This paragraph first said the cause was not established. That was wrong,
+and the project had already established it twice.** F173 and F186 record
+iCloud sync-conflict copies: the project root is iCloud-backed, and when
+iCloud holds a copy of a file a rebuild has just replaced it restores that
+copy beside the new one under a " 2" suffix, with the earlier timestamp.
+`deploy/deploy.sh` has refused on them since F173, `tests/
+test_no_sync_conflict_files.py` names the class, and both describe exactly
+what I found.
+
+I reasoned my way out of the right answer. I checked that `~/Documents` is
+not a link into `Mobile Documents`, that no `.icloud` placeholders exist and
+that the duplicate carries no extended attributes, and concluded the obvious
+suspect did not fit. None of those is a test of whether iCloud is syncing
+this directory: placeholders appear only for evicted files, and the
+attributes are not required. I had `tools/findings.py --grep` open earlier in
+the same session for a different question and did not point it at this one.
+
+What is new here is not the mechanism. It is that a conflict copy inside a
+campaign's job output directory makes the F219 featurisation guard read the
+wrong file, which F173 and F186 are not about: they are about the bundle.
 
 ### The reader that was already safe, and why that was luck
 
@@ -14776,9 +14792,10 @@ With the duplicates removed the same rebuild is 53 changed files, which is
 what a fifteen-job re-run plus one new `about.json` key should be.
 
 Nothing in `build_atlas.py` can produce such a name. `shutil.copy` writes the
-name it is given, and a job id and a PDB id contain no spaces. So this is
-outside the project, as F300 concluded, and the cause is still not
-established. What is in the project's hands is not shipping them.
+name it is given, and a job id and a PDB id contain no spaces. These are
+iCloud sync-conflict copies, which F173 and F186 already named and which
+`deploy/deploy.sh` already refuses: see the correction in F300 above, where I
+had talked myself out of that answer.
 
 The build now records every name it writes into `structures/` and
 `crystals/`, compares that against what is in those directories at the end,
@@ -14800,3 +14817,46 @@ The tests assert the live bundle is clean as well as that the build would
 refuse, because a guard in the build says nothing about the bundle sitting on
 disk now. One of them checks the stronger invariant directly: every published
 structure's name is a job id in the bundle's own results.
+
+## F304. The guard was already there; nothing ran it before `git add -A`
+
+F173's one-line title is "My own `git add -A` published a file nothing
+references". Today I did the same thing with 706 files.
+
+The project's defences against iCloud sync-conflict copies are correct and
+complete in what they check. `tests/test_no_sync_conflict_files.py` scans
+everything git tracks and everything under `deploy/atlas`, tracked or not,
+and would have failed on all 2,014. `deploy/deploy.sh` refuses before it
+opens a connection, and prints the `rm` commands.
+
+Neither runs between a rebuild and a commit, and that is the whole window.
+`tools/refresh.sh` rebuilds the bundle; iCloud restores its copies within
+minutes; the next `git add -A` tracks them. My last full suite run was at
+about 01:00 and the rebuild was at 17:37, so the guard that would have caught
+this had no opportunity to. F186's title already says it: "The same
+sync-conflict copy again, caught earlier, and the gap it showed."
+
+So the fix belongs in the rebuild, not in another scan. Two now:
+
+* `deploy/build_atlas.py` records every name it writes into `structures/` and
+  `crystals/` and returns non-zero on anything else in those directories
+  (F303). By name rather than by pattern, so it catches whatever appears and
+  not only the shape seen.
+* `tools/refresh.sh` scans the whole tree for the conflict pattern straight
+  after the build, which is the minutes-later window the build-time check
+  cannot see, and refuses rather than warning.
+
+The sequence that produced today's mess, as a record of why in-band beats
+a scan: rebuild at 17:37, iCloud restores 2,014 copies, `git add -A` at
+about 02:00 tracks 706 of them before I interrupt it, the push completes,
+I read a stale `origin/main` and report that nothing left the machine.
+Four steps, three of them automatic.
+
+**The lesson is the one F291 and F295 already recorded, for the third time.**
+Both are about repeating work I had already done because I did not look it
+up. F292 built `tools/findings.py` to make looking it up one command, I used
+it at the start of this session for the bridge question, and I did not use it
+for this one. The cost was three findings written on a false premise, a
+paragraph of invalid reasoning about iCloud, and a wrong statement to Marc
+about an unexplained phenomenon on his machine. Searching first costs one
+command.
