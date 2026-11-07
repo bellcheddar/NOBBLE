@@ -205,3 +205,55 @@ def _structure_of(campaign: Path, job_id: str) -> str:
         if row.get("job_id") == job_id:
             return row["structure"]
     raise AssertionError(f"{job_id} is not in results.jsonl")
+
+
+def test_the_validation_layer_carries_the_footprint():
+    """Computed by the pipeline, not by remembering to run a tool.
+
+    This is the layer whose failure holds publication, and the decomposition
+    is part of what the failure is: an RMSD alone cannot say whether the site
+    was found. The grid in `poses._residues_within` makes it cost about a
+    second for the whole panel, so there is no reason for it to live outside.
+    """
+    campaign = _newest_campaign()
+    if campaign is None:
+        pytest.skip("no campaign assembled")
+    from nobble.validate import layers
+
+    layer = layers.pose_recovery(campaign)
+    if not layer.computed:
+        pytest.skip(layer.status)
+    footprint = layer.summary["footprint"]
+    assert footprint, layer.summary.keys()
+    # One per pair that has a recovery number, and no silent drops.
+    assert set(footprint) == set(layer.summary["by_pair"]), (
+        sorted(set(footprint) ^ set(layer.summary["by_pair"])))
+    for pair_id, record in footprint.items():
+        assert "status" in record, (pair_id, record)
+
+
+def test_the_tool_and_the_layer_measure_the_same_thing():
+    """Two callers of one function, so they cannot drift apart.
+
+    Before the measurement moved into `nobble.score.poses`, the tool carried
+    its own copy of the superposition and the contact search. Two copies of a
+    geometry is two things to keep in step.
+    """
+    campaign = _newest_campaign()
+    if campaign is None:
+        pytest.skip("no campaign assembled")
+    module = _module()
+    from nobble.validate import layers
+
+    pair = "bench04_IKZF1_CRBN"
+    records = module.footprints(campaign, only={pair})
+    if not records or "jaccard" not in records[0]:
+        pytest.skip("no measurable pose for the pair")
+    layer = layers.pose_recovery(campaign)
+    if pair not in layer.summary.get("footprint", {}):
+        pytest.skip("the layer has no footprint for the pair")
+    mine = layer.summary["footprint"][pair]
+    for key in ("jaccard", "deposited_contacts", "predicted_contacts",
+                "shared_contacts", "window_residues",
+                "window_residues_touched", "centroid_gap_a", "ca_deviation_a"):
+        assert records[0][key] == mine[key], (key, records[0][key], mine[key])

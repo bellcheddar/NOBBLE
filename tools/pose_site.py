@@ -2,72 +2,47 @@
 """Is the predicted degron at the wrong site, or in the wrong pose there?
 
 Pose recovery fails: 0 of 65 poses within 3 A, median 17.54 A (F212), and
-tier-2 refinement sharpens without recovering (F215). Two very different
-things fit that number. The peptide could be bound somewhere else on the
-complex, in which case the model has not found the degron site at all. Or it
-could be in the right groove in the wrong register, in which case it has
-found the site and placed the chain along it badly. A single RMSD cannot
-tell them apart, and the headline reads differently depending on which it is.
+tier-2 refinement sharpens without recovering (F215). A single RMSD cannot say
+whether the model never found the degron site or found it and laid the chain
+along it in the wrong register, and the headline reads differently in each
+case.
 
-This asks the question the RMSD cannot: superpose on the receptor exactly as
-`poses.recovery_against_crystal` does, then compare footprints. Which
-receptor residues does the deposited degron window touch, which does the
-predicted peptide touch, and how many of the window's own residues does the
-prediction land on.
+The measurement itself is `nobble.score.poses.footprint`, beside the RMSD it
+decomposes and sharing its receptor superposition. This is the command-line
+view of it over a campaign, which adds the two things that are properties of a
+campaign rather than of a pose:
+
+* `confounded`: the pair's poses were folded from a superseded input (F219),
+  so its footprint is not a measurement of the current input.
+* which pose to read, each pair's best by RMSD or all of them. The best pose
+  per pair is a best-case selection, and whether the agreement survives the
+  other seeds is the difference between a result and a cherry-pick (F227).
 
 **No verdict is emitted and no cutoff is introduced.** Calling a Jaccard of
 0.3 "the right site" would be inventing an acceptance threshold to decide a
-gate, which is the thing D-NOB-076 explicitly refused to do for pose
-recovery. The contact distance comes from `config/thresholds.toml`.
-
-Two states are reported rather than scored:
-
-* `not_measurable`: the deposited window makes no contact with the receptor
-  chain within the cutoff, so the overlap is zero however good the pose is.
-  bench03_BRD4_CRBN is this: its window sits on BRD4 against the glue, not
-  against CRBN.
-* `confounded`: the pair's tier-1 poses were folded from a superseded input
-  (F219), so its footprint is not a measurement of the current input.
+gate, which is the thing D-NOB-076 explicitly refused to do for pose recovery.
 """
 from __future__ import annotations
 
 import json
-import math
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from nobble import paths
-from nobble.curate import constructs as C
-from nobble.curate import numbering, structures
 from nobble.score import poses
 from nobble.validate.layers import recovery_target
 
 
 def contact_cutoff() -> float:
-    """The peptide-receptor heavy-atom contact distance, from config."""
-    for section in paths.thresholds().values():
-        if isinstance(section, dict) and "contact_cutoff_a" in section:
-            return float(section["contact_cutoff_a"])
-    raise KeyError("contact_cutoff_a is not in config/thresholds.toml")
+    """The contact distance the measurement uses, from config.
 
-
-def _heavy(residue) -> list:
-    return [atom.pos for atom in residue if atom.element.name != "H"]
-
-
-def _touched(probe: list, residues: dict, cutoff: float) -> set:
-    return {number for number, atoms in residues.items()
-            if any(a.dist(p) <= cutoff for a in atoms for p in probe)}
-
-
-def _centroid(points: list) -> tuple[float, float, float]:
-    count = len(points)
-    return (sum(p.x for p in points) / count,
-            sum(p.y for p in points) / count,
-            sum(p.z for p in points) / count)
+    Read once at import in `poses`, the same way that file already reads
+    `docked_contact_cutoff_a`. One spelling of the threshold, in the module
+    that applies it.
+    """
+    return poses.CONTACT_CUTOFF
 
 
 def _confounded(campaign: Path) -> set[str]:
@@ -85,13 +60,7 @@ def _confounded(campaign: Path) -> set[str]:
 
 
 def _every_pose(campaign: Path) -> list[dict]:
-    """Every pose with an RMSD, not just each pair's best.
-
-    The best pose per pair is a best-case selection, so a footprint that
-    agrees only there is one seed out of ten agreeing. Whether the agreement
-    survives the other seeds is the difference between a result and a
-    cherry-pick, and it is not a thing to caveat when it can be measured.
-    """
+    """Every pose with an RMSD, not just each pair's best."""
     validation = campaign / "validation.json"
     if not validation.exists():
         return []
@@ -100,14 +69,8 @@ def _every_pose(campaign: Path) -> list[dict]:
 
 
 def _best_per_pair(campaign: Path) -> dict[str, dict]:
-    validation = campaign / "validation.json"
-    if not validation.exists():
-        return {}
-    layer = json.loads(validation.read_text())["layers"].get("pose_recovery", {})
     best: dict[str, dict] = {}
-    for row in layer.get("detail") or []:
-        if row.get("rmsd") is None:
-            continue
+    for row in _every_pose(campaign):
         current = best.get(row["pair_id"])
         if current is None or row["rmsd"] < current["rmsd"]:
             best[row["pair_id"]] = row
@@ -117,14 +80,12 @@ def _best_per_pair(campaign: Path) -> dict[str, dict]:
 def footprints(campaign: Path, cutoff: float | None = None,
                only: set[str] | None = None,
                every_pose: bool = False) -> list[dict]:
-    """One record per pair, for the lowest-RMSD ternary pose it has.
+    """One record per pose, through `poses.footprint`.
 
-    `only` restricts to named pairs. Each record reads two structures off
-    disk and walks every residue pair, so a test that needs one pair
-    should ask for one pair.
+    `only` restricts to named pairs. Each record reads two structures off disk,
+    so a test that needs one pair should ask for one pair.
     """
     campaign = Path(campaign)
-    cutoff = contact_cutoff() if cutoff is None else cutoff
     confounded = _confounded(campaign)
     results = {row["job_id"]: row for row in
                (json.loads(line) for line
@@ -139,146 +100,22 @@ def footprints(campaign: Path, cutoff: float | None = None,
         candidates = sorted(_best_per_pair(campaign).items())
 
     records = []
-    for pair_id, best in candidates:
+    for pair_id, chosen in candidates:
         if only is not None and pair_id not in only:
             continue
-        record = {"pair_id": pair_id, "job_id": best["job_id"],
-                  "rmsd": best["rmsd"], "status": "measured"}
+        target = recovery_target(pair_id)
+        job = results.get(chosen["job_id"])
+        if target is None or job is None:
+            records.append({"pair_id": pair_id, "job_id": chosen["job_id"],
+                            "rmsd": chosen["rmsd"], "status": "no_structure"})
+            continue
+        record = poses.footprint(job, target, cutoff)
+        record["rmsd"] = chosen["rmsd"]
+        # Campaign-level, so it overrides the geometric status: a footprint
+        # measured against a superseded input is not wrong, it is about an
+        # input that is no longer there.
         if pair_id in confounded:
             record["status"] = "confounded"
-        target = recovery_target(pair_id)
-        job = results.get(best["job_id"])
-        if target is None or job is None or not job.get("structure"):
-            record["status"] = "no_structure"
-            records.append(record)
-            continue
-
-        predicted = poses._load(job["structure"])
-        deposited = structures.read_assembly(target["pdb_id"])
-        construct = C.by_name(job["construct"])
-        index = next((i for i, segment in enumerate(construct.segments)
-                      if segment.accession == target["receptor_acc"]), None)
-        if index is None:
-            record["status"] = "receptor_not_a_segment"
-            records.append(record)
-            continue
-        segment_start, _ = construct.segments[index].range()
-        predicted_receptor = "ABCDEFGH"[index]
-        receptor_frame = numbering.resolve_frame(
-            target["pdb_id"], target["receptor_chain"], target["receptor_acc"])
-        substrate_frame = numbering.resolve_frame(
-            target["pdb_id"], target["substrate_chain"], target["substrate_acc"])
-
-        receptor_residues: dict[int, list] = {}
-        backbone: dict[tuple[int, str], object] = {}
-        substrate_residues: dict[int, list] = {}
-        for chain in deposited[0]:
-            if chain.name == target["receptor_chain"]:
-                for residue in chain:
-                    receptor_residues[residue.seqid.num] = _heavy(residue)
-                    for atom in residue:
-                        if atom.name in poses.BACKBONE:
-                            backbone[(residue.seqid.num, atom.name)] = atom.pos
-            if chain.name == target["substrate_chain"]:
-                for residue in chain:
-                    substrate_residues[residue.seqid.num] = _heavy(residue)
-
-        moving, fixed = [], []
-        for chain in predicted[0]:
-            if chain.name != predicted_receptor:
-                continue
-            for residue in chain:
-                number = receptor_frame.to_deposited(
-                    segment_start + residue.seqid.num - 1)
-                for atom in residue:
-                    if atom.name not in poses.BACKBONE:
-                        continue
-                    anchor = backbone.get((number, atom.name))
-                    if anchor is not None:
-                        moving.append(atom.pos)
-                        fixed.append(anchor)
-        transform = poses._superpose(moving, fixed)
-        if transform is None:
-            record["status"] = "receptor_anchor_too_small"
-            records.append(record)
-            continue
-        record["receptor_anchor_atoms"] = len(moving)
-
-        start = job.get("peptide_start_res") or poses._peptide_start_from_library(
-            job.get("peptide_id"))
-        if start is None:
-            record["status"] = "peptide_start_unknown"
-            records.append(record)
-            continue
-
-        # CA positions on the deposited side, for the per-residue profile.
-        #
-        # A whole-window RMSD says how far the chain is, and nothing about
-        # where along it the error lives. Those are different claims: a
-        # uniform 5 A is a displaced peptide, and 0.5 A in the middle with
-        # 10 A at both ends is a correctly placed degron whose window
-        # extends past it. The second is what bench04 and bench06 turn out
-        # to be, and the whole-window number cannot show it.
-        deposited_ca: dict[int, object] = {}
-        for chain in deposited[0]:
-            if chain.name != target["substrate_chain"]:
-                continue
-            for residue in chain:
-                for atom in residue:
-                    if atom.name == "CA":
-                        deposited_ca[residue.seqid.num] = atom.pos
-
-        window: set[int] = set()
-        predicted_peptide = []
-        deviations: list[float | None] = []
-        for chain in predicted[0]:
-            if chain.name != poses.PEPTIDE_CHAIN:
-                continue
-            for residue in chain:
-                number = substrate_frame.to_deposited(start + residue.seqid.num - 1)
-                if number in substrate_residues:
-                    window.add(number)
-                for atom in residue:
-                    if atom.element.name == "H":
-                        continue
-                    moved = transform.apply(atom.pos)
-                    placed = type(atom.pos)(moved.x, moved.y, moved.z)
-                    predicted_peptide.append(placed)
-                    if atom.name == "CA":
-                        anchor = deposited_ca.get(number)
-                        deviations.append(round(placed.dist(anchor), 2)
-                                          if anchor is not None else None)
-        window_atoms = [atom for number in window
-                        for atom in substrate_residues[number]]
-        if not window_atoms or not predicted_peptide:
-            record["status"] = "window_unresolved"
-            records.append(record)
-            continue
-
-        true_site = _touched(window_atoms, receptor_residues, cutoff)
-        predicted_site = _touched(predicted_peptide, receptor_residues, cutoff)
-        shared = true_site & predicted_site
-        union = true_site | predicted_site
-        record.update({
-            "window_residues": len(window),
-            "centroid_gap_a": round(math.dist(
-                _centroid(predicted_peptide), _centroid(window_atoms)), 2),
-            "deposited_contacts": len(true_site),
-            "predicted_contacts": len(predicted_site),
-            "shared_contacts": len(shared),
-            "jaccard": round(len(shared) / len(union), 3) if union else None,
-            "window_residues_touched": len(_touched(
-                predicted_peptide,
-                {number: substrate_residues[number] for number in window},
-                cutoff)),
-            "cutoff_a": cutoff,
-            "ca_deviation_a": deviations,
-        })
-        if not true_site:
-            # Zero overlap is guaranteed here whatever the pose is, so the
-            # Jaccard is not a measurement of this prediction.
-            record["status"] = ("not_measurable: the deposited window makes no "
-                                "receptor contact within the cutoff")
         records.append(record)
     return records
 

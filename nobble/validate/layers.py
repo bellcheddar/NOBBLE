@@ -106,6 +106,44 @@ def _results(campaign: Path) -> list[dict]:
 # 1. Pose recovery
 # --------------------------------------------------------------------------- #
 
+def _footprints(best_job: dict[str, tuple]) -> dict:
+    """Where each pair's best pose sits, beside how far it is.
+
+    An RMSD is equally consistent with the model never finding the degron
+    site and with it finding the site and laying the chain along it in the
+    wrong register (F227). Computed here rather than left to a tool run by
+    hand, because this is the layer whose failure holds publication and the
+    decomposition is part of what the failure is. Each pair's lowest-RMSD
+    pose; `tools/pose_site.py --every-pose` reads them all.
+
+    A pair whose footprint cannot be computed carries its reason rather than
+    being dropped: the summary says what was measured and what was not, for
+    the same reason `unmeasurable` is counted apart from `pending` below.
+
+    **One status this cannot set.** `tools/pose_site.py` also marks a pair
+    `confounded` when its poses were folded from a superseded input (F219),
+    read from `tools/stale_featurisation`. A library module under `nobble/`
+    importing from `tools/` is the dependency the wrong way round, so that
+    flag stays with the tool and with `deploy/build_atlas.py`, which consults
+    the same comparison. The gap is contained rather than open: the build
+    refuses the whole campaign while any featurisation disagrees, so a
+    footprint written here for a confounded pair cannot reach the atlas. A
+    reader of `validation.json` alone should still check
+    `tools/stale_featurisation.py`, which is what `tools/provenance.py` now
+    prints (F222).
+    """
+    out = {}
+    for pair_id, (_rmsd, job, target) in sorted(best_job.items()):
+        try:
+            record = poses.footprint(job, target)
+        except Exception as problem:            # noqa: BLE001
+            out[pair_id] = {"status": f"{type(problem).__name__}: {problem}"}
+            continue
+        out[pair_id] = {key: value for key, value in record.items()
+                        if key not in ("pair_id", "job_id")}
+    return out
+
+
 def pose_recovery(campaign: Path) -> LayerResult:
     """RMSD of every predicted peptide to its deposited counterpart."""
     layer = LayerResult(name="pose_recovery", status="not_computed: no results")
@@ -114,6 +152,7 @@ def pose_recovery(campaign: Path) -> LayerResult:
         return layer
 
     per_pair: dict[str, list[float]] = {}
+    best_job: dict[str, tuple] = {}
     detail = []
     for job in jobs:
         target = recovery_target(job.get("pair_id"))
@@ -131,6 +170,9 @@ def pose_recovery(campaign: Path) -> LayerResult:
         detail.append(record)
         if finite(outcome.rmsd):
             per_pair.setdefault(job["pair_id"], []).append(outcome.rmsd)
+            incumbent = best_job.get(job["pair_id"])
+            if incumbent is None or outcome.rmsd < incumbent[0]:
+                best_job[job["pair_id"]] = (outcome.rmsd, job, target)
 
     if not per_pair:
         layer.status = "not_computed: no predicted pose could be aligned to a deposited chain"
@@ -167,6 +209,7 @@ def pose_recovery(campaign: Path) -> LayerResult:
         "overall_curve": poses.success_rate_curve(everything),
         "by_pair": by_pair,
         "frame": "superposed on the receptor, peptide backbone atoms only",
+        "footprint": _footprints(best_job),
     }
     layer.detail = detail
     if len(by_pair) < len(RECOVERY_TARGETS):

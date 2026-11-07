@@ -605,3 +605,198 @@ def docking_check(job: dict) -> DockingCheck:
         centroid_distance=round(centroid_distance, 1),
         peptide_atoms=len(peptide_positions),
     )
+
+
+CONTACT_CUTOFF = float(paths.thresholds()["geometry"]["contact_cutoff_a"])
+
+
+def _grid(positions: list, cell: float) -> dict:
+    """Positions bucketed into cutoff-sized cells, as docking_check does."""
+    buckets: dict[tuple[int, int, int], list] = {}
+    for position in positions:
+        key = (int(position.x // cell), int(position.y // cell),
+               int(position.z // cell))
+        buckets.setdefault(key, []).append(position)
+    return buckets
+
+
+def _residues_within(probe: list, residues: dict, cutoff: float) -> set:
+    """Which of `residues` has a heavy atom within `cutoff` of `probe`.
+
+    Gridded rather than compared pairwise: a receptor chain is a few thousand
+    atoms and a peptide a hundred, and the honest version of this ran in
+    quadratic time over both.
+    """
+    buckets = _grid(probe, cutoff)
+    found = set()
+    for number, atoms in residues.items():
+        for atom in atoms:
+            base = (int(atom.x // cutoff), int(atom.y // cutoff),
+                    int(atom.z // cutoff))
+            hit = False
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    for dz in (-1, 0, 1):
+                        for other in buckets.get(
+                                (base[0] + dx, base[1] + dy, base[2] + dz), ()):
+                            if atom.dist(other) <= cutoff:
+                                hit = True
+                                break
+                        if hit:
+                            break
+                    if hit:
+                        break
+                if hit:
+                    break
+            if hit:
+                found.add(number)
+                break
+    return found
+
+
+def _centre(positions: list) -> tuple[float, float, float]:
+    count = len(positions)
+    return (sum(p.x for p in positions) / count,
+            sum(p.y for p in positions) / count,
+            sum(p.z for p in positions) / count)
+
+
+def footprint(job: dict, target: dict, cutoff: float | None = None) -> dict:
+    """Where the predicted degron sits, as a footprint rather than an RMSD.
+
+    `recovery_against_crystal` answers how far the peptide is. That number is
+    equally consistent with the model never finding the degron site and with
+    it finding the site and laying the chain along it wrongly, and the two
+    read differently (F227). This answers which: the receptor residues the
+    deposited window touches, the ones the prediction touches, how many of the
+    window's own residues the prediction lands on, and the per-residue CA
+    deviation that says where along the chain the error lives (F228).
+
+    The same receptor superposition as the RMSD, so the two are commensurable.
+    No verdict and no acceptance threshold: `status` reports `not_measurable`
+    when the deposited window makes no receptor contact, because the overlap
+    is then zero whatever the pose, and reporting that beside a measured zero
+    would put a pair that cannot be measured next to one that failed.
+    """
+    import math
+
+    cutoff = CONTACT_CUTOFF if cutoff is None else cutoff
+    record = {"pair_id": job["pair_id"], "job_id": job["job_id"],
+              "status": "measured"}
+    if not job.get("structure"):
+        record["status"] = "no_structure"
+        return record
+
+    predicted = _load(job["structure"])
+    deposited = structures.read_assembly(target["pdb_id"])
+    construct = C.by_name(job["construct"])
+    index = next((i for i, segment in enumerate(construct.segments)
+                  if segment.accession == target["receptor_acc"]), None)
+    if index is None:
+        record["status"] = "receptor_not_a_segment"
+        return record
+    segment_start, _ = construct.segments[index].range()
+    predicted_receptor = "ABCDEFGH"[index]
+    try:
+        receptor_frame = numbering.resolve_frame(
+            target["pdb_id"], target["receptor_chain"], target["receptor_acc"])
+        substrate_frame = numbering.resolve_frame(
+            target["pdb_id"], target["substrate_chain"], target["substrate_acc"])
+    except numbering.FrameUnresolved as error:
+        record["status"] = f"frame_unresolved: {error}"
+        return record
+
+    receptor_residues: dict[int, list] = {}
+    backbone: dict[tuple[int, str], object] = {}
+    substrate_residues: dict[int, list] = {}
+    deposited_ca: dict[int, object] = {}
+    for chain in deposited[0]:
+        if chain.name == target["receptor_chain"]:
+            for residue in chain:
+                receptor_residues[residue.seqid.num] = [
+                    atom.pos for atom in residue if atom.element.name != "H"]
+                for atom in residue:
+                    if atom.name in BACKBONE:
+                        backbone[(residue.seqid.num, atom.name)] = atom.pos
+        if chain.name == target["substrate_chain"]:
+            for residue in chain:
+                substrate_residues[residue.seqid.num] = [
+                    atom.pos for atom in residue if atom.element.name != "H"]
+                for atom in residue:
+                    if atom.name == "CA":
+                        deposited_ca[residue.seqid.num] = atom.pos
+
+    moving, fixed = [], []
+    for chain in predicted[0]:
+        if chain.name != predicted_receptor:
+            continue
+        for residue in chain:
+            number = receptor_frame.to_deposited(
+                segment_start + residue.seqid.num - 1)
+            for atom in residue:
+                if atom.name not in BACKBONE:
+                    continue
+                anchor = backbone.get((number, atom.name))
+                if anchor is not None:
+                    moving.append(atom.pos)
+                    fixed.append(anchor)
+    transform = _superpose(moving, fixed)
+    if transform is None:
+        record["status"] = "receptor_anchor_too_small"
+        return record
+    record["receptor_anchor_atoms"] = len(moving)
+
+    start = job.get("peptide_start_res") or _peptide_start_from_library(
+        job.get("peptide_id"))
+    if start is None:
+        record["status"] = "peptide_start_unknown"
+        return record
+
+    window: set[int] = set()
+    peptide: list = []
+    deviations: list = []
+    for chain in predicted[0]:
+        if chain.name != PEPTIDE_CHAIN:
+            continue
+        for residue in chain:
+            number = substrate_frame.to_deposited(start + residue.seqid.num - 1)
+            if number in substrate_residues:
+                window.add(number)
+            for atom in residue:
+                if atom.element.name == "H":
+                    continue
+                moved = transform.apply(atom.pos)
+                placed = type(atom.pos)(moved.x, moved.y, moved.z)
+                peptide.append(placed)
+                if atom.name == "CA":
+                    anchor = deposited_ca.get(number)
+                    deviations.append(round(placed.dist(anchor), 2)
+                                      if anchor is not None else None)
+
+    window_atoms = [atom for number in window for atom in substrate_residues[number]]
+    if not window_atoms or not peptide:
+        record["status"] = "window_unresolved"
+        return record
+
+    deposited_site = _residues_within(window_atoms, receptor_residues, cutoff)
+    predicted_site = _residues_within(peptide, receptor_residues, cutoff)
+    shared = deposited_site & predicted_site
+    union = deposited_site | predicted_site
+    record.update({
+        "window_residues": len(window),
+        "centroid_gap_a": round(
+            math.dist(_centre(peptide), _centre(window_atoms)), 2),
+        "deposited_contacts": len(deposited_site),
+        "predicted_contacts": len(predicted_site),
+        "shared_contacts": len(shared),
+        "jaccard": round(len(shared) / len(union), 3) if union else None,
+        "window_residues_touched": len(_residues_within(
+            peptide, {number: substrate_residues[number] for number in window},
+            cutoff)),
+        "ca_deviation_a": deviations,
+        "cutoff_a": cutoff,
+    })
+    if not deposited_site:
+        record["status"] = ("not_measurable: the deposited window makes no "
+                            "receptor contact within the cutoff")
+    return record
