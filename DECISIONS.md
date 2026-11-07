@@ -2472,3 +2472,37 @@ which is why they are the right thing to prune; `results*.jsonl`,
 
 Delivering figures to his other device unprompted was offered and declined, so
 figures stay described in the logs and in chat.
+
+## D-NOB-079
+
+**The F47 correction waits for the GPU rather than competing for it.** F219
+found that the 6 November correction re-ran against Boltz's cached
+featurisation, so `bench02_BRD4_VHL`'s fifteen tier-1 jobs in
+`campaign_20261104T004632Z` still hold poses folded with the hydroxyproline.
+`tools/rerun_pair.py` now clears the cached output, so re-running it will take
+effect, and that costs roughly 40 minutes of inference.
+
+The chain is on its tier-2 stage with one MPS device, and the chain has
+already passed the correction stage, so running the correction now would
+either contend for the device or be overwritten by nothing at all. It waits.
+
+**What holds in the meantime, and is enforced rather than remembered.**
+`deploy/build_atlas.py` refuses the campaign, so it cannot be published.
+`tools/recovery_delta.py` marks the pair not comparable and excludes it from
+every figure, so the G6 measurement rests on five pairs rather than six: its
+tier-2 jobs featurise the corrected YAML while its tier-1 poses do not, and
+the move across them reported +3.37 A, which reads as refinement making the
+pair worse. `tests/test_stale_inputs.py` skips with the featurisation
+disagreement quoted rather than with "the F47 correction has been applied".
+
+**Alternatives.** Killing tier 2 again to run a 40-minute correction was
+considered and rejected: tier 2 is answering G6 and bench02 is one pair of
+seven, so the correction buys one more pair in a measurement that already has
+five saying the same thing. Running both at once was rejected on the one-GPU
+rule that D-NOB-077 and `tools/wait_for_gpu.sh` exist to enforce.
+
+**Reversal.** `PYTHONPATH=. python tools/rerun_pair.py bench02_BRD4_VHL
+--campaign campaigns/campaign_20261104T004632Z --apply` followed by
+`bash tools/run_queue.sh --campaign campaigns/campaign_20261104T004632Z`,
+then `tools/stale_featurisation.py` to confirm it took, which is the check
+that did not exist the first time.

@@ -11,15 +11,21 @@ The correction has now run and the atlas builds; nobble.mdeller.com still
 serves the 100-pair benchmark bundle, now because publication is held
 (D-NOB-076) rather than because the build refuses.
 
-**The correction changed no number, and that is a result rather than an
-anticlimax.** All fifteen re-run jobs returned ipTM bit-identical to sixteen
-significant figures, which for a deterministic model means the
-`modifications` block never reached it: the YAML claimed a hydroxyproline the
-molecule never carried (F217). So the refusal was about provenance and not
-about wrong figures, which is the opposite of what this file implied for two
-days. The live consequence is elsewhere: a peptide needing a PTM would be
-folded as its unmodified parent, so an undeliverable PTM is now a manifest
-error. No pair in this campaign needs one.
+**The correction changed no number, because it corrected nothing.** All
+fifteen re-run jobs returned ipTM bit-identical to sixteen significant
+figures. Boltz caches the featurised input under each job's output directory
+and reuses it, so the re-run spent 163 s a job re-folding a cache dated two
+days earlier: `processed/structures/*.npz` holds chain P residue 1 as HYP
+while the corrected YAML says PRO (F219). The hydroxyproline is still in the
+campaign's bench02 poses.
+
+Worse than F47 itself, which every check reported as wrong. This is the same
+wrong input with every check reporting it as fixed, because they all read the
+YAML. `tools/stale_featurisation.py` now reads what was folded instead, the
+build refuses on it, and `tools/rerun_pair.py` removes the cached output so
+the next correction takes. The correction has to be run again once the GPU is
+free; the chain has already passed that stage, so it waits rather than
+competing for the device.
 
 **The matched-control ROC is a null**: AUC 0.4583, 95 per cent CI 0.3316 to
 0.5842, over 24 positives and 96 matched negatives from the Sievers screen,

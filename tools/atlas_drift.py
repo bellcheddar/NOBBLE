@@ -174,8 +174,18 @@ def drift() -> dict:
                  "NOBBLE_ATLAS_OUT": workdir},
         )
         if completed.returncode != 0:
-            return {"status": "the rebuild refused: " +
-                              (completed.stderr or "").strip()[-160:],
+            # The first line of a refusal, not the last 160 characters of
+            # stderr. A tail slice cut mid-word and reported "the rebuild
+            # refused: ML asks unmodified PRO", which names neither the
+            # refusal nor the job: build_atlas prints the reason first and
+            # the offending records after it.
+            lines = [line.strip() for line in (completed.stderr or "").splitlines()
+                     if line.strip()]
+            headline = next((line for line in lines if "REFUSED" in line),
+                            lines[0] if lines else "no reason printed")
+            if len(headline) > 200:
+                headline = headline[:197] + "..."
+            return {"status": "the rebuild refused: " + headline,
                     "moved": [], "campaign": campaign.name}
         here, rebuilt = _leaves(PUBLISHED), _leaves(Path(workdir))
 

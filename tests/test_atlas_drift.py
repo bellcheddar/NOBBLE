@@ -66,6 +66,20 @@ def published_copy(tmp_path, monkeypatch):
 
 
 
+def _requires_a_rebuild_that_runs(report=None):
+    """Skip when the rebuild refuses, quoting the refusal.
+
+    A comparison between the published bundle and a rebuild says nothing when
+    the rebuild declines to produce one, and a refusal is a correct outcome
+    rather than a broken test: build_atlas refuses a campaign whose poses were
+    folded from an input no longer on disk (F219).
+    """
+    report = atlas_drift.drift() if report is None else report
+    if str(report.get("status", "")).startswith("the rebuild refused"):
+        pytest.skip(report["status"])
+    return report
+
+
 def _requires_a_settled_campaign():
     """Skip while a runner is still producing results.
 
@@ -79,7 +93,10 @@ def _requires_a_settled_campaign():
 
     for tier in (1, 2):
         if watchdog.runner_alive(tier) is True:
-            report = atlas_drift.drift()
+            # Taken once and deferred to, because a refusal explains the
+            # state better than an empty `moved` list does: a rebuild that
+            # declined to run has drifted from nothing.
+            report = _requires_a_rebuild_that_runs()
             pytest.skip(
                 f"a tier-{tier} runner is producing results, so the bundle "
                 "cannot be in step with a rebuild: "
@@ -188,7 +205,7 @@ def test_cost_recomputed_from_new_timings_is_not_a_failure():
     source handled, the consumers not (F101).
     """
     _requires_atlas()
-    report = atlas_drift.drift()
+    report = _requires_a_rebuild_that_runs()
     assert "recomputed" in report
     if not report["recomputed"]:
         # Nothing has been recomputed since the atlas was built, so there is
@@ -226,6 +243,7 @@ def test_a_real_drift_is_not_buried_behind_cost_churn(published_copy):
     conclusion must still be the thing the check reports and the thing it
     fails on."""
     _requires_atlas()
+    _requires_a_rebuild_that_runs()
     published = published_copy / "comparison.json"
     original = published.read_text()
     data = json.loads(original)

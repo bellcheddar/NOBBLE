@@ -167,3 +167,63 @@ def test_the_anchor_is_carried_so_the_two_numbers_are_comparable(tmp_path, monke
         lambda job: _Result(5.0, anchor=9.0 if job["job_id"].endswith("__tier2") else 1.0))
     report = recovery_delta.compare(_campaign(tmp_path, {pair: (5.0, 5.0)}))
     assert report["pairs"][pair]["anchor_shifted"] is True
+
+
+def test_a_pair_whose_tiers_folded_different_inputs_is_not_compared():
+    """A move across a changed input measures the change, not the refinement.
+
+    bench02_BRD4_VHL's tier-1 poses hold a hydroxyproline its YAML no longer
+    asks for, and its tier-2 jobs get a fresh output directory and so
+    featurise the YAML as it stands. The subtraction spans two different
+    molecules, and it reported +3.37 A: readable as refinement making the
+    pair worse (F219).
+
+    Read off the live report rather than a hand-built one, because the thing
+    worth testing is that `compare` wires the detection to the exclusion.
+    """
+    import sys
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    import recovery_delta as delta
+
+    campaigns = sorted((ROOT / "campaigns").glob("campaign_*/queue.jsonl"))
+    if not campaigns:
+        pytest.skip("no main campaign on this checkout")
+    report = delta.compare(campaigns[-1].parent)
+    if report.get("status") != "computed":
+        pytest.skip(f"nothing to compare yet: {report.get('status')}")
+    if not report.get("confounded"):
+        pytest.skip("no pair's tier-1 input has been superseded, so there is "
+                    "no confound to exclude")
+
+    for pair_id in report["confounded"]:
+        assert pair_id in report["pairs"], pair_id
+        assert report["pairs"][pair_id]["comparable"] is False
+        # And out of every figure, not merely flagged in its own row.
+        assert all(row["pair_id"] != pair_id for row in report["detail"]), (
+            f"{pair_id} is excluded in the table and still in the detail"
+        )
+
+    comparable = [pair for pair, body in report["pairs"].items()
+                  if body["comparable"]]
+    assert report["pairs_compared"] == len(comparable), (
+        "pairs_compared counts a pair the figures do not rest on"
+    )
+
+
+def test_the_confound_is_detected_from_the_cache_not_assumed():
+    """The exclusion comes from reading what was folded, so it disappears by
+    itself once the correction takes."""
+    import sys
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    import recovery_delta as delta
+
+    assert delta._pair_of("bench02_BRD4_VHL__ternary__conditioned__seed1") \
+        == "bench02_BRD4_VHL"
+    campaigns = sorted((ROOT / "campaigns").glob("campaign_*/queue.jsonl"))
+    if not campaigns:
+        pytest.skip("no main campaign on this checkout")
+    confounded = delta._confounded_pairs(campaigns[-1].parent)
+    # Whatever it finds, it must be pair ids rather than job ids.
+    assert all("__" not in pair for pair in confounded), confounded

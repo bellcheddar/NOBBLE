@@ -232,6 +232,35 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  dropped {dropped} row(s) from {name}"
               + (f" (backup at {name}.bak)" if dropped else ""))
 
+    # And the featurised input, which is the half of this that was missing.
+    #
+    # Boltz writes `boltz_results_<job>/processed/` beside its predictions and
+    # reuses it when the job runs again, so replacing the YAML and clearing
+    # the result rows is not enough: the re-run reads the old featurisation,
+    # spends the full GPU time, writes fresh structures and reports success,
+    # while folding exactly the input the correction was meant to remove.
+    #
+    # That is not hypothetical either. The 6 November chain ran this tool,
+    # re-ran all fifteen bench02_BRD4_VHL jobs, and returned ipTM
+    # bit-identical to sixteen significant figures. The cached
+    # `processed/structures/*.npz` still held chain P residue 1 as HYP while
+    # the corrected YAML said PRO (F219). Every check the project had looked
+    # at the YAML, so the campaign read as corrected for as long as nobody
+    # looked at what was actually folded.
+    #
+    # The whole output directory goes, not just `processed/`: the structures
+    # under it were folded from the input being removed, and keeping them
+    # would leave the scorer able to read poses that no longer correspond to
+    # any input on disk.
+    removed = 0
+    for row in jobs:
+        output = campaign / "outputs" / row["job_id"]
+        if output.exists():
+            shutil.rmtree(output)
+            removed += 1
+    print(f"  removed {removed} cached output directory/ies, so the re-run "
+          "featurises the corrected YAML instead of reusing the old one")
+
     print("\nNow run: bash tools/run_queue.sh --campaign " + str(campaign))
     print("It skips every job already in state, so it runs exactly these.")
     return 0

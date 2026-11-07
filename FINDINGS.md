@@ -9989,7 +9989,11 @@ Both verdicts, immediately after, on the same campaign: tier 2 names the
 killed job and exits 3; tier 1 reports ok and exits 0, because the chain's
 tier-1 runner genuinely is alive. That contrast is the whole fix.
 
-## F217. The hydroxyproline was never in the model, so correcting it changed nothing
+## F217. The correction re-ran the stale input and reported success
+
+**Superseded in part by F219, which is the same investigation finished. The
+conclusion recorded here first was wrong and the reasoning is kept because
+the way it was wrong is the point.**
 
 The F47 correction fired for the first time in the 6 November chain rerun:
 `tools/rerun_pair.py bench02_BRD4_VHL --apply` rewrote the pair's fifteen
@@ -10001,74 +10005,44 @@ YAMLs, dropping
       ccd: HYP
 ```
 
-from chain P, the peptide, and the runner re-ran all fifteen jobs against the
-corrected input. 0 failed, exit 0.
+from chain P, the peptide, and the runner re-ran all fifteen jobs. 0 failed,
+exit 0, fresh structures on disk, 163 s of real compute each.
 
-I went to read what had changed and found pose recovery for the pair
-unmoved: n 10, best 14.443 A, median 18.478 A, worst 65.566 A, the same three
-figures as before. The first explanation to reach for is stale data, and two
-checks I ran to test it were both wrong in the same way: I appended a literal
-`Z` to a local-time `stat` format and passed a local timestamp to
-`-newermt`, on a machine running UTC-5. Corrected, the structures are
-unambiguously fresh: fifteen `_model_0.cif` files written between 22:22 and
-22:55 Z, exactly the fifteen jobs, and `validation.json` rewritten after
-them.
+Every re-run job returned ipTM bit-identical to sixteen significant figures.
+Boltz with a fixed seed is deterministic, so I read identical output as an
+identical input tensor and concluded the `modifications` block never reached
+the model. That conclusion is false, and what made it attractive is that it
+explained the observation completely while requiring nothing to be checked.
 
-So the comparison had to be made properly, and `rerun_pair.py` had already
-preserved the means: it keeps a `.bak` of every jsonl row it drops. Before
-against after, all fifteen jobs:
+The observation has a second explanation that I did not look for: that the
+input really was identical, because the re-run never read the corrected YAML.
+Boltz writes `boltz_results_<job>/processed/` beside its predictions and
+reuses it. `processed/` and `msa/` are dated 11-04 03:57, from the original
+run; `predictions/` and `lightning_logs/` are from the re-run. The cached
+`processed/structures/*.npz` holds chain P residue 1 as **HYP** while the
+corrected YAML says PRO.
 
-```
-bench02_BRD4_VHL__ternary__conditioned__seed1   0.9321987628936768   0.9321987628936768
-bench02_BRD4_VHL__ternary__unconstrained__seed2 0.9445106387138367   0.9445106387138367
-...
-```
+So the hydroxyproline was in the model all along, and still is. See F219.
 
-Bit-identical ipTM to sixteen significant figures on every one. Boltz with a
-fixed seed is deterministic, so identical output means an identical input
-tensor: **the `modifications` block never reached the model.** The YAML
-claimed a hydroxyproline for the whole campaign and the molecule folded was
-the unmodified peptide throughout.
+Two wrong turns before that, both worth keeping.
 
-Two consequences, pulling in opposite directions.
+I first suspected stale data and ran two checks that said the structures were
+old. Both were wrong the same way: a literal `Z` appended to a local-time
+`stat` format, and a local timestamp passed to `-newermt`, on a machine
+running UTC-5. Corrected, the structures are unambiguously fresh, which was
+true and which I then over-read as "so the inputs must have been fresh too".
 
-The campaign's numbers were never contaminated. The atlas build was right to
-refuse on the stale input and the refusal was about provenance, not about
-wrong figures, which is the opposite of what this file and PROGRESS.md had
-implied for two days. Nothing that was published or scored needs revisiting.
+Acting on the false conclusion, I made an undeliverable PTM a manifest error,
+on the reasoning that a phosphodegron folded without its phosphate is a
+different molecule. The reasoning is sound and the premise was not: there is
+no evidence Boltz ignores `modifications`, and the cache proves it applies
+them. Reverted, along with its test.
 
-The second is the one that matters. `nobble/execute/yaml_gen.py`'s
-`peptide_modifications` exists to express spec 2.3's PTM-requiring degron
-classes: SEP and TPO for phosphodegrons, HYP for the hydroxyproline degrons
-VHL recognises. If that block does nothing, then any such peptide is folded
-as its unmodified parent and scored as the degron. For a phosphodegron that
-is not a degraded answer, it is a different molecule.
-
-Scope, measured rather than assumed: zero of the 2,360 YAMLs in this
-campaign carry a `modifications` block now, and no row in any manifest
-carries a `required_modification`, so this campaign has no affected pair and
-no headline moves. It is latent, for the next campaign whose selection
-includes a real phosphodegron.
-
-Fixed where a PTM requirement is already taken seriously rather than at the
-four assembler call sites, which would have meant changing campaign
-composition while a chain was mid-run. `nobble/curate/manifest.py` has
-validated PTM completeness since spec 2.3: a requirement whose residue is
-absent is an error. The residue being present was treated as sufficient and
-is not, so the same check now also refuses a requirement that cannot be
-delivered, with the same severity. A campaign that would fold the parent and
-call it the degron does not assemble.
-
-`peptide_modifications` stays. Its rule is correct and will be needed by
-whatever eventually expresses this chemistry in a form the model reads:
-every eligible residue is modified, because a DSGxxS motif has two serines
-and phosphorylating one of them is not the degron. What was wrong was
-relying on its output, not deriving it.
-
-Still open, and needing a GPU to settle: whether Boltz wants the block
-somewhere else in its schema or drops it outright. Until that is known there
-is no supported way to fold a phosphodegron here, which is why the manifest
-now says so instead of proceeding.
+What should have stopped me: only bench02's fifteen jobs drifted between the
+two campaigns, and the other eighty-five shared jobs reproduced exactly. A
+model that silently drops a declaration would not produce drift confined to
+the one pair whose declaration differed. I had that figure in front of me
+before I wrote the finding and read it as corroboration.
 
 ## F218. The licensing guarantee was announced, not checked
 
@@ -10132,3 +10106,76 @@ the 100-pair benchmark bundle's assumption that chemistry is published and
 therefore redacted. They now precondition on the bundle publishing a SMILES
 at all and skip with the live figure quoted, which keeps their guard against
 passing vacuously while not failing on a true state.
+
+## F219. Boltz reuses its featurised input, so a corrected YAML corrects nothing
+
+The end of F217's investigation, and the finding that matters.
+
+`tools/rerun_pair.py` does two things: replace the YAMLs from a known-good
+campaign, and drop the result rows so the jobs re-run. Its comments reason
+carefully about the second depending on the first, and about what happens if
+the YAML cannot be verified (F146). What neither it nor anything downstream
+accounted for is that Boltz caches the featurised input under the job's own
+output directory and reuses it when the job runs again.
+
+So the correction: rewrote fifteen YAMLs correctly, dropped thirty state rows
+and fifteen result rows correctly, re-ran fifteen jobs for 163 s each, wrote
+fifteen fresh structures, and folded the hydroxyproline again from a cache
+dated two days earlier. It reported success at every step, because every step
+succeeded.
+
+The proof is in `processed/structures/*.npz`, which carries a `residues`
+record array with the CCD code of each residue as folded:
+
+```
+chain A    res_num= 140 first residue = ARG
+chain B    res_num= 118 first residue = MET
+chain C    res_num= 112 first residue = MET
+chain P    res_num=  15 first residue = HYP      <- the YAML says PRO
+chain L    res_num=   1 first residue = 759
+```
+
+**Why nothing caught it.** `nobble/validate/inputs.py:stale_inputs` compares a
+YAML against the queue row that describes it, which answers "is the input on
+disk the one we meant to run". The question that came apart from it is "is the
+input on disk the one that was run", and no check asked it. `tests/
+test_stale_inputs.py` began skipping with "the F47 correction has been
+applied" on the strength of the YAML alone. The atlas built for the first time
+in two days not because the defect was gone but because the guard had been
+satisfied.
+
+This is worse than F47 itself. F47 was a wrong input that every check
+reported as wrong. This is the same wrong input with every check reporting it
+as fixed, and it cost the GPU time of a correction to produce that state.
+
+**Fixed in two places, because one of them is not enough.**
+
+`tools/rerun_pair.py` now removes the whole output directory for each job it
+clears, not just `processed/`: the structures under it were folded from the
+input being removed, and leaving them lets the scorer read poses that no
+longer correspond to any input on disk.
+
+`tools/stale_featurisation.py` is the instrument, and it exists because the
+fix above only helps the next correction. It reads each cached structure's
+first residue per chain and compares it against what the YAML asks for at
+position 1, both ways round: a modified residue folded where the YAML asks
+for none is a cache predating the YAML, and an unmodified one where the YAML
+asks for a modification would be Boltz dropping the block, which is the thing
+F217 wrongly concluded and which this would have settled in a minute. Scoped
+to position 1 rather than the whole sequence on purpose: resolving every
+position of a `modifications` block against the cache means reimplementing
+Boltz's tokenisation, which is a second thing to be wrong about, and spec
+2.3's degron classes are N-terminal anyway.
+
+`deploy/build_atlas.py` consults it after the YAML check and refuses, so the
+state cannot read as publishable while the poses come from an input that is
+no longer on disk.
+
+**Still to do:** the correction has to be run again, now that it will take.
+The GPU is on the chain's tier-2 stage, and this touches the main campaign's
+bench02 results, which the chain has already passed, so it waits rather than
+competing for the device. Until it runs, `bench02_BRD4_VHL`'s fifteen jobs in
+`campaign_20261104T004632Z` hold poses folded with a hydroxyproline the
+degron rule no longer asks for, the `KNOWN_DRIFT` allowlist entry in
+`tests/test_cross_campaign_reproducibility.py` is correct and stays, and the
+build refuses to publish the campaign.

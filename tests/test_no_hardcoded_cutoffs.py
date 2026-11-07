@@ -520,6 +520,10 @@ def test_the_scan_finds_something_to_judge():
 # across the three directories and six are not cutoffs, which is why the
 # allowlist is by comparison rather than by file: a file may hold both.
 INTEGER_ALLOWED = {
+    "tools/atlas_drift.py:len(headline) > 200":
+        "how much of a refusal message to print, not an acceptance: "
+        "the refusal itself is decided by build_atlas returning "
+        "non-zero",
     "tools/atlas_drift.py:len(report['moved']) > 6":
         "how many moved keys to print before `and N more`. A display "
         "truncation in a message, not a cutoff applied to data: the verdict "

@@ -140,6 +140,31 @@ def test_the_refusal_names_the_pair_and_the_command():
     assert "tools/rerun_pair.py" in message
 
 
+def _yaml_clean_reason() -> str:
+    """Why these tests are skipping, said accurately.
+
+    Both used to skip with "the F47 correction has been applied", which reads
+    the YAML and nothing else. On 6 November the YAMLs were corrected, these
+    tests began skipping on that sentence, and the poses still held the
+    hydroxyproline because Boltz had re-run from its cached featurisation
+    (F219). A skip reason that overstates what was checked is how a defect
+    goes quiet, so this says which half is clean and consults the other.
+    """
+    import sys
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    import stale_featurisation as featurisation
+
+    folded = featurisation.disagreements(MAIN)
+    if folded:
+        return (f"the YAMLs are corrected but {len(folded)} job(s) were "
+                "folded from a cached featurisation that disagrees with them, "
+                "so the correction has not taken effect (F219): "
+                f"{folded[0]['job_id']} chain {folded[0]['chain']} asks "
+                f"{folded[0]['yaml_asks']} and folded {folded[0]['folded']}")
+    return "the F47 correction has been applied, in the YAML and in the poses"
+
+
 def test_the_live_campaign_holds_exactly_the_f47_pair():
     """The scope, measured rather than assumed. If this ever reports a
     different count the correction is incomplete or something new has
@@ -148,7 +173,7 @@ def test_the_live_campaign_holds_exactly_the_f47_pair():
         pytest.skip("no main campaign on this checkout")
     stale = inputs.stale_inputs(MAIN)
     if not stale:
-        pytest.skip("the F47 correction has been applied")
+        pytest.skip(_yaml_clean_reason())
     assert {row["pair_id"] for row in stale} == {"bench02_BRD4_VHL"}
     assert all(row["yaml"] == [(1, "HYP")] for row in stale)
     # Per queue, because the tier 2 queue exists only once the decile has
@@ -165,7 +190,7 @@ def test_the_atlas_build_refuses_rather_than_publishing(tmp_path):
     if not MAIN.exists():
         pytest.skip("no main campaign on this checkout")
     if not inputs.stale_inputs(MAIN):
-        pytest.skip("the F47 correction has been applied")
+        pytest.skip(_yaml_clean_reason())
 
     atlas = ROOT / "deploy" / "atlas"
     before = sorted(p.name for p in atlas.iterdir()) if atlas.exists() else None

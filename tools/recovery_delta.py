@@ -64,6 +64,29 @@ def _recovery(job: dict):
         return None
 
 
+def _confounded_pairs(campaign: Path) -> set[str]:
+    """Pairs whose tier-1 featurisation disagrees with the YAML on disk.
+
+    Imported inside the function so that importing this module does not pull
+    in numpy, matching how the recovery target lookup is handled.
+    """
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import stale_featurisation as featurisation
+    except ImportError:
+        return set()
+    return {_pair_of(row["job_id"])
+            for row in featurisation.disagreements(campaign)}
+
+
+def _pair_of(job_id: str) -> str:
+    """The pair id a job id belongs to, which is everything before the first
+    double underscore."""
+    return job_id.split("__")[0]
+
+
 def compare(campaign: Path) -> dict:
     tier1 = {job["job_id"]: job for job
              in paths.read_jsonl(campaign / "results.jsonl", tolerate_torn=True)}
@@ -99,10 +122,20 @@ def compare(campaign: Path) -> dict:
         return {"status": "not_computed: no refined pose has a tier-1 "
                           "counterpart with a measurable RMSD yet", "pairs": {}}
 
+    # Pairs whose tier-1 poses were folded from an input that is no longer on
+    # disk. Their tier-2 jobs get their own output directory, so they
+    # featurise the YAML as it now stands: the two tiers then differ by the
+    # input as well as by the sampling, and a move computed across them
+    # measures both at once (F219). Reported as not comparable rather than
+    # reported with a caveat, because the whole purpose of this table is one
+    # number per pair and a number that means two things is worse than none.
+    confounded = _confounded_pairs(campaign)
+
     by_pair: dict[str, dict] = {}
     for pair_id in sorted({row["pair_id"] for row in rows}):
         mine = [row for row in rows if row["pair_id"] == pair_id]
         by_pair[pair_id] = {
+            "comparable": pair_id not in confounded,
             "n": len(mine),
             "tier1_best": round(min(row["tier1_rmsd"] for row in mine), 3),
             "tier2_best": round(min(row["tier2_rmsd"] for row in mine), 3),
@@ -114,6 +147,16 @@ def compare(campaign: Path) -> dict:
                 and abs(row["tier2_anchor"] - row["tier1_anchor"]) > MOVED_A
                 for row in mine),
         }
+
+    # Confounded pairs are excluded from every aggregate, not just flagged in
+    # their own row: a median over poses that includes them is the same
+    # mixture one level up.
+    rows = [row for row in rows if row["pair_id"] not in confounded]
+    if not rows:
+        return {"status": "no comparable pose: every refined pair's tier-1 "
+                          "input has been superseded on disk",
+                "campaign": campaign.name, "confounded": sorted(confounded),
+                "pairs": by_pair}
 
     moves = [row["move"] for row in rows]
     improved = sum(1 for move in moves if move <= -MOVED_A)
@@ -130,7 +173,10 @@ def compare(campaign: Path) -> dict:
         "status": "computed",
         "campaign": campaign.name,
         "poses_compared": len(rows),
-        "pairs_compared": len(by_pair),
+        # The pairs the figures rest on, which is not the number of rows in
+        # the table: an excluded pair is shown and not counted.
+        "pairs_compared": sum(1 for pair in by_pair.values()
+                              if pair.get("comparable", True)),
         "pairs_expected": len(layers.RECOVERY_TARGETS),
         "moved_threshold_a": MOVED_A,
         "breakpoints_a": list(BREAKPOINTS),
@@ -142,6 +188,7 @@ def compare(campaign: Path) -> dict:
         "worsened": worsened,
         "unchanged": len(moves) - improved - worsened,
         "pairs": by_pair,
+        "confounded": sorted(confounded),
         "detail": rows,
     }
 
@@ -220,16 +267,24 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"{'pair':26s} {'n':>3s} {'tier1':>8s} {'tier2':>8s} {'move':>8s}  anchor")
     for pair_id, pair in report["pairs"].items():
-        flag = "  <- anchor shifted" if pair["anchor_shifted"] else ""
+        if not pair.get("comparable", True):
+            # No move printed. The two tiers folded different molecules, so
+            # the subtraction is not a refinement effect, and printing it with
+            # a marker invites someone to read the number anyway (F219).
+            print(f"{pair_id:26s} {pair['n']:3d} {pair['tier1_median']:8.2f} "
+                  f"{pair['tier2_median']:8.2f} {'--':>8s}  "
+                  "not comparable: tier 1 was folded from a superseded input")
+            continue
+        anchor = "  <- anchor shifted" if pair["anchor_shifted"] else "  stable"
         print(f"{pair_id:26s} {pair['n']:3d} {pair['tier1_median']:8.2f} "
-              f"{pair['tier2_median']:8.2f} {pair['median_move']:+8.2f}  "
-              f"stable{flag}" if not pair["anchor_shifted"] else
-              f"{pair_id:26s} {pair['n']:3d} {pair['tier1_median']:8.2f} "
               f"{pair['tier2_median']:8.2f} {pair['median_move']:+8.2f}"
-              f"{flag}")
+              f"{anchor}")
     print()
     print(f"{report['poses_compared']} pose(s) over {report['pairs_compared']} "
           f"of {report['pairs_expected']} pair(s)")
+    if report.get("confounded"):
+        print(f"excluded from every figure above: "
+              f"{', '.join(report['confounded'])}")
     print("verdict:", verdict(report))
     return 0
 

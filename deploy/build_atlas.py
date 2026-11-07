@@ -252,6 +252,34 @@ def main() -> int:
         print(input_check.refusal(stale), file=sys.stderr)
         return 1
 
+    # And what was actually folded, which the check above cannot see.
+    #
+    # `stale_inputs` compares a YAML against the queue row that describes it,
+    # so it answers "is the input on disk the one we meant to run". It cannot
+    # answer "is the input on disk the one that was run", and those came
+    # apart on 6 November: tools/rerun_pair.py replaced fifteen YAMLs and
+    # cleared their results, Boltz re-ran them against its own cached
+    # featurisation, and the campaign then passed every stale-input check
+    # while its poses still held the hydroxyproline (F219). The atlas built
+    # for the first time in two days because the guard had been satisfied
+    # rather than because the defect was gone.
+    sys.path.insert(0, str(ROOT / "tools"))
+    import stale_featurisation as featurisation_check
+
+    folded = featurisation_check.disagreements(campaign)
+    if folded:
+        print("\nREFUSED: the cached featurisation does not match the YAML "
+              "for these jobs, so the poses were folded from an input that is "
+              "no longer on disk (F219):", file=sys.stderr)
+        for row in folded[:10]:
+            print(f"    {row['job_id']} chain {row['chain']}: YAML asks "
+                  f"{row['yaml_asks']}, folded {row['folded']}",
+                  file=sys.stderr)
+        print(f"    {len(folded)} job(s). tools/rerun_pair.py now removes the "
+              "cached output directory, so re-running the correction "
+              "featurises the YAML.", file=sys.stderr)
+        return 1
+
     if OUT.exists():
         shutil.rmtree(OUT)
     (OUT / "structures").mkdir(parents=True)
