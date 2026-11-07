@@ -110,6 +110,7 @@ def preflight(campaign: Path) -> dict:
 
         ids: list[str] = []
         has_zinc = False
+        has_ligand = False
         for entry in document.get("sequences", []):
             kind = next(iter(entry))
             body = entry[kind]
@@ -144,6 +145,8 @@ def preflight(campaign: Path) -> dict:
                         errors.append({"job": job_id, "problem": problem})
             elif body.get("ccd") == "ZN":
                 has_zinc = True
+            elif kind == "ligand":
+                has_ligand = True
 
         layouts[tuple(ids)] += 1
         if len(set(ids)) != len(ids):
@@ -157,6 +160,30 @@ def preflight(campaign: Path) -> dict:
                                       "exception"})
 
         cofactor_by_pair.setdefault(job["pair_id"], {})[job["complex_type"]] = has_zinc
+
+        # The queue record says there is a glue; the YAML is what gets folded.
+        #
+        # scr_bench03_BRD4_CRBN went through a whole campaign with
+        # ligand_key dBET57 on all ten of its records and no ligand block in
+        # any of its five ternary YAMLs, so its ternary arm was a second
+        # binary arm. Its Delta-ipTM came out at exactly 0.0, which for a
+        # scramble control reads as the cleanest possible result, and its
+        # bridge rate was unmeasurable with no_ligand_chain_in_output on
+        # every seed. The cause was an assembler falling back to a CCD
+        # lookup for a SMILES-only degrader (F262).
+        #
+        # Checked against the record rather than against the complex type
+        # alone: a ternary job with no declared ligand is a different
+        # question, and this is the disagreement between what the campaign
+        # wrote down and what it would fold.
+        if (job.get("complex_type") == "ternary"
+                and job.get("ligand_key") and not has_ligand):
+            errors.append({
+                "job": job_id,
+                "problem": f"declares ligand {job['ligand_key']} "
+                           f"({job.get('ligand_encoding')}) and its YAML has no "
+                           "ligand chain, so this ternary arm is a second "
+                           "binary arm and delta_iptm would come out at 0.0"})
 
     # The silent one: a structural cofactor must be in both arms or neither,
     # or Delta-ipTM reports the cofactor rather than the glue.
@@ -210,6 +237,9 @@ def preflight(campaign: Path) -> dict:
         "pairs": len(cofactor_by_pair),
         "chain_layouts": {" ".join(str(i) for i in k): v for k, v in layouts.most_common()},
         "pairs_with_asymmetric_cofactor": len(asymmetric),
+        "ternary_jobs_missing_their_ligand": sum(
+            1 for item in errors
+            if "has no ligand chain" in item.get("problem", "")),
         "cost": cost,
         "errors": errors,
         "ok": not errors,

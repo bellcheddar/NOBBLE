@@ -386,6 +386,38 @@ def assemble_tier_b(reuse_latest: bool = True) -> dict:
         return {"path": str(directory), "reused": False, **summary}
 
 
+def _ligand_of(pair: dict) -> "L.Ligand | None":
+    """The pair's own ligand, rebuilt from the manifest record.
+
+    A pair id that is not a benchmark member, which is every scramble and
+    every borrowed pair, used to fall back to `L.by_ccd(pair["ligand"]["ccd"])`.
+    A SMILES-only degrader has no CCD, so that returned None and
+    `build_yaml` omitted the ligand block entirely: the ternary arm was
+    written as a second binary arm while the queue record still named the
+    ligand. One pair in the main campaign went through a whole run that way,
+    scr_bench03_BRD4_CRBN with dBET57, and its Delta-ipTM came out at exactly
+    0.0, which for a scramble control reads as the cleanest result there is
+    (F262).
+
+    The manifest's pair carries a full `Ligand.to_dict()`, so there is
+    nothing to look up. Filtered through the dataclass's own fields rather
+    than splatted, so a record that gains a key later does not raise here,
+    and falling back to the CCD lookup only when the record cannot be used
+    at all.
+    """
+    import dataclasses
+
+    record = pair.get("ligand") or {}
+    if not record:
+        return None
+    names = {field.name for field in dataclasses.fields(L.Ligand)}
+    missing = names - set(record)
+    if not missing:
+        return L.Ligand(**{k: v for k, v in record.items() if k in names})
+    ccd = record.get("ccd")
+    return L.by_ccd(ccd, modality="glue") if ccd else None
+
+
 def assemble_campaign(reuse_latest: bool = True) -> dict:
     """Emit the main campaign: benchmark panel, Sievers arm and scrambles.
 
@@ -464,8 +496,7 @@ def assemble_campaign(reuse_latest: bool = True) -> dict:
                 if member is not None:
                     ligand = ligand_by_index.get(member["index"])
                 else:
-                    ccd = (pair.get("ligand") or {}).get("ccd")
-                    ligand = L.by_ccd(ccd, modality="glue") if ccd else None
+                    ligand = _ligand_of(pair)
 
                 pocket = _pocket_for(pair)
                 if job.conditioning == "conditioned" and pocket is None:

@@ -12421,3 +12421,59 @@ error inside it would have passed the whole suite. Both branches are now
 rendered: the contrast with the live campaign's own curves rather than
 hand-made numbers, and the ROC coverage line in its partial form, which the
 bundle also cannot reach because its validation predates the field.
+
+## F262
+
+One scramble control was folded without its glue, and its Delta-ipTM of
+exactly 0.0 reads as the cleanest possible control result.
+
+`scr_bench03_BRD4_CRBN` ran the whole campaign that way. All ten of its queue
+records name ligand dBET57 with encoding `smiles`; none of its five ternary
+YAMLs carries a ligand block, and those YAMLs are 316 bytes, byte-identical in
+shape to its own binary ones. So what was folded was receptor plus peptide,
+twice over, and the "ternary" arm was a second binary arm.
+
+The consequences are both numbers that look like results:
+
+* `delta_iptm` is exactly 0.0, because it is the difference of two minima over
+  the same thing. For a scramble control that reads as scrambling the degron
+  abolishing the glue effect, which is the result one would hope for.
+* `bridge_formation_rate` is null, with `bridging_unmeasurable_reasons` of
+  `no_ligand_chain_in_output: 5`. That field was added for exactly this case
+  and its comment records the case as latent, the only reason ever seen being
+  BINMAN's own `single_chain` verdict. It is not latent: this is it, and the
+  separation of unmeasurable from non-bridging is what kept the 0.0 out of the
+  bridge rate.
+
+The cause is one branch in `assemble_campaign`. A pair id that is not a
+benchmark member, which is every scramble, fell back to
+`L.by_ccd(pair["ligand"]["ccd"])`. dBET57 is a SMILES-only PROTAC with no CCD,
+so the lookup returned None and `build_yaml` adds the ligand block only when
+the ligand is not None. The other thirty scrambles carry CCD-encoded glues and
+were unaffected, which is why one pair in 158 was wrong and nothing looked
+systematic.
+
+The manifest's pair already carries a complete `Ligand.to_dict()`, SMILES
+included, so there was nothing to look up: the fallback now rebuilds the
+ligand from that record, filtered through the dataclass's own fields so a
+record that gains a key later does not raise inside an assembler.
+
+Checked for breadth before concluding anything. Across the main campaign, one
+ternary pair of 158 declares a ligand its YAML lacks. Across Tier B's 770
+ternary jobs, none do, including all 110 SMILES-encoded ones: Tier B resolves
+its ligands through `borrowed_from` against the benchmark members, a different
+branch, so the 32.8 hours queued behind this are not at risk. That was the
+first thing worth knowing and it was not safe to assume.
+
+`tools/preflight.py` now refuses a ternary job that declares a ligand its YAML
+has no chain for. Run against the campaigns on disk it flags exactly those
+five jobs and passes Tier B clean, which is to say it would have refused the
+main campaign before it spent a minute of GPU. The check is against the queue
+record rather than the complex type alone: a ternary job with no declared
+ligand is a different question, and this one is the disagreement between what
+the campaign wrote down and what it would fold.
+
+What is not fixed by this: the campaign on disk. Those five jobs need
+re-running, which needs the GPU, so they join the F47 correction in the queue
+of things waiting for the device. Until then `scr_bench03_BRD4_CRBN`'s 0.0 is
+an artefact and is recorded here as one.
