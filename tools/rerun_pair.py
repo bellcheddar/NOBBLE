@@ -365,7 +365,17 @@ def main(argv: list[str] | None = None) -> int:
     # any input on disk.
     removed = 0
     for row in jobs:
-        output = campaign / "outputs" / row["job_id"]
+        # One path component, for the reason the runner states: an empty id
+        # makes this the whole outputs directory, and this tool is run by
+        # hand with --apply.
+        job_id = row["job_id"]
+        if (not job_id or job_id in (".", "..")
+                or Path(job_id).parts != (job_id,)):
+            print(f"REFUSING: job id {job_id!r} is not a single path "
+                  "component, so the directory it names cannot be removed "
+                  "safely", file=sys.stderr)
+            return 2
+        output = campaign / "outputs" / job_id
         if output.exists():
             shutil.rmtree(output)
             removed += 1

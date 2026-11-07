@@ -21,6 +21,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from nobble.execute.runner import completed
@@ -249,3 +251,29 @@ def test_an_exit_zero_that_said_nothing_says_that(tmp_path, monkeypatch):
     outcome = runner_module.run_job(
         job, campaign, runner_module.settings_from_config(tier=1))
     assert "and said nothing" in outcome.detail, outcome.detail
+
+
+def test_an_empty_job_id_cannot_clear_the_whole_outputs_directory(tmp_path):
+    """`Path("x/outputs") / ""` is `Path("x/outputs")`.
+
+    So a queue row with an empty job id would aim run_job's rmtree at the
+    campaign's entire outputs directory. For the main campaign that is 2,360
+    jobs' structures, which is weeks of inference. The assembler cannot
+    produce such a row, which is the reachability `cd ""` had in F241.
+    """
+    from nobble.execute import runner as runner_module
+
+    campaign = tmp_path / "campaign_guard"
+    outputs = campaign / "outputs"
+    (outputs / "someone_elses_job").mkdir(parents=True)
+    (outputs / "someone_elses_job" / "structure.cif").write_text("data")
+
+    for bad in ("", "..", "a/b", "/absolute"):
+        with pytest.raises(ValueError, match="single path component"):
+            runner_module.run_job(
+                {"job_id": bad, "tokens": 10, "yaml": str(tmp_path / "g.yaml"),
+                 "seed": 1, "pair_id": "p", "complex_type": "ternary"},
+                campaign, runner_module.settings_from_config(tier=1))
+
+    assert (outputs / "someone_elses_job" / "structure.cif").exists(), (
+        "the guard let a malformed job id reach the rmtree")

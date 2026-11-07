@@ -306,6 +306,27 @@ def _run_boltz(command: list[str], env: dict, timeout: float):
 def run_job(job: dict, campaign: Path, settings: dict) -> JobOutcome:
     """Run one Boltz inference, with one retry on failure."""
     job_id = job["job_id"]
+    # A job id has to be one path component, because the next lines delete
+    # what it names.
+    #
+    # `Path("x/outputs") / ""` is `Path("x/outputs")`, so a queue row carrying
+    # an empty job id would aim the rmtree below at the whole outputs
+    # directory and take every structure in the campaign with it: 2,360 jobs
+    # for this one, which is weeks of inference. A row with ".." or a slash
+    # would point outside it. Neither can come from the assembler, which is
+    # the same reachability `cd ""` had in F241, and the same consequence as
+    # the YAML-path refusal F144 added to rerun_pair.
+    #
+    # Tested on `parts` rather than on `name`, because the first version of
+    # this guard checked `Path(job_id).name != job_id` and `Path("..").name`
+    # is `".."`, so `..` passed straight through and the rmtree below was
+    # handed `outputs/..`, which is the campaign directory. `parent == base`
+    # does not catch it either: that is true of `..` and of a real job id
+    # alike. The test written with the guard is what found this.
+    if not job_id or job_id in (".", "..") or Path(job_id).parts != (job_id,):
+        raise ValueError(
+            f"job id {job_id!r} is not a single path component, so the "
+            "output directory it names cannot be cleared safely")
     output_dir = campaign / "outputs" / job_id
     # Cleared, not reused. Boltz writes its featurised input to
     # `boltz_results_<job>/processed/` under here and reads it back if it is

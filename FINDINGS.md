@@ -11447,3 +11447,58 @@ file says why: scoring runs PLIP over every structure and takes minutes, which
 a check a deploy waits on cannot afford, and `campaign.json` records what an
 assembler built with nothing to recompute it from. So a stale `scores.jsonl`
 is invisible to this check, which is a stated limit rather than an oversight.
+
+## F243. An empty job id would have deleted the campaign, and my first guard let `..` through
+
+The `cd ""` collapse from F241 has a Python form, and it is in code added
+earlier today. `nobble/execute/runner.run_job` clears a job's output before
+running it:
+
+```python
+job_id = job["job_id"]
+output_dir = campaign / "outputs" / job_id
+if output_dir.exists():
+    shutil.rmtree(output_dir)
+```
+
+`Path("x/outputs") / ""` is `Path("x/outputs")`. So a queue row carrying an
+empty job id aims that `rmtree` at the campaign's whole outputs directory:
+2,360 jobs' structures for the main campaign, which is weeks of inference.
+`tools/rerun_pair.py` has the same line and is run by hand with `--apply`.
+
+Only a damaged or hand-edited queue produces such a row, since
+`job["job_id"]` raises on a missing key and the assembler writes the id from
+the job it built. That is the same reachability an empty `REMOTE_DIR` had, and
+the consequence is worse.
+
+**My first guard was wrong in exactly the way the hazard is.** It read
+`if not job_id or Path(job_id).name != job_id`, and `Path("..").name` is
+`".."`, so `..` passed through and `rmtree` was handed `outputs/..`, which is
+the campaign directory itself. The test written alongside the guard is what
+found it, by asserting a bystander file survived:
+
+```
+FileNotFoundError: .../campaign_guard/outputs/..
+```
+
+`parent == base` would not have caught it either: that holds for `..` and for
+a real job id alike. The guard now tests `parts`, which rejects empty, `.`,
+`..`, any slash and any absolute path, and accepts a single component:
+
+```python
+if not job_id or job_id in (".", "..") or Path(job_id).parts != (job_id,):
+```
+
+Two things worth keeping from this. A guard against a path trick is itself
+worth testing against path tricks, because the obvious check and the correct
+one differ on the one input that matters most. And this is the second time
+today a test earned its place by failing: the other was
+`test_the_polished_readme_is_in_step_with_the_readme`, which caught a public
+document regenerated from a source I had edited.
+
+**Also found while here**, by walking every test file's imports with `ast`:
+`tests/test_plddt.py` used `pytest.skip` with no `pytest` import, so its skip
+branch would have raised `NameError` the first time a checkout lacked the
+cached AlphaFold models. Fixed, as was the same thing in `test_resume.py`.
+Nine other files call `pytest.skip` after importing pytest inside the function
+that uses it, which works and was left alone.
