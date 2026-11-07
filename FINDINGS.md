@@ -11338,3 +11338,38 @@ assume, because "abandoned with nothing after it" is indistinguishable from
 
 So the job-level record is 2,708 of 2,709 accounted for, one genuine failure
 with a named reason, and no job unaccounted for anywhere.
+
+## F240. Provisioning twice would have taken HTTPS off the live site
+
+`deploy/enable_gzip.sh` opens by explaining why it splices into the vhost
+rather than regenerating it: "provision.sh writes the vhost from scratch, and
+certbot edits that file in place to add the TLS lines. Regenerating it would
+take HTTPS off the site."
+
+`deploy/provision.sh` did nothing about that. The vhost write was
+`cat > "/etc/nginx/sites-available/nobble" <<VHOST`, unconditional, with no
+existence check, no TLS check and no backup. A second run on the live host
+would have written the HTTP-only vhost the script carries, passed `nginx -t`
+because that is valid configuration, reloaded nginx, and served
+nobble.mdeller.com over port 80. The risk was known, written down, and sitting
+in a comment in a different file, which is not a guard.
+
+It now backs up any existing vhost, refuses when the existing one carries
+`ssl_certificate`, and names the two ways forward: splice in place as
+`enable_gzip.sh` does, or set `NOBBLE_PROVISION_FORCE=1` and follow with
+`certbot.sh`. A fresh host still provisions, because there is no vhost to
+protect.
+
+Six tests, run against a fixture by extracting the guard region from the
+script rather than restating it, which is the idiom
+`tests/test_enable_gzip_splices_safely.py` established. One pins the ordering,
+since a guard after the overwrite is a post-mortem. One pins that the write
+uses the overridable path, so the guard cannot end up aimed at a different
+file from the one being replaced. Two mutations caught.
+
+**Something the same read turned up.** The vhost `provision.sh` writes already
+contains the gzip block, with F132's measurements in its comments. So the
+compression fix exists in two places: in the script that cannot be re-run on a
+live host, and in `enable_gzip.sh`, which can. F132 stays pending for the
+reason it always was, and the fix being present in provision.sh is not a
+reason to run it.
