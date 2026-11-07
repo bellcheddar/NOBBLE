@@ -172,6 +172,48 @@ def predicted_rows() -> dict[tuple[str, str], dict]:
     return out
 
 
+def substrate_coverage(crystals: list[dict],
+                      predictions: dict) -> list[dict]:
+    """How much of the deposited substrate-side burial each arm reproduces.
+
+    The diagnostic the calibration makes available and the totals hide. A
+    prediction can match the crystal's total while splitting it differently,
+    and the split is what a representation changes: a 15-mer has less
+    surface to bury than the folded domain it was cut from, so its
+    substrate-side dSASA is bounded by its own length while the glue's seat
+    in the E3 is not.
+
+    Reported per pair and per representation as predicted over deposited, so
+    a value near one means the submitted substrate buries what the deposited
+    one does and a small value means it cannot. Which pairs fall where is not
+    uniform and is the point: it says in advance which substrates a 15-mer
+    campaign can measure at all.
+
+    None where the arm found no bridge, which is not a coverage of zero: a
+    ratio needs a numerator that was measured.
+    """
+    out = []
+    for row in crystals:
+        if not row.get("measurable") or not row.get("dsasa_peptide"):
+            continue
+        number = row["pair_id"][len("bench"):len("bench") + 2]
+        for label, _pattern, _prefix in REPRESENTATIONS:
+            record = predictions.get((label, number))
+            if record is None:
+                continue
+            predicted = record.get("substrate")
+            out.append({
+                "pair_id": row["pair_id"],
+                "representation": label,
+                "deposited": row["dsasa_peptide"],
+                "predicted": predicted,
+                "coverage": (round(predicted / row["dsasa_peptide"], 3)
+                             if predicted else None),
+                "seeds_bridged": record.get("n_bridged"),
+            })
+    return out
+
+
 def _ratio(predicted, crystal) -> str:
     if not predicted or not crystal:
         return "    -"
@@ -251,6 +293,14 @@ def main(argv=None) -> int:
                   f"{record['receptor']:9.1f} {record['substrate']:10.1f} "
                   f"{record['total']:9.1f} "
                   f"{_ratio(record['total'], row['dsasa_total']):>10s}")
+    print()
+    print("  substrate-side burial reproduced, predicted over deposited")
+    for row in substrate_coverage(crystals, predictions):
+        value = ("no seed bridged" if row["coverage"] is None
+                 else f"{row['coverage']:.3f}")
+        print(f"  {row['pair_id']:24s} {row['representation']:14s} "
+              f"{value:>16s}  ({row['deposited']:7.1f} A^2 deposited)")
+
     print()
     print("  every deposition above predates the 2021-09-30 training cutoff "
           "(F282),")
