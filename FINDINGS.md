@@ -13256,3 +13256,75 @@ what I saw. F272 to F276 were each decided on a single run. The three whose
 stands on the gap being real and I confirmed each by watching the new test
 fail. The "caught" verdicts that ended enquiry are the ones a flip would have
 hidden, and those are now repeated three times where they matter.
+
+## F278
+
+The whole-domain campaign finds the site, not just the coordinates.
+
+F236 is that pose recovery fails on the 15-mer campaign and passes on the
+whole-domain one, 0 of 65 within 3 A at a median of 17.535 A against 35 of 65
+at 2.494 A. An RMSD cannot say whether a pose is wrong because the model
+missed the degron site or because it found the site and laid the chain along
+it in the wrong register, which is what F227 and F228 built the footprint
+measurement for. The corrected campaign's `validation.json` predated that
+measurement, so the stronger question had never been asked of it.
+
+Asked now, from data already on disk, each pair's best pose by RMSD:
+
+```
+pair              15-mer footprint        whole domain
+GSPT1             0.029   0/15            0.941   99/99
+BRD4/VHL          0.455  10/15            0.909 111/111
+BRD4/CRBN         0.000   2/15            0.529  88/111
+IKZF1 (control)   0.909  15/15            0.909   15/15
+CSNK1A1           0.542  13/15            0.955 269/269
+RBM39             0.533  15/15            0.867   78/78
+CDK12             0.000   0/15            0.774 292/294
+
+jaccard median    0.455                   0.909
+```
+
+The columns are the contact Jaccard against the deposited degron's own
+receptor contacts, and how many of the deposited window's residues the
+predicted peptide touches at all.
+
+Three things follow.
+
+**The failure was the representation, at the level of the site and not only
+the coordinates.** GSPT1 goes from 0.029 to 0.941 and CDK12 from nothing to
+0.774: as 15-mers those two peptides touch none of the window they are
+supposed to occupy, and as whole domains they touch all of it. That is a
+stronger statement than the RMSD improvement, because a Jaccard near 0.9 is
+the deposited contact set being reproduced rather than approached.
+
+**BRD4/CRBN is the case the instrument was built for.** Its RMSD is 16.519 A,
+which reads as a failure, and its footprint is 0.529 with 88 of 111 window
+residues touched. The site is substantially found and the pose along it is
+wrong. Reported as an RMSD alone it is indistinguishable from GSPT1's 15-mer
+result, and those are different outcomes.
+
+**The control holds again, and by a second measurement.** IKZF1 is 0.909 in
+both columns. F269 established that its RMSD is identical to three decimals
+because it is the same 15-mer with the same seeds, so the apparatus agreeing
+with itself is what an exact match means. The footprint is a different
+quantity computed over different intermediates, and it is identical too,
+which is the same evidence one level down.
+
+One caveat belongs on BRD4/VHL. Its 15-mer footprint of 0.455 is measured
+against poses folded from a superseded input (F219), which the validation
+layer cannot know and `tools/publication_hold.py` marks when it reports the
+same table. The whole-domain column is unaffected.
+
+The corrected campaign's `validation.json` now carries these footprints, so
+the comparison comes from the pipeline rather than from a script of mine. The
+write was checked first: additive, no value changed.
+
+And it surfaced a defect in my own F259 work. Run against a campaign with no
+Sievers arm, the ROC coverage line said "the campaign's queue could not be
+read", which is false and sends a reader looking for a missing file. The
+corrected campaign's queue is perfectly readable and holds seven whole-domain
+pairs. That is F266's `unavailable` against `not_applicable` distinction, in
+code written the same morning, and the fix needed a second return value
+rather than a flag smuggled into the mapping of per-label counts: putting it
+there leaked into a caller iterating the labels, and the test asserting the
+mapping equals two labels failed immediately.

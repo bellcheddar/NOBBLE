@@ -92,8 +92,8 @@ def test_the_expected_count_is_per_pair_not_per_job(tmp_path):
                              "tier": layers.ROC_ARM, "peptide_label": label,
                              "seed": seed})
     _write(directory / "queue.jsonl", rows)
-    assert layers._arm_expected(directory) == {"degraded": 3,
-                                               "not_degraded": 3}
+    assert layers._arm_expected(directory)[0] == {"degraded": 3,
+                                                  "not_degraded": 3}
 
 
 def test_pairs_outside_the_arm_do_not_inflate_the_denominator(tmp_path):
@@ -166,3 +166,52 @@ def test_the_partial_line_actually_renders(monkeypatch):
     assert page.status_code == 200, page.status_code
     text = page.get_data(as_text=True)
     assert "partial: 6 of 24" in text, "the partial coverage line did not render"
+
+
+def test_a_campaign_with_no_arm_is_not_applicable_rather_than_unreadable(tmp_path):
+    """A readable queue with no Sievers pairs is not a file problem.
+
+    Run against the corrected campaign, whose queue is perfectly readable and
+    holds seven whole-domain pairs and no Sievers ones, the coverage line said
+    "the campaign's queue could not be read". That sends a reader looking for
+    a missing file. It is F266's `unavailable` against `not_applicable`
+    distinction, in the code written for F259 the same morning (F278).
+    """
+    directory = tmp_path / "campaign_no_arm"
+    directory.mkdir()
+    _write(directory / "queue.jsonl", [
+        {"job_id": "j1", "pair_id": "corr01_GSPT1_CRBN", "tier": "corrected",
+         "peptide_label": "degraded", "complex_type": "ternary"},
+    ])
+    _write(directory / "scores.jsonl", [])
+    expected, queue_was_read = layers._arm_expected(directory)
+    assert queue_was_read is True
+    line = layers._arm_coverage(0, 0, expected, queue_was_read)
+    assert line.startswith("not_applicable"), line
+    assert layers.ROC_ARM in line, line
+
+
+def test_an_absent_queue_is_still_unknown(tmp_path):
+    """The other side of the distinction, so one message cannot serve both."""
+    expected, queue_was_read = layers._arm_expected(tmp_path / "gone")
+    assert queue_was_read is False
+    line = layers._arm_coverage(0, 0, expected, queue_was_read)
+    assert line.startswith("unknown"), line
+
+
+def test_the_expected_mapping_does_not_leak_its_own_bookkeeping(tmp_path):
+    """`_queue_was_read` is how the two cases are told apart, not a label.
+
+    It is carried in the same mapping as the per-label counts, so a caller
+    iterating the mapping would otherwise find a key that is not a peptide
+    label and count it as one.
+    """
+    directory = tmp_path / "campaign_arm"
+    directory.mkdir()
+    _write(directory / "queue.jsonl", [
+        {"job_id": f"j{i}", "pair_id": f"sv_{label}_{i}",
+         "tier": layers.ROC_ARM, "peptide_label": label,
+         "complex_type": "ternary"}
+        for label in ("degraded", "not_degraded") for i in range(3)])
+    expected, _ = layers._arm_expected(directory)
+    assert expected == {"degraded": 3, "not_degraded": 3}, expected

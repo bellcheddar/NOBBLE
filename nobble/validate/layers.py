@@ -486,7 +486,7 @@ def _verdict(low: float, high: float) -> str:
     return f"not distinguishable from chance at {level}"
 
 
-def _arm_expected(campaign: Path) -> dict[str, int]:
+def _arm_expected(campaign: Path) -> tuple[dict[str, int], bool]:
     """Distinct ROC-arm pairs per label in the campaign's queue.
 
     The queue carries `tier` and `peptide_label` on every job, so the arm's
@@ -499,12 +499,12 @@ def _arm_expected(campaign: Path) -> dict[str, int]:
     """
     queue = Path(campaign) / "queue.jsonl"
     if not queue.exists():
-        return {}
+        return {}, False
     seen: dict[str, set[str]] = {}
     try:
         rows = paths.read_jsonl(queue, tolerate_torn=True)
     except OSError:
-        return {}
+        return {}, False
     for row in rows:
         if row.get("tier") != ROC_ARM:
             continue
@@ -512,15 +512,33 @@ def _arm_expected(campaign: Path) -> dict[str, int]:
         if label not in ROC_LABELS:
             continue
         seen.setdefault(label, set()).add(row.get("pair_id"))
-    return {label: len(pairs) for label, pairs in seen.items()}
+    return {label: len(pairs) for label, pairs in seen.items()}, True
 
 
 def _arm_coverage(positives: int, negatives: int,
-                  expected: dict[str, int]) -> str:
-    """One line saying how much of the arm the curve was drawn from."""
+                  expected: dict[str, int],
+                  queue_was_read: bool = False) -> str:
+    """One line saying how much of the arm the curve was drawn from.
+
+    `queue_was_read` separates two cases that an empty `expected` cannot.
+    Run against the corrected campaign, whose queue is perfectly readable and
+    holds seven whole-domain pairs and no Sievers ones, the line read "the
+    campaign's queue could not be read", which sends a reader looking for a
+    missing file. That is F266's `unavailable` against `not_applicable`
+    distinction, in the code written for F259 the same morning (F278).
+
+    Passed as its own argument rather than carried in `expected`, which is a
+    mapping of per-label counts: a boolean in there leaked into callers that
+    iterate the labels, and the test asserting the mapping equals
+    `{"degraded": 3, "not_degraded": 3}` failed at once.
+    """
     want_pos = expected.get("degraded")
     want_neg = expected.get("not_degraded")
     if not want_pos or not want_neg:
+        if queue_was_read:
+            return ("not_applicable: the campaign's queue holds no pairs of "
+                    f"the {ROC_ARM} arm, so there is no arm size to compare "
+                    "against")
         return ("unknown: the campaign's queue could not be read, so the "
                 "arm's intended size is not available to compare against")
     if positives >= want_pos and negatives >= want_neg:
@@ -592,7 +610,7 @@ def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerR
     # partial arm is still a real estimate with a wider interval, unlike
     # F258's vacuous confirmation, so this reports coverage rather than
     # refusing to compute.
-    expected = _arm_expected(campaign)
+    expected, queue_was_read = _arm_expected(campaign)
 
     layer.summary = {
         "statistic": statistic,
@@ -600,7 +618,8 @@ def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerR
         "matched_negatives": len(negatives),
         "positives_expected": expected.get("degraded"),
         "matched_negatives_expected": expected.get("not_degraded"),
-        "coverage": _arm_coverage(len(positives), len(negatives), expected),
+        "coverage": _arm_coverage(len(positives), len(negatives), expected,
+                                  queue_was_read),
         "pairs_outside_the_arm_excluded": excluded,
         "non_finite_dropped": non_finite,
         "source": "Sievers zinc-finger screen: negatives assayed in the same screen",
