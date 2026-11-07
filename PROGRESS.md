@@ -1404,3 +1404,20 @@ pending but unanswerable, since all ten of its refinements fail.
 
 **Spend:** 94.71 h over 2,709 jobs, of which 15.85 h on 6 failed attempts.
 G1 and G5 closed. Suite at 1,689 passing, 29 skipped.
+
+### The suite is red on purpose, and the reminder is working
+
+`test_the_known_drift_is_still_drifting` now fails: 11 of bench02's 15 jobs
+agree between campaigns again, so `KNOWN_DRIFT`'s F47 entry has outlived what
+it allowed. That test exists to fail exactly here, and its docstring says so:
+"this fails until the entry is removed, which is the only reminder that the
+correction is done."
+
+Not removed yet. Four of the fifteen are still re-running, so the entry is
+mid-flight and clearing it now would need a second edit in an hour. **When
+the corrections finish, replace `KNOWN_DRIFT` with an empty dict**, keeping
+the comment as a record of what it held, so
+`test_a_shared_job_predicts_the_same_interface_in_both_campaigns` becomes the
+live guard with no allowlist. That is the designed end state.
+
+Everything else passes: 1,696 passed, 29 skipped, one deliberate failure.
