@@ -32,6 +32,30 @@ Built from BUILD_SPEC.md, which is authoritative.
 Set `KMP_DUPLICATE_LIB_OK=TRUE` for anything importing torch alongside the
 conda-forge scientific stack: see BoltzMaker's pixi.toml for why.
 
+## Operating rules earned the hard way
+
+Three things cost hours on 2026-11-07 and none is inferable from the code.
+
+- **Never edit a script the chain is executing.** Bash reads a script
+  incrementally, so an edit shifts the byte offsets under a running copy and
+  it resumes mid-statement. `tools/run_chain.sh` died on a valid file with
+  `syntax error near unexpected token 'else'` and never reached tier 2
+  (F308). While the chain holds them, `run_chain.sh`, `tier2.sh`,
+  `refresh.sh`, `corrections.sh`, `run_queue.sh` and `wait_for_gpu.sh` are
+  off limits; a Python module is safer only because the interpreter reads it
+  whole at import.
+- **Search FINDINGS before naming a cause.** `tools/findings.py --grep` is
+  one command. Three findings were written on the premise that duplicate
+  files in the tree were unexplained, while F173 and F186 had recorded the
+  cause and `deploy/deploy.sh` already refused on it (F304). Doing the sweep
+  again is F291 and F295; concluding from a sweep without searching is
+  worse, because it reaches a wrong answer rather than a slow one.
+- **Never `git add -A` while a build owns `deploy/atlas`.** The bundle is
+  2,515 tracked files and 330 MB, the build clears and rewrites it, and
+  iCloud restores conflict copies into it minutes later. `git add -A`
+  committed and pushed 706 of them (F303) and later failed outright with
+  `unable to stat`. Commit by path.
+
 ## Gates
 
 | Gate | Opens when |

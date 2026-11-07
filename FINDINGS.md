@@ -15147,3 +15147,39 @@ build that did its job. Refusing is the right side to err on, since the
 alternative is publishing a bundle with a 404 in it, and the chain's atlas
 stage is `|| true` so a refusal leaves the previous bundle standing rather
 than stopping the run.
+
+## F311. The three rules that cost hours, written where I will read them
+
+Today's self-inflicted work has a shape: three text-matching slips, two
+causes named without searching the record, two over-claims withdrawn, and
+one operational error. Most of it was not a gap in the code. It was me not
+knowing, or not remembering, three things that are not inferable from the
+code and that the project had no place to put.
+
+They are now in `CLAUDE.md`, which is the file that gets read at the start
+of every session, under a heading that says what they are.
+
+- **Never edit a script the chain is executing** (F308). Bash reads a script
+  incrementally, so an edit shifts the byte offsets under a running copy.
+  `tools/run_chain.sh` died on a file that `bash -n` accepts.
+- **Search FINDINGS before naming a cause** (F304). `tools/findings.py
+  --grep` is one command. Three findings were written on the premise that
+  the duplicate files were unexplained while F173 and F186 had the cause and
+  `deploy/deploy.sh` already refused on it. Repeating a sweep is F291 and
+  F295; concluding from one without searching is worse, because it arrives
+  at a wrong answer rather than a slow one.
+- **Never `git add -A` while a build owns `deploy/atlas`** (F303). It
+  committed and pushed 706 conflict copies, and later failed outright with
+  `unable to stat`. Commit by path.
+
+`tests/test_the_operating_rules_name_real_things.py` checks the nouns rather
+than the prose: that every script the first rule protects exists and is still
+reached from the chain, that the second rule's command runs and finds the two
+findings it cites, that the third rule's measured figures have not gone
+stale, and that each rule names the finding that earned it. A rule which
+cites a renamed script reads as current and is not, which is worse than
+having no rule.
+
+What this is not: a general lesson about care. Each of the three is a
+specific, mechanical fact with a specific, mechanical remedy, which is the
+only kind worth writing in a file that is read every time.
