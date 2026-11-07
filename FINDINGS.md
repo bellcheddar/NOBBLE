@@ -12721,3 +12721,44 @@ emit, a confident answer to a question nobody asked, while the benchmark
 campaign compared clean because its job ids happen to coincide with the main
 manifest's. The second is luck rather than design and is not a basis for a
 check, so both are out of scope by name.
+
+## F267
+
+The corrections are one command now, and writing it found a way to waste an
+hour of GPU.
+
+Two pairs of the main campaign hold poses folded from an input the project no
+longer means to run: bench02_BRD4_VHL, whose YAMLs are right and whose cached
+featurisation is not (F47, F219), and scr_bench03_BRD4_CRBN, whose ternary
+YAMLs were written without their glue and have to be regenerated from the code
+(F262, F265). Both were separate commands with separate preconditions, and
+both have to happen before the atlas rebuild that publishes the whole-domain
+contrast (F261).
+
+`tools/corrections.sh` sequences them and then `tools/refresh.sh`. It
+rehearses by default and `--apply` performs. The GPU wait is before the first
+correction rather than inside `run_queue.sh`, where it already exists: twenty
+results cleared while the chain is still scoring would hand its scorer a
+campaign with twenty holes in it, and by the time `run_queue.sh` waits, the
+clearing has happened.
+
+The part worth recording is the idempotence. Both operations clear results so
+jobs re-run, so the script has to know when there is nothing left to do, and
+the exit code cannot tell it. `--regenerate` exits 2 and says "byte-identical"
+when the YAMLs already match the code. The reference path exits 0 either way:
+for bench02 today it reports "0 of 15 YAML(s) differ" and "15 of those hold a
+featurisation that disagrees", and once the correction has worked it reports
+the same first line with "none of those disagrees with its YAML today". The
+two states differ only in the second line.
+
+I put the check inside the `status -ne 0` branch, which the reference path
+never reaches. So a second run after a successful correction would have
+cleared fifteen results and re-run fifteen jobs on an input that was already
+right: about an hour of GPU to arrive back where it started. Found by reading
+the dry run's own output and noticing that bench02's rehearsal exits 0, not by
+anything failing.
+
+The decision now reads the rehearsal regardless of exit code, and the tests
+pin both patterns against the four rehearsal texts, two states per path, plus
+the placement structurally, because the defect was where the check sat rather
+than what it said.

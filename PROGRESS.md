@@ -1,6 +1,6 @@
 # NOBBLE progress
 
-Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T13:11:14Z.
+Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T14:04:38Z.
 
 ## Gate G6 answered: the headline is a negative result, and publication is held
 
@@ -33,6 +33,16 @@ wanted the `modifications` block elsewhere in its schema, is now closed from
 the parser source rather than the GPU: it is read from inside the entity dict
 as `position` and `ccd` pairs, which is what was emitted, so the cache is the
 whole cause (F220).
+
+**The corrections are one command, waiting on the GPU.** `bash
+tools/corrections.sh` rehearses both and `--apply` performs them, waiting for
+the device before it clears anything: bench02_BRD4_VHL's cached featurisation
+(F47, F219) and scr_bench03_BRD4_CRBN's ternary YAMLs regenerated from the
+current code (F262, F265), then `tools/refresh.sh`, which is what rebuilds the
+atlas and publishes the whole-domain contrast. Safe to run twice: it reads
+"nothing to correct" off each rehearsal rather than off an exit code, which is
+the difference between idempotent and an hour of GPU arriving back where it
+started (F267).
 
 **What the live site shows, and does not.** `deploy/atlas/validation.json`
 is this campaign's, so nobble.mdeller.com already carries pose recovery at 0
