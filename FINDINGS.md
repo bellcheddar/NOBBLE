@@ -13974,3 +13974,42 @@ My first pass at the sweep also reported 44 orphans rather than five, because
 it counted a function used only inside its own module as unreferenced and
 could not see a decorator. Both are F250's documented limitations, which I
 would have known had I read it first.
+
+## F292
+
+A findings lookup, and it was wrong about the file on its first run.
+
+`FINDINGS.md` is 14,000 lines over 291 numbers, and the code cites them
+constantly: a comment says F219 and expects the reader to find it. Until now
+that meant grepping, and F291 is the case of me re-running a sweep whose
+finding was four hours old because looking it up was work.
+
+`tools/findings.py` prints one finding, lists them all, greps their bodies, or
+checks the numbering. It computes the index on every call and writes nothing,
+which is the point: an index stored in the file would be one more thing to
+keep in step with an append-only log, and the document already carries a
+superseded entry on purpose.
+
+Its first `--check` reported F2 and F4 as unexplained repeats. They are not:
+F2b and F4a are lettered sub-findings at the same heading level, and the check
+grouped by number rather than by label. The file was right and the tool was
+wrong, which I established by asking it to list the headings it was counting
+rather than by trusting either.
+
+Keyed on the label, the only repeat is F82, which keeps its superseded text
+under "## F82 (original text)" and is annotated as deliberate. 299 headings,
+293 labels, 291 numbers, no number without a heading.
+
+Two of the tests I wrote for it were also wrong, in the same direction. One
+counted findings as lines starting "## F", which includes prose headings such
+as "## From the parser source", so it reported more headings than exist and
+failed on its own counter. The other expressed "no repeats beyond F82" as
+arithmetic over set sizes rather than saying it, and got the arithmetic wrong.
+Both now state the property: the heading pattern is `F` followed by a digit,
+and the duplicate labels are exactly `{"F82": 2}`.
+
+And the cutoff sweep caught `count > 1` in the tool, asking whether it decides
+an acceptance. It does not: a label appearing more than once is the definition
+of a repeat, and there is no number at which a repeat becomes acceptable. It
+is in `INTEGER_ALLOWED` with that reason, which is the seventh time today a
+guard of this project has corrected something I wrote.

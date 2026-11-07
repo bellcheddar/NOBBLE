@@ -525,6 +525,11 @@ def test_the_scan_finds_something_to_judge():
 # across the three directories and six are not cutoffs, which is why the
 # allowlist is by comparison rather than by file: a file may hold both.
 INTEGER_ALLOWED = {
+    "tools/findings.py:count > 1":
+        "the definition of a repeated heading, not an acceptance applied to "
+        "data: a label appearing more than once is what the numbering check "
+        "is about, and there is no number at which a repeat becomes "
+        "acceptable",
     "tools/atlas_drift.py:len(headline) > 200":
         "how much of a refusal message to print, not an acceptance: "
         "the refusal itself is decided by build_atlas returning "
