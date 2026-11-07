@@ -213,3 +213,53 @@ def test_clearing_is_not_an_alternative_to_the_check():
     """
     build = (ROOT / "deploy" / "build_atlas.py").read_text()
     assert "featurisation_check.disagreements(campaign)" in build
+
+
+def test_the_runner_actually_removes_the_stale_cache(tmp_path, monkeypatch):
+    """Behaviour, not the source text.
+
+    The assertions above read runner.py, which pins that the call is there and
+    in the right place and would keep passing if `shutil.rmtree` were handed
+    the wrong path. This runs `run_job` against a stubbed Boltz and looks at
+    the directory afterwards.
+    """
+    from nobble.execute import runner
+
+    campaign = tmp_path / "campaign_x"
+    job_id = "pair__ternary__conditioned__seed1"
+    output = campaign / "outputs" / job_id
+    stale = output / f"boltz_results_{job_id}" / "processed" / "structures"
+    stale.mkdir(parents=True)
+    (stale / f"{job_id}.npz").write_bytes(b"the previous featurisation")
+    witness = output / "left_from_the_last_run.txt"
+    witness.write_text("still here")
+
+    seen = {}
+
+    def fake_boltz(command, env, timeout):
+        # Called after the clear, so the directory state here is what Boltz
+        # itself would find.
+        seen["cache_present"] = (stale / f"{job_id}.npz").exists()
+        seen["witness_present"] = witness.exists()
+        return "ok", 0, "", ""
+
+    monkeypatch.setattr(runner, "_run_boltz", fake_boltz)
+    monkeypatch.setattr(runner, "boltz_environment", lambda: {})
+    monkeypatch.setattr(runner, "_read_outputs",
+                        lambda directory, name: (None, None, None,
+                                                 "stubbed: no outputs"))
+
+    job = {"job_id": job_id, "yaml": str(tmp_path / "pair.yaml"),
+           "tokens": 100, "seed": 1}
+    settings = {"recycles": 3, "diffusion_samples": 1, "device": "cpu",
+                "potentials": False, "job_timeout_seconds": 60}
+    runner.run_job(job, campaign, settings)
+
+    assert seen, "the stubbed Boltz was never reached"
+    assert seen["cache_present"] is False, (
+        "Boltz was run with the previous featurisation still in place"
+    )
+    assert seen["witness_present"] is False, (
+        "the output directory was not cleared, only part of it"
+    )
+    assert output.exists(), "the output directory was removed and not recreated"
