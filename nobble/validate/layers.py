@@ -515,7 +515,8 @@ def _arm_expected(campaign: Path) -> tuple[dict[str, int], bool]:
     return {label: len(pairs) for label, pairs in seen.items()}, True
 
 
-def _arm_absent_statistic(arm: list[dict], statistic: str) -> dict[str, int]:
+def _arm_absent_statistic(arm: list[dict], statistic: str,
+                          read=None) -> dict[str, int]:
     """Arm rows that were scored and carry no value for this statistic.
 
     A different thing from a pair that has not been scored, and worse. For
@@ -525,12 +526,17 @@ def _arm_absent_statistic(arm: list[dict], statistic: str) -> dict[str, int]:
     is a selection on the dependent variable rather than an incomplete run
     (F280).
     """
+    # The same resolver the curve used, or the plain field read. A blanket
+    # replacement gave this function the caller's local `read` and nothing to
+    # bind it to, which is the third time today one text substitution reached
+    # a second scope (F286).
+    read = read or (lambda row, name: row.get(name))
     out: dict[str, int] = {}
     for row in arm:
         label = row.get("peptide_label")
         if label not in ROC_LABELS:
             continue
-        if row.get(statistic) is None:
+        if read(row, statistic) is None:
             out[label] = out.get(label, 0) + 1
     return out
 
@@ -584,14 +590,26 @@ def _arm_coverage(positives: int, negatives: int,
             "of the arm: they are whatever the runner reached last")
 
 
-def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerResult:
-    """Delta-ipTM on the Sievers degraded against non-degraded split."""
+def matched_control_roc(campaign: Path, statistic: str = "delta_iptm",
+                        value_of=None) -> LayerResult:
+    """Delta-ipTM on the Sievers degraded against non-degraded split.
+
+    `value_of(row, statistic)` overrides how the statistic is read off a
+    score row. The default reads a top-level field, which is every statistic
+    this layer was written for. The composite's components are not all like
+    that: `lysine_reach_exposed_fraction` is derived by the fit as
+    `exposed_lysines / peptide_lysines` from a nested dict, so asking for it
+    by name returned zero rows of each class, and I read that as the data
+    being absent rather than as the layer being unable to address it (F285,
+    F286).
+    """
     layer = LayerResult(name="matched_control_roc", status="not_computed: no scores")
     scores_path = campaign / "scores.jsonl"
     if not scores_path.exists():
         return layer
 
     rows = paths.read_jsonl(scores_path, tolerate_torn=True)
+    read = value_of or (lambda row, name: row.get(name))
 
     # The Sievers arm only. The benchmark panel also carries the label
     # "degraded", and on label alone its seven pairs would join the positive
@@ -606,10 +624,10 @@ def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerR
 
     positive_rows = [row for row in arm
                      if row.get("peptide_label") == "degraded"
-                     and _finite(row.get(statistic))]
+                     and _finite(read(row, statistic))]
     negative_rows = [row for row in arm
                      if row.get("peptide_label") == "not_degraded"
-                     and _finite(row.get(statistic))]
+                     and _finite(read(row, statistic))]
     # Dropped for being non-finite rather than absent, counted separately
     # because a silent change of denominator is its own problem: a reader
     # comparing the positive count against the campaign needs to see that a
@@ -617,10 +635,10 @@ def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerR
     non_finite = sum(
         1 for row in arm
         if row.get("peptide_label") in ROC_LABELS
-        and row.get(statistic) is not None
-        and not _finite(row.get(statistic)))
-    positives = [row[statistic] for row in positive_rows]
-    negatives = [row[statistic] for row in negative_rows]
+        and read(row, statistic) is not None
+        and not _finite(read(row, statistic)))
+    positives = [read(row, statistic) for row in positive_rows]
+    negatives = [read(row, statistic) for row in negative_rows]
 
     # Delta-ipTM is a difference of minima, and a minimum is not robust to how
     # many seeds it was taken over: a minimum of ten draws sits below a minimum
@@ -654,9 +672,10 @@ def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerR
         "matched_negatives_expected": expected.get("not_degraded"),
         "coverage": _arm_coverage(len(positives), len(negatives), expected,
                                   queue_was_read,
-                                  _arm_absent_statistic(arm, statistic),
+                                  _arm_absent_statistic(arm, statistic, read),
                                   statistic),
-        "scored_without_the_statistic": _arm_absent_statistic(arm, statistic),
+        "scored_without_the_statistic": _arm_absent_statistic(
+            arm, statistic, read),
         "pairs_outside_the_arm_excluded": excluded,
         "non_finite_dropped": non_finite,
         "source": "Sievers zinc-finger screen: negatives assayed in the same screen",
@@ -760,6 +779,48 @@ def roc_companions(campaign: Path) -> list[dict]:
             "matched_negatives": summary.get("matched_negatives"),
             "coverage": summary.get("coverage"),
             "interpretation": summary.get("interpretation"),
+        })
+    return out
+
+
+def component_curves(campaign: Path) -> list[dict]:
+    """The matched-control curve for every component the composite offers.
+
+    Asked as one set rather than a sequence, which is the difference between
+    a sweep and a search: F280 fixed the reading before any of these were
+    computed, and six statistics have since given six intervals containing
+    0.5.
+
+    The fit's own feature extractor resolves the names, so a derived
+    component is addressable here. Imported inside the function because the
+    grid machinery is not needed to validate a curve, and a module-level
+    import would make every reader of this file carry it.
+    """
+    from nobble.app import data as app_data
+    from nobble.score import weights as weights_module
+
+    def read(row, name):
+        value = row.get(name)
+        if value is not None:
+            return value
+        return weights_module._features(row).get(name)
+
+    out = []
+    for key in app_data.COMPONENTS:
+        statistic = app_data.FITTED_ALIASES.get(key, key)
+        layer = matched_control_roc(campaign, statistic=statistic,
+                                    value_of=read)
+        summary = layer.summary or {}
+        out.append({
+            "component": key,
+            "statistic": statistic,
+            "computed": layer.computed,
+            "status": layer.status,
+            "auc": summary.get("auc"),
+            "ci95": summary.get("ci95"),
+            "positives": summary.get("positives"),
+            "matched_negatives": summary.get("matched_negatives"),
+            "coverage": summary.get("coverage"),
         })
     return out
 

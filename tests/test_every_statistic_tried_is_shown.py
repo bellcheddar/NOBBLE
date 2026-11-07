@@ -105,3 +105,53 @@ def test_the_page_says_nothing_extra_when_there_are_no_companions():
     template = (ROOT / "nobble" / "app" / "templates" / "about.html").read_text()
     guard = template[template.index("roc.summary.interpretation"):]
     assert "roc.summary.get('companions')" in guard[:1200], guard[:400]
+
+
+def test_a_derived_component_is_addressable():
+    """The resolver exists so the sweep can be complete.
+
+    `lysine_reach_exposed_fraction` is computed by the fit from a nested
+    dict, so asking the layer for it by name returned zero rows of each class
+    and I read that as the data being absent (F285). With the fit's own
+    extractor it computes, and the sweep covers five of five (F286).
+    """
+    campaign = _campaign()
+    if campaign is None:
+        pytest.skip("no campaign assembled")
+    rows = layers.component_curves(campaign)
+    from nobble.app import data
+
+    assert len(rows) == len(data.COMPONENTS), rows
+    computed = [r for r in rows if r["computed"]]
+    if not computed:
+        pytest.skip("no component curve is computable here")
+    derived = next((r for r in rows if r["component"] == "lysine_reach"), None)
+    assert derived is not None, rows
+    assert derived["computed"], derived
+    assert derived["positives"] and derived["matched_negatives"], derived
+
+
+def test_the_resolver_reaches_the_absent_statistic_count():
+    """It is a separate function and needs it passed, not captured.
+
+    A blanket replacement gave `_arm_absent_statistic` the caller's local
+    name with nothing to bind it to, which raised NameError on the first
+    call (F286).
+    """
+    import inspect
+
+    source = inspect.getsource(layers._arm_absent_statistic)
+    assert "read=None" in source, source[:200]
+    assert "read or (lambda" in source, source[:400]
+
+
+def test_the_plain_field_path_still_works_without_a_resolver():
+    """The default must stay a top-level read, which is every other caller."""
+    campaign = _campaign()
+    if campaign is None:
+        pytest.skip("no campaign assembled")
+    layer = layers.matched_control_roc(campaign)
+    if not layer.computed:
+        pytest.skip(layer.status)
+    assert layer.summary["statistic"] == "delta_iptm"
+    assert layer.summary["positives"] > 0

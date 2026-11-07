@@ -13688,3 +13688,63 @@ gap when the measurement came back at 27 of 31. The prediction came from an
 inference about a zero I had not looked into, which is the thing this project
 keeps finding, and the only reason it did not reach FINDINGS is that the
 numbers were computed before the prose was committed.
+
+## F286
+
+The seventh statistic excludes 0.5 by 0.002, and F280's registered reading
+says what that is worth.
+
+F285 reported four of five components on the matched arm and recorded that the
+fifth could not be addressed: `lysine_reach_exposed_fraction` is derived by
+the fit from a nested dict, and the layer reads top-level fields.
+`matched_control_roc` now takes an optional resolver, `component_curves` uses
+the fit's own feature extractor, and all five compute:
+
+```
+component                    AUC      95% CI             pairs
+lysine_reach              0.6232   0.5021 to 0.7328      23 / 93
+convergence_score         0.5931   0.4614 to 0.7131      24 / 96
+bridge_percentile         0.5237   0.3968 to 0.6463      22 / 89
+plip_fingerprint_match    0.5074   0.4049 to 0.5977      24 / 96
+delta_iptm                0.4583   0.3316 to 0.5842      24 / 96
+```
+
+`lysine_reach` excludes 0.5. F280 fixed the reading for exactly this before
+any of these were computed: "a lead and not a headline... It would need
+stating with its multiplicity and replicating on labels not yet used." So:
+
+**The multiplicity.** Seven statistics have now been put to this one label
+set. At 95 per cent confidence the chance of at least one interval excluding
+0.5 with no signal present anywhere is 1 minus 0.95 to the seventh, which is
+0.302. One exclusion among seven is the expected outcome of looking seven
+times.
+
+**The margin.** The lower bound is 0.5021. The interval excludes 0.5 by
+0.0021, on a bootstrap over 23 positives and 93 negatives. Nothing about a
+margin of two parts in a thousand survives a change of resampling scheme, and
+the coverage is partial on both sides.
+
+**The direction.** This is the one component with an independent, larger
+measurement, and it points the other way. BINMAN measured the same geometry at
+Cb-Cb AUC 0.42 to 0.48 on 369 assayed lysines, at or below chance and
+slightly inverted, which is why the component is labelled "not validated" and
+why `weights.json`'s third caveat says its 2/7 weight is as likely noise as
+signal. An external measurement on 369 lysines outweighs a marginal
+in-campaign exclusion on 23 positives.
+
+So this is not a signal, and it is recorded as what it is: the outcome
+multiplicity predicts, in the component an independent measurement already
+placed at chance. The six-of-seven negative result from F280 and F285 stands
+unchanged, and the honest summary is seven statistics, no separation, one
+marginal exclusion of the kind 30 per cent of seven-statistic sweeps produce
+by chance.
+
+What would change that is the thing F280 named and F282 explained is
+unavailable: labels not yet used. The Slabicki graded set would have been one
+and was never acquired (F52).
+
+A note on the fix. The resolver had to reach `_arm_absent_statistic` as an
+argument: my first version let a blanket text replacement give that function
+the caller's local `read`, with nothing to bind it to, and it raised
+NameError on the first call. That is the third time today one substitution
+reached a second scope, after F260's indentation and F263's shadowing.
