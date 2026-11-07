@@ -14485,3 +14485,32 @@ The downstream consequence was already handled before it was understood:
 conditioned jobs and the count appears in `campaign.json` as
 `conditioned_jobs_dropped_no_pocket`. The pocket was missing for a reason
 nobody had looked up.
+
+### F298c. What the reduction breaks, and where it had to be said
+
+Reducing a job's sampling buys a result where there was none and costs a
+comparison. Tier 2 asked twenty-five samples of every job, so every refined
+pose was a best-of-twenty-five. bench06 is now a best-of-nine, and a
+best-of-nine against a best-of-twenty-five is two different draws from the
+same distribution with the second winning on sample count alone.
+
+That is the hazard `tier_files` already names, one layer over. Tier 2
+withholds every minimum-over-seeds quantity for exactly this reason, and
+`best_rmsd` in the pose-recovery layer is a minimum too, so it was not
+covered by the thing that was built to cover it. bench06 is one of the seven
+pairs in that curve, and a refined bench06 pose looking worse than the others
+would have been equally consistent with the pair and with the nine samples.
+
+So the count is carried on the scored pair, from the per-job records F298
+added, and `score_campaign` returns a `sampling` block saying once whether
+every scored pair ran at the same count. `uniform` false carries the caveat
+in words. `pairs_without_a_recorded_count` is kept apart from agreement: a
+campaign scored before F298 has no counts at all, and a check on the number
+of distinct counts alone would read that as uniform, which is the F293 shape
+again.
+
+Written down because the trade is not obviously the right one, and whoever
+reads a tier-2 pose comparison should be able to see which side of it they
+are on rather than reconstruct it. The alternative was to leave bench06
+unrefined, which is six hours per job for nothing and leaves F268
+unanswerable.

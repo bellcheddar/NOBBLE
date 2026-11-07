@@ -78,6 +78,25 @@ def score_campaign(campaign: Path, with_plip: bool = True, limit: int | None = N
         record = pair_metrics.get(pair_id)
         entry: dict = record.to_dict() if record else {"pair_id": pair_id}
 
+        # How many diffusion samples this pair's jobs actually ran at.
+        #
+        # One number for the whole of tier 2 until F298. A job too large to
+        # refine at the tier's sample count now samples fewer, which is the
+        # right trade for a job that otherwise writes nothing, and it makes a
+        # minimum over poses no longer comparable across pairs: a best-of-9
+        # and a best-of-25 are different draws from the same distribution and
+        # the second wins on sample count alone. Tier 2 already withholds the
+        # minimum-over-seeds quantities for exactly this reason, but
+        # `best_rmsd` in the pose-recovery layer is a minimum too.
+        #
+        # So the count is carried on the pair rather than left in the job
+        # rows. A reader comparing two pairs' refined poses can see it, and
+        # `_sampling_note` below says so once for the whole campaign instead
+        # of leaving it to be noticed.
+        seen = sorted({int(job["diffusion_samples"]) for job in pair_jobs
+                       if job.get("diffusion_samples") is not None})
+        entry["diffusion_samples"] = seen or None
+
         # Geometry, per ternary job, then summarised over seeds.
         bridge_scores = []
         for job in pair_jobs:
@@ -368,7 +387,43 @@ def score_campaign(campaign: Path, with_plip: bool = True, limit: int | None = N
         "scores": str(output),
         "components": list(COMPONENTS),
         "weight_fit": fit.to_dict(),
+        "sampling": _sampling_note(scored),
     }
+
+
+def _sampling_note(scored: list[dict]) -> dict:
+    """Whether every scored pair ran at the same number of diffusion samples.
+
+    Said once for the campaign rather than left to be noticed pair by pair.
+    `uniform` false means a minimum over poses is not comparable across these
+    pairs, because a best-of-9 and a best-of-25 are different draws and the
+    second wins on sample count alone (F298).
+
+    `unknown` counts pairs whose jobs predate the recording, which is not the
+    same as pairs that agree: a campaign scored before F298 has no counts at
+    all and must not read as uniform.
+    """
+    counts: dict[str, list[str]] = {}
+    unknown = []
+    for entry in scored:
+        seen = entry.get("diffusion_samples")
+        if not seen:
+            unknown.append(entry.get("pair_id"))
+            continue
+        counts.setdefault(",".join(str(value) for value in seen), []).append(
+            entry.get("pair_id"))
+    note = {
+        "by_count": {key: sorted(filter(None, pairs))
+                     for key, pairs in sorted(counts.items())},
+        "pairs_without_a_recorded_count": sorted(filter(None, unknown)),
+        "uniform": len(counts) <= 1 and not unknown,
+    }
+    if not note["uniform"]:
+        note["caveat"] = (
+            "these pairs did not all run at the same number of diffusion "
+            "samples, so a quantity that is a minimum over poses is not "
+            "comparable between them")
+    return note
 
 
 def main() -> int:
