@@ -12000,6 +12000,15 @@ with four or more CRBN contacts. *Refuted* if it falls in {1, 2, 12, 13, 14,
 should not be the one whose substitution costs the most glue dependence.
 *Uninformative* if it lands on 3, 4, 8, 9, 10 or 11.
 
+**One protection it already has.** `scan_profile` ranks only the positions
+whose lift is not flagged as collapse-affected, which was added earlier today
+with F244's sibling work, so `most_sensitive` cannot be a position whose lift
+came from one collapsed binary seed. The verdict is therefore about the
+interface rather than about a draw. Verified against the real
+`lift.scan_profile` output rather than assumed: it returns `position`,
+`wild_type`, `substitution`, `lift` and `collapse_affected`, which are the
+keys `tools/check_registered.py` reads.
+
 Two cautions recorded with it. No design YAML carries zinc, which is correct
 by the rule above, and it means a substitution at CYS 4 or CYS 7 cannot
 disrupt a zinc site because there is none to disrupt: a large lift at 7 is

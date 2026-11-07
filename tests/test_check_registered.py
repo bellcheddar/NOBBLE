@@ -100,12 +100,35 @@ def test_f254_is_supported_when_nothing_moves(tmp_path):
     assert verdict["move"] == 0.0, verdict
 
 
+PARENT_SEQUENCE = "PFQCNQCGASFTQKG"
+
+
 def _profile(tmp_path, position):
-    campaign = tmp_path / "design_f252"
+    """A real scan_profile, not a hand-written dict.
+
+    Writing the shape by hand assumes it, which is the error that made two of
+    the three registered predictions unfalsifiable: a falsifier written
+    against an imagined measurement. Built through lift.scan_profile so the
+    keys the scorer reads are the keys the pipeline writes.
+    """
+    from nobble.design import lift as lift_module
+
+    campaign = tmp_path / f"design_f252_{position}"
     campaign.mkdir()
-    (campaign / "scan_profile.json").write_text(json.dumps(
-        {"most_sensitive": {"position": position, "substitution": "X",
-                            "lift": -0.5}}))
+    lifts = [
+        lift_module.Lift(
+            variant_id=f"v{position}", parent_peptide_id="p",
+            substitution=f"{PARENT_SEQUENCE[position - 1]}{position}A",
+            position=position, variant_delta_iptm=-0.4,
+            parent_delta_iptm=0.1, lift=-0.5, status="computed"),
+        lift_module.Lift(
+            variant_id="v_other", parent_peptide_id="p",
+            substitution="Q3A", position=3, variant_delta_iptm=0.0,
+            parent_delta_iptm=0.1, lift=-0.1, status="computed"),
+    ]
+    profile = lift_module.scan_profile(lifts, PARENT_SEQUENCE)
+    assert (profile["most_sensitive"] or {}).get("position") == position, profile
+    (campaign / "scan_profile.json").write_text(json.dumps(profile))
     return campaign
 
 
