@@ -10234,3 +10234,62 @@ rule no longer asks for the hydroxyproline, so the re-run needs the stale
 cache cleared and nothing else. `nobble/execute/runner.py` removes the job's
 output directory before each job and `tools/rerun_pair.py` removes it when it
 drops the rows, so both routes now clear it.
+
+## F221. The rehearsal left out the step that failed
+
+`tools/rerun_pair.py` without `--apply` is how the F47 correction gets
+checked before it spends 40 minutes of GPU time. It printed this:
+
+```
+bench02_BRD4_VHL: 15 job(s) in the queue
+  30 row(s) in state.jsonl would be dropped
+  15 YAML(s) would be regenerated
+  rerun with --apply to do it
+```
+
+Two things are wrong with it, and both are versions of a mistake this session
+has already made twice.
+
+**It does not mention the cached featurised inputs.** That is the step whose
+absence made the 6 November correction re-fold the hydroxyproline it was
+correcting (F219), and the step added to fix it. A rehearsal that omits the
+operation that failed rehearses a different operation, and reading this one
+would have produced exactly the confidence that was misplaced the first time.
+The `--apply` path removes fifteen directories and says so; the dry run, which
+is the only one anybody reads before deciding, did not know they existed.
+
+**It resolved no references, so it could promise a correction the real run
+refuses.** `--apply` exits 2 without touching anything when any job has no
+unambiguous known-good copy (F146), and under F145 that was every job on every
+invocation. The dry run skipped the lookup entirely, so in precisely that case
+it reported fifteen YAMLs regenerated and exited 0. The rehearsal and the run
+disagreed about whether the operation was possible at all, and the rehearsal
+was the optimistic one.
+
+The lookup now happens before the `--apply` branch and both paths read the
+same dictionary, so the dry run predicts the refusal and exits 2 with it.
+`_belongs` is one predicate used by the rewrite and by the count that predicts
+it, because two copies of that test are two things to keep in step. A
+featurisation comparison that cannot be run prints as unknown rather than as
+clean, which is F216 in a second file.
+
+What it now reports, which is the measured state the pending correction starts
+from:
+
+```
+bench02_BRD4_VHL: 15 job(s) in the queue
+  0 of 15 YAML(s) differ from their known-good reference and would be
+    rewritten; 15 already match
+  30 row(s) would be dropped from state.jsonl
+  15 row(s) would be dropped from results.jsonl
+  1 row(s) would be dropped from scores.jsonl
+  15 cached output directory/ies would be removed
+  15 of those hold a featurisation that disagrees with the YAML today
+```
+
+So the 6 November run did correct the YAMLs, and the only thing left undone is
+the cache. That is worth knowing before the re-run rather than after it: the
+re-run is not a correction being made again, it is a correction being allowed
+to take. Four mutations of the new behaviour were caught by the tests,
+including the refusal exiting 0 and the unknown featurisation reading as
+clean.
