@@ -112,3 +112,29 @@ def test_git_is_not_scanned():
     """Packed object names could match the pattern, and no sync artefact in
     there is this tool's business."""
     assert ".git" not in cleaner.SCANNED
+
+
+def test_the_deploy_clears_the_copies_before_it_refuses():
+    """The copies arrive minutes after a build, so a chain that ends with
+    build then deploy is blocked at the last step by files that did not
+    exist when the build finished (F310).
+
+    The cleaner runs first and the refusal still follows it: automating the
+    `rm` the refusal asks for loses nothing, and anything without a plain
+    sibling is still left alone and still refused.
+    """
+    script = (ROOT / "deploy" / "deploy.sh").read_text()
+    assert "clean_sync_conflicts.py" in script
+    assert script.index("clean_sync_conflicts.py") < script.index(
+        "the bundle holds iCloud sync-conflict copies"), (
+        "the deploy refuses before it clears, so the refusal fires on copies "
+        "the cleaner would have removed")
+
+
+def test_the_deploy_still_refuses_after_cleaning():
+    """Clearing instead of refusing would turn a publish gate into a
+    tidy-up, and an unmatched name has to stop the deploy."""
+    script = (ROOT / "deploy" / "deploy.sh").read_text()
+    tail = script[script.index("clean_sync_conflicts.py"):]
+    assert "the bundle holds iCloud sync-conflict copies" in tail
+    assert "exit 2" in tail

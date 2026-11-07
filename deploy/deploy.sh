@@ -55,6 +55,27 @@ if [[ ! -d deploy/atlas ]]; then
   exit 2
 fi
 
+# Clear the copies that are provably copies, then refuse on anything left.
+#
+# Two steps rather than one because they answer different questions. The
+# cleaner removes a conflict-shaped name that has a plain sibling, which is
+# exactly what the refusal below tells an operator to do by hand, so
+# automating it loses nothing and spares them a list of 336 `rm` commands.
+# Anything without a sibling it leaves alone, and the refusal still fires.
+#
+# Here as well as in `tools/refresh.sh` because of when the copies arrive.
+# The refresh runs the cleaner on the build's last line and the copies turn
+# up minutes later: zero at 23:35 and 336 at 23:55 on 2026-11-07, with no
+# build in between (F310). A chain that ends with build then deploy would
+# otherwise be blocked at the last step by files that did not exist when the
+# build finished.
+PYTHONPATH=. KMP_DUPLICATE_LIB_OK=TRUE \
+  "${ATLAS_PY:-../BINMAN/.pixi/envs/default/bin/python}" \
+  tools/clean_sync_conflicts.py || {
+    echo "deploy: a conflict-shaped name has no plain sibling, so it was" >&2
+    echo "        left alone. Look at it before publishing." >&2
+    exit 2; }
+
 # iCloud sync-conflict copies in the bundle, refused before anything is sent.
 #
 # The project root is iCloud-backed, and after a rebuild iCloud restores its
