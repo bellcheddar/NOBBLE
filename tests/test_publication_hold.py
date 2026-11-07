@@ -230,3 +230,56 @@ def test_a_campaign_with_no_footprint_says_so(tmp_path):
     campaign = _with_footprint(tmp_path, {})
     assert "footprint: not computed" in _run(
         _held(tmp_path), campaign=campaign).stderr
+
+
+def test_the_refusal_contrasts_the_two_representations():
+    """The hold's reason is that pose recovery failed. Both halves matter.
+
+    It failed on the campaign the atlas is built from, whose substrates are
+    15-mer peptides, and the same pipeline recovers six of seven pairs given
+    the whole folded domain (F236). Whoever reads this output is deciding
+    whether to release the hold, and that is the difference between "cannot
+    place a degron" and "places a degron given its domain".
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "publication_hold", ROOT / "tools" / "publication_hold.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    import os
+
+    cwd = os.getcwd()
+    try:
+        os.chdir(ROOT)
+        lines = module.representation_contrast()
+    finally:
+        os.chdir(cwd)
+
+    text = "\n".join(lines)
+    if "no corrected-construct campaign" in text:
+        pytest.skip("no corrected campaign on disk")
+    assert "with the whole domain instead of a 15-mer" in text, text
+    assert "control held" in text, text
+    # And the control is named, or a row that correctly does not move reads
+    # as a row that failed to improve.
+    assert "control: a linear epitope" in text, text
+
+
+def test_a_missing_corrected_campaign_says_so_rather_than_nothing(tmp_path):
+    import importlib.util
+    import os
+
+    spec = importlib.util.spec_from_file_location(
+        "publication_hold", ROOT / "tools" / "publication_hold.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    cwd = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        lines = module.representation_contrast()
+    finally:
+        os.chdir(cwd)
+    assert any("no corrected-construct campaign" in line for line in lines), lines

@@ -1,6 +1,6 @@
 # NOBBLE progress
 
-Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T04:32:42Z.
+Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T05:25:41Z.
 
 ## Gate G6 answered: the headline is a negative result, and publication is held
 
@@ -83,6 +83,24 @@ the receptor, bench03 at 32 contacts to nothing and bench07 at 48 to 5
 (F230). Whether a window of that kind is a pose-recovery target is a
 panel-composition question, and it goes to G6 with the rest: the headline is
 computed over a panel that includes two of them.
+
+**And it fails for the representation this campaign uses, not for the
+method** (F236). The main campaign gives each substrate as a 15-mer peptide.
+The corrected-construct campaign gives the same substrates as their whole
+folded domain, and recovers six of seven pairs by more than 2 A with none
+worse: GSPT1 29.221 to 1.171, BRD4 19.235 to 1.711, RBM39 6.085 to 0.743,
+CDK12 44.921 to 5.278, CSNK1A1 12.240 to 6.189, BRD4 20.399 to 16.519. The
+seventh is the control, a linear epitope left as a 15-mer in both, and it
+moved by exactly 0.000. Bridge formation rose in four pairs, which is what
+F9 found predicts recovery at r = -0.871.
+
+That was measured on 3 November and `compare.compare` has reported it since;
+what is new is that this picture did not carry it. It does not rescue the
+discrimination claim, since the ROC is computed on the main campaign and the
+corrected one has no Sievers arm, and the published poses are still the main
+campaign's. It does mean the gate's question is better posed as whether an
+atlas built from 15-mer poses should be published when the same pipeline
+places six of seven degrons within 2 to 6 A given the domain.
 
 Two rungs of the ladder are already read off structures on disk: pocket
 conditioning does nothing (14.95 A against 17.92 A median, under 0.5 A per

@@ -92,6 +92,63 @@ def confounded_pairs(campaign: Path | None) -> set[str] | None:
     return {row["job_id"].split("__")[0] for row in rows}
 
 
+def representation_contrast() -> list[str]:
+    """What the same pipeline does with the whole domain instead of a 15-mer.
+
+    The hold's reason is that pose recovery fails its positive control. That
+    is true of the campaign the atlas is built from, whose substrates are
+    15-mer peptides, and not true of the method: the corrected-construct
+    campaign supplies the whole folded domain and recovers six of seven pairs
+    (F236). Whoever reads this is deciding whether to release the hold, and
+    the comparison is the difference between "this cannot place a degron" and
+    "this places a degron given its domain".
+
+    Absent campaigns print as absent. The comparison costs about four
+    seconds, which a deploy pre-flight can afford.
+    """
+    import glob
+
+    benchmarks = sorted(glob.glob("campaigns/benchmark_*"))
+    corrected = sorted(glob.glob("campaigns/corrected_*"))
+    if not benchmarks or not corrected:
+        return ["    representation: no corrected-construct campaign to compare"]
+    try:
+        from nobble.validate import compare
+
+        report = compare.compare(Path(benchmarks[-1]), Path(corrected[-1]))
+    except Exception as problem:                        # noqa: BLE001
+        return [f"    representation: not compared "
+                f"({type(problem).__name__}: {problem})"]
+
+    improved = report.get("improved") or []
+    worse = report.get("worse") or []
+    compared = report.get("pairs_compared")
+    lines = [
+        f"    with the whole domain instead of a 15-mer: {len(improved)} of "
+        f"{compared} pair(s) improved by more than 2 A, {len(worse)} worse, "
+        f"control held: {report.get('control_held')}"
+    ]
+    # The control is named, because a row that does not move reads as a
+    # failure to improve unless you know it is the row that must not move:
+    # IKZF1's substrate is a linear epitope and was left as a 15-mer in both
+    # campaigns, so its 0.000 is the comparison working.
+    control = report.get("control") or {}
+    control_gene = control.get("gene")
+    for row in report.get("comparisons") or []:
+        base = row.get("baseline_median_rmsd")
+        corr = row.get("corrected_median_rmsd")
+        if base is None or corr is None:
+            continue
+        gene = (row.get("gene") or row.get("pair_id")
+                or row.get("corrected_pair") or "pair")
+        note = ""
+        if control_gene and gene == control_gene:
+            note = ("   <- control: a linear epitope, left as a 15-mer in "
+                    "both, so it should not move")
+        lines.append(f"      {str(gene):22s} {base:7.3f} -> {corr:7.3f} A{note}")
+    return lines
+
+
 def describe(summary: dict | None, confounded: set[str] | None = None) -> list[str]:
     """The curve as lines, or one line saying there is no curve to read."""
     if summary is None:
@@ -159,6 +216,7 @@ def main() -> int:
                   else newest_validation())
     lines = describe(recovery_now(validation),
                      confounded_pairs(validation.parent if validation else None))
+    lines += representation_contrast()
 
     if not hold.get("held"):
         released = str(hold.get("released_by") or "").strip()
