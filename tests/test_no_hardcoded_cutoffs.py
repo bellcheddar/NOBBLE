@@ -683,3 +683,62 @@ def test_no_assertion_in_the_suite_can_pass_unconditionally():
 
     assert not tautologies, f"assertions that cannot fail: {tautologies}"
     assert not assertionless, f"tests that cannot fail: {assertionless}"
+
+
+# The one place a device name may appear outside the probe that writes it and
+# the config that holds it, with why.
+DEVICE_LITERAL_ALLOWED = {
+    'nobble/execute/runner.py:"--accelerator", "gpu" if settings["device"] '
+    '== "mps" else "cpu",':
+        "a translation between the config's device name and Boltz's CLI "
+        "vocabulary, not a choice of device: the device is read from "
+        "settings, which comes from config/tuning.toml",
+}
+
+
+def test_no_hardware_setting_is_hard_coded():
+    """CLAUDE.md: hardware settings come from config/tuning.toml, written by
+    tools/hwprobe.py. Never hard-code cores, memory or device.
+
+    The threshold rule has this test and the hardware rule did not, though it
+    fails more quietly: a hard-coded "mps" works on this machine, so nothing
+    at runtime would notice, and the CPU fallback G1 is defined against would
+    silently stop existing. A static scan is the only thing that catches it.
+    """
+    import re
+
+    offenders = []
+    device = re.compile(r'"(mps|cuda)"')
+    resources = re.compile(
+        r"\b(num_workers|n_jobs|max_workers|cpu_count|threads|"
+        r"memory_gb|ram_gb)\s*=\s*\d")
+    for path in sorted((ROOT / "nobble").rglob("*.py")):
+        if "__pycache__" in str(path) or "vendor" in str(path):
+            continue
+        relative = str(path.relative_to(ROOT))
+        for number, line in enumerate(path.read_text().splitlines(), start=1):
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                continue
+            if not (device.search(stripped) or resources.search(stripped)):
+                continue
+            key = f"{relative}:{stripped}"
+            if key in DEVICE_LITERAL_ALLOWED:
+                continue
+            offenders.append(f"{relative}:{number}: {stripped[:90]}")
+
+    assert not offenders, (
+        "hardware settings must come from config/tuning.toml, not from a "
+        f"literal: {offenders}")
+
+
+def test_the_device_allow_list_still_describes_real_lines():
+    """An allow-list entry for a line that has moved hides the next one."""
+    for key in DEVICE_LITERAL_ALLOWED:
+        relative, _, snippet = key.partition(":")
+        path = ROOT / relative
+        assert path.exists(), relative
+        lines = [line.strip() for line in path.read_text().splitlines()]
+        assert snippet in lines, (
+            f"{relative} no longer contains the allow-listed line, so the "
+            f"entry is stale: {snippet}")
