@@ -11724,3 +11724,48 @@ by Boltz and nothing else, which is what internal-use-only means.
 No change. Recorded with the method because this is the project's strictest
 constraint, the checks are cheap, and the next audit should be able to repeat
 them in a minute rather than reason about them from the spec.
+
+## F248. The other two licensing constraints, and why all three hold by construction
+
+Spec 2.1 names three: "PROTAC-DB stays internal-use-only and is never
+redistributed; UbiBrowser ships as derived counts only; BioLiP2 annotations
+are not redistributed." F247 verified the first. The other two, on the same
+surfaces:
+
+```
+the published bundle   about.json carries four keys, and all four are
+                       booleans under `sources`:
+                         sources.ubibrowser_literature_e3 = true
+                         sources.ubibrowser_predicted_e3  = true
+                         sources.biolip2_annotations      = true
+                         sources.biolip2_artefacts        = true
+                       which discloses that a source was used and nothing
+                       from it. Stricter than "derived counts only" allows.
+the working tree       no tracked file names either source
+git history            `git log --all --diff-filter=A` over every path ever
+                       added: no file named for either
+where the data is      nobble/curate/binman_store.py resolves them to
+                       `ubibrowser_*.tsv` and `biolip2_*.tsv` inside BINMAN,
+                       a separate repository, and its first line is
+                       "Read-only access to everything BINMAN already
+                       curated. NOBBLE never re-acquires a source and never
+                       writes to BINMAN"
+```
+
+So all three constraints hold for the same structural reason rather than three
+different ones: the source tables live outside this repository and are read in
+place, the publish path carries derived values and provenance flags rather
+than source rows, and the one piece of chemistry that is derived at all sits
+in a gitignored campaign YAML (F246, F247).
+
+That is worth stating as a property rather than three results. A guarantee
+that holds because each of three checks passes can be broken by adding a
+fourth source. A guarantee that holds because nothing is ever copied in
+survives that, and the thing to protect is therefore
+`binman_store.VALIDATION_TSV` staying a reader rather than any individual
+check.
+
+Scope: this is about NOBBLE not redistributing. What BINMAN does with its own
+copies is outside this repository and outside what spec 2.1 asks of this one.
+
+No change.
