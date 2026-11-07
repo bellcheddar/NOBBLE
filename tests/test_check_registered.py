@@ -124,14 +124,14 @@ def test_f252_is_unclear_in_between(tmp_path):
     assert verdict["status"] == "unclear", verdict
 
 
-def _tier_b(tmp_path, positive_seeds, scramble_seeds):
+def _tier_b(tmp_path, positive_rate, scramble_rate):
     campaign = tmp_path / "tier_b_f253"
     campaign.mkdir()
     rows = [
         {"pair_id": "tb_pos_ASB8_BRD4_759",
-         "bridging_seeds_with_bridge": positive_seeds},
+         "bridge_formation_rate": positive_rate},
         {"pair_id": "tb_neg_ASB8_BRD4_759",
-         "bridging_seeds_with_bridge": scramble_seeds},
+         "bridge_formation_rate": scramble_rate},
     ]
     (campaign / "scores.jsonl").write_text(
         "".join(json.dumps(r) + "\n" for r in rows))
@@ -139,14 +139,19 @@ def _tier_b(tmp_path, positive_seeds, scramble_seeds):
 
 
 def test_f253_is_supported_when_nothing_clears_the_line(tmp_path):
-    verdict = _module().f253_tier_b_bridging(_tier_b(tmp_path, 3, 2))
+    verdict = _module().f253_tier_b_bridging(_tier_b(tmp_path, 0.6, 0.4))
     assert verdict["status"] == "supported", verdict
     assert verdict["hits"] == [], verdict
 
 
 def test_f253_returns_wrong_on_a_hit(tmp_path):
-    """The positive bridges and its own scramble does not."""
-    verdict = _module().f253_tier_b_bridging(_tier_b(tmp_path, 9, 1))
+    """The positive bridges and its own scramble does not.
+
+    Stated as a rate because Tier B runs five ternary seeds per arm: the
+    first version of this line asked for eight of ten and could never fire.
+    """
+    # 0.8 against 0.2 is 4 of 5 against 1 of 5, which is what Tier B runs.
+    verdict = _module().f253_tier_b_bridging(_tier_b(tmp_path, 0.8, 0.2))
     assert verdict["status"] == "WRONG", verdict
     assert verdict["hits"][0]["pair_id"] == "tb_pos_ASB8_BRD4_759", verdict
 
@@ -157,7 +162,7 @@ def test_f253_needs_the_scramble_before_it_judges(tmp_path):
     campaign.mkdir()
     (campaign / "scores.jsonl").write_text(json.dumps(
         {"pair_id": "tb_pos_ASB8_BRD4_759",
-         "bridging_seeds_with_bridge": 10}) + "\n")
+         "bridge_formation_rate": 1.0}) + "\n")
     verdict = _module().f253_tier_b_bridging(campaign)
     assert verdict["status"] == "supported", verdict
     assert verdict["unpaired"] == 1, verdict

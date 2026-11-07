@@ -12035,9 +12035,20 @@ computed per pair already as `bridge_formation_rate` with
 `bridge_reject_reasons` breakdown.
 
 **What counts as a hit, declared now.** A receptor-glue pair where the
-positive bridges in at least 8 of 10 seeds and its own scramble bridges in at
-most 2 of 10. Paired against its own scramble rather than against the arm,
+positive's `bridge_formation_rate` is at least 0.8 and its own scramble's is
+at most 0.2. Paired against its own scramble rather than against the arm,
 because the scramble controls composition and the arm does not.
+
+> **Corrected before the data, and the first version could never have fired.**
+> This read "at least 8 of 10 seeds" and "at most 2 of 10". Tier B runs five
+> seeds per arm, not ten: 1,540 jobs over 154 pairs is ten per pair, and those
+> ten are five binary and five ternary. Bridging is measured on ternary seeds,
+> so the maximum is five and a line at eight was unreachable. That is F251's
+> mistake exactly, a falsifier naming a measurement that cannot occur, and it
+> is the second of three predictions I registered without first checking what
+> the data can produce. Stated as a rate it no longer depends on the seed
+> count, which is also how F254 states its line, and 0.8 against 0.2 is what
+> 4 of 5 against 1 of 5 means.
 
 **What counts as the expected result.** Positives and scrambles
 indistinguishable, which on 77 pairs means no pair clearing the line above.

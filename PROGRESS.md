@@ -219,7 +219,7 @@ scorer exits non-zero only when one is wrong.
 
 | Finding | Claim | Needs | Verdict today |
 |---|---|---|---|
-| F251 | *withdrawn*: tier 2 is ternary-only, so Delta-ipTM has no binary term there and assembling one across tiers is the bias D-NOB-032 forbids | — | withdrawn, replaced by F254 |
+| F251 | *withdrawn*: tier 2 is ternary-only, so Delta-ipTM has no binary term there and assembling one across tiers is the bias D-NOB-032 forbids | nothing | withdrawn, replaced by F254 |
 | F254 | refinement does not change bridge formation (noise), which needs only the ternary structure | `scores_tier2.jsonl` | not yet testable |
 | F252 | the design scan's most sensitive position falls in {5, 6, 7}, which carry four or more CRBN contacts | the scan's `scan_profile.json` | not yet testable |
 | F253 | no Tier B pair bridges in 8 of 10 seeds while its own scramble bridges in 2 or fewer | Tier B's `scores.jsonl` | not yet testable |

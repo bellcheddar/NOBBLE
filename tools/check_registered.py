@@ -32,10 +32,11 @@ F251_MOVE = 0.10
 # F252: window positions by CRBN contact count, measured from the deposition.
 F252_SUPPORTED = (5, 6, 7)
 F252_REFUTED = (1, 2, 12, 13, 14, 15)
-# F253: a Tier B hit, paired against the pair's own scramble.
-F253_POSITIVE_SEEDS = 8
-F253_SCRAMBLE_SEEDS = 2
-F253_SEEDS = 10
+# F253: a Tier B hit, paired against the pair's own scramble. Stated as a
+# rate, not a seed count: Tier B runs five ternary seeds per arm and the first
+# version of this asked for eight of ten, which could never fire.
+F253_POSITIVE_RATE = 0.8
+F253_SCRAMBLE_RATE = 0.2
 
 
 def _rows(path: Path) -> list[dict]:
@@ -159,9 +160,9 @@ def f253_tier_b_bridging(campaign: Path | None) -> dict:
     """Does any Tier B pair bridge where its own scramble does not?"""
     verdict = {"finding": "F253",
                "claim": "no pair clears the bridging line",
-               "falsifier": (f"a positive bridges in >= {F253_POSITIVE_SEEDS} "
-                             f"of {F253_SEEDS} seeds while its own scramble "
-                             f"bridges in <= {F253_SCRAMBLE_SEEDS}")}
+               "falsifier": (f"a positive's bridge rate is >= "
+                             f"{F253_POSITIVE_RATE} while its own scramble's "
+                             f"is <= {F253_SCRAMBLE_RATE}")}
     if campaign is None:
         verdict.update(status="not yet testable",
                        detail="no Tier B campaign on disk")
@@ -173,7 +174,7 @@ def f253_tier_b_bridging(campaign: Path | None) -> dict:
                               "has not run and been scored")
         return verdict
 
-    with_bridge = {row["pair_id"]: row.get("bridging_seeds_with_bridge")
+    with_bridge = {row["pair_id"]: row.get("bridge_formation_rate")
                    for row in rows}
     hits, unpaired = [], 0
     for pair_id, count in sorted(with_bridge.items()):
@@ -183,9 +184,9 @@ def f253_tier_b_bridging(campaign: Path | None) -> dict:
         if scramble is None:
             unpaired += 1
             continue
-        if count >= F253_POSITIVE_SEEDS and scramble <= F253_SCRAMBLE_SEEDS:
-            hits.append({"pair_id": pair_id, "positive_seeds": count,
-                         "scramble_seeds": scramble})
+        if count >= F253_POSITIVE_RATE and scramble <= F253_SCRAMBLE_RATE:
+            hits.append({"pair_id": pair_id, "positive_rate": count,
+                         "scramble_rate": scramble})
     verdict.update(
         status="supported" if not hits else "WRONG",
         hits=hits, positives_compared=sum(
