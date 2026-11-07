@@ -266,3 +266,60 @@ def test_the_superseded_domain_is_the_one_sourced_differently():
         "(F107). constructs.py names an InterPro entry for every receptor "
         "and substrates now do the same"
     )
+
+
+def test_a_plan_that_cannot_be_resolved_is_not_read_as_no_difference():
+    """An empty list from a swallowed exception claimed every pair agreed.
+
+    The plan is an InterPro lookup and this is the only place that resolves
+    it, so a failure means no pair was compared against anything.
+    `tools/provenance.py` printed that as "no substrate differs from the
+    current plan", which is the F222 shape: a guarantee about everything,
+    computed from a check that did not run.
+    """
+    import nobble.curate.peptides as peptide_module
+
+    def boom():
+        raise RuntimeError("InterPro unreachable")
+
+    original = peptide_module.benchmark_substrate_constructs
+    try:
+        peptide_module.benchmark_substrate_constructs = boom
+        rows = inputs.superseded_substrates(CORRECTED)
+        status = inputs.superseded_status(CORRECTED)
+    finally:
+        peptide_module.benchmark_substrate_constructs = original
+
+    assert rows == [], rows
+    assert status.startswith("unavailable: RuntimeError"), status
+    assert "InterPro unreachable" in status, status
+
+
+def test_a_resolvable_plan_reports_compared():
+    assert inputs.superseded_status(CORRECTED) == "compared"
+
+
+def test_the_report_says_not_checked_rather_than_no_difference(tmp_path):
+    """The operator-facing line, through the real script."""
+    import os
+    import subprocess
+
+    script = ROOT / "tools" / "provenance.py"
+    shim = tmp_path / "sitecustomize.py"
+    shim.write_text(
+        "import nobble.curate.peptides as p\n"
+        "def _boom():\n"
+        "    raise RuntimeError('InterPro unreachable')\n"
+        "p.benchmark_substrate_constructs = _boom\n"
+    )
+    completed = subprocess.run(
+        [sys.executable, str(script)], cwd=str(ROOT),
+        capture_output=True, text=True,
+        timeout=300,
+        env={**os.environ, "PYTHONPATH": f"{tmp_path}:{ROOT}",
+             "KMP_DUPLICATE_LIB_OK": "TRUE"},
+    )
+    assert completed.returncode == 0, completed.stderr[-500:]
+    assert "superseded    not checked: unavailable" in completed.stdout, (
+        completed.stdout)
+    assert "no substrate differs" not in completed.stdout, completed.stdout

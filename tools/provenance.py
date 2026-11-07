@@ -74,7 +74,13 @@ else:
               "superseded input; the atlas build has nothing to refuse")
 
     superseded = inputs.superseded_substrates(campaign)
-    if superseded:
+    plan = inputs.superseded_status(campaign)
+    if plan != "compared":
+        # An empty list from a swallowed exception used to print as "no
+        # substrate differs from the current plan", which is a claim about
+        # every pair made from a failure.
+        print(f"   superseded    not checked: {plan}")
+    elif superseded:
         for row in superseded:
             print(f"   superseded    {row['pair_id']}: {row['submitted_length']} aa "
                   f"submitted, plan now says {row['planned_length']} "

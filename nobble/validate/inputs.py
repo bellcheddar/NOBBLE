@@ -207,6 +207,23 @@ def superseded_substrates(campaign: Path) -> list[dict]:
     and which of the two is right is a question about the domain rather than
     about the code.
     """
+    return _superseded_scan(campaign)[0]
+
+
+def superseded_status(campaign: Path) -> str:
+    """Whether the comparison above could be made at all.
+
+    "compared" or "unavailable: <reason>". The plan comes from an InterPro
+    lookup and a swallowed failure used to return an empty list, which
+    `tools/provenance.py` printed as "no substrate differs from the current
+    plan": a positive claim about every pair, made from an exception. Same
+    shape as F222 and as the featurisation guard's silent skips, so the same
+    treatment, and the same one-pass idiom.
+    """
+    return _superseded_scan(campaign)[1]
+
+
+def _superseded_scan(campaign: Path) -> tuple[list[dict], str]:
     campaign = Path(campaign)
     try:
         from nobble.curate import numbering
@@ -233,8 +250,11 @@ def superseded_substrates(campaign: Path) -> list[dict]:
         # expression deciding what counts as a domain.
         fragments = {item.sequence for item
                      in peptide_module.benchmark_peptides() if item.sequence}
-    except Exception:                                   # noqa: BLE001
-        return []
+    except Exception as problem:                        # noqa: BLE001
+        # Unknown, not clean. The plan is an InterPro lookup and this is the
+        # only place that resolves it, so a failure here means no pair was
+        # compared against anything.
+        return [], f"unavailable: {type(problem).__name__}: {problem}"
 
     seen: dict[str, dict] = {}
     for path in sorted((campaign / "yaml").glob("*ternary*.yaml")):
@@ -262,4 +282,4 @@ def superseded_substrates(campaign: Path) -> list[dict]:
                        "now specifies, so this pair measures a different "
                        "construct from the one the plan describes"),
         }
-    return sorted(seen.values(), key=lambda row: row["pair_id"])
+    return sorted(seen.values(), key=lambda row: row["pair_id"]), "compared"
