@@ -10840,3 +10840,49 @@ had moved to 0.6 on the robust statistic that would be the most important
 number in the project. It moved to 0.41. The null stands, the pose-recovery
 failure (F212) that makes it uninterpretable stands, and nothing about G6
 changes.
+
+## F232. Four aggregates in one session, each hiding the thing it was asked about
+
+Job 14 of the tier-2 queue passed its projection, so I checked whether it was
+computing. `ps -eo ... | awk '$5+0 > 20'` returned no NOBBLE process at all,
+only Time Machine, iCloud's `fileproviderd` and Spotlight, and the runner
+itself showed 0.13 seconds of CPU over five and a half hours. That reads as a
+dead job.
+
+It is not. The Boltz process is pid 52096, a child of the runner, 65 minutes
+elapsed with 7 minutes 44 seconds of CPU at 12.6 per cent. The runner sleeps
+while its child works, and an MPS job is meant to sit low on CPU because the
+work is on the GPU. My filter cut at 20 per cent and excluded the only process
+that mattered.
+
+**That is the fourth time in this session.** The others:
+
+* `min()` over a residue's heavy-atom occupancies made every window residue of
+  6H0F chain C read 0.00, which looked like a control measured against
+  unsupported coordinates. Every window CA is at 1.00; the zeros are elsewhere
+  in the chain (F229).
+* a flat median seconds-per-token underpriced the tier-2 remainder by three
+  hours, because the remaining job mix is larger than the finished mix (F225).
+  That is F45, which the code had already fixed and `thresholds.toml` already
+  explains in words beside `token_bands`.
+* counting contacts while excluding only the window's own residues made every
+  pair's top binding partner its own chain, so a check of receptor assignment
+  flagged all seven as wrong (F230).
+
+One shape, four times: a convenient aggregate or filter standing in for the
+question, and the error always in the direction of a confident wrong answer
+rather than a visible gap. The occupancy one and this one both read as alarms;
+the budget one read as reassurance; the contacts one read as a panel-wide
+defect.
+
+The rule that would have caught all four, written down because apparently
+knowing it is not enough: **before concluding absence, print what the filter
+excluded.** `min` over a set that may be heterogeneous, a median over a
+distribution that differs from the one being projected, a threshold on a
+quantity whose scale is not understood, and an exclusion that leaves the
+dominant term in: in each case one line showing the discarded rows would have
+ended it.
+
+Nothing is wrong with the chain. Job 14 is a 1,223-token job, the largest in
+the tier-2 queue, and the watchdog reports it as running and not overdue,
+which was the correct answer throughout.
