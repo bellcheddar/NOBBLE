@@ -9,6 +9,22 @@ cd "$(dirname "$0")/.."
 # shellcheck disable=SC1091
 set -a; source .env; set +a
 
+# Required, and required to be non-empty, which `set -u` does not give.
+#
+# The remote block below is an unquoted heredoc, so these expand here before
+# anything is sent. `set -u` aborts on an unset variable and says nothing
+# about an empty one, and `cd ""` succeeds in bash and leaves you where you
+# are. So an empty REMOTE_DIR would send `cd ""` followed by a recursive
+# chown and a recursive chmod over `.`, which on the droplet is the ssh login
+# directory rather than the application. This is the most destructive script
+# in deploy/ and it was the only one with no guards at all (F241).
+: "${DROPLET_SSH:?}"
+: "${SSH_KEY:?}"
+: "${REMOTE_DIR:?}"
+: "${SERVICE_USER:?}"
+: "${SERVICE:?}"
+: "${PUBLIC_HOST:?}"
+
 KEY_PATH="${SSH_KEY/#\~/$HOME}"
 mkdir -p "$HOME/.ssh/cm" && chmod 700 "$HOME/.ssh/cm"
 SSH=(ssh -i "$KEY_PATH" -o BatchMode=yes -o IdentitiesOnly=yes

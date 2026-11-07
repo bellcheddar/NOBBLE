@@ -11373,3 +11373,41 @@ compression fix exists in two places: in the script that cannot be re-run on a
 live host, and in `enable_gzip.sh`, which can. F132 stays pending for the
 reason it always was, and the fix being present in provision.sh is not a
 reason to run it.
+
+## F241. The most destructive script in deploy/ was the one with no guards
+
+Swept the rest of `deploy/` after F240, for the same shape. `certbot.sh`
+already checks for an existing certificate before running, so it is
+idempotent. `logs.sh`, `survey.sh` and `check_beacon.sh` only read.
+`repair_perms.sh` does this, on the droplet:
+
+```
+cd "$REMOTE_DIR"
+find . -maxdepth 1 ... | xargs -0 -r chown -R "$SERVICE_USER":"$SERVICE_USER"
+find . -path ./.venv -prune -o -type d -print0 | xargs -0 chmod 755
+find . -path ./.venv -prune -o -type f -print0 | xargs -0 chmod 644
+```
+
+Counting `:?` guards across `deploy/`: `deploy.sh` two, `provision.sh` two,
+`enable_gzip.sh` one, and `repair_perms.sh`, which is the only one that
+recursively changes ownership, none.
+
+**Why that matters turns on one thing: `cd ""` succeeds in bash.** It returns
+0 and leaves the shell where it already was, which a test now pins so the
+reason cannot be argued away later. The remote block is an unquoted heredoc,
+so `$REMOTE_DIR` expands locally before anything is sent, and `set -u` aborts
+on an *unset* variable while saying nothing about an *empty* one. So
+`REMOTE_DIR=` in `.env`, or a line edited to an empty assignment, would have
+sent `cd ""` followed by a recursive chown and two recursive chmods over `.`,
+which in that ssh session is root's home rather than the application, on a
+host serving 22 other sites.
+
+Fixed with `:?`, which rejects empty as well as unset, on all six variables
+the script uses. Three tests: the `cd ""` premise, the guards present for
+every variable that reaches a writing command across four scripts, and the
+guards sitting above the chown rather than below it.
+
+**Narrower than it first looked, and worth saying so.** `set -u` does cover
+the unset case, so this needed an empty value rather than a missing one. I
+checked that rather than assuming either way, because "set -euo pipefail is
+at the top" is the kind of reassurance that reads as covering both.
