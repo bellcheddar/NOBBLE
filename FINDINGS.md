@@ -12564,3 +12564,52 @@ either way, which is the limitation F236 is about and is already recorded.
 A negative result, then, and the second of the day: F263 found no
 record-against-YAML disagreement beyond F262's, and this finds no cofactor
 asymmetry in the scan. Both are now tests rather than numbers I checked once.
+
+### F261, continued: the full account of what the published slice is behind on
+
+`tools/atlas_drift.py` is the instrument for this and cannot answer, because it
+rebuilds in order to compare and the rebuild refuses on F219. So, by hand, and
+completely rather than by what I happened to notice.
+
+All nine published files were written at 2026-11-06T23:01Z, so the slice is
+about thirteen hours old. Two fixes have landed since, and the two things the
+site gets wrong are exactly those two:
+
+```
+bundle built                                   2026-11-06T23:01:38Z
+918cad3f  the design scan is not targeted by a collapsed seed   04:18:38Z
+20e45f9c  comparison.json carries the curve its conclusion is about  06:38:50Z
+```
+
+The second is F261 as already written: no recovery curves in
+`comparison.json`, so the whole-domain contrast does not render.
+
+The first is a published claim resting on an artefact. `design.json` previews
+`sievers_dc66fdefdc` (ZN565) as the design target, "largest measured
+delta-ipTM of the scored parents (+0.889): the degron with the most glue
+dependence to move". That +0.889 is one collapsed binary seed. Delta-ipTM is a
+difference of minima, seed 2 of the binary arm collapsed, and the minimum it
+drags down is what the difference is taken from:
+
+```
+                      delta_iptm  median  iptm_min_binary  collapsed_binary
+ZN565  (site)             0.8886  0.0913           0.0601  [2]
+IKZF1  (ranking, scan)    0.3156  0.1358           0.6070  none
+```
+
+By the median the two are 0.09 against 0.14, which is to say the site's target
+has less glue dependence than the one actually chosen, not ten times more.
+
+Nothing in the code is wrong here. `report.py` excludes any candidate the
+scorer flags with `seed_collapse_affects_delta`, its comment names ZN565's
+figures, and `test_a_flagged_seed_collapse_does_not_choose_the_scan_target`
+pins it. The design campaign on disk already uses IKZF1, so what will be
+computed is right. Only the published preview is stale, and it says "+0.889"
+with a reason sentence that reads as careful measurement.
+
+Both items clear on the next atlas build. The ordering is unchanged: the F47
+correction, then the rebuild. Recorded here because a slice that is thirteen
+hours old and two fixes behind is a specific, checkable state rather than a
+general caveat about staleness, and because one of the two is a number the
+project has since learned to distrust being published as a reason for a
+choice.

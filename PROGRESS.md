@@ -1,6 +1,6 @@
 # NOBBLE progress
 
-Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T12:08:35Z.
+Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T13:11:14Z.
 
 ## Gate G6 answered: the headline is a negative result, and publication is held
 
@@ -43,7 +43,12 @@ recovery curves, so the whole-domain contrast is absent and the table in
 refuses on bench02's stale featurisation (F219), and copying a file into
 `deploy/atlas` by hand would defeat the point of the refusal. So the site
 holds the harsher number alone until the F47 correction runs and the atlas
-rebuilds (F261).
+rebuilds. The same slice also previews ZN565 as the design target on a
+Delta-ipTM of +0.889 that is one collapsed binary seed: by the median it is
+0.09 against IKZF1's 0.14, the code excludes it, and the scan on disk
+already uses IKZF1. The bundle was built at 2026-11-06T23:01Z and both
+fixes landed this morning, so the site is thirteen hours and two commits
+behind (F261).
 
 **The matched-control ROC is a null**: AUC 0.4583, 95 per cent CI 0.3316 to
 0.5842, over 24 positives and 96 matched negatives from the Sievers screen,
