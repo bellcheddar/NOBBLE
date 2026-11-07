@@ -13934,3 +13934,43 @@ the two input corrections, performs them under `--apply` after waiting for the
 device, and runs the refresh. PROGRESS now names it, and a test asserts it
 does, because reconstructing the order of two corrections and a rebuild from
 three findings is not a handoff.
+
+## F291
+
+I reran F250's sweep four hours later and it caught my own orphan.
+
+F250 swept every public module-level function in `nobble/` for references
+anywhere, at 08:50 today. It found nine unreferenced, six of them Flask
+handlers a decorator calls, and three genuinely orphaned: `assemble_benchmark`,
+which turns out to be a documented command in the README, `has_model` and
+`ligand_chains`. Its conclusion was to record rather than delete, because
+`ligand_chains` is the sole consumer of `LIGAND_MIN_HEAVY_ATOMS` and deleting
+it would leave a config threshold reading as live with nothing using it.
+
+I ran the same sweep again this evening without checking whether it had been
+done, which is the part worth recording: the finding was four hours old and in
+the same file I append to after every change. The cost was a few minutes and
+it was not wasted, because the sweep found something F250 could not.
+
+`regenerated_disagreements` was referenced exactly once, by its own
+definition. I added it in F266 at midday beside `regenerated_status`, by
+symmetry with `superseded_substrates` and `superseded_status`, and nothing
+ever called it. The sibling pattern is genuinely used on both halves, nine
+call sites and three; mine has seven and none.
+
+The reason is structural rather than an oversight to correct by adding a
+caller. The only consumer of the rows is `deploy/build_atlas.py`, which needs
+the rows and the status together and calls `_regenerated_scan` directly rather
+than scanning the campaign twice at two seconds each. So the public accessor
+had no caller and could not acquire one without making the gate slower.
+
+Removed, with the asymmetry explained where the surviving half is defined. A
+public accessor kept for symmetry with a sibling is exactly the unused
+affordance `tests/test_unused_affordances.py` exists to find, and F250's
+reason for keeping `ligand_chains` does not transfer: that function keeps a
+threshold honest, this one keeps nothing.
+
+My first pass at the sweep also reported 44 orphans rather than five, because
+it counted a function used only inside its own module as unreferenced and
+could not see a decorator. Both are F250's documented limitations, which I
+would have known had I read it first.

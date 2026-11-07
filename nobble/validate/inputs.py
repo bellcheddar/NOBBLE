@@ -369,11 +369,15 @@ def _regenerated_scan(campaign: Path) -> tuple[list[dict], str]:
     return [], f"clean: all {compared} YAML(s) match what the code emits"
 
 
-def regenerated_disagreements(campaign: Path) -> list[dict]:
-    """Jobs whose YAML differs from what the current code would emit."""
-    return _regenerated_scan(campaign)[0]
-
-
 def regenerated_status(campaign: Path) -> str:
-    """One line for the status page, distinguishing clean from unknown."""
+    """One line for the status page, distinguishing clean from unknown.
+
+    No `regenerated_disagreements` beside it, unlike `superseded_substrates`
+    and `superseded_status`. I wrote one in F266 and nothing called it: the
+    only consumer of the rows is `deploy/build_atlas.py`, which needs the
+    rows and the status from one pass and so calls `_regenerated_scan`
+    directly rather than scanning twice at two seconds each. A public
+    accessor kept for symmetry with a sibling is the unused affordance
+    `tests/test_unused_affordances.py` exists to find, so it is gone (F291).
+    """
     return _regenerated_scan(campaign)[1]
