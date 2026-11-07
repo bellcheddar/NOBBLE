@@ -59,6 +59,10 @@ class FitResult:
     components_used: list = field(default_factory=list)
     caveats: list = field(default_factory=list)
     per_component_auc: dict = field(default_factory=dict)
+    # How many labelled rows each component's own AUC rests on. Not derivable
+    # from `labelled_pairs`, which counts the fit's rows rather than the
+    # rows where a given component has a value.
+    per_component_n: dict = field(default_factory=dict)
     # How many ternary and binary seeds each fitted pair contributed, counted
     # as shapes. `delta_iptm` is a difference of two minima, and a minimum
     # over ten draws sits below a minimum over five whatever the underlying
@@ -236,6 +240,14 @@ def fit(campaign: Path) -> FitResult:
         auc = _auc(p, n)
         if auc is not None:
             result.per_component_auc[name] = round(auc, 4)
+        # The denominator, because each component's AUC is over the rows where
+        # that component has a value and those sets are not the same. On the
+        # main campaign `lysine_reach_exposed_fraction` is absent for all 120
+        # Sievers pairs, so its figure rests on the panel and the scrambles:
+        # seven positives rather than thirty-one. Shown as one column beside
+        # the others it invited a comparison the numbers do not support, which
+        # is the denominator rule in the place I had just broken it (F285).
+        result.per_component_n[name] = {"positives": len(p), "negatives": len(n)}
 
     # Grid search maximising the composite's AUC on the labelled split.
     best = None

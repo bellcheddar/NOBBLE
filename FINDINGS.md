@@ -13634,3 +13634,57 @@ resolves through the same `FITTED_ALIASES` map as the weight lookup, because
 two resolutions of one name is what F106 was about, and a test asserts the
 count of AUCs shown equals the number of components rather than merely that
 some appear.
+
+## F285
+
+Six statistics on the matched arm, none separating, and two errors of mine
+along the way.
+
+F280 put four statistics to the Sievers labels as a sequence, which is the
+shape that invites a search. The complete version is every component the
+composite offers, asked as one set. Four of the five can be addressed by name
+and none excludes 0.5:
+
+```
+component                    AUC      95% CI             pairs
+convergence_score         0.5931   0.4614 to 0.7131      24 / 96
+bridge_percentile         0.5237   0.3968 to 0.6463      22 / 89
+plip_fingerprint_match    0.5074   0.4049 to 0.5977      24 / 96
+delta_iptm                0.4583   0.3316 to 0.5842      24 / 96
+```
+
+With F280's `delta_iptm_median` and `bridge_formation_rate`, that is six
+statistics put to these labels and six intervals containing 0.5. The two
+components the UI labelled "high" trust, `convergence_score` and
+`plip_fingerprint_match`, had never been put to the arm before and do not
+separate it either.
+
+**First error: "absent for every Sievers pair".** The fifth component,
+`lysine_reach_exposed_fraction`, came back with 0 positives and 0 negatives,
+and I took that to mean the field is missing from every Sievers row. It is
+not. The name is a *derived* feature: the fit computes it as
+`exposed_lysines / peptide_lysines` from the nested `lysine_reach` dict, and
+`matched_control_roc` reads top-level score fields. So the 0 means the ROC
+layer cannot address a derived feature by that name, which is a limitation of
+my sweep rather than a fact about the data, and the component's matched-arm
+curve is simply not among the six.
+
+**Second error: the denominators.** Reasoning from the first, I predicted the
+fit's per-component AUC for that component rested on 7 positives of 31
+against the others' full set, a fourfold gap, and set out to record a
+misleading column. Measured, the five sit at 27 to 31 positives of 31 and 112
+to 127 negatives of 127. A real difference and a modest one.
+
+The underlying observation survives at that reduced size and is worth the
+change: `weights.fit` computes each component's AUC over the rows where that
+component has a value, so the five figures are not over one sample, and I had
+put them side by side in F284 an hour earlier with no counts at all. The fit
+now records `per_component_n`, and both the campaign sliders and the about
+table show each number's own rows. The reason to show it is that five numbers
+in a column invite a comparison, not that any one of them is wrong.
+
+Worth saying plainly: I was drafting a finding about a fourfold denominator
+gap when the measurement came back at 27 of 31. The prediction came from an
+inference about a zero I had not looked into, which is the thing this project
+keeps finding, and the only reason it did not reach FINDINGS is that the
+numbers were computed before the prose was committed.

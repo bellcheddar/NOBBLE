@@ -116,8 +116,11 @@
           {% set alone = (weight_fit.per_component_auc if weight_fit and weight_fit.get('fitted') else {}) %}
           {% set alone_auc = component_auc(alone, key) %}
           {% if alone_auc is not none %}
+            {% set alone_n = component_auc(weight_fit.get('per_component_n'), key) %}
             <p class="weight__note">AUC alone {{ alone_auc }}, in-sample on
-              {{ weight_fit.labelled_pairs }} labelled pairs</p>
+              {% if alone_n %}{{ alone_n.positives }} positive and
+              {{ alone_n.negatives }} negative row(s){% else %}
+              {{ weight_fit.labelled_pairs }} labelled pairs{% endif %}</p>
           {% endif %}
           <input type="range" id="w-{{ key }}" min="0" max="1" step="0.05"
                  value="{{ start_w }}"

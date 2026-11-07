@@ -157,7 +157,9 @@
           <tr>
             <td class="mono">{{ name }}</td>
             <td class="num">{{ w }}</td>
-            <td class="num">{{ weight_fit.per_component_auc.get(name, '—') }}</td>
+            <td class="num">{{ weight_fit.per_component_auc.get(name, 'not computed') }}
+              {% set n = (weight_fit.get('per_component_n') or {}).get(name) %}
+              {% if n %}<span class="stat__sub">on {{ n.positives }} / {{ n.negatives }}</span>{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>

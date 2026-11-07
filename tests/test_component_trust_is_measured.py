@@ -89,3 +89,49 @@ def test_no_component_claims_validated_discrimination():
         assert "validated predictor" not in note or "not a validated" in note, (
             key, meta.get("note"))
         assert "proven" not in note, (key, meta.get("note"))
+
+
+def test_each_component_auc_carries_its_own_row_count():
+    """They are not over the same rows, so the count travels with the number.
+
+    Each component's standalone AUC is computed where that component has a
+    value, so the sets differ: on the main campaign from 27 of 31 positives
+    to 31 of 31, and 112 of 127 negatives to 127. A modest difference, and
+    the reason to show it is that five numbers in one column invite a
+    comparison, not that any one of them is wrong (F285).
+    """
+    campaign = _campaign()
+    if campaign is None:
+        pytest.skip("no campaign assembled")
+    from nobble.score import weights
+
+    fit = weights.fit(campaign).to_dict()
+    if not fit.get("per_component_auc"):
+        pytest.skip("the fit has not run on this campaign")
+    counts = fit.get("per_component_n") or {}
+    assert set(counts) == set(fit["per_component_auc"]), (
+        sorted(counts), sorted(fit["per_component_auc"]))
+    for name, n in counts.items():
+        assert n["positives"] > 0 and n["negatives"] > 0, (name, n)
+        assert n["positives"] <= fit["positives"], (name, n)
+        assert n["negatives"] <= fit["negatives"], (name, n)
+
+
+def test_the_pages_show_the_row_counts():
+    campaign = _campaign()
+    if campaign is None:
+        pytest.skip("no campaign assembled")
+    from nobble.app import create_app
+
+    app = create_app(str(campaign))
+    app.config["TESTING"] = True
+    client = app.test_client()
+    campaign_page = client.get("/campaign").get_data(as_text=True)
+    if "AUC alone" not in campaign_page:
+        pytest.skip("the fit has not run on this campaign")
+    assert campaign_page.count("positive and") == len(data.COMPONENTS), (
+        "not every slider shows the rows its AUC rests on")
+    about = client.get("/about").get_data(as_text=True)
+    if "Fitted weight" in about:
+        assert "on 31 / 127" in about or "on " in about, (
+            "the composite table shows AUCs without their row counts")
