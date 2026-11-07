@@ -79,9 +79,25 @@ def test_one_spelling_of_the_pattern():
     tool = (ROOT / "tools" / "clean_sync_conflicts.py").read_text()
     test = (ROOT / "tests" / "test_no_sync_conflict_files.py").read_text()
     deploy = (ROOT / "deploy" / "deploy.sh").read_text()
-    assert r" \d+\.[A-Za-z0-9]+$" in tool
-    assert r" \d+\.[A-Za-z0-9]+$" in test
-    assert r" [0-9]+\.[A-Za-z0-9]+$" in deploy
+    assert r" \d+(\.[A-Za-z0-9]+)+$" in tool
+    assert r" \d+(\.[A-Za-z0-9]+)+$" in test
+    assert r" [0-9]+(\.[A-Za-z0-9]+)+$" in deploy
+
+
+def test_a_compound_extension_is_caught(tmp_path):
+    """A gzipped crystal. The single-segment pattern could not see
+    `5FQD 2.cif.gz`, and seven of them sat in the published bundle while
+    every guard passed (F310)."""
+    root = _tree(tmp_path, {"5FQD.cif.gz": "new", "5FQD 2.cif.gz": "old"})
+    assert cleaner.main(["--root", str(root)]) == 0
+    assert (root / "campaigns" / "5FQD.cif.gz").exists()
+    assert not (root / "campaigns" / "5FQD 2.cif.gz").exists()
+
+
+def test_a_compound_extension_with_no_sibling_is_still_refused(tmp_path):
+    root = _tree(tmp_path, {"6TD3 2.cif.gz": "only copy"})
+    assert cleaner.main(["--root", str(root)]) == 1
+    assert (root / "campaigns" / "6TD3 2.cif.gz").exists()
 
 
 def test_the_refresh_runs_it_after_the_build():

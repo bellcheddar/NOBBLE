@@ -773,6 +773,42 @@ def main() -> int:
         return 1
     summary["unexpected_files"] = 0
 
+    # And nothing referenced that is absent (F309).
+    #
+    # The check above and `deploy/deploy.sh`'s conflict refusal both look for
+    # files that should not be in the bundle. Neither looks for files that
+    # should be and are not, which is the failure F196 found in production:
+    # `/crystal/<id>.cif` 404ing for every pair because the assemblies were
+    # never published. On 2026-11-07 the build recorded seven crystals and
+    # three were on disk ten minutes later, and the only thing that noticed
+    # was a test, which does not run between a rebuild and an rsync.
+    #
+    # Read from the documents just written, so this asks what the bundle
+    # promises rather than what the build meant to promise. A row whose
+    # `structure` is null promises nothing and is not a miss.
+    absent = []
+    benchmark_path = OUT / "benchmark.json"
+    if benchmark_path.exists():
+        mapping = (json.loads(benchmark_path.read_text())
+                   .get("crystal_by_pair") or {})
+        for pair_id, pdb_id in sorted(mapping.items()):
+            if pdb_id and not (OUT / "crystals" / f"{pdb_id}.cif.gz").exists():
+                absent.append(f"crystals/{pdb_id}.cif.gz, named by {pair_id}")
+    for name in ("results.jsonl", "results_tier2.jsonl"):
+        path = OUT / name
+        if not path.exists():
+            continue
+        for row in paths.read_jsonl(path, tolerate_torn=True):
+            published = row.get("structure")
+            if published and not (OUT / published).exists():
+                absent.append(f"{published}, named by {row.get('job_id')}")
+    if absent:
+        print(f"REFUSING: {len(absent)} file(s) the bundle references and does "
+              f"not contain, first {absent[:3]}. Every one of those is a 404 "
+              "on the published site.", file=sys.stderr)
+        return 1
+    summary["referenced_files_absent"] = 0
+
     structures = list((OUT / "structures").glob("*.cif"))
     summary["structures"] = len(structures)
     summary["bytes"] = sum(p.stat().st_size for p in OUT.rglob("*") if p.is_file())

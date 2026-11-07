@@ -105,3 +105,76 @@ def test_every_published_structure_is_named_for_a_job():
         f"{len(orphans)} published structure(s) are not named for any job in "
         f"the bundle's own results: {orphans[:3]}"
     )
+
+
+# --------------------------------------------------------------------------- #
+# And nothing referenced that is absent (F309)
+# --------------------------------------------------------------------------- #
+
+def test_the_build_refuses_on_a_referenced_file_it_did_not_publish():
+    """The other direction, which nothing checked at build or deploy time.
+
+    F196 found `/crystal/<id>.cif` 404ing in production because the
+    assemblies were never published, and on 2026-11-07 the build recorded
+    seven crystals while three were on disk. Both of today's other checks
+    look for files that should not be there.
+    """
+    tree = ast.parse(SOURCE)
+    refusals = [node for node in ast.walk(tree)
+                if isinstance(node, ast.If)
+                and isinstance(node.test, ast.Name)
+                and node.test.id == "absent"]
+    assert refusals, "no `if absent:` branch in the build"
+    returns = [node for node in ast.walk(refusals[0])
+               if isinstance(node, ast.Return)]
+    assert any(isinstance(node.value, ast.Constant) and node.value.value == 1
+               for node in returns), "the refusal does not return non-zero"
+
+
+def test_both_kinds_of_referenced_file_are_checked():
+    """A crystal and a structure 404 the same way, and checking one would
+    have passed on 2026-11-07 while four crystals were missing."""
+    assert 'crystal_by_pair' in SOURCE
+    assert 'row.get("structure")' in SOURCE
+    assert "results_tier2.jsonl" in SOURCE
+
+
+def test_the_check_reads_the_bundle_rather_than_the_build_s_intent():
+    """Asking what the build meant to publish would have said seven on the
+    day three were there. The question is what the bundle promises."""
+    position = SOURCE.index("absent = []")
+    tail = SOURCE[position:position + 2000]
+    assert "benchmark_path.read_text()" in tail
+    assert "paths.read_jsonl" in tail
+
+
+def test_the_live_bundle_promises_nothing_it_lacks():
+    """The state right now, which is what the build would have refused on
+    earlier today."""
+    import json
+
+    import pytest
+
+    bundle = ROOT / "deploy" / "atlas"
+    benchmark = bundle / "benchmark.json"
+    if not benchmark.exists():
+        pytest.skip("no published bundle on this checkout")
+
+    from nobble import paths
+
+    missing = []
+    mapping = json.loads(benchmark.read_text()).get("crystal_by_pair") or {}
+    for pair_id, pdb_id in sorted(mapping.items()):
+        if pdb_id and not (bundle / "crystals" / f"{pdb_id}.cif.gz").exists():
+            missing.append(f"crystals/{pdb_id}.cif.gz for {pair_id}")
+    for name in ("results.jsonl", "results_tier2.jsonl"):
+        path = bundle / name
+        if not path.exists():
+            continue
+        for row in paths.read_jsonl(path, tolerate_torn=True):
+            published = row.get("structure")
+            if published and not (bundle / published).exists():
+                missing.append(f"{published} for {row.get('job_id')}")
+    assert not missing, (
+        f"{len(missing)} file(s) the bundle references and does not contain, "
+        f"each one a 404 on the site: {missing[:3]}")

@@ -76,7 +76,7 @@ fi
 CONFLICTS=()
 while IFS= read -r line; do
   [[ -n "$line" ]] && CONFLICTS+=("$line")
-done < <(find deploy/atlas -type f -print | grep -E ' [0-9]+\.[A-Za-z0-9]+$' || true)
+done < <(find deploy/atlas -type f -print | grep -E ' [0-9]+(\.[A-Za-z0-9]+)+$' || true)
 if (( ${#CONFLICTS[@]} > 0 )); then
   echo "deploy: the bundle holds iCloud sync-conflict copies, which nothing" >&2
   echo "        references and which rsync would publish:" >&2

@@ -29,7 +29,10 @@ ROOT = Path(__file__).resolve().parents[1]
 # "name 2.cif", "name 3.json": a space, digits, then the extension. Distinct
 # from an ordinary name that happens to end in a number, which has no space
 # before it, and from a versioned name like "_v2", which has no space either.
-CONFLICT = re.compile(r" \d+\.[A-Za-z0-9]+$")
+# One or more extension segments. With a single segment this could not see
+# `5FQD 2.cif.gz`, and seven gzipped crystal conflicts sat in the published
+# bundle while this test passed (F310).
+CONFLICT = re.compile(r" \d+(\.[A-Za-z0-9]+)+$")
 
 
 def _tracked() -> list[str]:
@@ -98,7 +101,7 @@ def test_the_deploy_refuses_a_bundle_holding_one(monkeypatch):
     # The same pattern as this file's, deliberately: two checks for one
     # thing that disagreed about what a conflict name looks like would be
     # worse than one.
-    assert r" [0-9]+\.[A-Za-z0-9]+$" in script, (
+    assert r" [0-9]+(\.[A-Za-z0-9]+)+$" in script, (
         "the deploy's pattern no longer matches the one tested here"
     )
     # And it must run before anything is sent.

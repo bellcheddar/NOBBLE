@@ -45,7 +45,12 @@ ROOT = Path(__file__).resolve().parents[1]
 # deliberately: one spelling of what a conflict copy looks like. An ordinary
 # name ending in a number has no space before it, and `_v2` has no space
 # either.
-CONFLICT = re.compile(r" \d+\.[A-Za-z0-9]+$")
+# One or more extension segments, so a gzipped crystal is caught too.
+# `5FQD 2.cif.gz` does not match a pattern that wants " <digits>." directly
+# before the final extension, and seven of them sat in the published bundle
+# until a hand-written cleanup removed them: the project's guard had never
+# been able to see a compound extension (F310).
+CONFLICT = re.compile(r" \d+(\.[A-Za-z0-9]+)+$")
 
 # Where to look. Not the whole root: `.git` holds packed objects whose names
 # this pattern could in principle match, and no sync artefact in there is
@@ -62,6 +67,7 @@ def plain_sibling(path: Path) -> Path | None:
     match = CONFLICT.search(path.name)
     if not match:
         return None
+    # The whole extension, however many segments: ` 2.cif.gz` -> `.cif.gz`.
     extension = match.group(0).split(".", 1)[1]
     base = path.name[: match.start()] + "." + extension
     candidate = path.with_name(base)

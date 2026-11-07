@@ -15102,3 +15102,48 @@ today's new checks look for files that should not be in the bundle, and
 nothing at build or deploy time looks for referenced files that are missing.
 `test_the_bundle_carries_every_assembly_the_atlas_references` does, and it
 runs when I run it.
+
+## F310. The conflict guard could not see a gzipped crystal, and ran too early
+
+Two defects in yesterday's fix, both of which made it report clean when it
+was not.
+
+**The pattern missed a compound extension.** All three places that describe a
+conflict copy used `" \d+\.[A-Za-z0-9]+$"`: one extension segment, directly
+after the digits. `5FQD 2.cif.gz` does not match it, because the segment
+before the end is `gz` and ` 2.` sits two segments back. So the project's
+guard has never been able to see a gzipped crystal conflict, which is why
+seven of them sat in the published bundle until a hand-written cleanup
+removed them, with `tests/test_no_sync_conflict_files.py` passing throughout.
+All three now use `" \d+(\.[A-Za-z0-9]+)+$"` and the cleaner derives the
+sibling from the whole extension.
+
+**It ran at the wrong moment.** `tools/refresh.sh` calls the cleaner straight
+after the atlas build, and the build's own log said "sync conflicts: none".
+Twenty minutes later, with no build running and tier 2 on the GPU, there were
+**336** of them in `deploy/atlas/structures`. The copies arrive after the
+build replaces the files they are copies of, so a sweep timed to the build's
+last line is a sweep timed to look before they exist. That is a guard whose
+only effect was to tell me there was nothing to find.
+
+This also settles what F309b left open. The crystals being restored by a
+rebuild and the `git add -A` stat failure both have mundane explanations, and
+I was right to withdraw those. The duplication itself is not transient and
+does not need a build to be in progress: zero at 23:35, 336 at 23:55, no
+build between them. F173's mechanism, measured.
+
+### The guard that caught a real 404
+
+The missing-referenced-file check added for F309 refused on
+`structures/bench06_RBM39_DCAF15__ternary__conditioned__seed2.cif`: the
+bundle's own `results.jsonl` names it, the source structure is on disk in the
+campaign, `scr_bench06`'s equivalent was published, and that one file is
+absent. One file, not a class, and the next atlas rebuild republishes it the
+way it republished the four crystals.
+
+Worth stating as a risk I have introduced: the check runs at the end of the
+same build that wrote the files, so a removal in those seconds would refuse a
+build that did its job. Refusing is the right side to err on, since the
+alternative is publishing a bundle with a 404 in it, and the chain's atlas
+stage is `|| true` so a refusal leaves the previous bundle standing rather
+than stopping the run.
