@@ -357,12 +357,16 @@ def main(argv: list[str] | None = None) -> int:
     # a campaign, and probing per campaign would answer the same question
     # once per directory in campaigns/.
     alive = runner_alive(args.tier)
+    examined = 0
+    with_running = 0
     for campaign in targets:
         if not (campaign / "queue.jsonl").exists():
             continue
+        examined += 1
         report = stall_report(campaign, tier=args.tier, alive=alive)
         if not report["running"]:
             continue
+        with_running += 1
         for job in report["abandoned"]:
             print(f"   ABANDONED {campaign.name} {job['job_id']}: the state "
                   f"file says running and no tier-{args.tier} runner is on "
@@ -383,6 +387,19 @@ def main(argv: list[str] | None = None) -> int:
                 and not report["abandoned"]:
             print(f"   ok       {campaign.name}: "
                   f"{len(report['running'])} running, none overdue")
+
+    # Said, rather than left as an empty section.
+    #
+    # With nothing running this printed nothing at all, so `tools/status.sh`
+    # showed an empty "running jobs" heading whether no job was running or
+    # the wrong tier had been asked. Those are not the same, and the second
+    # was live: status.sh called this with no --tier while a tier-2 job had
+    # been running for five hours, which is F216's own lesson, that liveness
+    # is per tier, unapplied in the operator's one command. Silence meaning
+    # two things is F232's shape.
+    if not with_running:
+        print(f"   ok       no job running at tier {args.tier} "
+              f"across {examined} campaign(s) with a queue")
     return worst
 
 

@@ -53,7 +53,13 @@ echo "-- running jobs"
 # Elapsed time is computed from started_at in state.jsonl, never read off a
 # formatted clock: `stat` prints local time and `date -u` prints UTC, and
 # comparing the two cost a healthy job once already (F20).
-"$SCI" -m nobble.execute.watchdog || true
+# Both tiers, because a chain run leaves an idle tier 1 beside a live tier 2
+# and this asked only tier 1: a five-hour tier-2 job showed here as an empty
+# heading. That liveness is per tier is F216's finding, made in the watchdog
+# and not carried to its caller.
+for tier in 1 2; do
+  "$SCI" -m nobble.execute.watchdog --tier "$tier" || true
+done
 echo
 
 echo "-- gates"

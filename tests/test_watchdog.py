@@ -268,3 +268,39 @@ def test_a_refinement_with_no_tier_one_time_says_what_it_fell_back_to(tmp_path):
     assert report["overdue"], report
     basis = report["overdue"][0]["rate_basis"]
     assert "no rate measured at this size" in basis, basis
+
+
+def test_an_idle_tier_says_so_rather_than_printing_nothing(tmp_path, capsys,
+                                                           monkeypatch):
+    """Silence meant two things: nothing running, or the wrong tier asked.
+
+    The second was live. `tools/status.sh` called this with no --tier while a
+    tier-2 job had been running for five hours, so the operator's one command
+    showed an empty "running jobs" heading. That liveness is per tier is
+    F216's own finding, made in this module and not carried to its caller.
+    """
+    campaign = _campaign(tmp_path, running_started_at=0.0)
+    # Close the running record out, so nothing is running at tier 1.
+    rows = [line for line in (campaign / "state.jsonl").read_text().splitlines()
+            if '"live1"' not in line]
+    (campaign / "state.jsonl").write_text("\n".join(rows) + "\n")
+
+    monkeypatch.chdir(tmp_path)
+    code = watchdog.main(["--campaign", str(campaign), "--tier", "1"])
+    printed = capsys.readouterr().out
+
+    assert code == 0
+    assert "no job running at tier 1" in printed, printed
+    assert "campaign(s) with a queue" in printed, printed
+
+
+def test_the_status_command_asks_both_tiers():
+    """A chain run leaves an idle tier 1 beside a live tier 2."""
+    script = (paths.ROOT if hasattr(paths, "ROOT") else
+              Path(__file__).resolve().parents[1]) / "tools" / "status.sh"
+    text = script.read_text()
+    assert "nobble.execute.watchdog" in text
+    assert "--tier" in text, (
+        "status.sh calls the watchdog without a tier, so a tier-2 job in "
+        "flight shows as no running jobs")
+    assert "for tier in 1 2" in text, text

@@ -11106,3 +11106,54 @@ So the gate's question is better posed than it was: not "can this method place
 a degron" but "should an atlas built from 15-mer poses be published when the
 same pipeline places six of seven degrons within 2 to 6 A given the domain".
 That is Marc's to answer and the hold stays until he does.
+
+## F237. The operator's one command showed an empty heading while a job ran for five hours
+
+Running `bash tools/status.sh` end to end, because five tools feeding it had
+changed this session and each had only been tested on its own. Everything
+composed, and one line was wrong:
+
+```
+-- running jobs
+
+-- gates
+```
+
+Nothing. A tier-2 job had been running for five hours at that moment.
+
+`status.sh` called `nobble.execute.watchdog` with no `--tier`, so it read tier
+1, where every campaign is finished. F216 is the finding that liveness must be
+read per tier, "because `tools/tier2.sh` produces a live tier-2 runner beside
+an idle tier 1 on every chain run". It was made in the watchdog, which gained
+`--tier`, and not carried to the one caller an operator actually runs.
+
+The second half is worse. The watchdog prints a verdict only for a campaign
+with something running, so with nothing found it printed nothing at all and
+exited 0. An empty section therefore meant either "no job is running" or "the
+wrong tier was asked", and there was no way to tell from the output which. One
+of those was true and it was not the reassuring one. That is F232's shape, in
+the place it is least likely to be questioned, since an empty heading under a
+healthy-looking status reads as good news.
+
+Both fixed. `status.sh` asks tier 1 and tier 2, and the watchdog states an
+idle tier rather than leaving the question open:
+
+```
+-- running jobs
+   ok       no job running at tier 1 across 5 campaign(s) with a queue
+   ok       campaign_20261104T004632Z: 1 running, none overdue
+```
+
+**What else the end-to-end run confirmed**, since that was the point of
+running it: the featurisation and superseded lines both report through their
+new scoping, the atlas drift line carries the refusal, the design-target line
+correctly shows the site and the ranking disagreeing after D-NOB-081, G1 reads
+closed on 52.5 h projected and 37.86 h to refine, G5 closed at 508.3 GB, spent
+78.85 h over 2,709 jobs, and the live site answers 200. The one remaining
+oddity is cosmetic and known: "37.86 to 37.86 h" is `scaling_range` collapsing
+to the measured factor, so the printed range is a point (F225).
+
+The log-failure scanner reports "none in 9 log file(s)" while job 14's first
+attempt has failed. That is consistent rather than a second defect: the runner
+printed nothing about it, which is the gap the retry notice closes from the
+next runner invocation.
