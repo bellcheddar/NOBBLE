@@ -10886,3 +10886,55 @@ ended it.
 Nothing is wrong with the chain. Job 14 is a 1,223-token job, the largest in
 the tier-2 queue, and the watchdog reports it as running and not overdue,
 which was the correct answer throughout.
+
+## F233. The pair missing from the G6 refinement table is the one whose jobs are too large to have ever run
+
+Tier-2 job 14 showed a Boltz child of 84 minutes replaced by a fresh one of
+nine, with no `done` line in the chain log between them. The runner does one
+retry per job, and a timeout is explicitly not retried, so attempt 1 did not
+overrun: it crashed, and attempt 2 is running.
+
+What makes that worth more than a note is the size. Of the 149 tier-2 jobs
+that have finished, the largest is 454 tokens. Job 14 is 1,223.
+
+```
+pair                        queued   done   tokens
+bench01_GSPT1_CRBN              10     10      155
+bench02_BRD4_VHL                10     10      454
+bench03_BRD4_CRBN                5      5      173
+bench04_IKZF1_CRBN              10     10      144
+bench05_CSNK1A1_CRBN            10     10      143
+bench06_RBM39_DCAF15            10      0     1223
+bench07_CDK12_DDB1              10     10      357
+```
+
+Every benchmark pair between 143 and 454 tokens finished every queued job.
+`bench06_RBM39_DCAF15` has finished none of ten, and it is the only one above
+454. The construct is `DCAF15_DDB1_DDA1`, 1,223 tokens by construction and one
+of the three declared token-cap exceptions, so this is the largest thing in the
+project.
+
+**So the gap in the G6 table has a cause, and it is not a confound.** The
+refinement table reports five pairs. bench02 is excluded because its tier-1
+poses came from a superseded input (F219). bench06 is absent because its
+tier-2 jobs have never completed, which until now read as "the queue has not
+reached it". It had reached it; the jobs do not finish.
+
+**What it costs if it holds.** Ten of the 76 remaining tier-2 jobs are these,
+all bench06. At two attempts of roughly 84 minutes each that is about 28
+hours producing nothing, against 19.3 hours for the whole remainder as priced.
+The other 66 are at proven sizes.
+
+**What it costs scientifically.** More than the hours. bench06 is one of the
+three pairs that put the degron on its own footprint in every one of ten
+poses, at contact Jaccard 0.533 with eleven of fifteen window residues within
+4.1 A (F227, F228). Of the pairs whose site is right, it is the one whose
+refinement would be most worth seeing, and it is the one that cannot run.
+
+**Not decided here.** Attempt 1 crashing once is not proof that the size
+cannot run: its stderr is held in memory until the job resolves and the output
+directory it left was recreated, so the reason is not yet readable. Attempt 2
+will write a results row carrying the detail. If it fails, the question is
+whether to drop bench06 from tier 2 and record the refinement table as five of
+seven for a stated reason, or to reduce its sampling so the job fits. Both are
+scope decisions and both want the error message first.
