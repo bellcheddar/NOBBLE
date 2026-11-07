@@ -13162,3 +13162,54 @@ seven checks (F274) and these three. In every case the gate worked and the
 tests of it did not, because each asserted the gate's verdict rather than the
 reason. A verdict is what a gate with one check has; a gate with N checks has
 N reasons, and testing the verdict tests one of them N times.
+
+## F276
+
+My test of the publish refusals covered three of nine, including one of two
+licensing guards.
+
+F273 added `tests/test_the_publish_refusals_are_reachable.py` after finding
+that nothing caught the atlas build's F219 refusal being removed. It named
+three refusals. The builder has nine branches that return a failure code, and
+I only learned that by printing them.
+
+Two of the six it missed matter. `stale` is the F47 check that runs before the
+featurisation one, so a YAML no longer matching the queue row that describes
+it. And `leaked` is the licensing guard, which CLAUDE.md states without
+qualification: PROTAC-DB stays internal-use-only and is never redistributed.
+
+Then `if leaked:` turned out to appear twice, and my helper was a dict keyed
+by the condition's text, so the two collapsed to one entry and the file
+covered a single licensing refusal while reading as though it covered the
+only one. They do different work. One searches the written bundle for a known
+PROTAC-DB fragment, verifying that redaction happened rather than trusting it.
+The other compares the published chemistry against PROTAC-DB's own table,
+because a record whose source is spelled differently would be redacted and
+then pronounced clean by a verifier that trusts the source field. Spec 2.1 is
+unqualified, so losing either to a dict key is not acceptable.
+
+Three wrong versions of the test before this one, each wrong in a way worth
+recording:
+
+* It asserted every refusal precedes `shutil.rmtree(OUT)`, on the reasoning
+  that a refusal after the output directory is cleared leaves no atlas at
+  all. Both licensing checks read the built bundle, so they cannot run
+  earlier. The ordering claim is now scoped to the four refusals decided from
+  the inputs, and the licensing pair has its own property: neither may imply
+  that nothing was written, since the previous slice is already gone when
+  they fire.
+* It then asserted the "on disk" wording against whichever branch came first,
+  which is the verifier, whose message instead names the files still holding
+  the chemistry. Each branch is now asserted on its own terms.
+* The helper keyed by condition text, which is how two became one.
+
+Five refusals named, both licensing branches covered, and four mutations
+caught: the stale-input condition, each licensing condition separately, and
+the verifier returning 0 instead of 1.
+
+The pattern is the one from F273 to F275 turned on its author. Those three
+findings were that a gate with N checks tested by its verdict is one test N
+times over. This test asserted a *set* of refusals and got the set wrong, so
+it was six tests short while reading as complete. Enumerating what exists,
+and asserting the count, is the same fix as the denominator: `_all_refusing
+_branches` returns nine, and a test that names five of them says so.

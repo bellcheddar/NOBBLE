@@ -52,10 +52,19 @@ REFUSALS = {
 # them is the same defect as the gates it was written about (F276).
 
 
-def _refusing_branches() -> dict[str, ast.If]:
-    """Every `If` in the builder whose body returns a non-zero code."""
+def _all_refusing_branches() -> list[tuple[str, ast.If]]:
+    """Every `If` in the builder whose body returns a non-zero code.
+
+    A list rather than a mapping, because two branches can test the same
+    expression. `if leaked:` appears twice, once verifying that redaction
+    removed PROTAC-DB's chemistry by searching the written bundle for a known
+    fragment, and once comparing the published chemistry against PROTAC-DB's
+    own table. Keyed by the condition they collapsed to one entry and this
+    file covered a single licensing refusal while believing it covered the
+    only one (F276).
+    """
     tree = ast.parse(BUILDER.read_text())
-    found: dict[str, ast.If] = {}
+    found: list[tuple[str, ast.If]] = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.If):
             continue
@@ -65,8 +74,16 @@ def _refusing_branches() -> dict[str, ast.If]:
             and inner.value.value not in (0, None)
             for inner in ast.walk(node))
         if returns_failure:
-            found[ast.unparse(node.test)] = node
-    return found
+            found.append((ast.unparse(node.test), node))
+    return sorted(found, key=lambda pair: pair[1].lineno)
+
+
+def _refusing_branches() -> dict[str, ast.If]:
+    """The earliest branch per condition, for the checks that want one."""
+    out: dict[str, ast.If] = {}
+    for test, node in _all_refusing_branches():
+        out.setdefault(test, node)
+    return out
 
 
 def test_every_known_refusal_is_present_and_returns_failure():
@@ -141,32 +158,63 @@ def test_the_input_refusals_come_before_the_output_directory_is_cleared():
         assert branches[test].lineno < first_clear, test
 
 
-def test_the_licensing_refusal_says_the_bundle_is_on_disk():
-    """It cannot run before the build, so it must say what it leaves behind.
+def test_both_licensing_refusals_are_present():
+    """Two of them, testing the same name and doing different work.
 
-    `leaked` inspects the built bundle, which is the only way to compare the
-    published chemistry against PROTAC-DB's own table rather than against a
-    source field that could be spelled differently. So it fires after
-    `rmtree`, the previous slice is already gone, and a complete bundle sits
-    on disk that must not be published. An operator reading only "REFUSED"
-    would reasonably conclude nothing was written.
-
-    The first version of this file asserted every refusal precedes the
-    rmtree and failed on exactly this one, which is the test being wrong
-    rather than the code (F276).
+    One searches the written bundle for a known PROTAC-DB fragment, which
+    verifies that redaction happened rather than trusting it. The other
+    compares the published chemistry against PROTAC-DB's own table, because a
+    record whose source is spelled differently would be redacted and then
+    pronounced clean. Spec 2.1 is unqualified about this, so losing either to
+    a dict key is not acceptable.
     """
-    source = BUILDER.read_text()
-    branches = _refusing_branches()
-    assert "leaked" in branches, sorted(branches)
-    tree = ast.parse(source)
+    leaked = [node for test, node in _all_refusing_branches()
+              if test == "leaked"]
+    assert len(leaked) == 2, (
+        f"{len(leaked)} branch(es) refuse on `leaked`; there were two, one "
+        "verifying the redaction and one checking provenance against "
+        "PROTAC-DB's table")
+    for node in leaked:
+        assert not isinstance(node.test, ast.Constant), ast.unparse(node)
+
+
+def test_neither_licensing_refusal_implies_nothing_was_written():
+    """Both fire after the build, so both leave a bundle on disk.
+
+    They cannot run earlier: one searches the written files for a known
+    PROTAC-DB fragment and the other reads the published chemistry. So the
+    previous slice is already gone when either fires, and an operator who
+    reads only the word REFUSED would reasonably conclude nothing was
+    written.
+
+    Each says so in its own way, and this asserts the property rather than
+    the sentence. The first names the files inside the bundle that still hold
+    the chemistry, which cannot be read as "nothing exists". The second says
+    the bundle is on disk and not publishable.
+
+    Written this way after two wrong versions: one asserted every refusal
+    precedes the rmtree, which this pair cannot; the other asserted on
+    whichever branch came first and so checked the wrong message (F276).
+    """
+    leaked = [node for test, node in _all_refusing_branches()
+              if test == "leaked"]
+    assert len(leaked) == 2, len(leaked)
+    tree = ast.parse(BUILDER.read_text())
     clears = [node.lineno for node in ast.walk(tree)
               if isinstance(node, ast.Call)
               and "rmtree" in ast.unparse(node.func)]
-    assert branches["leaked"].lineno > min(clears), (
-        "the licensing check now runs before the build, which it cannot do: "
-        "it reads the built bundle")
-    body = ast.unparse(branches["leaked"])
+    for node in leaked:
+        assert node.lineno > min(clears), (
+            f"the licensing check at line {node.lineno} now runs before the "
+            "build, which it cannot do: it reads the written bundle")
+
+    verifying, provenance = leaked
+    # The first names what is still in the bundle.
+    assert "leaked" in ast.unparse(verifying.body[0]), ast.unparse(verifying)
+    assert "still present" in ast.unparse(verifying), ast.unparse(verifying)
+    # The second says what state the bundle is left in.
+    body = ast.unparse(provenance)
     assert "on disk" in body, (
-        "the licensing refusal no longer says the bundle is on disk, so an "
-        "operator cannot tell that the previous slice was already removed")
+        "the provenance refusal no longer says the bundle is on disk, so an "
+        "operator cannot tell the previous slice was already removed")
     assert "not publishable" in body, body[:200]
