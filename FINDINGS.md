@@ -10743,3 +10743,63 @@ zeroed the whole residue's minimum. Every window residue's CA is at occupancy
 elsewhere in the chain. The reference is sound and the statistic was wrong,
 which is the same error as F225's flat median, one aggregate standing in for a
 different question.
+
+## F230. Every benchmark window is held mostly by its own protein, and two almost entirely
+
+The question was whether each pair's nominal receptor is the chain the
+deposited degron actually binds, since bench07's window touches only five
+receptor residues (F227). It is: excluding the substrate chain, the top
+contact partner is the nominal receptor for all seven pairs. The assignments
+are right and that was worth confirming rather than assuming.
+
+The first version of the check said the opposite about all seven, which is how
+a flag that fires on everything usually reads. It excluded only the window
+residues from the substrate chain, so each window's own sequence neighbours
+dominated its count and the "top partner" was always the substrate chain
+itself. Intra-chain neighbours are not a binding partner.
+
+Separating them is the useful answer:
+
+```
+pair                     own chain   receptor   other
+bench01_GSPT1_CRBN              11         11   none
+bench02_BRD4_VHL                12          7   none
+bench03_BRD4_CRBN               32          0   none
+bench04_IKZF1_CRBN              17         10   none
+bench05_CSNK1A1_CRBN            35         15   none
+bench06_RBM39_DCAF15            23         13   C:9
+bench07_CDK12_DDB1              48          5   C:3
+```
+
+Residues in contact with the fifteen-residue window at 4.5 A, counted on the
+window's own chain outside the window, on the nominal receptor, and elsewhere.
+
+**Every window is held more by its own protein than by the receptor**, bench01
+excepted at eleven apiece. For bench03 it is thirty-two to nothing and for
+bench07 forty-eight to five: those windows are embedded in BRD4 and CDK12, not
+presented to CRBN and DDB1. bench04 and bench06, at seventeen to ten and
+twenty-three to thirteen, are the most receptor-facing of the seven, and they
+are also the two the model places best, core at 0.5 to 1.4 A.
+
+**That last sentence is an observation and not an explanation, deliberately.**
+Across the seven pairs the relation is not monotonic in either variable:
+bench01 has the lowest own-chain count of all, eleven, and a median RMSD of
+29.14 A. With five measurable pairs and no clean dependence, fitting a story to
+the ordering is how F228 went wrong one finding ago. What is recorded is the
+descriptive fact.
+
+It is also a different claim from F228's, which F229 refuted, and the
+difference matters. F228 said that within bench04 and bench06 the per-residue
+deviation tracks each residue's contact with the parent chain outside the
+window; that is false, at r = +0.08 and +0.09. This says that across pairs,
+some windows are overwhelmingly intramolecular. The second does not rescue the
+first.
+
+**What it bears on.** Spec 5.1 measures pose recovery over all seven pairs
+equally. Two of them, bench03 and bench07, are windows whose deposited
+conformation is maintained by the rest of their own protein with little or no
+receptor contact, and the prediction folds a free fifteen-mer. Whether such a
+window is a pose-recovery target at all is a panel-composition question, and it
+goes to G6 with the rest: "0 of 65 poses within 3 A" is computed over a panel
+that includes two targets of that kind, and bench03 is already excluded from
+the footprint comparison for the same reason (F227).
