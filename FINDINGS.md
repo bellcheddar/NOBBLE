@@ -14114,3 +14114,47 @@ which browsers associate without it. Adding it would be seventy edits across
 six templates for a refinement, so it is recorded here rather than done, and
 the test file deliberately does not assert it. If a table ever grows row
 headers, that is the point to revisit.
+
+## F295
+
+I repeated F128's credential sweep, having seen F128 in my own search
+results.
+
+F291 was me re-running F250's function sweep without checking whether it had
+been done, and the response was `tools/findings.py` so that looking a finding
+up stops being work. Three ticks later I swept the repository for committed
+credentials. F128 did that in November: "which found no credentials: the
+deploy takes `DROPLET_SSH`, `SSH_KEY`, `REMOTE_DIR` and `SERVICE` from the
+environment with `${VAR:?}` so it fails rather than defaults, no key or `.env`
+is tracked, and no PEM block, credential-shaped assignment or address appears
+in any tracked file."
+
+Worse than F291, because I did use the tool. I ran `--grep "no credential|api
+key|private key|committed secret|\.env"`, it returned three findings, F128 was
+the second, and I read the titles rather than the finding. The tool worked; I
+stopped one step short of the thing it was built for.
+
+The sweep itself came out the same: 2,878 tracked files, nothing matching any
+of six credential shapes, `.env` ignored and untracked.
+
+**What was genuinely missing, and is the only reason this tick produced
+anything.** F128's own fix was for a different leak, the build machine's
+absolute paths in `results.jsonl` and `scores.jsonl`, and it left a test
+behind for that one. The credential half was never asserted. So it held by
+inspection on one day and by nothing afterwards, which for a property CLAUDE.md
+states as a gate is the wrong kind of true: G2 opens when a credential is
+needed, and the secret arrives via environment variable, never written into
+files.
+
+`tests/test_no_credential_is_tracked.py` asserts it: six shapes over every
+tracked text file, `.env` ignored and untracked, and `${VAR:?}` on every
+credential the deploy scripts read, which is F241's guard stated as a
+property. A failure names the file and the shape and never the match, because
+a test that prints a secret to prove it found one has published it. The
+patterns are checked against planted examples, since a pattern that quietly
+stops matching is the shape this project keeps finding.
+
+The lesson I actually take is narrower than "read the findings". It is that a
+sweep is worth less than the test it should have left behind, and F128
+produced both a sweep and a test but only for the half that had failed. The
+half that was clean got a sentence.
