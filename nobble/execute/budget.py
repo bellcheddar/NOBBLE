@@ -151,43 +151,127 @@ def measured_scaling(campaign: Path) -> dict:
     """
     campaign = Path(campaign)
     tier1: dict[str, float] = {}
-    tier2: dict[str, float] = {}
-    for name, into in (("results.jsonl", tier1), ("results_tier2.jsonl", tier2)):
-        path = campaign / name
-        if not path.exists():
+    tier2: dict[str, tuple[float, int | None]] = {}
+    for line in _lines(campaign / "results.jsonl"):
+        if line.get("status") != "done":
             continue
-        for line in path.read_text().splitlines():
-            if not line.strip():
+        seconds = line.get("seconds")
+        if not finite(seconds) or seconds <= 0:
+            continue
+        tier1[line["job_id"]] = float(seconds)
+
+    # Successes and failures both. A refinement that ran for two and a half
+    # hours and wrote no confidence JSON cost two and a half hours, and this
+    # factor prices cost. Reading `results_tier2.jsonl` alone excluded them,
+    # and they are not a random sample of the queue: they are its largest
+    # jobs, so their absence pushed the factor down exactly where it was
+    # already too low (F257, and F255 for why the seconds are in the state
+    # file in the first place).
+    for name in ("results_tier2.jsonl", "state_tier2.jsonl"):
+        for line in _lines(campaign / name):
+            status = str(line.get("status"))
+            if status == "running" or status == "abandoned":
                 continue
-            try:
-                record = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if record.get("status") != "done":
-                continue
-            seconds = record.get("seconds")
+            seconds = line.get("seconds")
+            tokens = line.get("tokens")
             if not finite(seconds) or seconds <= 0:
                 continue
-            into[record["job_id"]] = float(seconds)
+            # A record with no token count still prices: it joins the pooled
+            # median and is left out of the bands only. Requiring tokens here
+            # dropped such a record entirely, which made banding subtract
+            # information from the pooled factor it is meant to refine, and
+            # two fixtures with no `tokens` field went from a factor of 2.0
+            # to none at all.
+            tier2.setdefault(line["job_id"],
+                             (float(seconds),
+                              int(tokens) if finite(tokens) else None))
 
-    ratios = []
-    for job_id, seconds in sorted(tier2.items()):
+    ratios: list[float] = []
+    banded: dict[tuple[int, int], list[float]] = {}
+    edges = [int(edge) for edge in
+             paths.thresholds()["throughput"]["token_bands"]]
+    failed = 0
+    for job_id, (seconds, tokens) in sorted(tier2.items()):
         base = tier1.get(job_id.removesuffix(TIER2_SUFFIX))
-        if base:
-            ratios.append(seconds / base)
+        if not base:
+            continue
+        ratio = seconds / base
+        ratios.append(ratio)
+        if tokens is not None:
+            banded.setdefault(_token_band(tokens, edges), []).append(ratio)
     if not ratios:
-        return {"factor": None, "jobs": 0,
+        return {"factor": None, "jobs": 0, "by_band": [],
                 "basis": "no refinement has run, so the factor is bounded "
                          "rather than measured"}
     ratios.sort()
+    by_band = []
+    for (low, high), observed in sorted(banded.items()):
+        observed.sort()
+        by_band.append({
+            "min_tokens": low,
+            "max_tokens": high or None,
+            "jobs": len(observed),
+            "factor": round(observed[len(observed) // 2], 3),
+            "observed_min": round(observed[0], 3),
+            "observed_max": round(observed[-1], 3),
+        })
     return {
         "factor": round(ratios[len(ratios) // 2], 3),
         "jobs": len(ratios),
         "observed_min": round(ratios[0], 3),
         "observed_max": round(ratios[-1], 3),
+        "by_band": by_band,
         "basis": f"median of {len(ratios)} refinement(s) against their own "
-                 "tier-1 job",
+                 "tier-1 job, banded by job size because the ratio is not "
+                 "constant across it",
     }
+
+
+def _lines(path: Path):
+    """Parsed JSONL records, skipping torn lines rather than failing on one."""
+    if not path.exists():
+        return
+    for line in path.read_text().splitlines():
+        if not line.strip():
+            continue
+        try:
+            yield json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+
+def _token_band(tokens: int, edges: list[int]) -> tuple[int, int]:
+    """The band a job of this size falls in, high exclusive, 0 for the top.
+
+    The same rule as `runner.token_band`, repeated here rather than imported
+    because `runner` imports this module and the cycle is not worth a
+    deferred import for eight lines. A test holds the two in step.
+    """
+    low = 0
+    for edge in edges:
+        if tokens < edge:
+            return (low, edge)
+        low = edge
+    return (low, 0)
+
+
+def band_factors(observed: dict, tokens: int) -> tuple[float, float, float]:
+    """The (median, min, max) tier-2 factor for a job of this size.
+
+    The band's own figures where its band has been measured, and the pooled
+    ones where it has not. One pooled factor prices every job as if it were
+    the commonest size: 129 of the main campaign's 149 refinements are under
+    200 tokens, so the pooled 4.614 is effectively the smallest band's, and
+    the ratio runs 4.60, 6.11, 8.21 and 10.5 as jobs grow (F257).
+    """
+    edges = [int(edge) for edge in
+             paths.thresholds()["throughput"]["token_bands"]]
+    low, high = _token_band(int(tokens), edges)
+    for band in observed.get("by_band") or []:
+        if band["min_tokens"] == low and (band["max_tokens"] or 0) == (high or 0):
+            return (band["factor"], band["observed_min"], band["observed_max"])
+    return (observed["factor"], observed.get("observed_min", observed["factor"]),
+            observed.get("observed_max", observed["factor"]))
 
 
 def scaling_range(settings: dict | None = None,
@@ -227,15 +311,9 @@ def tier2_projection(campaign: Path, pair_ids: list[str] | None = None,
     observed = measured_scaling(campaign)
 
     results = campaign / "results.jsonl"
-    measured: dict[str, float] = {}
+    measured: dict[str, tuple[float, int]] = {}
     if results.exists():
-        for line in results.read_text().splitlines():
-            if not line.strip():
-                continue
-            try:
-                record = json.loads(line)
-            except json.JSONDecodeError:
-                continue
+        for record in _lines(results):
             if record.get("status") != "done":
                 continue
             seconds = record.get("seconds")
@@ -244,7 +322,8 @@ def tier2_projection(campaign: Path, pair_ids: list[str] | None = None,
             # Only the ternary jobs are refined, so only they are priced.
             if record.get("complex_type") != "ternary":
                 continue
-            measured[record["job_id"]] = float(seconds)
+            measured[record["job_id"]] = (float(seconds),
+                                          int(record.get("tokens") or 0))
 
     queue = campaign / "queue.jsonl"
     refine: list[str] = []
@@ -258,12 +337,36 @@ def tier2_projection(campaign: Path, pair_ids: list[str] | None = None,
 
     priced = [measured[job] for job in refine if job in measured]
     unpriced = len(refine) - len(priced)
-    tier1_seconds = sum(priced)
+    tier1_seconds = sum(seconds for seconds, _ in priced)
+
+    # Each job at its own band's factor, rather than the whole total at one
+    # pooled factor. The ratio rises with job size, 4.60 to 10.5 across the
+    # bands, and the pooled median is effectively the smallest band's because
+    # that band holds most of the jobs. Pricing a large-job remainder at it
+    # underpriced this campaign's by about 26 hours (F257), which is F45's
+    # lesson about flat rates in the one instrument it had not reached.
+    low_seconds = 0.0
+    high_seconds = 0.0
+    mid_seconds = 0.0
+    for seconds, tokens in priced:
+        factor, band_low, band_high = band_factors(observed, tokens)
+        if factor is None:
+            low_seconds += seconds * low
+            high_seconds += seconds * high
+            mid_seconds += seconds * (low + high) / 2.0
+            continue
+        low_seconds += seconds * band_low
+        high_seconds += seconds * band_high
+        mid_seconds += seconds * factor
+
     # An unpriced job is charged the mean of the priced ones rather than
     # nothing. Pessimism is the wrong word for it: charging nothing is a
     # projection that gets cheaper the less of the campaign has run.
     if priced and unpriced:
-        tier1_seconds += unpriced * (sum(priced) / len(priced))
+        tier1_seconds += unpriced * (tier1_seconds / len(priced))
+        low_seconds += unpriced * (low_seconds / len(priced))
+        high_seconds += unpriced * (high_seconds / len(priced))
+        mid_seconds += unpriced * (mid_seconds / len(priced))
     # And when there is nothing to take a mean of, the answer is not zero.
     #
     # With no completed ternary job the sum above is 0, the guard above does
@@ -281,15 +384,23 @@ def tier2_projection(campaign: Path, pair_ids: list[str] | None = None,
         "unpriced_jobs": unpriced,
         "priceable": priceable,
         "tier1_hours_for_those_jobs": round(tier1_seconds / 3600.0, 2),
-        "scaling_low": round(low, 2),
-        "scaling_high": round(high, 2),
-        "hours_low": round(tier1_seconds * low / 3600.0, 2),
-        "hours_high": round(tier1_seconds * high / 3600.0, 2),
+        # The effective aggregate ratio, so the reported factor and the
+        # reported hours still agree with each other once the per-job
+        # factors differ.
+        "scaling_low": round(low_seconds / tier1_seconds, 2)
+                       if tier1_seconds else round(low, 2),
+        "scaling_high": round(high_seconds / tier1_seconds, 2)
+                        if tier1_seconds else round(high, 2),
+        "hours_low": round(low_seconds / 3600.0, 2),
+        "hours_mid": round(mid_seconds / 3600.0, 2),
+        "hours_high": round(high_seconds / 3600.0, 2),
         "measured_scaling": observed,
         "basis": (
             "measured tier-1 seconds for the ternary jobs that would be "
             "refined, times " + (
-                f"the measured factor {observed['factor']}"
+                f"each job's own band factor, pooled median "
+                f"{observed['factor']} over "
+                f"{len(observed.get('by_band') or [])} band(s)"
                 if observed["factor"] is not None else
                 "the recycle ratio for the low end and the diffusion-sample "
                 "ratio for the high end"

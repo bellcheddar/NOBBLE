@@ -12196,3 +12196,64 @@ The benchmark campaign's ten unrun refinements are a weaker kind of
 outstanding: nothing in the chain will run them, and the panel will carry them
 until the queue is removed. The claim the panel makes is that the work was
 assembled and has not run, and that is true of all four.
+
+## F257
+
+Refinement cost was priced at one ratio for every job size, and the ratio
+rises steeply with size.
+
+`budget.measured_scaling` divided each refinement's seconds by its own tier-1
+job's seconds and took the median over all of them, and `tier2_projection`
+multiplied the whole queue's tier-1 seconds by that one number. Pricing from
+each job's own tier-1 time already accounts for a large construct being slow
+at tier 1. What it assumed is that refinement multiplies that time by the same
+amount whatever the size, and it does not.
+
+Measured on the main campaign's 151 refinements, by the same token bands the
+tier-1 throughput already uses:
+
+```
+tokens        jobs   factor
+0 to 200       129    4.596
+200 to 400      10    6.107
+400 to 800      10    8.218
+800 to 1600       2   10.524
+pooled         151    4.615
+```
+
+The pooled median is 4.615, which is within a per cent of the smallest band's
+figure, because 129 of the 151 refinements sit in that band. So the projection
+priced a 1,223-token job at 4.615 when it costs 10.5.
+
+What made this invisible is the shape of F232 again. The pooled factor's
+median error over all 151 refinements is 1.2 per cent, which looks like a
+well-calibrated instrument. By band it is 1.0 per cent, 24.4, 43.8 and 56.0:
+the aggregate was dominated by the one band that was right.
+
+A second effect compounded it in the same direction. The factor read
+`results_tier2.jsonl`, which holds `done` rows only, so no failed refinement
+entered it. Failures are not a random sample of the queue: they are its
+largest jobs. bench06's two failed refinements would have contributed ratios
+of 10.52 and 10.46, the highest observed, and their absence pushed the factor
+down exactly where it was already too low. They are now included, from the
+state file where F255 found their seconds, because this factor prices cost and
+a refinement that ran for two and a half hours and wrote nothing cost two and
+a half hours.
+
+Banded, the error is at or below one per cent in every band. The projection
+now prices each job at its own band's factor and takes its range from that
+band's observed minimum and maximum, so a band measured twice reports a narrow
+range honestly and a band never measured falls back to the pooled figure
+rather than borrowing a neighbour's.
+
+The practical effect: the decile's refinement was priced at about 38 hours and
+prices at 70.7 to 72.1. Gate G1 stays closed, with 155.9 hours of the 240
+remaining, so this changes the number rather than the decision. It would not
+have, had the decile been twice the size.
+
+One thing to get right in the fix and I got it wrong first. Requiring a token
+count on the tier-2 record dropped any record without one, so banding
+subtracted information from the pooled median it is meant to refine, and two
+fixtures went from a factor of 2.0 to no factor at all, which sends the gate
+back to judging on a bound. A record with no token count now joins the pooled
+median and is left out of the bands alone.
