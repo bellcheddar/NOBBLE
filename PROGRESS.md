@@ -1367,3 +1367,40 @@ needs no GPU.
 **What this is not.** Every deposition here predates the 2021-09-30 training
 cutoff (F282), so the agreement is consistent with recall and is not evidence
 of generalisation. The tool prints that line under its own table.
+
+## Current state, 2026-11-07T23:05Z
+
+The chain was stopped and the pending input corrections are running, which is
+the sequence D-NOB-083 and PROGRESS's "Waiting" row both asked for.
+
+**Running now:** `tools/corrections.sh --apply`. It cleared bench02's 15
+stale featurisations (F219) and rewrote scr_bench03's 5 ternary YAMLs from
+the current code (F262), then dropped the affected state, results and scores
+rows, and is re-running the 25 cleared tier-1 jobs on the GPU. `refresh.sh`
+follows, which scores and rebuilds the atlas. This clears the atlas build's
+two refusals.
+
+**Then:** restart `tools/run_chain.sh`. It refused to start while the
+corrections were outstanding, which is the preflight working: scr_bench03's
+ternary arms declared a ligand their YAML lacked, so delta-ipTM would have
+come out at 0.0 for a reason that is not a measurement.
+
+**Tier 2 stands at 149 of 225 done, 70 unresolved**, 4 of them bench06. Under
+the stopped process all 4 would have failed, because it started before F238,
+F289 and F298. On the restart bench06 refines at 9 samples instead of 25
+(F298), which is the first thing that could make F268 answerable: it was not
+pending but unanswerable, since all ten of its refinements fail.
+
+**Done this stretch, no GPU:**
+
+- F297, the first positive control on spec 4.1's primary signal. 6 of 6
+  measurable deposited ternaries found to bridge; whole-domain predicted area
+  within 5 per cent of the deposited area on all six; bench07's bridge rate of
+  0.0 shown to be the 15-mer representation and not a blind filter. On the
+  About page, in the publication hold's pre-flight and in the README.
+- F298, why bench06 cannot be refined, from data that had been on disk for a
+  day: every tier-2 success is at most 454 tokens and every failure is 1,223.
+- F298b, the three other places that asserted every tier-2 job samples 25.
+
+**Spend:** 94.71 h over 2,709 jobs, of which 15.85 h on 6 failed attempts.
+G1 and G5 closed. Suite at 1,689 passing, 29 skipped.
