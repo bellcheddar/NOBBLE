@@ -14879,3 +14879,65 @@ where it would have.
 A negative from a four-minute probe is not evidence about a phenomenon
 measured over hours. The reason to keep the result is that it would have been
 easy to present it as one.
+
+## F305. When a 15-mer is enough, measured, and what it says about the null
+
+F297 showed the 15-mer arm keeps the glue's seat in the E3 and loses the
+substrate side. That reads as a blanket indictment of the representation.
+The substrate-side coverage says it is not blanket, and which substrates it
+applies to is knowable in advance.
+
+Predicted substrate-side dSASA over deposited, per pair:
+
+| pair | deposited A^2 | 15-mer | whole domain |
+|---|---|---|---|
+| bench04 IKZF1/CRBN | 228.3 | 0.928 | 0.928 |
+| bench05 CSNK1A1/CRBN | 215.4 | 0.888 | 0.923 |
+| bench06 RBM39/DCAF15 | 329.8 | 0.871 | 0.999 |
+| bench01 GSPT1/CRBN | 528.5 | 0.285 | 0.977 |
+| bench07 CDK12/DDB1 | 850.5 | no bridge | 1.010 |
+| bench02 BRD4/VHL | 980.7 | 0.261 | 1.004 |
+
+Sorted by the deposited area, which is the variable that separates them.
+Where the substrate buries 215 to 330 A^2 in the crystal, a 15-mer
+reproduces 0.87 to 0.93 of it. Where it buries 528 A^2 or more, a 15-mer
+reproduces 0.26 to 0.29, or finds no bridge at all. The whole-domain arm
+reproduces all six to within 8 per cent.
+
+The mechanism is not subtle: fifteen residues can only present so much
+surface, so the 15-mer caps the substrate side at about 300 A^2 whatever the
+real interface is. What is useful is that the cap is visible in the
+deposited structure, so "can this campaign measure this pair" is answerable
+before the pair is run.
+
+**No cutoff is defined and none should be.** The separation is a gap in six
+points, 330 to 528 A^2, with nothing measured inside it. Calling the
+midpoint a threshold would be inventing a number the data does not contain,
+which is what `tools/publication_hold.py` refuses to do for the publication
+decision and the same answer applies here.
+
+### Why this strengthens the matched-control null rather than excusing it
+
+The obvious use of F297 would be to discount the null: if the 15-mer loses
+the substrate side, a Delta-ipTM computed over 15-mers is measuring a
+crippled interface and its failure to separate degraded from
+matched-non-degraded says nothing. That argument does not survive the table.
+
+The matched-control arm is drawn from a zinc-finger degradation screen. The
+one benchmark pair of that structural class is bench04, IKZF1's ZF2 degron,
+and its deposited substrate-side burial is 228.3 A^2, the smallest of the
+six, of which the 15-mer reproduces 0.928. bench05's degron and bench06's
+RRM sit in the same regime. So for substrates of the kind the control arm is
+made of, the representation reproduces the deposited interface, and
+under-burial is not available as an explanation for the null.
+
+Which leaves the null saying what it says. That is the uncomfortable
+direction, and it is the one the measurement points in.
+
+**The caveats, which are not small.** Six pairs, one of them of the control
+arm's structural class, so this is an argument from a single instance of the
+relevant kind rather than a demonstration. Every deposition predates the
+2021-09-30 cutoff (F282), so the agreements are consistent with recall. And
+nothing here measures a Sievers substrate against a crystal, because none of
+them has one: that is the measurement that would settle it and it does not
+exist.

@@ -355,6 +355,17 @@ what it says.</p>
   still sits correctly in the E3 pocket and the substrate side collapses, so
   CDK12's bridge rate of zero is the representation rather than a blind
   filter. <code>tools/bridge_on_crystals.py --against-predictions</code>.</li>
+<li><strong>The collapse is not blanket, and that cuts against the null rather than
+  for it.</strong> Sorted by how much the substrate buries in the crystal, a 15-mer
+  reproduces 0.87 to 0.93 of it where the deposited interface is 215 to 330
+  square angstroms, and 0.26 to 0.29 where it is 528 or more: fifteen
+  residues cap the substrate side at about 300 whatever the real interface
+  is. The matched-control arm is a zinc-finger screen, and the one benchmark
+  pair of that class, IKZF1's ZF2 degron, buries 228 and is reproduced at
+  0.928. So for the substrates the control arm is made of, the
+  representation reproduces the deposited interface and under-burial is not
+  available as an excuse for the null. Six pairs, one of the relevant class,
+  and no Sievers substrate has a crystal to check against.</li>
 <li><strong>Neither result is prospective.</strong> All seven benchmark depositions predate
   the model's 2021-09-30 training cutoff, so the time-split layer reports no
   blind set at all. The failure is therefore not explained by novelty, which
