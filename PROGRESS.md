@@ -1,6 +1,6 @@
 # NOBBLE progress
 
-Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T03:35:00Z.
+Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T04:10:00Z.
 
 ## Gate G6 answered: the headline is a negative result, and publication is held
 
@@ -129,8 +129,10 @@ writes that file.
 **The arm.** `campaigns/tier_b_20261105T202811Z`: the eleven receptors
 against the seven proven glue-degron pairs from the benchmark panel, each
 with that degron's composition-matched scramble. 154 pairs, 1,540 jobs, 10
-per pair over 5 seeds and two arms, 38.9 hours priced from the real
-construct and glue sizes. Preflight passes. Queued in `tools/run_chain.sh`
+per pair over 5 seeds and two arms. Preflight passes and now prices it: `tools/preflight.py campaigns/tier_b_20261105T202811Z` reports the cost
+in its own report, banded by job size, rather than a figure written here that drifts as the throughput bands are remeasured (F226, F168). The
+38.9 hours recorded before the bands were remeasured over the main
+campaign reads 32.8 today. Queued in `tools/run_chain.sh`
 as stage 4b, after the design scan.
 
 A pair holds a known-working glue and degron together and swaps only the

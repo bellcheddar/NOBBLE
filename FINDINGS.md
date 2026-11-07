@@ -10483,3 +10483,59 @@ collapses to the measured factor, so `hours_low` and `hours_high` come back
 identical and the projection's "as a range" is a point. That is the right
 answer, since a measured factor beats a bounded one, but the two keys and the
 docstring still say range.
+
+## F226. The gate that refuses to spend a stage never said what it cost
+
+`tools/preflight.py` opens with "before spending days of GPU on it". Every
+caller's refusal is phrased the same way: `run_design.sh` prints "refusing to
+spend 240 jobs on it", `run_chain.sh` "refusing to start a 52-hour run on it".
+The report named the jobs, the pairs, the chain layouts and the cofactor
+symmetry, and never the hours. The one quantity the refusal is about had to be
+fetched from somewhere else, with whatever rate the reader had to hand.
+
+Three times in two days that reader was me, and twice I got it wrong (F225).
+
+It now prices the queue through `projected_hours`, which bands each job by its
+own token count, and the projection never contributes to `ok`: Gate G1 is
+decided by `budget.gate_g1` against `max_compute_hours`, and a preflight that
+refused on cost would be a second, quieter gate with no decision recorded
+against it. Five tests, including that a 4,000-job queue priced over 24 hours
+still passes, and that a queue with no token counts comes back unpriced rather
+than free.
+
+**It disagrees with the record immediately.** Tier B is on file at 38.9 hours.
+Preflight prices the same 1,540-job queue at 32.8. Both used the same
+function; the 38.9 was taken on 5 November, before the throughput bands were
+remeasured over the main campaign's 2,360 jobs, and the bands moved. 32.8 is
+the better-founded figure: Tier B's median job is 198 tokens and the bands it
+now falls in were measured over a distribution much closer to that than the
+corrected campaign's 397.
+
+**So last tick's correction was also wrong.** I replaced 133 hours with 141.1
+and that figure mixed a tier-2 remainder priced minutes earlier with a Tier B
+figure priced two days earlier. Every stage priced from the same instruments
+at the same moment:
+
+```
+spent              78.48   budget.hours_spent(), 2,708 jobs
+tier 2 left        19.28   77 jobs, each from its own tier-1 seconds
+                           times the measured factor 4.614
+design scan         4.40   preflight, banded
+Tier B             32.80   preflight, banded
+                 -------
+total             134.96   of 240
+```
+
+The pattern across F225 and this one is not arithmetic. It is quoting a number
+from where it was written down rather than from the thing that measures it, and
+the fix is the same both times: put the measurement in the report that gets
+read. Gate G1 stays closed with about 105 hours spare.
+
+**Also verified this tick, since the 32.8 is about to be spent:** Tier B's
+preflight is `ok: true` over 1,540 jobs and 154 pairs, 770 binary against 770
+ternary, no asymmetric cofactor, all 1,540 YAMLs present, eleven distinct MSAs
+all present and query-matched to their chains. Ten jobs sit at 410 tokens,
+over the 400 cap, and all ten are `DCAF8L1_WD40`, one of the three declared
+exceptions, which is why preflight passes them. I had written my own YAML and
+MSA scan before running preflight, which already does both and checks the a3m
+contents as well: the same habit as the budget figures, in the same tick.
