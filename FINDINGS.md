@@ -14341,3 +14341,66 @@ One stale allowance fell out: `ligand_chains` was in
 only to hold a threshold reference, and the new tool calls it. F296's own
 staleness check caught that on the full run, which is the half of F250 that
 the sweep had not left behind.
+
+## F298. Why bench06 cannot be refined: the size, measured
+
+Six consecutive tier-2 refinements of bench06 exited 0 and wrote nothing,
+about 2.6 hours each. D-NOB-082 decided to let them burn, on the grounds that
+the cause was unknown and the budget tolerated the waste. The cause is now
+measured, and it is not unknowable: it was sitting in `state_tier2.jsonl` the
+whole time.
+
+Of 155 resolved tier-2 jobs, **every success is at most 454 tokens and every
+failure is 1,223.** There is no overlap, and the largest five successes are
+all exactly 454. The same 1,223-token jobs complete at tier-1 settings: 30
+bench06 jobs are `done` in `state.jsonl` at 1,199 and 1,223 tokens. So the
+pair is not unpredictable and the YAML is not malformed. What changes between
+the tier that works and the tier that does not is three recycling steps to
+ten, one diffusion sample to twenty-five, and potentials off to on.
+
+The failed output directory says the same thing from the other side. It holds
+a complete `processed/` tree, including the constraints npz, and two
+`lightning_logs` versions, and **no `predictions/` directory at all**, not
+even an empty one. Boltz featurised, ran, and wrote no output, in 2.6 hours,
+with an exit code of 0.
+
+The size dependence is measured. The mechanism is inferred: twenty-five
+diffusion samples at 1,223 tokens is the obvious memory candidate and I have
+not seen the process say so, because the runner that produced these six
+records predates F238's fix and discarded the stderr it was holding. That is
+worth stating plainly rather than presenting a plausible cause as a found
+one.
+
+### The fix is the ladder's second rung, applied before the attempt
+
+CLAUDE.md's fallback ladder says retry once *with a fix*. F289 established
+that an identical retry after a clean exit is the one retry guaranteed to
+fail, and it said so by quoting that same rule. The fix here is known in
+advance, so it goes in before the first attempt rather than after it:
+`runner.sampling_for` reduces tier 2's diffusion samples until the product of
+tokens and samples fits `tier2_token_sample_budget`, floored at one sample.
+
+The budget is 11,350, which is 454 x 25: the largest product observed to
+complete. Not a guess at the ceiling and not a round number, and the config
+comment says the only thing that should raise it is seeing a larger product
+complete. bench06 therefore refines at nine samples instead of twenty-five.
+One sample is still a refinement, ten recycling steps with potentials against
+tier 1's three without, so there is no size at which the job is abandoned
+rather than attempted.
+
+Two things the reduction carries with it. The effective count is recorded on
+every job, successful or failed, so nothing compares a nine-sample refinement
+with a twenty-five-sample one without knowing, and so that lowering the
+budget after another failure is a decision with evidence rather than another
+guess. And a job between 455 and 1,223 tokens is reduced too, although no job
+in that range has ever run: untested sizes are reduced out of caution, which
+costs a 500-token job one sample of twenty-five and saves a 1,200-token one
+six hours.
+
+### What this unblocks
+
+F268 is a registered prediction that needs five unconstrained bench06
+refinements and has one. Under D-NOB-082 it was not pending, it was
+unanswerable: all ten bench06 refinements fail, so the fifth success was
+never coming. The scorer's "not yet testable: 1 of 5" was correct and would
+have stayed correct forever.

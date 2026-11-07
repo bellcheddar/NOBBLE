@@ -40,6 +40,15 @@ tier1_potentials = false
 tier2_recycles = 10
 tier2_diffusion_samples = 25
 tier2_potentials = true
+# Largest token-times-sample product a tier-2 job has been observed to
+# complete. Measured, not chosen: of 155 resolved tier-2 jobs every success
+# is at most 454 tokens and every failure is 1,223, with no overlap, and the
+# same 1,223-token jobs all complete at tier-1 settings (F298). 454 x 25 is
+# therefore the largest product the evidence supports, and a job over it has
+# its sample count reduced to fit rather than spending six hours to write
+# nothing. Raise it when a larger product is seen to complete; that is the
+# only thing that should raise it.
+tier2_token_sample_budget = 11350
 # How much longer a tier-2 job may run than a tier-1 one before it is
 # abandoned. Was a bare `* 4` in runner.py, which put the number that
 # decides when a refinement is killed in an expression rather than in

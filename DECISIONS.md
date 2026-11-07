@@ -2623,3 +2623,38 @@ started from cold, which is the F47 correction's refresh. Removal is
 load-bearing rather than cosmetic: `completed()` treats only `done` as
 terminal, so the recorded failures do not stop a later run from re-attempting
 all ten and spending the 26 hours again.
+
+## D-NOB-083. Restart the chain so the tier-2 sampling reduction takes effect
+
+Supersedes D-NOB-082 on new evidence. That decision let bench06's refinements
+burn because the cause was unknown and the budget tolerated the waste. F298
+measures the cause: every tier-2 success is at most 454 tokens and every
+failure is 1,223, with no overlap, and the same jobs complete at tier-1
+settings. `runner.sampling_for` now reduces tier 2's diffusion samples to fit
+the largest product observed to complete.
+
+The live runner started at 23:01 UTC on 6 November and so predates F238,
+F289 and F298. It will not pick any of them up. Four bench06 refinements are
+unresolved, one of them in flight, so under the running process they cost
+about 10.4 hours and teach nothing: that code discards the stderr, which is
+the evidence three findings have wanted.
+
+Restarting costs the in-flight job's progress, which would have failed
+anyway, and `tools/run_chain.sh` says in its own header that a kill anywhere
+is recoverable by rerunning it. The 149 completed tier-2 jobs are skipped by
+job id. The 66 remaining non-bench06 jobs are all at most 454 tokens, so the
+reduction does not touch them.
+
+The upside is not only the time. If nine samples complete, F268 becomes
+answerable, having been unanswerable rather than pending. If they still fail,
+the current runner keeps what Boltz said, so the failure is finally
+diagnosable instead of being the sixth identical silence.
+
+Alternatives: let the stage finish and drop bench06 before the next cold
+start, which is D-NOB-082's reversal and spends 7.8 hours to learn nothing;
+or kill only the runner process, which ends tier 2 with 70 jobs unresolved
+because the chain would move to the next stage.
+
+Reversal: the restart is the reversal. Kill the session and rerun
+`tools/run_chain.sh`; nothing is destroyed, because `run_job` clears a job's
+output directory before running it and `completed()` keys on `done`.

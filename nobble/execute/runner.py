@@ -47,6 +47,10 @@ class JobOutcome:
     structure: str | None
     attempts: int
     detail: str = ""
+    # What the job actually sampled, which is not always what the tier asks
+    # for: see `sampling_for`. Carried so nothing compares a reduced
+    # refinement with a full one without knowing (F298).
+    diffusion_samples: int | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -61,6 +65,7 @@ class JobOutcome:
             "structure": self.structure,
             "attempts": self.attempts,
             "detail": self.detail,
+            "diffusion_samples": self.diffusion_samples,
         }
 
 
@@ -349,11 +354,15 @@ def run_job(job: dict, campaign: Path, settings: dict) -> JobOutcome:
         shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    samples, reduction = sampling_for(job, settings)
+    if reduction:
+        print(f"    {reduction}", flush=True)
+
     command = [
         str(paths.BOLTZ_CLI), "predict", job["yaml"],
         "--out_dir", str(output_dir),
         "--recycling_steps", str(settings["recycles"]),
-        "--diffusion_samples", str(settings["diffusion_samples"]),
+        "--diffusion_samples", str(samples),
         "--seed", str(job["seed"]),
         "--output_format", "mmcif",
         "--accelerator", "gpu" if settings["device"] == "mps" else "cpu",
@@ -449,7 +458,7 @@ def run_job(job: dict, campaign: Path, settings: dict) -> JobOutcome:
             return JobOutcome(
                 job_id=job_id, status="done", seconds=seconds, tokens=job["tokens"],
                 output_dir=str(output_dir), confidence=confidence, affinity=affinity,
-                structure=structure, attempts=attempts,
+                structure=structure, attempts=attempts, diffusion_samples=samples,
             )
         tail = (stderr or stdout or "").strip().splitlines()
         detail = " | ".join(tail[-3:])[:400] if tail else f"exit {returncode}"
@@ -477,8 +486,41 @@ def run_job(job: dict, campaign: Path, settings: dict) -> JobOutcome:
         job_id=job_id, status=f"failed: {detail[:200]}",
         seconds=time.monotonic() - started, tokens=job["tokens"],
         output_dir=str(output_dir), confidence=None, affinity=None, structure=None,
-        attempts=attempts, detail=detail,
+        attempts=attempts, detail=detail, diffusion_samples=samples,
     )
+
+
+def sampling_for(job: dict, settings: dict) -> tuple[int, str]:
+    """Diffusion samples for this job, reduced if it is too large to refine.
+
+    Returns (samples, note). The note is empty when nothing was reduced.
+
+    Tier 2 asks for 25 diffusion samples. At 1,223 tokens that produced six
+    consecutive clean exits with no predictions directory written, about 2.6
+    hours each, while the same 1,223-token jobs all complete at tier-1
+    settings and every tier-2 job that completed is at most 454 tokens. The
+    split is total: no success above 454 and no failure below 1,223 (F298).
+
+    So the product of tokens and samples is what fails, and the budget is the
+    largest product observed to complete rather than a guess at the ceiling,
+    read from `tier2_token_sample_budget`. A job over it samples what fits.
+    The floor is one sample, which is still a refinement: ten recycling steps
+    with potentials against tier 1's three without.
+
+    This is the fallback ladder's second rung, not its last. If a reduced job
+    still writes nothing, the record says how many samples it had, and
+    lowering the configured budget is then a decision with evidence behind
+    it instead of another identical attempt.
+    """
+    asked = int(settings["diffusion_samples"])
+    budget = settings.get("token_sample_budget")
+    tokens = int(job.get("tokens") or 0)
+    if not budget or not tokens or tokens * asked <= budget:
+        return asked, ""
+    fits = max(1, int(budget) // tokens)
+    return fits, (f"{tokens} tokens at {asked} samples is over the measured "
+                  f"budget of {budget} token-samples, so this job samples "
+                  f"{fits}")
 
 
 def settings_from_config(tier: int = 1, job_timeout_seconds: int | None = None) -> dict:
@@ -501,6 +543,10 @@ def settings_from_config(tier: int = 1, job_timeout_seconds: int | None = None) 
         "recycles": int(campaign_settings["tier2_recycles"]),
         "diffusion_samples": int(campaign_settings["tier2_diffusion_samples"]),
         "potentials": bool(campaign_settings["tier2_potentials"]),
+        # Only tier 2 carries it, because only tier 2 has a product large
+        # enough to exceed anything: tier 1 samples once.
+        "token_sample_budget": int(
+            campaign_settings["tier2_token_sample_budget"]),
         "device": compute["model_device"],
         # From config, not a literal here. See tier2_timeout_multiple's
         # comment in tuning.toml: the factor is a guess until tier 2 runs.
