@@ -51,6 +51,29 @@ def _sievers(tmp_path, tier2_shift):
     return campaign
 
 
+def _write(path: Path, rows: list[dict]) -> None:
+    path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+
+
+def _tier_b_arm(tmp_path, positives: int, scored: list[dict]) -> Path:
+    """A Tier B arm with `positives` pairs queued and only `scored` scored.
+
+    Named apart from `_tier_b` below, which predates it and writes no queue
+    on purpose: two helpers of the same name in one module is the later one
+    silently winning, which is how the first version of these four tests ran
+    against the wrong fixture.
+    """
+    campaign = tmp_path / "tier_b_coverage"
+    campaign.mkdir()
+    _write(campaign / "queue.jsonl",
+           [{"job_id": f"j{i}", "pair_id": f"tb_pos_X{i}"}
+            for i in range(positives)]
+           + [{"job_id": f"k{i}", "pair_id": f"tb_neg_X{i}"}
+              for i in range(positives)])
+    _write(campaign / "scores.jsonl", scored)
+    return campaign
+
+
 def test_f251_is_withdrawn_rather_than_pending(tmp_path):
     """Pending would have waited forever for a measurement that cannot exist.
 
@@ -158,6 +181,12 @@ def _tier_b(tmp_path, positive_rate, scramble_rate):
     ]
     (campaign / "scores.jsonl").write_text(
         "".join(json.dumps(r) + "\n" for r in rows))
+    # A queue holding exactly this pair, so these tests read as a complete
+    # arm. Without one they passed through the branch that has no
+    # denominator, which is the right answer to a different question.
+    (campaign / "queue.jsonl").write_text("".join(
+        json.dumps({"job_id": f"j_{row['pair_id']}",
+                    "pair_id": row["pair_id"]}) + "\n" for row in rows))
     return campaign
 
 
@@ -237,3 +266,70 @@ def test_the_chain_wiring_is_recorded_as_outstanding():
     assert "executing while this is written" in text, (
         "the reason the chain itself is not wired has been lost")
     assert "bash tools/status.sh" in (ROOT / "tools" / "run_chain.sh").read_text()
+
+
+def test_a_partial_tier_b_arm_does_not_confirm_f253(tmp_path):
+    """"No pair clears the line" is vacuously true of an empty set.
+
+    The arm is run with `|| true` and the runner stops on Gate G5, so a
+    partial scores.jsonl is a normal outcome. One scored row was enough for
+    this to report `supported`, which is F251's error in a new place: a
+    prediction confirmed by the absence of the data that could refute it.
+    """
+    campaign = _tier_b_arm(tmp_path, 10, [
+        {"pair_id": "tb_pos_X0", "bridge_formation_rate": 0.2},
+        {"pair_id": "tb_neg_X0", "bridge_formation_rate": 0.0},
+    ])
+    verdict = _module().f253_tier_b_bridging(campaign)
+    assert verdict["status"] == "not yet testable", verdict
+    assert verdict["positives_compared"] == 1, verdict
+    assert verdict["positives_expected"] == 10, verdict
+
+
+def test_a_complete_arm_with_no_hit_confirms_f253(tmp_path):
+    campaign = _tier_b_arm(tmp_path, 1, [
+        {"pair_id": "tb_pos_X0", "bridge_formation_rate": 0.4},
+        {"pair_id": "tb_neg_X0", "bridge_formation_rate": 0.0},
+    ])
+    verdict = _module().f253_tier_b_bridging(campaign)
+    assert verdict["status"] == "supported", verdict
+
+
+def test_one_hit_refutes_f253_even_on_a_partial_arm(tmp_path):
+    """Refutation takes one case, confirmation takes the set.
+
+    The claim is that no pair clears the line, so a pair that clears it
+    refutes the claim whatever is still to be scored. Requiring full coverage
+    before reporting WRONG would let a known counterexample sit unreported
+    behind an unfinished queue.
+    """
+    campaign = _tier_b_arm(tmp_path, 10, [
+        {"pair_id": "tb_pos_X0", "bridge_formation_rate": 0.9},
+        {"pair_id": "tb_neg_X0", "bridge_formation_rate": 0.1},
+    ])
+    verdict = _module().f253_tier_b_bridging(campaign)
+    assert verdict["status"] == "WRONG", verdict
+    assert verdict["hits"][0]["pair_id"] == "tb_pos_X0", verdict
+    assert verdict["positives_compared"] == 1, verdict
+
+
+def test_the_f253_denominator_comes_from_the_queue(tmp_path):
+    """Same rule as the atlas's jobs_total, for the same reason.
+
+    A count of what is on disk has no denominator: it reads as complete
+    whenever it is read, and the fraction it reports gets better the less has
+    run. Checked by removing the queue and confirming the verdict changes,
+    rather than by searching the source for a filename.
+    """
+    campaign = _tier_b_arm(tmp_path, 10, [
+        {"pair_id": "tb_pos_X0", "bridge_formation_rate": 0.2},
+        {"pair_id": "tb_neg_X0", "bridge_formation_rate": 0.0},
+    ])
+    assert _module().f253_tier_b_bridging(campaign)["status"] == (
+        "not yet testable")
+    (campaign / "queue.jsonl").unlink()
+    # With no queue there is no denominator, so the old behaviour returns and
+    # the verdict is what it can be rather than a fabricated fraction.
+    verdict = _module().f253_tier_b_bridging(campaign)
+    assert verdict["positives_expected"] == 0, verdict
+    assert verdict["status"] == "supported", verdict

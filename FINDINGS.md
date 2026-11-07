@@ -12257,3 +12257,46 @@ subtracted information from the pooled median it is meant to refine, and two
 fixtures went from a factor of 2.0 to no factor at all, which sends the gate
 back to judging on a bound. A record with no token count now joins the pooled
 median and is left out of the bands alone.
+
+## F258
+
+F253 could be confirmed by the absence of the data that would refute it.
+
+The claim is that no Tier B positive reaches a bridge formation rate of 0.8
+while its own scramble stays at or below 0.2. The scorer read the arm's
+`scores.jsonl`, found no such pair, and reported `supported`. With one row in
+the file that is true and means nothing: "no pair clears the line" is
+vacuously true of an empty set, and a partial arm is a normal outcome, since
+the chain runs Tier B with `|| true` and the runner stops on Gate G5.
+
+So the scorer would have printed `supported` on three scored pairs out of 77,
+which is F251's error in a new place. F251 was unfalsifiable because the
+measurement could not exist; this was confirmable because the measurement had
+not happened yet.
+
+The denominator now comes from the arm's own `queue.jsonl`, which is the same
+rule the atlas's `jobs_total` already follows and for the same reason: a count
+of what is on disk reads as complete whenever it is read, and the fraction it
+reports gets better the less has run.
+
+The two verdicts are deliberately asymmetric. A single hit reports WRONG
+whatever the coverage, because the claim is that no pair clears the line and
+here is one that does. Confirming it needs every queued positive, because the
+next pair scored could be the counterexample. Refutation takes one case,
+confirmation takes the set, and a scorer that demanded full coverage for both
+would hold a known counterexample behind an unfinished queue.
+
+F254 was checked for the same defect and does not have it: it requires both
+ROC classes present before comparing medians, with a comment explaining that a
+minimum count there would be a cutoff in Python deciding when a prediction
+becomes scoreable. F252 reads a single artefact that either exists or does not.
+
+Two mistakes of mine in writing the tests, both worth the note. The file
+already had a `_tier_b` helper with a different signature, defined below where
+I added mine, so the later definition won and all four new tests ran against
+the wrong fixture: the failure surfaced as a list being compared to a float,
+which was the old helper's data reaching the new code. And the older fixture
+wrote no `queue.jsonl`, so its existing tests had been passing through the new
+branch that has no denominator, which is the right answer to a different
+question. It now carries a queue holding exactly its pair, so those tests read
+as the complete arm they were written to describe.

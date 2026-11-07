@@ -187,14 +187,44 @@ def f253_tier_b_bridging(campaign: Path | None) -> dict:
         if count >= F253_POSITIVE_RATE and scramble <= F253_SCRAMBLE_RATE:
             hits.append({"pair_id": pair_id, "positive_rate": count,
                          "scramble_rate": scramble})
+    compared = sum(1 for p in with_bridge if p.startswith("tb_pos_"))
+    # The denominator is the queue, not what happens to be scored. The arm is
+    # run with `|| true` and the runner stops on Gate G5, so a partial
+    # scores.jsonl is a normal outcome, and "no pair clears the line" is
+    # vacuously true of an empty set. One row was enough for this to report
+    # `supported`, which is F251's error in a new place: a prediction
+    # confirmed by the absence of the data that could refute it.
+    expected = len({row["pair_id"] for row in _rows(campaign / "queue.jsonl")
+                    if str(row.get("pair_id")).startswith("tb_pos_")})
+
+    # Asymmetric on purpose. A single hit refutes the claim whatever the
+    # coverage, because the claim is that no pair clears the line and here is
+    # one that does. Confirming it needs every pair, because the next one
+    # scored could be the counterexample. Refutation takes one case,
+    # confirmation takes the set.
+    if hits:
+        verdict.update(status="WRONG", hits=hits, positives_compared=compared,
+                       positives_expected=expected, unpaired=unpaired,
+                       detail=("a positive clears the line while its own "
+                               "scramble does not, which refutes the claim "
+                               "whatever else is still to be scored"))
+        return verdict
+    if expected and compared < expected:
+        verdict.update(
+            status="not yet testable", hits=hits, positives_compared=compared,
+            positives_expected=expected, unpaired=unpaired,
+            detail=(f"{compared} of {expected} positives scored: no pair "
+                    "clearing the line is vacuously true of a partial arm, "
+                    "and the unscored pairs are where a counterexample would "
+                    "be"))
+        return verdict
     verdict.update(
-        status="supported" if not hits else "WRONG",
-        hits=hits, positives_compared=sum(
-            1 for p in with_bridge if p.startswith("tb_pos_")),
-        unpaired=unpaired,
+        status="supported", hits=hits, positives_compared=compared,
+        positives_expected=expected, unpaired=unpaired,
         detail=("each positive against its own scramble, which controls "
                 "composition where the arm does not. A single hit carries its "
-                "denominator: 77 positives is 77 chances"))
+                f"denominator: {expected or compared} positives is "
+                f"{expected or compared} chances"))
     return verdict
 
 
