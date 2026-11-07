@@ -10665,12 +10665,20 @@ uniformly 17 to 48 A: nowhere near, as F227 said.
 **What this licenses, and what it does not.** Spec 5.1 defines pose recovery
 as backbone RMSD over the fifteen-residue window, and by that definition the
 control fails: bench04's best pose is 4.99 A and nothing reaches 3 A. The
-profile does not change that. What it shows is where the 4.99 comes from. The
-window is cut around the degron, and its terminal residues are held in place
-in the deposited structure by the rest of the parent protein, which the
-prediction does not contain: it folds a free fifteen-mer. Residues that are
-only ordered because of a domain that is not in the input are residues the
-prediction cannot be expected to reproduce, and they are carrying the RMSD.
+profile does not change that. What it shows is where the 4.99 comes from.
+
+> **The cause proposed here was wrong, and F229 has the number that refutes
+> it.** The paragraph below read: the window is cut around the degron, and its
+> terminal residues are held in place in the deposited structure by the rest
+> of the parent protein, which the prediction does not contain, so residues
+> that are only ordered because of a domain outside the input are carrying the
+> RMSD. It is a tidy story and it is not what the structures say. Contacts
+> between each window residue and the substrate chain outside the window
+> correlate with the deviation at r = +0.076 for bench04 and +0.092 for
+> bench06: no relationship at all. Kept rather than deleted, because asserting
+> a mechanism and then testing it is the only reason it was caught, and
+> because this is the third explanation this session that fitted the
+> observation and failed its own check (F217, F218).
 
 **I am not redefining the metric.** Reporting a core RMSD and calling the
 control passed would be inventing an acceptance criterion after seeing the
@@ -10683,3 +10691,55 @@ every pose, and that the whole-window number does not show it.
 
 `tools/pose_site.py` carries the profile as `ca_deviation_a`, one value per
 peptide residue, so the claim is re-runnable rather than a figure in a note.
+
+## F229. The parent domain does not hold the window's ends, and the occupancy alarm was mine
+
+F228 explained its own profile: the window's terminal residues deviate because
+the deposition holds them with the rest of the parent protein, which the
+prediction does not contain. The explanation is testable on the deposited
+structure alone. If it is right, the window residues with the largest CA
+deviation are the ones making the most contact with substrate-chain residues
+outside the window.
+
+```
+bench04_IKZF1_CRBN  (6H0F chain C)
+  CA dev     8.3   5.9   3.6   2.2   1.8   1.4   0.8   0.5   0.5   2.1   2.7   2.9   4.2  10.4  10.8
+  parent       2     2     3     5     1     3     3     0     3     1     4     5     4     3     3
+  pearson r = +0.076
+
+bench06_RBM39_DCAF15  (6Q0W chain D)
+  CA dev     3.0   3.3   4.1   3.5   1.9   2.5   3.2   2.6   1.4   1.1   2.9   7.7  13.5  12.4   7.1
+  parent       6     3     3     1     2     4     2     0     2     8     1     0     6     3     3
+  pearson r = +0.092
+```
+
+No relationship. bench04's three worst positions make two or three parent
+contacts each, while its best-placed residue makes none and a 2.9 A position
+makes five. The explanation is refuted for both pairs it was proposed about.
+bench05, whose profile F228 already called a different pattern, does correlate
+at r = +0.617, which is a hint about bench05 and not a rescue of the claim.
+
+**A partial correlate, offered as that and nothing more.** Deviation against
+the deposited residue's mean B-factor: r = +0.328 for bench04 and +0.566 for
+bench06, whose window runs 96 to 129 square angstrom with its highest values
+at exactly the fraying positions. So for bench06 the reference is least certain
+roughly where the prediction is judged most wrong. For bench04, at r = +0.33
+over fifteen points, that is not an explanation.
+
+What remains for bench04 is the plain reading: a free fifteen-mer's termini
+have nothing to place them, and the model puts them somewhere plausible and
+wrong while holding the centre at 0.5 A. That is a statement about the
+prediction rather than the reference, and these data cannot test it. It is left
+as the candidate, not written up as the cause, which is what F228 should have
+done with its own.
+
+**And an alarm I raised and then withdrew.** Reading occupancies, I took the
+minimum over each residue's heavy atoms and found 0.00 at every window residue
+of 6H0F chain C, which would have meant the bench04 control was measured
+against unsupported coordinates. The raw file says chain C carries 248 atoms at
+1.00 and 237 at 0.00, so a single zero-occupancy atom anywhere in a residue
+zeroed the whole residue's minimum. Every window residue's CA is at occupancy
+1.00 and no window residue has any zero-occupancy heavy atom: the zeros are
+elsewhere in the chain. The reference is sound and the statistic was wrong,
+which is the same error as F225's flat median, one aggregate standing in for a
+different question.
