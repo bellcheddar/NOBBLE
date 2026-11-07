@@ -13446,3 +13446,58 @@ complete.
 
 So the bridge_percentile row above is the weakest of the four and would have
 needed that caveat even if it had excluded 0.5.
+
+## F281
+
+The fitted composite gives Delta-ipTM a weight of zero, and it is the weakest
+of the five components it was offered.
+
+F280 put four statistics to the Sievers labels and every interval contained
+0.5. The composite score is a different exercise on a different label set:
+`nobble/score/weights.py` fits five components against 158 labelled pairs, 31
+positive and 127 negative, which spans the benchmark panel and the scrambles
+as well as the Sievers arm. Recomputed from the complete campaign and
+identical to the published bundle's:
+
+```
+component                        weight   AUC alone
+bridge_percentile                0.2857      0.5627
+plip_fingerprint_match           0.2857      0.5513
+lysine_reach_exposed_fraction    0.2857      0.5855
+convergence_score                0.1429      0.5950
+delta_iptm                       0.0000      0.5236
+composite, in-sample                         0.7173
+```
+
+Three readings, in descending confidence.
+
+**Delta-ipTM contributes nothing to the best composite the grid can find, and
+has the lowest standalone discrimination of the five.** That is a second
+line of evidence for F280's null, from a different label set and a different
+method: the statistic spec 5.3 names is the one an optimiser discards first.
+
+**The weight of zero should be read as coarse rather than exact.** The
+weights are sevenths, 2/7 three times, 1/7 once and nothing, so the grid's
+smallest non-zero step is 0.143. "Zero" here means the optimiser preferred to
+spend none of its budget on Delta-ipTM, not that a finer search would find
+exactly zero.
+
+**No component is validated, and the composite's 0.7173 is the only figure
+above 0.6 anywhere in this table.** Every standalone AUC sits between 0.52
+and 0.60. A jump to 0.72 from combining five such components on 31 positives
+is what in-sample optimisation produces, which `weights.json` already says in
+as many words: "AUC 0.7173 is in-sample: the grid maximised it on the same 158
+labelled pairs. It describes the fit, not performance on unseen pairs."
+
+Nothing needed fixing here, which is worth saying plainly. The caveat is in
+the artefact, the app renders every caveat beside the table in the warning
+colour, and the standalone AUC sits next to each weight so a weight can be
+read against what the component achieves alone. `lysine_reach_exposed
+_fraction` carrying 2/7 despite BINMAN measuring its reach window at or below
+chance is called out in the file's own third caveat.
+
+What this adds is the connection: F280's null on the matched arm and this
+table's zero weight are the same result reached twice, and together they say
+the project's primary statistic is not merely unproven on these labels but
+dispensable to the best in-sample combination of everything measured
+alongside it.
