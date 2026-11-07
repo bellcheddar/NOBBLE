@@ -1,6 +1,6 @@
 # NOBBLE progress
 
-Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T18:54:01Z.
+Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T19:35:03Z.
 
 ## Gate G6 answered: the headline is a negative result, and publication is held
 
@@ -309,18 +309,24 @@ have been attempted.
 
 ## Waiting on Marc
 
-Two items, neither blocking anything else, plus a third that is now
-answered and kept here for the record. The chain and every other phase
-continue.
+One item, blocking nothing, plus two that are answered and kept here for the
+record. The chain and every other phase continue.
 
 Publication itself is not waiting on Marc: he held it (D-NOB-076), and it
 stays held until pose recovery passes or the headline is re-scoped.
 
 | Item | What is needed |
 |---|---|
-| **G1 Compute**: Tier B has no pairs | Two things, in order. First the fifteen receptor constructs, because Tier B cannot be assembled without them: `config/tier_b_constructs.toml` is the form and `PYTHONPATH=. python tools/tier_b_candidates.py` now prints each candidate's mean pLDDT and its overlap with the frozen best window, which rules some out on modelling grounds without choosing (F182). KCND2's IPR024587 sits at pLDDT 42 and RAG1's importin-binding region at 59, while CCNF's cyclin boxes run 94 to 97 against a whole-model 71.5. Then the compute decision: a separate campaign, a larger `max_compute_hours`, or a GPU. Measured cost above |
+| **G1 Compute**: answered | Marc named a substrate-binding domain for eleven ligases and excluded four on 2026-11-05 (D-NOB-072), and lifted `max_compute_hours` from 96 to 240 as arbitrary on his own hardware (D-NOB-073). Tier B is assembled and queued, 1,540 jobs over 154 pairs, and its preflight passes clean. The section above records both halves. What follows is the row as it stood while the gate was open, kept because the evidence it names is how the constructs were chosen. First the fifteen receptor constructs, because Tier B cannot be assembled without them: `config/tier_b_constructs.toml` is the form and `PYTHONPATH=. python tools/tier_b_candidates.py` now prints each candidate's mean pLDDT and its overlap with the frozen best window, which rules some out on modelling grounds without choosing (F182). KCND2's IPR024587 sits at pLDDT 42 and RAG1's importin-binding region at 59, while CCNF's cyclin boxes run 94 to 97 against a whole-model 71.5. Then the compute decision: a separate campaign, a larger `max_compute_hours`, or a GPU. Measured cost above |
 | **G4 Publish**: answered | `Bash(git push:*)` is in `.claude/settings.local.json` as of 2026-11-06, so end-of-phase commits reach the remote without a per-push question (D-NOB-078). For what is still local, `git rev-list --count origin/main..HEAD`: the figure changes with every commit, so a number written here is wrong by the time it is committed, which is how F167's own fix failed its own test (F168). `origin/main` still carries the absolute project paths F128 removed, which a push does not clear from history; `git grep -c /Users/dellboy origin/main -- deploy/atlas` counts them |
 | **F132**: static assets and structures uncompressed | `bash deploy/enable_gzip.sh`. A direct ssh to the live vhost is declined to me, so the script is written to be read first, and is now demonstrated as well: `tests/test_enable_gzip_splices_safely.py` runs its splice against a fixture vhost with a fake nginx on PATH, so the idempotency, the anchor refusal and the restore-on-refusal are tested rather than argued (F223). Measured against production: `molstar.js` serves 5,227,830 bytes and `plotly.min.js` 4,558,696, both with no `content-encoding` when gzip is offered. The pages themselves were never the problem, because nginx compresses `text/html` whatever `gzip_types` says, which is a claim F174 got wrong and F189 corrected. The script now also carries `chemical/x-mmcif`, the largest type it can compress: mmCIF compresses 3.5 times, so a pose download drops from 243 KB to 37 and the campaign-scale bundle from 265 MB to 75 |
+
+**The next manual step, when the GPU is free**, is not a decision: `bash
+tools/corrections.sh` rehearses the two input corrections and `--apply`
+performs them, waiting for the device before it clears anything, then runs
+`tools/refresh.sh`. That is what clears the atlas build's two refusals (F219
+and F266) and what would carry the whole-domain contrast into a rebuilt
+bundle. Safe to run twice (F267).
 
 ## Phase 1 gates: all passing
 

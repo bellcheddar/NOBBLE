@@ -13896,3 +13896,41 @@ Mutation-checked by putting the retry back, which the new test catches. The
 first version of that test built the job dict by hand, left out `seed`, and
 failed in the command builder before reaching the branch at all, so it now
 uses the shape `test_unused_affordances.py` already had for this.
+
+## F290
+
+PROGRESS asked Marc for something it says four sections earlier is closed.
+
+The "Waiting on Marc" table carried a row reading "**G1 Compute**: Tier B has
+no pairs", asking for two things in order: the fifteen receptor constructs,
+and then a compute decision between a separate campaign, a larger
+`max_compute_hours` and a GPU.
+
+Both were settled on 5 November. Marc named a substrate-binding domain for
+eleven ligases and excluded four (D-NOB-072), and lifted `max_compute_hours`
+from 96 to 240 as arbitrary on his own hardware (D-NOB-073). The document's own
+heading says so: "Gate G1 closed: Tier B is assembled and queued". Tier B is
+1,540 jobs over 154 pairs on disk with a clean preflight, and the chain runs
+it at stage 4b.
+
+So a reader coming to the handoff table would have gone looking for a decision
+already made, against evidence the row itself describes. The row is now marked
+answered, with the decisions named, and the evidence it cited kept because that
+is how the constructs were chosen. The prose above the table said "two items"
+and now says one, which is F132: `bash deploy/enable_gzip.sh`, a direct ssh
+being declined to me.
+
+Two things follow from this being possible at all.
+
+The section stated a count in prose and the count in the table, and they could
+drift apart silently. `tests/test_the_handoff_section_is_current.py` now
+asserts that no row mentioning a gate the document calls closed is still
+asking for it, and that the stated count matches the open rows. Both are
+properties rather than wordings, so the section can be rewritten freely.
+
+And the next step is a command rather than a question, so it did not belong in
+a table of things needing Marc: `bash tools/corrections.sh`, which rehearses
+the two input corrections, performs them under `--apply` after waiting for the
+device, and runs the refresh. PROGRESS now names it, and a test asserts it
+does, because reconstructing the order of two corrections and a rebuild from
+three findings is not a handoff.
