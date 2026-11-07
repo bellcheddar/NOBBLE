@@ -1,6 +1,6 @@
 # NOBBLE progress
 
-Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T15:06:12Z.
+Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T18:54:01Z.
 
 ## Gate G6 answered: the headline is a negative result, and publication is held
 
@@ -180,6 +180,49 @@ consequence of the work and would be stale before the file was saved (F168):
 
 It ends by consulting the hold and leaving the atlas local.
 
+## What 7 November established about the headline
+
+The campaign did not change; the measurements of it did. Six of these are
+negative results and the one positive-looking result is explained below.
+
+**Neither arm is prospective (F282).** All seven benchmark depositions predate
+the model's 2021-09-30 training cutoff, so the time-split layer reports no
+blind set at all. The 15-mer failure is therefore not explained by novelty,
+which strengthens the representation reading; the whole-domain success is on
+structures the model may have memorised, so it is consistent with recall as
+much as with prediction. The caveat had been attached to the retrospective
+number alone. It is now in the README and in the hold.
+
+**The whole domain finds the site, not just the coordinates (F278, F279).**
+Contact footprint against the deposited degron's own receptor contacts, best
+pose per pair: jaccard median 0.455 for the 15-mers against 0.909 for the
+whole domains, with GSPT1 going 0.029 to 0.941 and CDK12 0.000 to 0.774.
+Across all 65 poses, the whole-domain poses that fail the 3 A test still have
+a median footprint of 0.818 against the 15-mers' 0.211: the former found the
+site and got the register wrong, the latter missed the site. Footprint and
+RMSD are anti-correlated at -0.948 and -0.743, so the footprint adds the level
+rather than a different verdict.
+
+**Seven statistics, no separation (F280, F285, F286).** Every statistic put to
+the Sievers labels gives a 95 per cent interval containing 0.5, except
+`lysine_reach` at 0.6232 with a lower bound of 0.5021. That exclusion is
+0.0021 wide, it is the seventh statistic tried so one exclusion is the
+expected outcome of looking seven times at P = 0.302, and BINMAN's
+independent measurement of the same geometry on 369 assayed lysines puts it at
+or below chance and slightly inverted. Not a signal. The reading was
+registered before any of them were computed.
+
+**The composite discards the spec's statistic (F281).** The grid gives
+`delta_iptm` a weight of zero and it has the lowest standalone AUC of the
+five. No component exceeds 0.60 standalone; the composite's 0.7173 is
+in-sample, which `weights.json` has always said.
+
+**What the app now shows.** Every statistic tried, with its own coverage line,
+and every component's standalone AUC beside its weight with the rows that
+figure rests on (F283, F284, F285). The `trust` field marked one component as
+unvalidated and left four unmarked; measured numbers replace the implied
+ranking.
+
 ## Phases
 
 | Phase | State | Detail |
@@ -252,6 +295,17 @@ and does not call this one, because the chain was executing when it was
 written and bash reads a script incrementally. The chain's last line runs
 `status.sh`, so the verdicts do appear at the end of a run; calling the
 scorer at each stage is the part still to wire.
+
+**F268, registered 7 November and answerable by this run at no cost.** Claim:
+every bench06_RBM39_DCAF15 refinement fails whatever its conditioning.
+Falsifier: an unconstrained bench06 tier-2 job writes a confidence JSON. All
+five conditioned attempts have failed, each after about two and a half hours
+with an empty predictions directory and Boltz exiting 0; the five unconstrained
+ones are what decide it. The evidence for size over constraint is that all ten
+are 1,223 tokens, the largest refinement ever to succeed here is 454, and
+bench06's own thirty tier-1 jobs at the same size all succeeded. Scored by
+`tools/check_registered.py`, which refuses to call it either way until all five
+have been attempted.
 
 ## Waiting on Marc
 
