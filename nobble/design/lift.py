@@ -62,6 +62,21 @@ class Lift:
     bridge_lost: bool | None = None
     bridge_rate_change: float | None = None
     bridge_weakened: bool | None = None
+    # Whether either side's delta_iptm is driven by a collapsed seed.
+    #
+    # delta_iptm is a difference of minima, so one seed that collapses drags
+    # the minimum down and inflates the difference by however far it fell.
+    # The scorer detects it and sets `seed_collapse_affects_delta`, and
+    # D-NOB-081 found the scan's own parent being chosen that way: ZN565 at
+    # +0.8886 on a binary minimum of 0.0601 against a median of 0.8619.
+    #
+    # Reported rather than refused, unlike `mismatches`. A condition mismatch
+    # means the two runs are not comparable and the lift would report the
+    # conditions; a collapse means the lift is comparable and one of its two
+    # terms is unreliable. So the number stands with a flag and
+    # `scan_profile` keeps it out of the ordering, which is the same
+    # treatment recovery_delta gives a confounded pair.
+    collapse_affected: str | None = None
     status: str = "not_computed"
     mismatches: list = field(default_factory=list)
 
@@ -158,6 +173,11 @@ def compute(variant_row: dict, parent_row: dict) -> Lift:
 
     result.lift = round(variant_delta - parent_delta, 4)
 
+    sides = [side for side, row in (("variant", variant_row), ("parent", parent_row))
+             if row.get("seed_collapse_affects_delta")]
+    if sides:
+        result.collapse_affected = " and ".join(sides)
+
     v_with = variant_row.get("bridging_seeds_with_bridge")
     v_total = variant_row.get("bridging_seeds_total")
     p_with = parent_row.get("bridging_seeds_with_bridge")
@@ -227,6 +247,7 @@ def scan_profile(lifts: list[Lift], parent_sequence: str) -> dict:
             "wild_type": residue,
             "substitution": item.substitution if item else None,
             "lift": item.lift if item else None,
+            "collapse_affected": item.collapse_affected if item else None,
             "bridged": item.variant_bridged if item else None,
             "bridge_lost": item.bridge_lost if item else None,
             "bridge_rate_change": item.bridge_rate_change if item else None,
@@ -235,12 +256,22 @@ def scan_profile(lifts: list[Lift], parent_sequence: str) -> dict:
         })
 
     scored = [row for row in rows if row["lift"] is not None]
-    ranked = sorted(scored, key=lambda row: row["lift"])
+    # Ordered over the positions whose lift is not driven by a collapsed seed.
+    # "Position 7 matters more than position 3" is the arm's one durable
+    # claim, and a position whose lift comes from one collapsed binary seed
+    # would take the top of that ordering on an artefact.
+    comparable = [row for row in scored if not row.get("collapse_affected")]
+    ranked = sorted(comparable, key=lambda row: row["lift"])
     return {
         "parent_sequence": parent_sequence,
         "positions": rows,
         "scored": len(scored),
         "of": len(rows),
+        "comparable": len(comparable),
+        # Named, not merely subtracted: a reader comparing `scored` against
+        # `comparable` needs to know which positions went and why (F74).
+        "collapse_affected": [row["substitution"] for row in scored
+                              if row.get("collapse_affected")],
         # Most negative lift: replacing this residue hurt the interface most,
         # which is the operational meaning of "this position matters".
         # Positions where the substitution did not merely reduce the

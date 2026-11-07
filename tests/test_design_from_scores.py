@@ -154,3 +154,71 @@ def test_the_output_feeds_scan_profile_without_reshaping(tmp_path):
     assert profile, "scan_profile returned nothing for two computed lifts"
     positions = profile.get("positions") or profile.get("ranked") or []
     assert positions, f"no ranked positions in {sorted(profile)}"
+
+
+def test_a_collapsed_seed_keeps_its_lift_and_loses_the_ordering(tmp_path):
+    """The arm's durable claim is the ordering of positions, so protect it.
+
+    delta_iptm is a difference of minima, so one collapsed seed drags the
+    minimum down and inflates the difference by however far it fell. D-NOB-081
+    found the scan's own parent chosen that way: ZN565 at +0.8886 on a binary
+    minimum of 0.0601 against a median of 0.8619. The same arithmetic one
+    level down puts a collapsed variant at the top of "most sensitive".
+
+    Flagged rather than refused, unlike a condition mismatch: the two runs are
+    comparable and one term is unreliable, so the number stands and the
+    ordering excludes it, which is how recovery_delta treats a confounded
+    pair.
+    """
+    rows = [
+        _row(),
+        _variant("K7A", -0.90, 7, seed_collapse_affects_delta=True),
+        _variant("S3A", -0.20, 3),
+        _variant("Q5A", -0.10, 5),
+    ]
+    report = Lmod.from_scores(_scores(tmp_path, rows), "parent1")
+    lifts = {item["substitution"]: item for item in report["lifts"]}
+
+    collapsed = lifts["K7A"]
+    assert collapsed["status"] == "computed", collapsed
+    assert collapsed["lift"] is not None, collapsed
+    assert collapsed["collapse_affected"] == "variant", collapsed
+
+    profile = Lmod.scan_profile(
+        [Lmod.Lift(**item) for item in report["lifts"]], PARENT_SEQUENCE)
+    assert profile["most_sensitive"]["substitution"] == "S3A", (
+        "the collapsed variant took the top of the ordering")
+    assert profile["collapse_affected"] == ["K7A"], profile["collapse_affected"]
+    assert profile["comparable"] == profile["scored"] - 1, profile
+
+
+def test_a_collapsed_parent_flags_every_variant(tmp_path):
+    """The parent is one of the lift's two terms, so its collapse is in all
+    of them, and an ordering over them all would be an ordering of one
+    artefact plus noise."""
+    rows = [
+        _row(seed_collapse_affects_delta=True),
+        _variant("K7A", -0.90, 7),
+        _variant("S3A", -0.20, 3),
+    ]
+    report = Lmod.from_scores(_scores(tmp_path, rows), "parent1")
+    for item in report["lifts"]:
+        assert item["collapse_affected"] == "parent", item
+
+    profile = Lmod.scan_profile(
+        [Lmod.Lift(**item) for item in report["lifts"]], PARENT_SEQUENCE)
+    assert profile["comparable"] == 0, profile
+    assert profile["most_sensitive"] is None, profile
+
+
+def test_an_unflagged_scan_is_unchanged(tmp_path):
+    """The flag is additive: a scan with no collapse ranks as it always did."""
+    rows = [_row(), _variant("K7A", -0.90, 7), _variant("S3A", -0.20, 3)]
+    report = Lmod.from_scores(_scores(tmp_path, rows), "parent1")
+    assert all(item["collapse_affected"] is None for item in report["lifts"])
+
+    profile = Lmod.scan_profile(
+        [Lmod.Lift(**item) for item in report["lifts"]], PARENT_SEQUENCE)
+    assert profile["most_sensitive"]["substitution"] == "K7A", profile
+    assert profile["comparable"] == profile["scored"]
+    assert profile["collapse_affected"] == []
