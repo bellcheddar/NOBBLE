@@ -366,6 +366,46 @@
     {% for row in crystal_counts.unmeasurable %}
       {% for note in row.notes %}<p class="panel__hint">{{ note }}</p>{% endfor %}
     {% endfor %}
+    {# The calibration, if the bundle carries it. Two representations because
+       they answer different questions: the main campaign submits a 15-mer
+       substrate and the corrected campaign submits the folded domain, and
+       the ratio column is what shows which one reproduces the crystal. #}
+    {% if crystal_control.get('predictions') %}
+      <p class="panel__hint">The same bridge as predicted, median over the
+        seeds that bridged.</p>
+      <table class="ntable">
+        <thead><tr>
+          <th scope="col">Pair</th><th scope="col">Substrate as</th>
+          <th scope="col">Seeds</th><th scope="col">Receptor</th>
+          <th scope="col">Substrate</th><th scope="col">Total</th>
+          <th scope="col">Total / crystal</th>
+        </tr></thead>
+        <tbody>
+          {% for row in crystal_control.rows %}
+            {% set number = row.pair_id[5:7] %}
+            {% for label in ['15-mer', 'whole domain'] %}
+              {% set record = crystal_control.predictions.get(label ~ '|' ~ number) %}
+              {% if record %}
+                <tr>
+                  <td>{{ row.pair_id }}</td><td>{{ label }}</td>
+                  <td class="mono">{{ record.n_bridged }}</td>
+                  {% if record.total %}
+                    <td class="mono">{{ record.receptor|round(1) }}</td>
+                    <td class="mono">{{ record.substrate|round(1) }}</td>
+                    <td class="mono">{{ record.total|round(1) }}</td>
+                    <td class="mono">{% if row.dsasa_total %}{{ (record.total / row.dsasa_total)|round(2) }}{% else %}no crystal{% endif %}</td>
+                  {% else %}
+                    <td colspan="4">no seed bridged</td>
+                  {% endif %}
+                </tr>
+              {% endif %}
+            {% endfor %}
+          {% endfor %}
+        </tbody>
+      </table>
+    {% elif crystal_control.get('predictions_status') %}
+      <p class="panel__hint">{{ crystal_control.predictions_status }}</p>
+    {% endif %}
   {% else %}
     <p class="panel__hint"><span class="flag flag--pending">not computed</span>
       {{ (crystal_control or {}).get('status', 'this bundle was built before the control existed') }}</p>

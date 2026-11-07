@@ -130,3 +130,62 @@ def test_the_publication_hold_prints_the_control():
         "release decision sees the recovery failure without the primary "
         "signal's own control"
     )
+
+
+# The calibration half. `bench07` is the case that matters most: its 15-mer
+# arm found no bridge in any seed while the crystal's is strong, so the panel
+# has to show "no seed bridged" against a measured crystal rather than
+# leaving the row out and reading as though nothing was tried.
+BENCH07 = dict(FOUND, pair_id="bench07_CDK12_DDB1", pdb_id="6TD3",
+               glue_ccd="RC8", dsasa_receptor=287.3, dsasa_peptide=850.5,
+               dsasa_total=1137.8, bridge_percentile=82.74)
+PREDICTED = {
+    "15-mer|07": {"n_bridged": 0, "receptor": None, "substrate": None,
+                  "total": None},
+    "whole domain|07": {"n_bridged": 6, "receptor": 270.9, "substrate": 859.0,
+                        "total": 1128.9},
+}
+
+
+def test_the_calibration_shows_the_ratio_to_the_crystal(tmp_path):
+    page = _page(tmp_path, {"crystal_control": {
+        "status": "measured", "rows": [BENCH07], "predictions": PREDICTED,
+        "predictions_status": "measured"}})
+    assert "The same bridge as predicted" in page
+    assert "whole domain" in page
+    # 1128.9 / 1137.8 rounds to 0.99, which is the result.
+    assert "0.99" in page
+
+
+def test_a_representation_that_never_bridged_says_so(tmp_path):
+    """Against a measured crystal, so the reader sees that the bridge is
+    there and the prediction did not find it. Leaving the row out would read
+    as though that arm was never run."""
+    page = _page(tmp_path, {"crystal_control": {
+        "status": "measured", "rows": [BENCH07], "predictions": PREDICTED,
+        "predictions_status": "measured"}})
+    assert "no seed bridged" in page
+    assert "15-mer" in page
+    assert "1137.8" in page
+
+
+def test_a_failed_calibration_does_not_take_the_verdict_with_it(tmp_path):
+    """Six of six found is worth showing without the comparison. The
+    comparison without the verdict is a table of ratios against nothing,
+    which is why only this half is allowed to fail."""
+    page = _page(tmp_path, {"crystal_control": {
+        "status": "measured", "rows": [BENCH07], "predictions": {},
+        "predictions_status": "unavailable: OSError: results.jsonl is torn"}})
+    assert "1 / 1" in page
+    assert "1137.8" in page
+    assert "results.jsonl is torn" in page
+    assert "The same bridge as predicted" not in page
+
+
+def test_the_build_computes_the_calibration_separately():
+    """One try/except for each half, or a slow rescore failing loses a
+    verdict that cost three seconds."""
+    source = (ROOT / "deploy" / "build_atlas.py").read_text()
+    assert "predicted_rows()" in source
+    assert 'crystal_control["predictions_status"]' in source
+    assert source.count("except Exception as problem") >= 2

@@ -14430,3 +14430,30 @@ tens of hours starts, and "bench06 refines at nine samples" is worth seeing
 beforehand. It asks `runner.sampling_for` rather than recomputing the rule, so
 the plan cannot disagree with the run about what is about to happen, and a
 test parses the module to check that it asks.
+
+### F297c. The calibration beside the verdict
+
+The About panel showed the crystal half only, which states that the filter
+finds six of six deposited bridges and leaves out the thing that makes it a
+calibration rather than a yes. `build_atlas` now rescores the benchmark
+pairs' predicted ternaries and the panel prints them beside the crystal, in
+both representations, with the ratio of the predicted total to the
+deposited one.
+
+Rescored rather than read out of `scores.jsonl`, which persists only
+`dsasa_total_median`: the receptor and substrate halves are what separate a
+glue seated correctly in the E3 from a substrate burying its own side, and
+that split is the result.
+
+The two halves have their own try/except and their own status, and the
+prediction half is attempted only once the crystals are measured. It costs
+minutes where the crystals cost seconds, and a failure in the slow half must
+not take the verdict with it: six of six found is worth publishing without
+the comparison, while the comparison without the verdict is a table of
+ratios against nothing.
+
+bench07 is the row that earns the second table. Its 15-mer arm found no
+bridge in any seed and its crystal bridge is 1,137.8 A^2 at the 82.7th
+percentile, so the panel has to print "no seed bridged" against a measured
+crystal. Leaving the row out would read as though that arm was never run,
+which is the same mistake as counting an unmeasurable deposition as a miss.

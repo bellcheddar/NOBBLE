@@ -562,6 +562,28 @@ def main() -> int:
             "status": f"unavailable: {type(problem).__name__}: {problem}",
         }
 
+    # The calibration beside the verdict: the same bridge as the predictions
+    # measure it, in both representations. Rescored rather than read out of
+    # scores.jsonl, which persists only the total, because the receptor and
+    # substrate halves are what separate a glue seated correctly in the E3
+    # from a substrate burying its own side, and that split is the result.
+    #
+    # In its own try/except, and only attempted once the crystals are
+    # measured. It costs minutes where the crystals cost seconds, and a
+    # failure here must not take the verdict with it: six of six found is
+    # worth publishing without the comparison, and the comparison without
+    # the verdict is a table of ratios against nothing.
+    if crystal_control["status"] == "measured":
+        try:
+            crystal_control["predictions"] = {
+                f"{label}|{number}": record for (label, number), record
+                in bridge_on_crystals.predicted_rows().items()}
+            crystal_control["predictions_status"] = "measured"
+        except Exception as problem:                    # noqa: BLE001
+            crystal_control["predictions"] = {}
+            crystal_control["predictions_status"] = (
+                f"unavailable: {type(problem).__name__}: {problem}")
+
     about = {
         "sources": binman_store.available(),
         "unavailable": list(binman_store.UNAVAILABLE),
