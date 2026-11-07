@@ -2552,3 +2552,38 @@ from `tools/` is the dependency inverted. The flag stays with the tool and
 with `deploy/build_atlas.py`. This is contained rather than open: the build
 refuses the campaign while any featurisation disagrees, so a footprint written
 for a confounded pair cannot reach the atlas.
+
+## D-NOB-081
+
+**The design scan's parent is chosen from candidates whose Delta-ipTM is not
+flagged as a collapsed seed.** `nobble/design/report._default_parent` ranked
+by `delta_iptm`, the difference of minima over seeds that spec 4.5 mandates
+for scoring. For choosing a scan target that statistic is fragile in a way the
+scorer already measures: one seed collapsing drags the binary minimum down and
+inflates the difference by however far it fell, and
+`seed_collapse_affects_delta` says when it has.
+
+It had. ZN565 ranked first at +0.8886 on a binary minimum of 0.0601 against a
+median of 0.8619, with `collapsed_seeds_binary` of [2]; by the median its
+Delta-ipTM is +0.0913, the smallest of the top five. ZN787, the runner-up at
++0.4714, is flagged as well. Five of the thirty-one scored candidates are.
+
+**Alternatives.** Ranking by `delta_iptm_median` instead would pick ZN654 and
+was rejected: spec 4.5 mandates the minimum, and replacing the statistic to
+fix a few unreliable members is a larger change than removing those members.
+Leaving it alone was rejected because the consequence is 240 jobs and 4.4
+hours spent on the claim that the chosen degron has the most glue dependence
+to move, which for ZN565 rests on one seed. Weighting by the median-minimum
+agreement was rejected as a composite nobody asked for.
+
+**What it changes.** The parent becomes `benchmark_888fd2c63e`, IKZF1, at
++0.3156. That is the parent `campaigns/design_20261104T094939Z` was already
+assembled for, which preflights clean at 240 jobs and prices at 4.4 hours
+(F225), so the chain's stage 4 now agrees with what is on disk rather than
+replacing it. `deploy/atlas/design.json` still names ZN565, so
+`tools/provenance.py` will report the site and the ranking disagreeing until
+the next rebuild, which is the drift check working rather than a new fault.
+
+**Reversal.** Remove the `collapsed` set and the `usable` filter from
+`_default_parent`; the ranking returns to the raw maximum. The flag it reads
+is computed by the scorer either way and is in every scores row.
