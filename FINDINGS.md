@@ -10179,3 +10179,58 @@ competing for the device. Until it runs, `bench02_BRD4_VHL`'s fifteen jobs in
 degron rule no longer asks for, the `KNOWN_DRIFT` allowlist entry in
 `tests/test_cross_campaign_reproducibility.py` is correct and stays, and the
 build refuses to publish the campaign.
+
+## F220. Boltz read the modifications block all along, and groups chains by sequence alone
+
+F217 left one question open: whether Boltz wanted the `modifications` block
+somewhere else in its schema. It was recorded as needing the GPU. It did not.
+The answer is in the parser, and reading it costs nothing while the device is
+busy with tier 2.
+
+`boltz/data/parse/schema.py:1166`:
+
+```python
+# Apply modifications
+for mod in items[0][entity_type].get("modifications", []):
+    code = mod["ccd"]
+    idx = mod["position"] - 1  # 1-indexed
+    seq[idx] = code
+```
+
+The block is read from inside the entity dict, as a list of `position` and
+`ccd` pairs, one-indexed. That is exactly what `nobble/execute/yaml_gen.py`
+emitted and what the fifteen `.bak` files still carry. So the declaration
+always reached the parser, and the featurisation cache is the whole of F219's
+cause rather than most of it. Nothing to change, and the open item is closed
+without spending a GPU hour on it.
+
+Reading the same function turned up something else. The grouping key, thirty
+lines earlier at `schema.py:1036`, is:
+
+```python
+items_to_group.setdefault((entity_type, seq), []).append(item)
+```
+
+under a comment that reads "First group items that have the same type,
+sequence and modifications". Modifications are not in the key, and the loop
+above applies `items[0]`'s modifications to every chain in the group. Two
+protein chains with an identical sequence and different `modifications` would
+both be folded with the first chain's, silently, which is F219's failure mode
+arriving by a different route: a declaration that every check reads off the
+YAML and the model never sees.
+
+It is not guarded, because it is not reachable. Of 4,340 YAML files across
+every campaign on disk, none has a duplicated protein sequence: a ternary is
+a receptor, an adaptor, a substrate and a peptide, and the scramble arm swaps
+the peptide rather than duplicating it. A guard against a state the assembly
+cannot produce is a test that cannot fail, which is the thing F218 and the
+`or True` assertion both already cost a rewrite. Recorded here so that the
+first campaign to fold a homodimer, or to modify one copy of a shared chain,
+is read against it rather than discovering it a second time.
+
+**What it changes for the pending correction:** only confidence. The corrected
+`bench02_BRD4_VHL` YAML carries no `modifications` block at all, since F47's
+rule no longer asks for the hydroxyproline, so the re-run needs the stale
+cache cleared and nothing else. `nobble/execute/runner.py` removes the job's
+output directory before each job and `tools/rerun_pair.py` removes it when it
+drops the rows, so both routes now clear it.

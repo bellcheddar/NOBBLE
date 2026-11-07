@@ -1,6 +1,6 @@
 # NOBBLE progress
 
-Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-06T17:25:52Z.
+Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T02:35:00Z.
 
 ## Gate G6 answered: the headline is a negative result, and publication is held
 
@@ -25,7 +25,11 @@ YAML. `tools/stale_featurisation.py` now reads what was folded instead, the
 build refuses on it, and `tools/rerun_pair.py` removes the cached output so
 the next correction takes. The correction has to be run again once the GPU is
 free; the chain has already passed that stage, so it waits rather than
-competing for the device.
+competing for the device. The one question F217 left open, whether Boltz
+wanted the `modifications` block elsewhere in its schema, is now closed from
+the parser source rather than the GPU: it is read from inside the entity dict
+as `position` and `ccd` pairs, which is what was emitted, so the cache is the
+whole cause (F220).
 
 **The matched-control ROC is a null**: AUC 0.4583, 95 per cent CI 0.3316 to
 0.5842, over 24 positives and 96 matched negatives from the Sievers screen,
