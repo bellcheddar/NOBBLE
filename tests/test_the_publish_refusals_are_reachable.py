@@ -37,10 +37,19 @@ BUILDER = ROOT / "deploy" / "build_atlas.py"
 # finding that put it there. Named individually rather than counted: a count
 # passes when one refusal is deleted and another duplicated.
 REFUSALS = {
+    "stale": "F47 and F59: a YAML no longer matches the queue row describing it",
     "folded": "F219: the cached featurisation does not match the YAML",
     "seen['blind']": "the featurisation check could not compare every job",
     "regenerated": "F266: the YAML is not what the current code emits",
+    "leaked": "spec 2.1: chemistry whose provenance may not be redistributed",
 }
+# Named after the first version of this file listed three of the nine
+# refusing branches and I only noticed by printing them. The two that were
+# missing are the ones at either end: `stale`, which is the F47 check that
+# precedes the featurisation one, and `leaked`, which is the licensing guard
+# CLAUDE.md states without qualification, that PROTAC-DB is never
+# redistributed. A test of "the refusals" that silently covered a third of
+# them is the same defect as the gates it was written about (F276).
 
 
 def _refusing_branches() -> dict[str, ast.If]:
@@ -99,22 +108,65 @@ def test_a_refusal_cannot_be_satisfied_by_unreachable_text():
         f"these refusals test a constant and so never fire: {constant}")
 
 
-def test_the_refusals_come_before_the_output_directory_is_cleared():
+# The refusals about the inputs, which can all be decided before anything is
+# built. `leaked` is not among them: it inspects the built bundle, so it
+# necessarily runs after the build, and its own case is below.
+BEFORE_THE_BUILD = ("stale", "folded", "seen['blind']", "regenerated")
+
+
+def test_the_input_refusals_come_before_the_output_directory_is_cleared():
     """Order, because the builder removes the previous slice before writing.
 
-    A refusal after `shutil.rmtree(OUT)` would leave no atlas at all: the
-    published slice gone and the new one not built, which is worse than
-    either outcome the refusal chooses between.
+    A refusal after `shutil.rmtree(OUT)` leaves the published slice gone and
+    the new one not built. For a refusal that could have been decided from
+    the inputs, that is strictly worse than either outcome it chooses
+    between.
     """
-    source = BUILDER.read_text()
-    tree = ast.parse(source)
+    tree = ast.parse(BUILDER.read_text())
     clears = [node for node in ast.walk(tree)
               if isinstance(node, ast.Call)
               and "rmtree" in ast.unparse(node.func)]
     assert clears, "the builder no longer clears its output directory"
     first_clear = min(node.lineno for node in clears)
-    for test, node in _refusing_branches().items():
-        if test in REFUSALS or "unavailable" in test or "blind" in test:
-            assert node.lineno < first_clear, (
-                f"the refusal on {test} is at line {node.lineno}, after the "
-                f"output directory is cleared at {first_clear}")
+    branches = _refusing_branches()
+    for test in BEFORE_THE_BUILD:
+        node = branches.get(test)
+        assert node is not None, (test, sorted(branches))
+        assert node.lineno < first_clear, (
+            f"the refusal on {test} is at line {node.lineno}, after the "
+            f"output directory is cleared at {first_clear}, so it leaves no "
+            "atlas at all when it fires")
+    unknown = [test for test in branches if "unavailable" in test]
+    for test in unknown:
+        assert branches[test].lineno < first_clear, test
+
+
+def test_the_licensing_refusal_says_the_bundle_is_on_disk():
+    """It cannot run before the build, so it must say what it leaves behind.
+
+    `leaked` inspects the built bundle, which is the only way to compare the
+    published chemistry against PROTAC-DB's own table rather than against a
+    source field that could be spelled differently. So it fires after
+    `rmtree`, the previous slice is already gone, and a complete bundle sits
+    on disk that must not be published. An operator reading only "REFUSED"
+    would reasonably conclude nothing was written.
+
+    The first version of this file asserted every refusal precedes the
+    rmtree and failed on exactly this one, which is the test being wrong
+    rather than the code (F276).
+    """
+    source = BUILDER.read_text()
+    branches = _refusing_branches()
+    assert "leaked" in branches, sorted(branches)
+    tree = ast.parse(source)
+    clears = [node.lineno for node in ast.walk(tree)
+              if isinstance(node, ast.Call)
+              and "rmtree" in ast.unparse(node.func)]
+    assert branches["leaked"].lineno > min(clears), (
+        "the licensing check now runs before the build, which it cannot do: "
+        "it reads the built bundle")
+    body = ast.unparse(branches["leaked"])
+    assert "on disk" in body, (
+        "the licensing refusal no longer says the bundle is on disk, so an "
+        "operator cannot tell that the previous slice was already removed")
+    assert "not publishable" in body, body[:200]
