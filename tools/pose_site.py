@@ -211,8 +211,26 @@ def footprints(campaign: Path, cutoff: float | None = None,
             records.append(record)
             continue
 
+        # CA positions on the deposited side, for the per-residue profile.
+        #
+        # A whole-window RMSD says how far the chain is, and nothing about
+        # where along it the error lives. Those are different claims: a
+        # uniform 5 A is a displaced peptide, and 0.5 A in the middle with
+        # 10 A at both ends is a correctly placed degron whose window
+        # extends past it. The second is what bench04 and bench06 turn out
+        # to be, and the whole-window number cannot show it.
+        deposited_ca: dict[int, object] = {}
+        for chain in deposited[0]:
+            if chain.name != target["substrate_chain"]:
+                continue
+            for residue in chain:
+                for atom in residue:
+                    if atom.name == "CA":
+                        deposited_ca[residue.seqid.num] = atom.pos
+
         window: set[int] = set()
         predicted_peptide = []
+        deviations: list[float | None] = []
         for chain in predicted[0]:
             if chain.name != poses.PEPTIDE_CHAIN:
                 continue
@@ -224,8 +242,12 @@ def footprints(campaign: Path, cutoff: float | None = None,
                     if atom.element.name == "H":
                         continue
                     moved = transform.apply(atom.pos)
-                    predicted_peptide.append(
-                        type(atom.pos)(moved.x, moved.y, moved.z))
+                    placed = type(atom.pos)(moved.x, moved.y, moved.z)
+                    predicted_peptide.append(placed)
+                    if atom.name == "CA":
+                        anchor = deposited_ca.get(number)
+                        deviations.append(round(placed.dist(anchor), 2)
+                                          if anchor is not None else None)
         window_atoms = [atom for number in window
                         for atom in substrate_residues[number]]
         if not window_atoms or not predicted_peptide:
@@ -250,6 +272,7 @@ def footprints(campaign: Path, cutoff: float | None = None,
                 {number: substrate_residues[number] for number in window},
                 cutoff)),
             "cutoff_a": cutoff,
+            "ca_deviation_a": deviations,
         })
         if not true_site:
             # Zero overlap is guaranteed here whatever the pose is, so the

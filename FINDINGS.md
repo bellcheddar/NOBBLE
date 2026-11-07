@@ -10612,3 +10612,74 @@ which is exactly what D-NOB-076 refused to do for pose recovery. The numbers
 are reported and the reading is in this paragraph, where it can be argued with.
 A test enforces that structurally through `ast`, after its first version
 failed on the docstring explaining the absence it was checking for.
+
+## F228. Neither mechanism explains the register, and the error is at the window's ends
+
+F227 left the three site-finding pairs at 5 to 12 A with the site correct.
+Two mechanisms would explain that, and both are testable in the frame the RMSD
+already uses: the chain threaded backwards, or offset along the groove.
+
+Neither holds. Comparing predicted residue i against deposited residue i+k for
+k from -7 to +7, and against the reversed mapping, on each pair's best pose:
+
+```
+pair                      as-is   best k   at k   reversed
+bench04_IKZF1_CRBN         5.06        0   5.06      10.34
+bench06_RBM39_DCAF15       5.50        0   5.50      12.49
+bench05_CSNK1A1_CRBN      11.64       -2  10.04       9.97
+bench01_GSPT1_CRBN        24.68       +4  24.14      25.00
+bench07_CDK12_DDB1        44.32       +7  36.41      46.87
+```
+
+No pair is reversed: the reversed mapping is worse everywhere except bench05,
+where it is better by 1.67 A, which is noise rather than a reversal signature.
+And for both pairs that find the footprint cleanly the optimal shift is already
+zero, so the register is not off either. The improvements at non-zero k for
+bench01 and bench07 are one or eight angstrom on twenty-four and forty-four:
+sliding along a groove you are not in.
+
+**So the error is conformational, and the per-residue profile says where.**
+Median CA deviation along the fifteen-residue window, over all ten poses of
+each pair, N to C:
+
+```
+bench04_IKZF1_CRBN     8.3  5.9  3.6  2.2  1.8  1.4  0.8  0.5  0.5  2.1  2.7  2.9  4.2 10.4 10.8
+bench06_RBM39_DCAF15   3.0  3.3  4.1  3.5  1.9  2.5  3.2  2.6  1.4  1.1  2.9  7.7 13.5 12.4  7.1
+bench05_CSNK1A1_CRBN  19.9 12.8  7.8  0.7  5.0  9.5 10.2  9.8  7.5  2.2  3.3  9.1 13.6 19.0 23.8
+bench01_GSPT1_CRBN    33.9 28.7 24.3 21.5 17.1 17.3 19.2 18.6 24.7 27.5 29.5 33.9 37.1 40.8 41.8
+bench07_CDK12_DDB1    40.6 41.3 45.6 45.8 47.8 46.8 46.5 46.8 47.2 46.3 46.9 44.3 44.9 43.3 41.7
+```
+
+bench04 places its three central residues at 0.5 to 0.8 A and nine of fifteen
+within 4.2 A, with the error at positions 1 to 2 and 14 to 15. bench06 places
+eleven of fifteen within 4.1 A, its core at 1.1 to 1.4 A, with the error at 12
+to 14. The worst pose of each pair differs from the median by under 1.5 A at
+every position, so this is not one lucky seed: the predictions are very nearly
+deterministic, which is consistent with the bit-identical ipTM values F217
+mistook for a dropped declaration.
+
+bench05 pins position 4 at 0.7 A and positions 10 to 11 at 2 to 3 A and is
+wrong in between, which is not the same pattern. bench01 and bench07 are
+uniformly 17 to 48 A: nowhere near, as F227 said.
+
+**What this licenses, and what it does not.** Spec 5.1 defines pose recovery
+as backbone RMSD over the fifteen-residue window, and by that definition the
+control fails: bench04's best pose is 4.99 A and nothing reaches 3 A. The
+profile does not change that. What it shows is where the 4.99 comes from. The
+window is cut around the degron, and its terminal residues are held in place
+in the deposited structure by the rest of the parent protein, which the
+prediction does not contain: it folds a free fifteen-mer. Residues that are
+only ordered because of a domain that is not in the input are residues the
+prediction cannot be expected to reproduce, and they are carrying the RMSD.
+
+**I am not redefining the metric.** Reporting a core RMSD and calling the
+control passed would be inventing an acceptance criterion after seeing the
+data, which is precisely what D-NOB-076 refused when it declined to invent a
+success radius. Whether spec 5.1's window is the right definition is a
+specification question, and it belongs to Marc at G6 along with everything
+else the gate holds. What is recorded here is that two of five measurable
+pairs place the degron's central residues within 1 A of the deposition in
+every pose, and that the whole-window number does not show it.
+
+`tools/pose_site.py` carries the profile as `ca_deviation_a`, one value per
+peptide residue, so the claim is re-runnable rather than a figure in a note.

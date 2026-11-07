@@ -147,3 +147,61 @@ def test_an_unrunnable_featurisation_check_does_not_clear_every_pair():
     body = source[source.index("def _confounded"):source.index("def _best_per_pair")]
     assert body.count("return set()") == 2, body
     assert "disagreements(campaign)" in body
+
+
+def test_the_per_residue_profile_accompanies_every_measured_record():
+    """A whole-window RMSD cannot say where along the chain the error is.
+
+    Those are different claims. A uniform 5 A is a displaced peptide; 0.5 A
+    in the middle with 10 A at both ends is a degron placed correctly inside
+    a window that extends past it. bench04 and bench06 are the second, and no
+    single number can show it.
+    """
+    campaign = _newest_campaign()
+    if campaign is None:
+        pytest.skip("no campaign assembled")
+    module = _module()
+    records = module.footprints(campaign, only={"bench04_IKZF1_CRBN"})
+    if not records or "jaccard" not in records[0]:
+        pytest.skip("the pair has no measurable pose in this campaign")
+    record = records[0]
+    profile = record["ca_deviation_a"]
+    assert profile, record
+    assert all(value is None or value >= 0 for value in profile), profile
+    measured = [value for value in profile if value is not None]
+    assert len(measured) >= 2, profile
+
+
+def test_the_profile_is_one_value_per_peptide_residue():
+    """Not per backbone atom, and not per deposited residue.
+
+    A profile indexed differently from the peptide would still plot, and the
+    position of the minimum would mean nothing.
+    """
+    campaign = _newest_campaign()
+    if campaign is None:
+        pytest.skip("no campaign assembled")
+    module = _module()
+    records = module.footprints(campaign, only={"bench04_IKZF1_CRBN"})
+    if not records or "ca_deviation_a" not in records[0]:
+        pytest.skip("no measurable pose")
+    from nobble.score import poses as poses_module
+
+    structure = poses_module._load(records[0]["job_id"] and
+                                   _structure_of(campaign, records[0]["job_id"]))
+    peptide = [chain for chain in structure[0]
+               if chain.name == poses_module.PEPTIDE_CHAIN]
+    assert peptide, "the prediction has no peptide chain"
+    assert len(records[0]["ca_deviation_a"]) == len(list(peptide[0]))
+
+
+def _structure_of(campaign: Path, job_id: str) -> str:
+    import json
+
+    for line in (campaign / "results.jsonl").read_text().splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        if row.get("job_id") == job_id:
+            return row["structure"]
+    raise AssertionError(f"{job_id} is not in results.jsonl")
