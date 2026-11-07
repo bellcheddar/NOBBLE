@@ -81,23 +81,61 @@ def _default_parent(parents: list[dict]) -> dict:
     the tab still has something to show before the campaign runs.
     """
     scored: dict[str, float] = {}
+    collapsed: set[str] = set()
     try:
         from nobble.app import data as app_data
         for row in app_data.scores():
             value = row.get("delta_iptm")
             if finite(value) and row.get("peptide_id"):
                 scored[row["peptide_id"]] = value
+                if row.get("seed_collapse_affects_delta"):
+                    collapsed.add(row["peptide_id"])
     except Exception:                                      # noqa: BLE001
         scored = {}
+        collapsed = set()
 
     ranked = [p for p in parents if p["peptide_id"] in scored]
-    if ranked:
-        best = max(ranked, key=lambda p: scored[p["peptide_id"]])
+    # Not ranked on a value the scorer itself flags as a collapsed seed.
+    #
+    # Delta-ipTM is a difference of minima over seeds (spec 4.5), so one seed
+    # that collapses drags the minimum down and inflates the difference by
+    # however far it fell. The scorer already detects this and sets
+    # `seed_collapse_affects_delta`, and D-NOB-023 added the median companion
+    # for exactly this fragility.
+    #
+    # Ranking on the raw minimum put ZN565 first at +0.8886, which is one
+    # collapsed binary seed: its binary minimum is 0.0601 against a median of
+    # 0.8619, `collapsed_seeds_binary` is [2], and by the median its
+    # delta-ipTM is +0.0913, the smallest of the top five. The runner-up,
+    # ZN787 at +0.4714, is flagged too. So the two parents the rule chose
+    # between were the two whose numbers it should not have been reading, and
+    # the scan would have spent 240 jobs on the proposition that ZN565 has
+    # the most glue dependence to move.
+    #
+    # Excluding the flagged candidates rather than switching to the median
+    # ranking: spec 4.5 mandates the minimum and this keeps it, dropping only
+    # the candidates the pipeline says are unreliable. It is the same move as
+    # excluding a confounded pair from the G6 table rather than re-deriving
+    # the table from another statistic.
+    usable = [p for p in ranked if p["peptide_id"] not in collapsed]
+    if usable or ranked:
+        pool = usable or ranked
+        best = max(pool, key=lambda p: scored[p["peptide_id"]])
         best = dict(best)
+        excluded = len(ranked) - len(usable)
+        if usable and excluded:
+            note = (f", with {excluded} candidate(s) excluded for a seed "
+                    "collapse the scorer flagged")
+        elif not usable:
+            note = (", and every scored candidate carries a flagged seed "
+                    "collapse, so this ranking is on values the scorer calls "
+                    "unreliable")
+        else:
+            note = ""
         best["chosen_because"] = (
             f"largest measured delta-ipTM of the scored parents "
             f"({scored[best['peptide_id']]:+.3f}): the degron with the most "
-            "glue dependence to move"
+            f"glue dependence to move{note}"
         )
         return best
 

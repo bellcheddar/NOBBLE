@@ -169,3 +169,76 @@ def test_configuring_earlier_changed_nothing_else():
         "the data layer is configured more than once, so which call wins "
         "depends on order again"
     )
+
+
+def test_a_flagged_seed_collapse_does_not_choose_the_scan_target():
+    """Delta-ipTM is a difference of minima, so one collapsed seed inflates it.
+
+    The scorer already detects that and sets `seed_collapse_affects_delta`;
+    D-NOB-023 added the median companion for the same fragility. Ranking the
+    scan parent on the raw minimum put ZN565 first at +0.8886, which is one
+    collapsed binary seed: binary minimum 0.0601 against a median of 0.8619,
+    `collapsed_seeds_binary` [2], and +0.0913 by the median, the smallest of
+    the top five. The runner-up was flagged too, so the rule was choosing
+    between the two candidates whose numbers it should not have read.
+
+    Synthetic, so it holds after the live scores change.
+    """
+    parents = [
+        {"peptide_id": "collapsed_one", "source": "benchmark",
+         "modality": "glue", "length": 15},
+        {"peptide_id": "honest_one", "source": "benchmark",
+         "modality": "glue", "length": 15},
+    ]
+    rows = [
+        {"peptide_id": "collapsed_one", "delta_iptm": 0.9,
+         "seed_collapse_affects_delta": True},
+        {"peptide_id": "honest_one", "delta_iptm": 0.3,
+         "seed_collapse_affects_delta": False},
+    ]
+
+    import nobble.app.data as data_module
+
+    original = data_module.scores
+    try:
+        data_module.scores = lambda *a, **k: rows
+        chosen = report._default_parent(parents)
+    finally:
+        data_module.scores = original
+
+    assert chosen["peptide_id"] == "honest_one", chosen
+    assert "excluded" in (chosen.get("chosen_because") or ""), chosen
+
+
+def test_every_candidate_flagged_still_chooses_and_says_so():
+    """Excluding everything would leave the tab with nothing to show.
+
+    Ranking on flagged values is worse than ranking on nothing only if the
+    reader is not told, so the reason says it.
+    """
+    parents = [
+        {"peptide_id": "a", "source": "benchmark", "modality": "glue",
+         "length": 15},
+        {"peptide_id": "b", "source": "benchmark", "modality": "glue",
+         "length": 15},
+    ]
+    rows = [
+        {"peptide_id": "a", "delta_iptm": 0.9,
+         "seed_collapse_affects_delta": True},
+        {"peptide_id": "b", "delta_iptm": 0.3,
+         "seed_collapse_affects_delta": True},
+    ]
+
+    import nobble.app.data as data_module
+
+    original = data_module.scores
+    try:
+        data_module.scores = lambda *a, **k: rows
+        chosen = report._default_parent(parents)
+    finally:
+        data_module.scores = original
+
+    assert chosen["peptide_id"] == "a", chosen
+    because = chosen.get("chosen_because") or ""
+    assert "every scored candidate" in because, because
+    assert "unreliable" in because, because
