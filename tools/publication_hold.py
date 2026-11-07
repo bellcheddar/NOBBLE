@@ -190,6 +190,45 @@ def representation_contrast() -> list[str]:
     return lines + curve_lines
 
 
+def detector_control() -> list[str]:
+    """Whether the primary signal finds the bridges in the crystals (F297).
+
+    Decision-relevant to a release and not derivable from the lines above.
+    The hold's reason is that pose recovery fails its positive control, which
+    is a statement about where a peptide lands; spec 4.1's primary signal is
+    the bridge geometry, and until F297 nothing had checked that against
+    anything but its own output. Someone reading "the positive control fails"
+    should also see that the filter the score is built on finds every bridge
+    present in deposited coordinates.
+
+    Crystals only. Rescoring the predictions beside them is the calibration
+    and takes minutes; `tools/bridge_on_crystals.py --against-predictions`
+    makes it. This is the verdict, and it costs about three seconds.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import bridge_on_crystals
+
+        rows = bridge_on_crystals.crystal_rows()
+    except Exception as problem:                        # noqa: BLE001
+        return [f"    bridge detector: not checked "
+                f"({type(problem).__name__}: {problem})"]
+
+    measurable = [row for row in rows if row["measurable"]]
+    found = [row for row in measurable if row["found"]]
+    lines = [f"    bridge detector on deposited coordinates: {len(found)} of "
+             f"{len(measurable)} measurable deposition(s) bridge, of "
+             f"{len(rows)} benchmark pair(s)"]
+    for row in rows:
+        if not row["measurable"]:
+            lines.append(f"      {row['pair_id']:28s} not measurable: "
+                         f"{row['reject_reason']}")
+        elif not row["found"]:
+            lines.append(f"      {row['pair_id']:28s} MISSED: "
+                         f"{row['reject_reason']}")
+    return lines
+
+
 def describe(summary: dict | None, confounded: set[str] | None = None) -> list[str]:
     """The curve as lines, or one line saying there is no curve to read."""
     if summary is None:
@@ -258,6 +297,7 @@ def main() -> int:
     lines = describe(recovery_now(validation),
                      confounded_pairs(validation.parent if validation else None))
     lines += representation_contrast()
+    lines += detector_control()
 
     if not hold.get("held"):
         released = str(hold.get("released_by") or "").strip()

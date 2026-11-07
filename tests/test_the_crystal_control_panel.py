@@ -111,3 +111,22 @@ def test_the_atlas_build_computes_it(tmp_path):
     source = (ROOT / "deploy" / "build_atlas.py").read_text()
     assert "bridge_on_crystals" in source
     assert '"crystal_control": crystal_control' in source
+
+
+def test_the_publication_hold_prints_the_control():
+    """The hold's reason is that pose recovery fails its positive control,
+    which is about where a peptide lands. Spec 4.1's primary signal is the
+    bridge geometry, and someone deciding a release should see both."""
+    import ast
+
+    source = (ROOT / "tools" / "publication_hold.py").read_text()
+    tree = ast.parse(source)
+    called = {node.name: {child.func.id for child in ast.walk(node)
+                          if isinstance(child, ast.Call)
+                          and isinstance(child.func, ast.Name)}
+              for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)}
+    assert "detector_control" in called.get("main", set()), (
+        "publication_hold.main no longer prints the detector control, so a "
+        "release decision sees the recovery failure without the primary "
+        "signal's own control"
+    )
