@@ -112,3 +112,36 @@ def test_a_new_decision_goes_above_the_highest_rather_than_into_a_gap():
     # forms are read there is one gap, 45, and not the seven I first thought.
     assert gaps == [45], gaps
     assert highest >= 61, highest
+
+
+def test_every_cited_finding_number_exists():
+    """A citation that lands nowhere sends the next reader nowhere.
+
+    F187 was cited in two source comments and twice in FINDINGS' own prose
+    while FINDINGS.md went straight from F186 to F188, so four pointers had
+    been dangling. This is the finding-number counterpart of the check above,
+    which exists because decision numbers collided twice in one session
+    (F113, F187).
+    """
+    import re
+
+    text = (ROOT / "FINDINGS.md").read_text()
+    defined = set(re.findall(r"^## (F\d+)", text, re.M))
+    assert defined, "FINDINGS.md defines no findings, so the pattern is wrong"
+
+    cited: dict[str, list[str]] = {}
+    for root in ("nobble", "tools", "deploy", "tests"):
+        base = ROOT / root
+        for path in sorted(base.rglob("*.py")) + sorted(base.rglob("*.sh")):
+            if "vendor" in str(path) or "__pycache__" in str(path):
+                continue
+            body = path.read_text(errors="replace")
+            for number in set(re.findall(r"\bF(\d{1,3})\b", body)):
+                cited.setdefault(f"F{number}", []).append(
+                    str(path.relative_to(ROOT)))
+
+    dangling = {key: sorted(value)[:3]
+                for key, value in cited.items() if key not in defined}
+    assert not dangling, (
+        "these finding numbers are cited in code and not defined in "
+        f"FINDINGS.md: {dangling}")

@@ -8526,6 +8526,41 @@ finished: a sweep at the end of a build would have missed both of these,
 which arrived minutes later. The net has to be at the point of publication,
 and now there are two, one in the suite and one in the deploy.
 
+## F187. Cited four times, never written
+
+**This number was reserved in prose and no finding was written under it.**
+Two source comments send a reader here:
+
+```
+nobble/app/routes.py:438   a parallel list is the duplication F181, F183 and
+                           F187 were each about
+nobble/curate/manifest.py:49  a second copy of these eleven pairs is the
+                           duplication F181, F183 and F187 were each about
+```
+
+and FINDINGS' own prose repeats the triple twice more. FINDINGS.md goes from
+F186 to F188, so all four citations have been landing nowhere.
+
+I have not invented its content, because the record is the point and a
+plausible reconstruction would be indistinguishable from one. What the citing
+comments mean is clear from the two findings that do exist and say the same
+thing in sequence: F181, "I put one of two sibling budgets in config and left
+the other in a test", and F183, "I wrote F181 and then did it again in the
+next hour", with F184 closing the gap F183 fell through. A reader following
+any of those four citations wants F181 and F183.
+
+Found by extracting every `F\d+` and `D-NOB-\d+` reference from `nobble/`,
+`tools/`, `deploy/` and `tests/` and resolving each against the two
+documents: 202 distinct findings cited, this the only one dangling. A test
+now keeps it that way, which is the same move `tests/test_decision_ids.py`
+made for decision numbers after two collisions in one session (F113).
+
+The same sweep flagged D-NOB-001 to 007 as undefined, which they are not:
+early decisions live as rows in the summary table at the top of
+`DECISIONS.md` rather than as `##` sections, and `test_decision_ids.py`
+already records that 1 to 7 carry no full entry. My pattern was too narrow,
+not the record.
+
 ## F188. The sweep caught F185, and the way I was reading the suite could not
 
 Two things, found together, both about whether the suite's answer reaches me.
