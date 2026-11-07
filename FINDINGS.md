@@ -14457,3 +14457,31 @@ bridge in any seed and its crystal bridge is 1,137.8 A^2 at the 82.7th
 percentile, so the panel has to print "no seed bridged" against a measured
 crystal. Leaving the row out would read as though that arm was never run,
 which is the same mistake as counting an unmeasurable deposition as a miss.
+
+### F297e. 6BNB verified against the deposited entry, not only the assembly
+
+F297 says bench03's reference ternary has no glue in its coordinates, which
+was read off `6BNB-assembly1.cif.gz`. The obvious objection is that an
+assembly file can drop a ligand, so the claim was checked against the primary
+deposition.
+
+`files.rcsb.org/download/6BNB.cif.gz` declares four entities: DDB1, cereblon,
+BRD4's bromodomain (residues 42 to 168, T43M) and one zinc ion. Its
+`_chem_comp` list, with the standard residues removed, is `ZN` and nothing
+else. dBET57 appears in `_struct.title` and in `_struct_keywords.text` and is
+not an entity, so it was never modelled rather than dropped in the assembly.
+
+What that does and does not license. It licenses the refusal: there is no
+PROTAC in the coordinates to find, so the bridging filter cannot be put to
+this deposition and `score_deposition` returns
+`glue_not_modelled_in_deposition`. It does not license reading 6BNB as a
+glue-free CRBN to BRD4 complex. The degrader is in the crystal, which is what
+the title says and what the complex requires; it is the density that was not
+interpretable. A structure whose ligand is unmodelled is evidence about the
+experiment's resolution, not about the chemistry.
+
+The downstream consequence was already handled before it was understood:
+`derive_pocket` returns None on an absent ligand, so bench03 contributed no
+conditioned jobs and the count appears in `campaign.json` as
+`conditioned_jobs_dropped_no_pocket`. The pocket was missing for a reason
+nobody had looked up.
