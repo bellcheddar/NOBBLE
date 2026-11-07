@@ -11043,3 +11043,66 @@ nothing, which is F218's shape, and it is the fifth time this session that a
 convenient shortcut hid its own subject. Caught by printing the resolved
 yardstick for the live job rather than trusting that the branch was taken,
 which is the F232 rule applied to my own fix.
+
+## F236. Pose recovery fails for the representation the main campaign uses, and succeeds for the other one
+
+Running the chain's last stage early, because the campaign is complete and
+nobody had read it since: `tools/check_prediction.py` scores the F13
+predictions mechanically, and its comparison carries a result that reframes
+what "the positive control failed" means.
+
+The main campaign gives each substrate as a 15-mer peptide. Pose recovery over
+it fails: 0 of 65 poses within 3 A, median 17.54 A (F212), unmoved by
+refinement (F215). The corrected-construct campaign gives the same substrates
+as their whole folded domain, and `nobble/validate/compare.py` reports:
+
+```
+pair                       15-mer   whole domain     move    bridged
+GSPT1 / CRBN               29.221          1.171   -28.05    3/10 -> 10/10
+BRD4 / VHL                 19.235          1.711   -17.52    4/10 -> 10/10
+RBM39 / DCAF15              6.085          0.743    -5.34   10/10 -> 10/10
+CDK12 / DDB1               44.921          5.278   -39.64    0/10 ->  6/10
+CSNK1A1 / CRBN             12.240          6.189    -6.05   10/10 -> 10/10
+BRD4 / CRBN                20.399         16.519    -3.88     4/5 ->   5/5
+IKZF1 / CRBN                5.357          5.357    +0.00   10/10 -> 10/10
+```
+
+Six of seven improved by more than 2 A, none got worse, and three reach 1.2 to
+1.7 A. The seventh is the control: IKZF1's substrate is a linear epitope and
+was deliberately left as a 15-mer in both campaigns, so it should not move, and
+it moved by exactly 0.000.
+
+**This is not a new measurement and not a reinterpretation.** It ran on 3
+November, `compare.compare` has said "F6 supported" since, and the F13
+predictions were registered with their falsifiers before either pair ran. One
+of the two is scored WRONG: RBM39 was predicted to change little and improved
+by 5.342 A, which is the scorer returning a verdict against the person who
+wrote the prediction, as F18 intended.
+
+**It does not contradict F9, which refuted F6.** Those are different claims.
+F6 as a classifier is wrong: being cut from a fold does not separate the
+pairs, and RBM39 is the most domain-embedded window in the panel by coverage
+and recovers best as a 15-mer. F6 as an intervention is supported: supplying
+the domain improves recovery on six of seven. F9's own answer holds the two
+together, because what predicts recovery is the bridge formation rate at
+r = -0.871, and the domain is what restored bridging: 0 of 10 to 6 of 10 on
+CDK12, 3 to 10 on GSPT1, 4 to 10 on BRD4.
+
+**What it changes for G6, and what it does not.** D-NOB-076 holds publication
+because "pose recovery fails its positive control on all seven benchmark
+pairs". That is true of the campaign the atlas is built from and is not true
+of the method: the failure is a property of the 15-mer representation, and the
+project has already run and scored the alternative. The headline "no pose
+reaches 3 A" is a statement about an input choice.
+
+It does not rescue the discrimination claim. The matched-control ROC is a null
+at 0.4583, and 0.4147 on the collapse-robust statistic (F231), and it is
+computed on the main campaign because the corrected campaign has no Sievers
+arm. Nothing here gives Delta-ipTM the power to tell a glue from a matched
+control. And the published poses are still the main campaign's, so a released
+atlas would show 15-mer poses whatever this says about domains.
+
+So the gate's question is better posed than it was: not "can this method place
+a degron" but "should an atlas built from 15-mer poses be published when the
+same pipeline places six of seven degrons within 2 to 6 A given the domain".
+That is Marc's to answer and the hold stays until he does.
