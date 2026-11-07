@@ -12983,3 +12983,47 @@ count checkable: "8 blocks found" says nothing on its own, and "8 of 11" says
 the thing immediately. The guard I wrote to catch unexercised code was itself
 unexercised in two files, and the fix is the same one I had just applied twice
 to other people's measurements.
+
+## F272
+
+A mutation sweep over today's four instrument changes caught three and walked
+through the fourth.
+
+I had hand-rolled two mutation checks earlier today, which `tools/mutate.py`'s
+own docstring warns against in as many words: two hand-rolled shell loops have
+reached live state, one rebuilding the published atlas from a campaign with 54
+of 2,360 jobs scored. So this used the tool, which refuses on a dirty tree,
+restores on SIGINT and SIGTERM, fingerprints 34 live-state files before and
+after, and reports a stale anchor as an unverified mutation rather than a pass.
+
+```
+F255  hours_spent stops counting failed work       caught
+F257  the projection ignores the token band        caught
+F270  the watchdog takes the pricing factor        caught
+F266  build_atlas stops refusing                   NOT CAUGHT
+```
+
+The fourth is mine and the reason is instructive. `test_the_publish_gate
+_refuses_on_it` asserted that the strings `_regenerated_scan` and `return 1`
+appear in the builder's source. Replacing the condition with `if False:`
+leaves both strings exactly where they were, so the guard between a superseded
+input and a published pose was removed and the test passed. My own docstring
+had said it was structural, which I took as a limitation to accept rather than
+as a thing to get right.
+
+It now parses the builder instead of searching it: there must be an `If` whose
+test is the name the scan's rows were bound to, with a `Return` of 1 in its
+body, and separately a branch that refuses on `unavailable`. Both mutations
+are caught now, the condition and the return value, verified by running them.
+
+Parsing costs the same as searching and cannot be satisfied by text that is no
+longer reachable, which is the whole difference. The same substitution would
+have passed every text-matching guard I wrote today, so the three others that
+assert on source text were checked: `test_the_exceptions_are_not_published_by
+_name` parses the builder's publish tuple with `ast`, the corrections script's
+placement test compares indices of real statements, and
+`test_the_waits_come_before_anything_is_cleared` does the same. Those are
+orderings rather than presence, and an unreachable statement still has an
+index, so they are weaker than a parse and stronger than a grep. Recorded
+rather than rewritten: the mutation that would defeat them is a reordering,
+which is not the mutation anyone makes by accident.

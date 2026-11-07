@@ -91,24 +91,63 @@ def test_a_campaign_with_no_queue_is_unavailable(tmp_path):
 
 
 def test_the_publish_gate_refuses_on_it():
-    """Structural: the refusal has to be in the builder, not only reported.
+    """The refusal has to be in the builder, not only reported.
 
     This is the guard between a superseded input and a published pose, so a
-    warning would not do. Checked by reading the builder rather than by
-    running it, because running it refuses earlier on F219 today and would
-    pass this test for the wrong reason.
+    warning would not do. Read from the builder rather than run, because
+    running it refuses earlier on F219 today and would pass for the wrong
+    reason.
+
+    Parsed rather than searched. The first version asserted that the strings
+    "_regenerated_scan" and "return 1" appear in the source, and
+    `tools/mutate.py` walked straight through it: replacing the condition
+    with `if False:` leaves both strings exactly where they were, so the
+    guard was removed and the test passed. Asserting on the parse tree
+    costs the same and cannot be satisfied by text that is no longer
+    reachable.
     """
+    import ast
+
     source = (ROOT / "deploy" / "build_atlas.py").read_text()
-    assert "_regenerated_scan" in source, (
-        "build_atlas does not check the inputs against the code")
-    block = source[source.index("_regenerated_scan"):]
-    assert "return 1" in block[:2000], block[:400]
-    assert "unavailable" in block[:2000], (
+    tree = ast.parse(source)
+    assigned = [node for node in ast.walk(tree)
+                if isinstance(node, ast.Assign)
+                and any(isinstance(t, ast.Tuple) for t in node.targets)
+                and "_regenerated_scan" in ast.unparse(node.value)]
+    assert assigned, "build_atlas never calls _regenerated_scan"
+
+    # The `if` that decides the refusal must test the rows the scan returned,
+    # and its body must return non-zero.
+    refusals = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.If):
+            continue
+        if ast.unparse(node.test) != "regenerated":
+            continue
+        returns = [inner for inner in ast.walk(node)
+                   if isinstance(inner, ast.Return)
+                   and isinstance(inner.value, ast.Constant)
+                   and inner.value.value == 1]
+        if returns:
+            refusals.append(node)
+    assert refusals, (
+        "no branch tests the scan's findings and returns 1, so a job holding "
+        "a YAML the code would not write no longer stops the build")
+
+    # And the unknown case refuses too, while the out-of-scope case does not.
+    unknown = [node for node in ast.walk(tree)
+               if isinstance(node, ast.If)
+               and "unavailable" in ast.unparse(node.test)
+               and any(isinstance(inner, ast.Return)
+                       and isinstance(inner.value, ast.Constant)
+                       and inner.value.value == 1
+                       for inner in ast.walk(node))]
+    assert unknown, (
         "the builder does not refuse when the check cannot run, so a failed "
         "comparison would read as a pass")
-    assert "not_applicable" not in block[:2000], (
-        "the builder refuses on not_applicable, which is not an unknown: "
-        "the atlas is legitimately built from the benchmark campaign")
+    assert "not_applicable" not in source, (
+        "the builder mentions not_applicable, which is not an unknown: the "
+        "atlas is legitimately built from the benchmark campaign")
 
 
 def test_provenance_reports_the_link():
