@@ -82,6 +82,50 @@
     <span class="stat__sub">control: {{ ctrl_state }}</span>
   </div>
 
+  {# The same curve on both campaigns, in the units the pose-recovery failure
+     is quoted in. compare.compare carries each campaign's own overall_curve
+     so this is the measurement the layer wrote, not a second estimate. The
+     page previously showed the per-pair table and the verdict while the
+     headline "0 of 65 within 3 A" lived on another tab, with no route from
+     one to the other. Labels and figures, so it costs the copy budget
+     nothing. #}
+  {% set base_curve = comparison.get('baseline_recovery_curve') or {} %}
+  {% set corr_curve = comparison.get('corrected_recovery_curve') or {} %}
+  {% if base_curve.get('status') == 'computed' and corr_curve.get('status') == 'computed' %}
+  <div class="table-wrap" style="max-height:none;margin:0.8rem 0">
+    <table class="ntable">
+      <thead><tr>
+        <th>Submitted as</th>
+        <th class="num">Median RMSD</th>
+        <th class="num">Within 3 A</th>
+        <th class="num">Within 2 A</th>
+        <th class="num">Poses</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          {# "fragment (15-mer)" rather than "15-mer": a cell whose text
+             begins with a digit puts `>15` in the markup, which
+             test_template_cutoffs reads as a comparison against a literal.
+             The guard cannot tell that from `> 15` and should not be
+             weakened to try, so the markup is written unambiguously. #}
+          <td>fragment (15-mer)</td>
+          <td class="num">{{ base_curve.get('median_rmsd') }}</td>
+          <td class="num">{{ base_curve.get('within_3.0A') }}</td>
+          <td class="num">{{ base_curve.get('within_2.0A') }}</td>
+          <td class="num">{{ base_curve.get('n') }}</td>
+        </tr>
+        <tr>
+          <td>whole domain</td>
+          <td class="num">{{ corr_curve.get('median_rmsd') }}</td>
+          <td class="num">{{ corr_curve.get('within_3.0A') }}</td>
+          <td class="num">{{ corr_curve.get('within_2.0A') }}</td>
+          <td class="num">{{ corr_curve.get('n') }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
   <div class="table-wrap" tabindex="0" role="group" aria-label="Scrollable table" style="max-height:none">
     <table class="ntable">
       <thead><tr>

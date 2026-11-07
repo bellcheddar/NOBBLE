@@ -144,3 +144,31 @@ def test_a_campaign_without_validation_says_so_rather_than_nothing(tmp_path):
     curve = compare_module._recovery_curve(tmp_path / "campaign_absent")
     assert curve["status"].startswith("not computed"), curve
     assert "within_3.0A" not in curve, curve
+
+
+def test_the_benchmark_page_renders_both_curves():
+    """Data nothing displays does not reach a reader.
+
+    compare.compare was given each campaign's own pose-recovery curve so the
+    bundle would stop showing the negative without the measurement that
+    scopes it. The template names its fields rather than iterating, so the
+    two new keys sat in comparison.json unrendered and the stated reason for
+    adding them was not yet true of the site.
+    """
+    template = (ROOT / "nobble" / "app" / "templates" / "benchmark.html").read_text()
+    for key in ("baseline_recovery_curve", "corrected_recovery_curve"):
+        assert key in template, (
+            f"{key} is carried in comparison.json and shown nowhere")
+    # The radius the headline failure is quoted in, and the one the
+    # whole-domain campaign clears.
+    assert "within_3.0A" in template, template[:0]
+    assert "15-mer" in template and "whole domain" in template
+
+
+def test_the_curve_table_is_guarded_on_both_being_computed():
+    """A half-populated comparison must not render as two blank rows."""
+    template = (ROOT / "nobble" / "app" / "templates" / "benchmark.html").read_text()
+    guard = "base_curve.get('status') == 'computed' and corr_curve.get('status') == 'computed'"
+    assert guard in template, (
+        "the curve table is not guarded, so a campaign without validation "
+        "would render empty cells as if measured")
