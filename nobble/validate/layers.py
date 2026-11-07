@@ -723,9 +723,57 @@ def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerR
     return layer
 
 
+# The statistic spec 5.3 names, and the others that have been put to the same
+# labels. Listed here so the count is a fact in the code rather than something
+# a reader has to reconstruct: four statistics on one label set is four
+# chances, and only the first is in the specification (F280).
+ROC_COMPANIONS = ("delta_iptm_median", "bridge_formation_rate",
+                  "bridge_percentile")
+
+
+def roc_companions(campaign: Path) -> list[dict]:
+    """The same curve on each companion statistic, for the record.
+
+    Not a search for a better number. F280 fixed the reading before any of
+    these were computed: an interval containing 0.5 leaves the null standing
+    across everything tried, and one excluding it is a lead needing its
+    multiplicity stated and replication on labels not yet used. All four
+    contain 0.5.
+
+    Carried into `validation.json` so the app can show that the null is not
+    merely the primary statistic's, which is the stronger and more useful
+    statement. Each row keeps its own coverage line, because
+    `bridge_percentile` is absent for pairs in which nothing bridged and so
+    runs on a subset selected on the outcome it measures.
+    """
+    out = []
+    for statistic in ROC_COMPANIONS:
+        layer = matched_control_roc(campaign, statistic=statistic)
+        summary = layer.summary or {}
+        out.append({
+            "statistic": statistic,
+            "computed": layer.computed,
+            "status": layer.status,
+            "auc": summary.get("auc"),
+            "ci95": summary.get("ci95"),
+            "positives": summary.get("positives"),
+            "matched_negatives": summary.get("matched_negatives"),
+            "coverage": summary.get("coverage"),
+            "interpretation": summary.get("interpretation"),
+        })
+    return out
+
+
 def run(campaign: Path) -> dict:
     """All three layers. Returns statuses, never bare numbers."""
-    layers = [pose_recovery(campaign), time_split(campaign), matched_control_roc(campaign)]
+    primary = matched_control_roc(campaign)
+    if primary.computed:
+        # Attached to the primary curve rather than stored beside it, so a
+        # reader of the ROC layer cannot miss that three more statistics were
+        # tried on the same labels.
+        primary.summary["companions"] = roc_companions(campaign)
+        primary.summary["statistics_tried"] = 1 + len(ROC_COMPANIONS)
+    layers = [pose_recovery(campaign), time_split(campaign), primary]
     report = {
         "campaign": campaign.name,
         "layers": {layer.name: layer.to_dict() for layer in layers},

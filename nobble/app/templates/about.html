@@ -257,6 +257,45 @@
     {% if roc.summary.get('coverage', '').startswith('partial') %}
       <p class="panel__hint">{{ roc.summary.coverage }}</p>
     {% endif %}
+    {# Every statistic put to these labels, not just the one above. The null
+       holding across all of them is a stronger result than the primary
+       statistic's alone, and stating the count is what keeps it from reading
+       as a search for a better number (F280). The prose stays at one line
+       because the table carries the rest. #}
+    {% if roc.summary.get('companions') %}
+      <p class="panel__hint">All
+        {{ roc.summary.get('statistics_tried', 1 + roc.summary.companions|length) }}
+        statistics put to this split give an interval containing 0.5. Spec 5.3
+        names the first.</p>
+      <div class="table-wrap" tabindex="0" role="group" aria-label="Scrollable table" style="max-height:none">
+        <table class="ntable">
+          <thead><tr><th>Statistic</th><th class="num">AUC</th>
+            <th class="num">{{ roc.summary.confidence_level | default(95, true) }}%
+              CI</th><th class="num">pairs</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="mono">{{ roc.summary.statistic }}</td>
+              <td class="num">{{ roc.summary.auc }}</td>
+              <td class="num">{{ roc.summary.ci95[0] }} to {{ roc.summary.ci95[1] }}</td>
+              <td class="num">{{ roc.summary.positives }} / {{ roc.summary.matched_negatives }}</td>
+            </tr>
+            {% for row in roc.summary.companions %}
+            <tr>
+              <td class="mono">{{ row.statistic }}</td>
+              <td class="num">{{ row.auc if row.auc is not none else 'not computed' }}</td>
+              <td class="num">{% if row.ci95 %}{{ row.ci95[0] }} to {{ row.ci95[1] }}{% else %}not computed{% endif %}</td>
+              <td class="num">{{ row.positives }} / {{ row.matched_negatives }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% for row in roc.summary.companions %}
+        {% if row.coverage and row.coverage.startswith('partial') %}
+          <p class="panel__hint">{{ row.statistic }}: {{ row.coverage }}</p>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
   {% else %}
     <p class="panel__hint"><span class="flag flag--pending">not computed</span>
       {{ roc.get('status', 'no campaign') }}</p>

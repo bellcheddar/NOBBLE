@@ -13545,3 +13545,41 @@ not something this campaign can answer by computing harder.
 Recorded here, and added to the README's whole-domain bullet and to
 `tools/publication_hold.py`, which prints the whole-domain comparison as part
 of the refusal and is the place a reader meets the number first.
+
+## F283
+
+The app now shows every statistic put to the Sievers labels, not one of four.
+
+F280 computed four and every interval contained 0.5. Only the first reached
+the page: the about panel showed Delta-ipTM at 0.4583 and nothing else, while
+the campaign page offers a sortable Bridge rate column with nothing to say
+that the rate does not separate known degraders from matched non-degraders.
+A reader sorting by it would reasonably infer otherwise.
+
+The null across all four is also the stronger statement, so it is worth
+showing rather than merely not hiding: the primary statistic failing is one
+result, and the bridge geometry over the same poses and pairs failing too is
+a different and better-supported one.
+
+`layers.roc_companions` computes the three companions and `run` attaches them
+to the primary curve's summary with `statistics_tried`, so a reader of
+`validation.json` cannot miss the count. Each row keeps its own coverage line,
+because they do not share a denominator: `bridge_percentile` runs on 22 of 24
+positives and 89 of 96 negatives, the missing nine having no percentile
+because nothing bridged, which is a selection on the outcome and is printed
+beneath the table.
+
+The panel gains one line of prose and a four-row table. Tables are outside the
+copy budget by CLAUDE.md's own terms, and one line is what the budget allows:
+"All 4 statistics put to this split give an interval containing 0.5. Spec 5.3
+names the first."
+
+Two of the project's guards caught the first version, which is worth
+recording because both were style rules I know and broke anyway. I used an em
+dash as the empty-cell placeholder, which `test_no_em_dash_is_used_as
+_punctuation` reads off the whole line, and I wrote "95% CI" as a literal
+column header, which `test_no_surface_prints_a_hard_coded_ninety_five` exists
+to stop: the level is computed from `scoring.significance_alpha` and a literal
+95 in markup disagrees with the interval beside it the moment alpha changes
+(F119). The placeholder is now "not computed" and the header reads the level
+off the layer.
