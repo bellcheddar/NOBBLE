@@ -15070,3 +15070,35 @@ not opened it yet, and editing `deploy/build_atlas.py` would change
 behaviour inside the refresh currently running. The chain is about to
 rebuild the atlas anyway, which republishes all seven, and whether they
 survive that is the measurement worth having before adding a guard.
+
+### F309b. Corrected: transient, and I reached for the sync story again
+
+The chain's rebuild finished and `deploy/atlas/crystals/` holds all seven,
+with no conflict copies anywhere in the bundle. So the missing four were a
+state between builds, not a loss, and the pose page's overlay is whole.
+
+Two corrections to what I wrote above, both in the same direction.
+
+**The `git add -A` failure is mundane.** It said `unable to stat
+'...seed2 2.cif': No such file or directory`, and I wrote in the commit
+message that "the bundle is churning in both directions right now". The
+chain's atlas step was clearing and rewriting `deploy/atlas` at that moment.
+A file git saw while scanning and could not stat a moment later is exactly
+what a concurrent rebuild of that directory produces. No second mechanism is
+needed, and committing the bundle while a build owns it was the mistake.
+
+**I guessed twice in one day after saying I would not.** The paragraph above
+says "I am not going to guess twice in one day" and then the commit message
+for it leans on the sync story anyway. The claim I could defend was smaller:
+the build wrote seven and four were absent ten minutes later.
+
+`tools/atlas_drift.py` is ruled out, checked rather than assumed: it rebuilds
+into a `TemporaryDirectory` with `NOBBLE_ATLAS_OUT` pointed at it, so the
+`status.sh` run I made around 23:38 did not touch the real bundle.
+
+What is left unexplained is one removal of four files at 23:38, which is a
+small claim and stays open. **What is not in doubt is the gap:** both of
+today's new checks look for files that should not be in the bundle, and
+nothing at build or deploy time looks for referenced files that are missing.
+`test_the_bundle_carries_every_assembly_the_atlas_references` does, and it
+runs when I run it.
