@@ -126,3 +126,43 @@ def test_the_page_says_nothing_when_the_arm_is_complete():
     guard = template[template.index("roc.summary.interpretation"):
                      template.index("roc.summary.coverage")]
     assert "startswith('partial')" in guard, guard
+
+
+def test_the_partial_line_actually_renders(monkeypatch):
+    """The branch no fixture reaches otherwise.
+
+    The published bundle's validation.json predates this field, so the walk
+    in test_every_route_answers.py renders the panel with `coverage` absent
+    and exercises only the silent path. A Jinja error inside the conditional
+    would pass every test in the suite, which is F260's lesson one file over:
+    a check that never enters a branch says nothing about it.
+    """
+    from nobble.app import create_app, data
+
+    atlas = ROOT / "deploy" / "atlas"
+    if not (atlas / "validation.json").exists():
+        pytest.skip("no published bundle to serve")
+
+    real = data.precomputed
+
+    def partial(name):
+        payload = real(name)
+        if name != "validation.json":
+            return payload
+        import copy
+
+        payload = copy.deepcopy(payload)
+        layer = (payload.get("layers") or {}).get("matched_control_roc")
+        if not layer or not layer.get("summary"):
+            pytest.skip("the bundle has no computed ROC layer to adjust")
+        layer["summary"]["coverage"] = (
+            "partial: 6 of 24 positive(s) and 24 of 96 matched negative(s)")
+        return payload
+
+    monkeypatch.setattr(data, "precomputed", partial)
+    app = create_app(str(atlas))
+    app.config["TESTING"] = True
+    page = app.test_client().get("/about")
+    assert page.status_code == 200, page.status_code
+    text = page.get_data(as_text=True)
+    assert "partial: 6 of 24" in text, "the partial coverage line did not render"

@@ -12382,3 +12382,42 @@ Six blocks across four scripts compile. The gates section prints again, and it
 now shows both of the day's changes: 86.76 hours spent of which 7.91 on three
 failed attempts (F255), and refinement priced at 70.73 to 72.39 hours where
 the pooled factor said about 38 (F257).
+
+## F261
+
+The site publishes the failing curve without the measurement that reframes it.
+
+`deploy/atlas/validation.json` is the main campaign's, not the benchmark
+bundle's: campaign `campaign_20261104T004632Z`, pose recovery 0 of 65 within
+3 A at a median of 17.535 A, identical to the live file. So the negative
+result is on the published site now.
+
+`deploy/atlas/comparison.json` has neither `baseline_recovery_curve` nor
+`corrected_recovery_curve`. It was built before `nobble.validate.compare`
+emitted them, so the whole-domain contrast that F236 found, 35 of 65 within
+3 A at a median of 2.494 A by the same measurement, is not in the published
+slice at all. The two-row table in `benchmark.html` is guarded on both curves
+being computed, which is correct, and the guard is false on the published
+data, so the table does not render.
+
+The live `corrected_20261103T214331Z/comparison.json` has both curves
+computed, so the data exists on the Studio. What is missing is the atlas
+rebuild that would carry it across, and that rebuild refuses while bench02's
+cached featurisation disagrees with its YAML (F219). The refusal is right and
+is not to be worked around by copying a file into `deploy/atlas` by hand: the
+whole point of it is that nothing reaches the published slice without the
+provenance checks passing.
+
+So the ordering is: the F47 correction runs when the GPU is free, the atlas
+rebuilds, and the contrast appears beside the failure. Until then the site
+carries the harsher of the two numbers on its own. Publication of the main
+campaign is held anyway (D-NOB-076), and this is a reason the hold is the
+right call rather than an argument against it.
+
+The test gap that surfaced this is F260's lesson one file over. The route walk
+in `test_every_route_answers.py` renders against the published bundle, where
+the guard is false, so the contrast table appeared in no test and a Jinja
+error inside it would have passed the whole suite. Both branches are now
+rendered: the contrast with the live campaign's own curves rather than
+hand-made numbers, and the ROC coverage line in its partial form, which the
+bundle also cannot reach because its validation predates the field.
