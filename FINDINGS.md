@@ -14753,8 +14753,25 @@ with 3.8 GB of RAM.
 I found them because a commit took more than ten minutes. `git add -A` was
 hashing 2,067 changed paths, 2,027 of which were untracked and whose names
 `git status` was quoting, which is how I noticed they contained spaces. The
-commit landed with 706 of them in it before I stopped the task; it had not
-been pushed, so `git reset HEAD~1` undid it and nothing left the machine.
+commit landed with 706 of them in it before I stopped the task, **and it was
+pushed.**
+
+I checked `git rev-parse origin/main`, read the previous commit, concluded
+that nothing had left the machine and wrote that here. The ref was stale,
+because the push that would have updated it was the one I had just killed.
+`git fetch` says the remote tip is the junk commit. So the first version of
+this paragraph was wrong in the direction that made the problem smaller, and
+it was wrong because I read a cached ref as a fact about a remote. A local
+`origin/*` ref is a record of the last fetch, not an observation of the
+remote, and after killing a push it is the one thing guaranteed to be out of
+date.
+
+Corrected forward rather than rewritten: `git reset --soft` onto the remote
+tip and one commit on top records the deletion, which is a fast-forward and
+destroys nothing. A force push would excise the blobs and rewrite history on
+a remote, which is not a call to make unprompted, and the case for it is weak
+anyway: the 706 blobs are byte-identical to files the repo already tracks, so
+git stores the content once and what remains is a few hundred tree entries.
 With the duplicates removed the same rebuild is 53 changed files, which is
 what a fifteen-job re-run plus one new `about.json` key should be.
 
