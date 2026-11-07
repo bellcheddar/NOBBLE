@@ -251,6 +251,12 @@
         <span class="stat__sub">positives / matched negatives</span></div>
     </div>
     <p class="panel__hint">{{ roc.summary.interpretation }}</p>
+    {# Only when the arm is short of its queue. A complete curve needs no
+       line, and a caveat printed beside every number reads as a lack of
+       confidence in the numbers rather than as rigour. #}
+    {% if roc.summary.get('coverage', '').startswith('partial') %}
+      <p class="panel__hint">{{ roc.summary.coverage }}</p>
+    {% endif %}
   {% else %}
     <p class="panel__hint"><span class="flag flag--pending">not computed</span>
       {{ roc.get('status', 'no campaign') }}</p>

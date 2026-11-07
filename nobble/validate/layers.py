@@ -486,6 +486,52 @@ def _verdict(low: float, high: float) -> str:
     return f"not distinguishable from chance at {level}"
 
 
+def _arm_expected(campaign: Path) -> dict[str, int]:
+    """Distinct ROC-arm pairs per label in the campaign's queue.
+
+    The queue carries `tier` and `peptide_label` on every job, so the arm's
+    intended composition is exact rather than inferred. Counted over pair ids
+    because the curve has one point per pair, not per job.
+
+    An unreadable or absent queue gives an empty mapping, which reads as "not
+    known" downstream rather than as zero: a zero denominator would make any
+    coverage look complete, which is the failure this exists to prevent.
+    """
+    queue = Path(campaign) / "queue.jsonl"
+    if not queue.exists():
+        return {}
+    seen: dict[str, set[str]] = {}
+    try:
+        rows = paths.read_jsonl(queue, tolerate_torn=True)
+    except OSError:
+        return {}
+    for row in rows:
+        if row.get("tier") != ROC_ARM:
+            continue
+        label = row.get("peptide_label")
+        if label not in ROC_LABELS:
+            continue
+        seen.setdefault(label, set()).add(row.get("pair_id"))
+    return {label: len(pairs) for label, pairs in seen.items()}
+
+
+def _arm_coverage(positives: int, negatives: int,
+                  expected: dict[str, int]) -> str:
+    """One line saying how much of the arm the curve was drawn from."""
+    want_pos = expected.get("degraded")
+    want_neg = expected.get("not_degraded")
+    if not want_pos or not want_neg:
+        return ("unknown: the campaign's queue could not be read, so the "
+                "arm's intended size is not available to compare against")
+    if positives >= want_pos and negatives >= want_neg:
+        return (f"complete: all {want_pos} positive(s) and {want_neg} matched "
+                "negative(s) of the arm are on the curve")
+    return (f"partial: {positives} of {want_pos} positive(s) and {negatives} "
+            f"of {want_neg} matched negative(s). The interval widens with a "
+            "smaller sample, and the pairs not yet scored are not a random "
+            "subset of the arm: they are whatever the runner reached last")
+
+
 def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerResult:
     """Delta-ipTM on the Sievers degraded against non-degraded split."""
     layer = LayerResult(name="matched_control_roc", status="not_computed: no scores")
@@ -539,10 +585,22 @@ def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerR
     # the question is only whether every pair contributed alike.
     balance = _seed_balance(positive_rows, negative_rows)
 
+    # What the arm should hold, from the campaign's own queue. Without it the
+    # counts below have no denominator: 24 positives and 96 negatives is the
+    # whole arm, and 6 and 24 would print in the same shape with nothing to
+    # say that three quarters of it had not been scored. A curve over a
+    # partial arm is still a real estimate with a wider interval, unlike
+    # F258's vacuous confirmation, so this reports coverage rather than
+    # refusing to compute.
+    expected = _arm_expected(campaign)
+
     layer.summary = {
         "statistic": statistic,
         "positives": len(positives),
         "matched_negatives": len(negatives),
+        "positives_expected": expected.get("degraded"),
+        "matched_negatives_expected": expected.get("not_degraded"),
+        "coverage": _arm_coverage(len(positives), len(negatives), expected),
         "pairs_outside_the_arm_excluded": excluded,
         "non_finite_dropped": non_finite,
         "source": "Sievers zinc-finger screen: negatives assayed in the same screen",

@@ -12300,3 +12300,43 @@ wrote no `queue.jsonl`, so its existing tests had been passing through the new
 branch that has no denominator, which is the right answer to a different
 question. It now carries a queue holding exactly its pair, so those tests read
 as the complete arm they were written to describe.
+
+## F259
+
+The matched-control ROC reported its counts without saying what the arm holds.
+
+The curve's summary carried `positives: 24` and `matched_negatives: 96`, which
+is the whole Sievers arm, and it would have carried `6` and `24` in exactly
+the same shape with nothing to say that three quarters of the arm had not been
+scored. The headline of this project is that curve reading as a null, so
+whether it was drawn from the whole arm is part of the claim rather than a
+detail about it.
+
+The layer was already careful about two neighbouring denominators: it counts
+pairs excluded for sitting outside the arm, and it counts pairs scored and
+then dropped for a non-finite statistic, with a comment about silent changes
+of denominator (F74). The one it did not have was the arm's intended size.
+
+The queue carries `tier` and `peptide_label` on every job, so that size is
+exact rather than inferred: 24 degraded and 96 not_degraded distinct pairs at
+`tier == sievers_zf`. Counted over pair ids, because the curve has one point
+per pair and counting queue rows would give the job count, fifteen times
+larger, making a complete arm read as 6 per cent covered.
+
+Confirmed on the live campaign: 24 of 24 and 96 of 96, so the published null
+is over the complete arm. That was the expected answer and it had not been
+checked.
+
+Unlike F258 this reports rather than refuses. "No pair clears the line" is
+vacuously true of an empty set, so a partial arm cannot confirm it; an AUC
+over a partial arm is a real estimate with a wider interval, and refusing to
+compute it would be hiding a result rather than qualifying one. The coverage
+line says the pairs not yet scored are not a random subset, since they are
+whatever the runner reached last.
+
+Two directions to get right. An absent or unreadable queue gives "unknown"
+coverage rather than full coverage: `expected.get("degraded")` returning 0 and
+compared with `>=` reads as complete for any number of scored pairs, which is
+the failure this exists to prevent. And the page prints the line only when the
+arm is partial, because a caveat beside every number reads as a lack of
+confidence in the numbers rather than as rigour.
