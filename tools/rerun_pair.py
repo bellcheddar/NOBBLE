@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate one pair's YAMLs and clear its results so it reruns.
+"""Restore one pair's YAMLs from a known-good campaign and clear its results.
 
 Written for F47. The main campaign's `bench02_BRD4_VHL` jobs were emitted
 with a hydroxyproline on BRD4 Pro379, because the modification rule keyed
@@ -15,10 +15,19 @@ final atlas rebuild.
 
     python tools/rerun_pair.py bench02_BRD4_VHL --campaign campaigns/campaign_...
 
-It regenerates the pair's YAMLs from the current code, drops its rows from
-state.jsonl and results.jsonl, and leaves the running to
-`tools/run_queue.sh`, which skips every job already in state and so runs
-exactly the ones this removed.
+It copies the pair's YAMLs from another campaign that holds exactly one copy
+of each, drops its rows from state.jsonl and results.jsonl, and leaves the
+running to `tools/run_queue.sh`, which skips every job already in state and so
+runs exactly the ones this removed.
+
+**It does not regenerate from code**, and this docstring said twice that it
+did. The difference decides whether the tool can fix a given pair at all. F47
+is correctable here because the corrected YAML exists in another campaign; a
+pair whose YAML was wrong in every campaign, because the assembler that wrote
+it was wrong, has no reference to copy and this refuses by design (F146). That
+is the case for `scr_bench03_BRD4_CRBN`, whose ternary YAMLs were written
+without their glue (F262): the fix is in the assembler, so the correct YAML
+has never existed on disk anywhere. See `--regenerate` below (F265).
 """
 from __future__ import annotations
 
@@ -218,6 +227,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--campaign", required=True)
     parser.add_argument("--apply", action="store_true",
                         help="without this, report what would change and stop")
+    parser.add_argument("--regenerate", action="store_true",
+                        help="rebuild the YAMLs from the current code instead "
+                             "of copying them from another campaign, for a "
+                             "pair whose correct YAML has never existed on "
+                             "disk anywhere")
     args = parser.parse_args(argv)
 
     campaign = Path(args.campaign).resolve()
@@ -287,10 +301,59 @@ def main(argv: list[str] | None = None) -> int:
     # known-good reference (F146), so a dry run that skips the lookup can
     # promise fifteen corrected YAMLs where the real run corrects none and
     # exits 2. Under F145 that was every invocation.
-    references = {row["job_id"]: _known_good(Path(row["yaml"]).name, campaign)
-                  for row in jobs}
-    unverified = sorted(job_id for job_id, source in references.items()
-                        if source is None)
+    if args.regenerate:
+        # The verification F146 asks for, by the thing it is actually about.
+        # A known-good reference is a proxy for "the input will change"; the
+        # direct test is whether the regenerated document differs from what
+        # is on disk. Both refuse to clear results and re-run an identical
+        # input, which is the whole point of the guard, and this one also
+        # works for a pair whose correct YAML has never existed anywhere
+        # because the assembler that wrote it was wrong (F262, F265).
+        from nobble.execute.campaign import regenerate_pair
+
+        fresh = regenerate_pair(args.pair_id)
+        missing = sorted(row["job_id"] for row in jobs
+                         if row["job_id"] not in fresh)
+        if missing:
+            print(f"the current code emits no YAML for {len(missing)} of "
+                  f"{len(jobs)} job(s) of this pair, so regenerating would "
+                  "silently leave them as they are: "
+                  f"{missing[:3]}", file=sys.stderr)
+            return 2
+        rewrites = {row["job_id"]: fresh[row["job_id"]] for row in jobs
+                    if fresh[row["job_id"]] != Path(row["yaml"]).read_text()}
+        if not rewrites:
+            print(f"\nREFUSING: the current code regenerates all "
+                  f"{len(jobs)} YAML(s) byte-identical to what is on disk, so "
+                  "there is nothing to correct and clearing the results would "
+                  "re-run the same input (F146).", file=sys.stderr)
+            return 2
+        print(f"  {len(rewrites)} of {len(jobs)} YAML(s) differ from what the "
+              "current code emits and would be rewritten")
+        if not args.apply:
+            for job_id in sorted(rewrites):
+                print(f"    {job_id}")
+            for name in ("state.jsonl", "results.jsonl", "scores.jsonl"):
+                print(f"  {_would_drop(campaign / name, args.pair_id)} row(s) "
+                      f"would be dropped from {name}")
+            cached = _cached_outputs(campaign, jobs)
+            print(f"  {len(cached)} cached output directory/ies would be "
+                  "removed, so the re-run featurises the corrected YAML")
+            print("  rerun with --apply --regenerate to do it")
+            return 0
+        for job_id, text in sorted(rewrites.items()):
+            target = Path(next(row["yaml"] for row in jobs
+                               if row["job_id"] == job_id))
+            shutil.copy(target, target.with_suffix(".yaml.bak"))
+            target.write_text(text)
+        print(f"  regenerated {len(rewrites)} YAML(s) from the current code")
+        references = {row["job_id"]: Path(row["yaml"]) for row in jobs}
+        unverified = []
+    else:
+        references = {row["job_id"]: _known_good(Path(row["yaml"]).name, campaign)
+                      for row in jobs}
+        unverified = sorted(job_id for job_id, source in references.items()
+                            if source is None)
 
     if not args.apply:
         return _rehearse(campaign, args.pair_id, jobs, references, unverified)

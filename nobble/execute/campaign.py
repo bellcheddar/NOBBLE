@@ -386,6 +386,100 @@ def assemble_tier_b(reuse_latest: bool = True) -> dict:
         return {"path": str(directory), "reused": False, **summary}
 
 
+def regenerate_pair(pair_id: str) -> dict[str, str]:
+    """`{job_id: yaml text}` for one pair, as the current code would write it.
+
+    Nothing is written and no campaign directory is created. That last part
+    is why this exists: re-deriving a YAML used to mean calling
+    `assemble_campaign`, which writes a whole new `campaigns/campaign_<stamp>`
+    directory, and both the chain and `tools/status.sh` pick their campaign
+    with the newest such directory. A scratch assembly would have become "the
+    latest campaign" and the chain's remaining stages would have targeted it.
+
+    Conditioned jobs with no measurable pocket are omitted, the same ones the
+    assembler drops and counts, so a caller comparing this against a campaign
+    on disk finds them absent from both.
+    """
+    from nobble.curate import library as LM
+    from nobble.curate import manifest as M
+
+    library = LM.load()
+    if library is None:
+        raise RuntimeError("no library manifest: run nobble.curate.library first")
+    manifest = M.build_campaign_manifest(library=library["peptides"])
+    pair_by_id = {pair["pair_id"]: pair for pair in manifest["pairs"]}
+    rows = {row["peptide_id"]: row for row in library["peptides"]}
+    ligand_by_index = L.benchmark_ligands()
+    member_by_pair = {
+        f"bench{item['index']:02d}_{item['gene']}_{item['e3']}": item
+        for item in P.BENCHMARK_CHAINS
+    }
+    cache: dict[tuple, Y.PocketConstraint | None] = {}
+
+    out: dict[str, str] = {}
+    for job in manifest["jobs"]:
+        if job.pair_id != pair_id:
+            continue
+        pair = pair_by_id.get(job.pair_id)
+        row = rows.get(job.peptide_id)
+        if pair is None or row is None:
+            continue
+        pocket = _pocket_for_pair(pair, member_by_pair, cache)
+        if job.conditioning == "conditioned" and pocket is None:
+            continue
+        out[job.job_id] = Y.to_yaml_text(document_for(
+            job, pair, row, member_by_pair, ligand_by_index, pocket))
+    return out
+
+
+def _pocket_for_pair(pair: dict, member_by_pair: dict,
+                     cache: dict) -> "Y.PocketConstraint | None":
+    """The pocket constraint for a pair, cached by construct and ligand.
+
+    Lifted out of `assemble_campaign`'s closure so the rerun tool can produce
+    the same document the assembler would. Two spellings of how a YAML is
+    built is the F154 and F57 shape: the one that is not exercised drifts, and
+    this one would be the one that decides whether a correction is a
+    correction.
+    """
+    construct_name = pair["construct"]
+    ligand = pair.get("ligand") or {}
+    ccd = ligand.get("ccd")
+    key = (construct_name, ccd or ligand.get("key"))
+    if key in cache:
+        return cache[key]
+
+    member = member_by_pair.get(pair["pair_id"])
+    if member is not None:
+        pdb_id = member["pdb_id"]
+    else:
+        pdb_id = IMID_POCKET_SOURCE.get(ccd)
+    pocket = None
+    if pdb_id and ccd:
+        pocket = Y.derive_pocket(
+            C.by_name(construct_name), pdb_id, ccd, pair.get("e3_gene") or "")
+    cache[key] = pocket
+    return pocket
+
+
+def document_for(job, pair: dict, row: dict, member_by_pair: dict,
+                 ligand_by_index: dict, pocket) -> dict:
+    """The YAML document the assembler would write for one job.
+
+    The pocket is passed in rather than resolved here, because the caller
+    decides what to do with a conditioned job that has none: the assembler
+    drops it and counts it, and that decision has to happen before the
+    document is built, not after.
+    """
+    peptide = P.Peptide(**{k: v for k, v in row.items() if k != "length"})
+    member = member_by_pair.get(job.pair_id)
+    if member is not None:
+        ligand = ligand_by_index.get(member["index"])
+    else:
+        ligand = _ligand_of(pair)
+    return Y.build_yaml(job, peptide, ligand, pocket)
+
+
 def _ligand_of(pair: dict) -> "L.Ligand | None":
     """The pair's own ligand, rebuilt from the manifest record.
 
@@ -456,30 +550,9 @@ def assemble_campaign(reuse_latest: bool = True) -> dict:
             for item in P.BENCHMARK_CHAINS
         }
 
-        # Pocket cache keyed by (construct, ligand ccd or smiles key).
+        # Pocket cache keyed by (construct, ligand ccd or smiles key),
+        # resolved by the module-level helper the rerun tool shares.
         pocket_cache: dict[tuple, Y.PocketConstraint | None] = {}
-
-        def _pocket_for(pair: dict) -> Y.PocketConstraint | None:
-            construct_name = pair["construct"]
-            ligand = pair.get("ligand") or {}
-            ccd = ligand.get("ccd")
-            key = (construct_name, ccd or ligand.get("key"))
-            if key in pocket_cache:
-                return pocket_cache[key]
-
-            member = member_by_pair.get(pair["pair_id"])
-            if member is not None:
-                pdb_id = member["pdb_id"]
-            else:
-                pdb_id = IMID_POCKET_SOURCE.get(ccd)
-            pocket = None
-            if pdb_id and ccd:
-                pocket = Y.derive_pocket(
-                    C.by_name(construct_name), pdb_id, ccd,
-                    pair.get("e3_gene") or "",
-                )
-            pocket_cache[key] = pocket
-            return pocket
 
         queue_path = directory / "queue.jsonl"
         written = 0
@@ -490,20 +563,13 @@ def assemble_campaign(reuse_latest: bool = True) -> dict:
                 row = rows.get(job.peptide_id)
                 if pair is None or row is None:
                     continue
-                peptide = P.Peptide(**{k: v for k, v in row.items() if k != "length"})
-
-                member = member_by_pair.get(job.pair_id)
-                if member is not None:
-                    ligand = ligand_by_index.get(member["index"])
-                else:
-                    ligand = _ligand_of(pair)
-
-                pocket = _pocket_for(pair)
+                pocket = _pocket_for_pair(pair, member_by_pair, pocket_cache)
                 if job.conditioning == "conditioned" and pocket is None:
                     skipped_conditioned += 1
                     continue
 
-                document = Y.build_yaml(job, peptide, ligand, pocket)
+                document = document_for(job, pair, row, member_by_pair,
+                                        ligand_by_index, pocket)
                 yaml_path = directory / "yaml" / f"{job.job_id}.yaml"
                 yaml_path.write_text(Y.to_yaml_text(document))
 

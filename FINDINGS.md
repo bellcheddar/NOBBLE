@@ -12613,3 +12613,54 @@ hours old and two fixes behind is a specific, checkable state rather than a
 general caveat about staleness, and because one of the two is a number the
 project has since learned to distrust being published as a reason for a
 choice.
+
+## F265
+
+The correction tool could not fix F262, and its docstring said it could.
+
+`tools/rerun_pair.py` opens "Regenerate one pair's YAMLs and clear its results
+so it reruns" and says again below that it "regenerates the pair's YAMLs from
+the current code". It does neither. It copies the pair's YAMLs from another
+campaign holding exactly one copy of each, and refuses when no such copy
+exists (F146, so that clearing results never re-runs an identical input).
+
+The difference decides whether a pair is fixable at all. F47 is: its corrected
+YAML exists in another campaign. F262 is not: `scr_bench03_BRD4_CRBN`'s
+ternary YAMLs were written without their glue by an assembler that was wrong
+in every campaign, so the correct file has never existed on disk anywhere.
+Asked to fix it, the tool refused with "10 of 10 job(s) have no known-good
+reference", which is correct behaviour reported in terms that do not say why.
+
+The tool's own comment already named the fix and why it had been deferred:
+factoring the emission path out so one pair can be regenerated in place is the
+right fix, and not one to make while a long run is reading those files. The
+concern was that re-deriving meant calling `assemble_campaign`, which writes a
+whole new `campaigns/campaign_<stamp>` directory, and both the chain and
+`status.sh` select the newest such directory, so a scratch assembly would have
+become "the latest campaign" and the chain's remaining stages would have
+targeted it.
+
+Factored out now, and it writes nothing. `campaign.document_for` builds the
+document, `campaign._pocket_for_pair` resolves the pocket, and both
+`assemble_campaign` and the new `campaign.regenerate_pair` call them, so there
+is one spelling rather than two to drift apart (F154 and F57 are both that
+shape).
+
+The check that the refactor changed nothing: regenerating all 2,360 of the
+main campaign's YAMLs in memory gives 2,355 byte-identical, 5 different, and
+the 5 are exactly `scr_bench03_BRD4_CRBN`'s ternary jobs. The 10 conditioned
+jobs dropped for having no pocket are absent from both, which matches the
+provenance line.
+
+`--regenerate` then replaces F146's proxy with the thing it is about. A
+known-good reference is a stand-in for "the input will change"; with the
+regeneration available the direct test is whether the new text differs from
+the file on disk. It refuses in the same case for the same reason, verified:
+asked to regenerate `scr_bench04_IKZF1_CRBN`, whose YAMLs are already what the
+code emits, it reports all 15 byte-identical and exits 2.
+
+So the F262 correction is now a command rather than an open problem, waiting
+on the GPU beside F47's:
+
+    python tools/rerun_pair.py scr_bench03_BRD4_CRBN \
+        --campaign campaigns/campaign_20261104T004632Z --regenerate --apply
