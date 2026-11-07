@@ -11220,6 +11220,16 @@ changes initialisation rather than the footprint. Nine more at about 2.64
 hours each is roughly 24 hours of near-certain waste, against 161 hours
 remaining, so G1 stays closed either way.
 
+**Why skipping them is not available.** `run_campaign` does
+`jobs = paths.read_jsonl(queue_path)` once, under a comment saying "the queue
+is written once, before anything runs, and nothing appends to it". So editing
+`queue_tier2.jsonl` now has no effect on the running runner: it is iterating
+the list it loaded. The only way to drop those jobs is to stop the runner,
+and `tools/tier2.sh` would then see its queue command return non-zero and may
+exit, which would hand the chain on to the design scan and lose the 66
+feasible refinements still queued behind bench06. Saving 24 hours by risking
+66 jobs is the wrong trade to make unasked.
+
 **What I have not done.** Removing bench06 from the live tier-2 queue would
 save those hours and needs either an edit to a queue the runner is reading or
 fabricated state rows for jobs that never ran. The second writes a
