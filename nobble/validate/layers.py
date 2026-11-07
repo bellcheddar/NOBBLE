@@ -515,9 +515,31 @@ def _arm_expected(campaign: Path) -> tuple[dict[str, int], bool]:
     return {label: len(pairs) for label, pairs in seen.items()}, True
 
 
+def _arm_absent_statistic(arm: list[dict], statistic: str) -> dict[str, int]:
+    """Arm rows that were scored and carry no value for this statistic.
+
+    A different thing from a pair that has not been scored, and worse. For
+    `delta_iptm` it is always zero. For `bridge_percentile` it is the pairs
+    in which no seed bridged, so there is no percentile to take: those pairs
+    are missing from the curve *because of the outcome being measured*, which
+    is a selection on the dependent variable rather than an incomplete run
+    (F280).
+    """
+    out: dict[str, int] = {}
+    for row in arm:
+        label = row.get("peptide_label")
+        if label not in ROC_LABELS:
+            continue
+        if row.get(statistic) is None:
+            out[label] = out.get(label, 0) + 1
+    return out
+
+
 def _arm_coverage(positives: int, negatives: int,
                   expected: dict[str, int],
-                  queue_was_read: bool = False) -> str:
+                  queue_was_read: bool = False,
+                  absent: dict[str, int] | None = None,
+                  statistic: str = "") -> str:
     """One line saying how much of the arm the curve was drawn from.
 
     `queue_was_read` separates two cases that an empty `expected` cannot.
@@ -544,10 +566,22 @@ def _arm_coverage(positives: int, negatives: int,
     if positives >= want_pos and negatives >= want_neg:
         return (f"complete: all {want_pos} positive(s) and {want_neg} matched "
                 "negative(s) of the arm are on the curve")
-    return (f"partial: {positives} of {want_pos} positive(s) and {negatives} "
+    line = (f"partial: {positives} of {want_pos} positive(s) and {negatives} "
             f"of {want_neg} matched negative(s). The interval widens with a "
-            "smaller sample, and the pairs not yet scored are not a random "
-            "subset of the arm: they are whatever the runner reached last")
+            "smaller sample")
+    missing_value = sum((absent or {}).values())
+    if missing_value:
+        # The reason decides how bad it is, so the reason is stated. An
+        # unscored pair is an incomplete run; a scored pair with no value for
+        # this statistic is absent because of what was measured, and for
+        # `bridge_percentile` that means the pairs where nothing bridged.
+        return (line + f", and {missing_value} of the missing pair(s) were "
+                f"scored and carry no {statistic or 'value'}: those are "
+                "absent because of the outcome, not because the run is "
+                "unfinished, so the curve is over pairs selected on the "
+                "quantity it measures")
+    return (line + ", and the pairs not yet scored are not a random subset "
+            "of the arm: they are whatever the runner reached last")
 
 
 def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerResult:
@@ -619,7 +653,10 @@ def matched_control_roc(campaign: Path, statistic: str = "delta_iptm") -> LayerR
         "positives_expected": expected.get("degraded"),
         "matched_negatives_expected": expected.get("not_degraded"),
         "coverage": _arm_coverage(len(positives), len(negatives), expected,
-                                  queue_was_read),
+                                  queue_was_read,
+                                  _arm_absent_statistic(arm, statistic),
+                                  statistic),
+        "scored_without_the_statistic": _arm_absent_statistic(arm, statistic),
         "pairs_outside_the_arm_excluded": excluded,
         "non_finite_dropped": non_finite,
         "source": "Sievers zinc-finger screen: negatives assayed in the same screen",

@@ -215,3 +215,70 @@ def test_the_expected_mapping_does_not_leak_its_own_bookkeeping(tmp_path):
         for label in ("degraded", "not_degraded") for i in range(3)])
     expected, _ = layers._arm_expected(directory)
     assert expected == {"degraded": 3, "not_degraded": 3}, expected
+
+
+def test_a_statistic_absent_on_some_pairs_says_why(tmp_path):
+    """Missing because unscored and missing because unbridged differ.
+
+    `bridge_percentile` is None for a pair in which no seed bridged, so those
+    pairs leave the curve because of the outcome being measured. The coverage
+    line said the missing pairs were "whatever the runner reached last",
+    which is the wrong reason and much the milder one (F280).
+    """
+    directory = tmp_path / "campaign_absent"
+    directory.mkdir()
+    queue, scores = [], []
+    for label, delta in (("degraded", 0.2), ("not_degraded", 0.1)):
+        for index in range(6):
+            pair = f"sv_{label}_{index}"
+            queue.append({"job_id": f"{pair}__j", "pair_id": pair,
+                          "tier": layers.ROC_ARM, "peptide_label": label,
+                          "complex_type": "ternary", "tokens": 150})
+            row = {"pair_id": pair, "tier": layers.ROC_ARM,
+                   "peptide_label": label, "delta_iptm": delta + index * 0.01,
+                   "seed_records": []}
+            # Two of each class bridged in no seed, so they have no
+            # percentile: scored, and absent from a curve over that field.
+            row["bridge_percentile"] = None if index < 2 else 50.0 + index
+            scores.append(row)
+    _write(directory / "queue.jsonl", queue)
+    _write(directory / "scores.jsonl", scores)
+
+    on_delta = layers.matched_control_roc(directory, statistic="delta_iptm")
+    assert on_delta.summary["coverage"].startswith("complete"), (
+        on_delta.summary["coverage"])
+    assert on_delta.summary["scored_without_the_statistic"] == {}
+
+    on_bridge = layers.matched_control_roc(
+        directory, statistic="bridge_percentile")
+    absent = on_bridge.summary["scored_without_the_statistic"]
+    assert absent == {"degraded": 2, "not_degraded": 2}, absent
+    line = on_bridge.summary["coverage"]
+    assert line.startswith("partial"), line
+    assert "because of the outcome" in line, line
+    assert "runner reached last" not in line, line
+    assert "bridge_percentile" in line, line
+
+
+def test_an_unfinished_run_still_says_the_runner_reached_them_last(tmp_path):
+    """The other reason, so one message cannot serve both."""
+    directory = tmp_path / "campaign_unfinished"
+    directory.mkdir()
+    queue, scores = [], []
+    for label, delta in (("degraded", 0.2), ("not_degraded", 0.1)):
+        for index in range(6):
+            pair = f"sv_{label}_{index}"
+            queue.append({"job_id": f"{pair}__j", "pair_id": pair,
+                          "tier": layers.ROC_ARM, "peptide_label": label,
+                          "complex_type": "ternary", "tokens": 150})
+            if index < 4:
+                scores.append({"pair_id": pair, "tier": layers.ROC_ARM,
+                               "peptide_label": label,
+                               "delta_iptm": delta + index * 0.01,
+                               "seed_records": []})
+    _write(directory / "queue.jsonl", queue)
+    _write(directory / "scores.jsonl", scores)
+    line = layers.matched_control_roc(directory).summary["coverage"]
+    assert line.startswith("partial"), line
+    assert "runner reached last" in line, line
+    assert "because of the outcome" not in line, line

@@ -13374,3 +13374,75 @@ IKZF1's, which stays a 15-mer in both arms as the control. Touching 98.7 per
 cent of a 269-residue domain and 20 per cent of a 15-residue window are
 different claims about different denominators, so the Jaccard, which is
 normalised contact-set overlap, is the figure that carries the comparison.
+
+## F280
+
+Registered before computing: a third statistic on the Sievers labels.
+
+Two statistics have been put to the matched-control split so far. Delta-ipTM,
+which spec 5.3 names, gives AUC 0.4583 with a 95 per cent interval of 0.3316
+to 0.5842. Its median companion, which a collapsed seed cannot inflate, gives
+0.4147 (F231). Both read as not distinguishable from chance.
+
+The bridge geometry is a different measurement over the same poses:
+`bridge_formation_rate` is the proportion of a pair's ternary seeds in which
+the glue buried surface against both chains. It is the quantity F253 and F254
+are registered against, it exists for all 120 Sievers pairs, and nothing has
+ever put it to these labels. `matched_control_roc` takes the field as a
+parameter, so asking costs one call.
+
+Asking a third question of one label set is where a null turns into a search,
+so the reading is fixed here, before the number:
+
+* **If the interval contains 0.5**, the null stands across all three
+  statistics tried, which is a stronger negative result than the headline on
+  its own: not merely that Delta-ipTM fails to separate the classes, but that
+  the bridge geometry does not either, on the same poses and the same pairs.
+* **If the interval excludes 0.5**, it is a lead and not a headline. Three
+  statistics on one label set is three chances, the spec names one of them,
+  and this one was chosen after seeing the first two fail. It would need
+  stating with its multiplicity and replicating on labels not yet used, which
+  the Slabicki graded set would have been and is unavailable (F52).
+
+Either way it is reported here with the count of statistics tried, because
+"the third measure we tried" and "the measure the spec names" are different
+claims and only the second is in the specification.
+
+**The answer: the interval contains 0.5, and so does a fourth.** I computed
+`bridge_percentile` as well, so the count is four rather than three and is
+stated as four:
+
+```
+statistic                 AUC      95% CI            pairs
+delta_iptm             0.4583   0.3316 to 0.5842     24 / 96
+delta_iptm_median      0.4147   0.3051 to 0.5326     24 / 96
+bridge_formation_rate  0.5232   0.4204 to 0.6241     24 / 96
+bridge_percentile      0.5237   0.3968 to 0.6463     22 / 89
+```
+
+By the reading fixed above, the null stands across every statistic put to
+these labels. That is the stronger negative result: not only does the
+statistic the spec names fail to separate degraded from matched non-degraded
+zinc fingers, but the bridge geometry over the same poses and the same pairs
+does not either, and the two bridge measures sit a little above chance while
+the two Delta-ipTM measures sit a little below, all four intervals straddling
+0.5.
+
+**The fourth one's denominator is not the others', and that turned out to
+matter.** `bridge_percentile` ran on 22 of 24 positives and 89 of 96
+negatives. The nine missing pairs were scored; they have no percentile
+because no seed bridged, so there is nothing to take a percentile of. They
+are absent from the curve *because of the outcome being measured*, which is a
+selection on the dependent variable rather than an unfinished run.
+
+F259's coverage line caught the denominator, 22 of 24 and 89 of 96, and gave
+the wrong reason for it: "the pairs not yet scored are not a random subset of
+the arm: they are whatever the runner reached last". That is the milder of the
+two explanations and it is false here. The layer now counts arm rows that
+were scored and carry no value for the statistic, reports them as
+`scored_without_the_statistic`, and says which reason applies. For
+`delta_iptm` and `bridge_formation_rate` the count is zero and the arm is
+complete.
+
+So the bridge_percentile row above is the weakest of the four and would have
+needed that caveat even if it had excluded 0.5.
