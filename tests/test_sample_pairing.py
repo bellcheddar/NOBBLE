@@ -99,9 +99,38 @@ def test_a_structure_without_its_confidence_is_a_named_failure(tmp_path):
     assert "is missing" in reason and "confidence_" in reason, reason
 
     # And the caller turns that into the failure detail rather than a
-    # generic one.
-    source = (ROOT / "nobble" / "execute" / "runner.py").read_text()
-    assert 'detail = f"exit 0 but {reason}"' in source
+    # generic one. Asserted on behaviour, not on the source line: this used
+    # to pin `detail = f"exit 0 but {reason}"` exactly, and broke when the
+    # branch began keeping Boltz's own output too, which is the thing that
+    # made the reason diagnosable (F238).
+    from nobble.execute import runner as runner_module
+
+    calls = {"n": 0}
+
+    def _exit_zero(command, env, timeout):
+        calls["n"] += 1
+        return "ok", 0, "", "something Boltz printed"
+
+    original_run, original_read = runner_module._run_boltz, runner_module._read_outputs
+    try:
+        runner_module._run_boltz = _exit_zero
+        runner_module._read_outputs = lambda output_dir, job_id: (
+            None, None, "s.cif", reason)
+        campaign = tmp_path / "campaign_named"
+        (campaign / "outputs").mkdir(parents=True)
+        (tmp_path / "n.yaml").write_text("version: 1\n")
+        outcome = runner_module.run_job(
+            {"job_id": "pairN__ternary__unconstrained__seed1", "tokens": 10,
+             "yaml": str(tmp_path / "n.yaml"), "timeout_seconds": 600,
+             "seed": 1, "pair_id": "pairN", "complex_type": "ternary"},
+            campaign, runner_module.settings_from_config(tier=1))
+    finally:
+        runner_module._run_boltz, runner_module._read_outputs = (
+            original_run, original_read)
+
+    assert "exit 0 but" in outcome.detail, outcome.detail
+    assert reason in outcome.detail, (reason, outcome.detail)
+    assert "something Boltz printed" in outcome.detail, outcome.detail
 
 
 def test_an_empty_output_directory_still_says_nothing_was_written(tmp_path):

@@ -195,3 +195,57 @@ def test_a_failed_attempt_is_announced_before_the_job_resolves(capsys, tmp_path,
     assert "attempt 1 failed after" in printed, printed
     assert "budget left" in printed, printed
     assert "no retries left" in printed, printed
+
+
+def test_an_exit_zero_with_no_result_keeps_what_boltz_said(tmp_path,
+                                                           monkeypatch):
+    """The branch where the exit code tells you nothing threw the evidence away.
+
+    bench06's 1,223-token refinement exited 0 with an empty predictions
+    directory, twice, 9,492 seconds across both attempts, and the reason is
+    unrecoverable because this branch recorded only "exit 0 but no confidence
+    JSON written". Boltz leaves no log of its own (F238).
+    """
+    from nobble.execute import runner as runner_module
+
+    def _exit_zero_and_complain(command, env, timeout):
+        return "ok", 0, "", "MPS backend out of memory (tried to allocate 40GB)"
+
+    monkeypatch.setattr(runner_module, "_run_boltz", _exit_zero_and_complain)
+    monkeypatch.setattr(runner_module, "RETRIES", 1)
+
+    campaign = tmp_path / "campaign_y"
+    (campaign / "outputs").mkdir(parents=True)
+    (tmp_path / "y.yaml").write_text("version: 1\n")
+    job = {"job_id": "pairY__ternary__unconstrained__seed1", "tokens": 10,
+           "yaml": str(tmp_path / "y.yaml"), "timeout_seconds": 600,
+           "seed": 1, "pair_id": "pairY", "complex_type": "ternary"}
+
+    outcome = runner_module.run_job(
+        job, campaign, runner_module.settings_from_config(tier=1))
+
+    assert outcome.status.startswith("failed"), outcome.status
+    assert "exit 0 but" in outcome.detail, outcome.detail
+    assert "out of memory" in outcome.detail, (
+        "the runner discarded what Boltz said on the one path where the exit "
+        f"code carries no information: {outcome.detail}")
+
+
+def test_an_exit_zero_that_said_nothing_says_that(tmp_path, monkeypatch):
+    """Silence recorded as silence, not as an empty string."""
+    from nobble.execute import runner as runner_module
+
+    monkeypatch.setattr(runner_module, "_run_boltz",
+                        lambda command, env, timeout: ("ok", 0, "", ""))
+    monkeypatch.setattr(runner_module, "RETRIES", 0)
+
+    campaign = tmp_path / "campaign_z"
+    (campaign / "outputs").mkdir(parents=True)
+    (tmp_path / "z.yaml").write_text("version: 1\n")
+    job = {"job_id": "pairZ__ternary__unconstrained__seed1", "tokens": 10,
+           "yaml": str(tmp_path / "z.yaml"), "timeout_seconds": 600,
+           "seed": 1, "pair_id": "pairZ", "complex_type": "ternary"}
+
+    outcome = runner_module.run_job(
+        job, campaign, runner_module.settings_from_config(tier=1))
+    assert "and said nothing" in outcome.detail, outcome.detail

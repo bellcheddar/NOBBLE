@@ -393,7 +393,22 @@ def run_job(job: dict, campaign: Path, settings: dict) -> JobOutcome:
             confidence, affinity, structure, reason = _read_outputs(
                 output_dir, job_id)
             if confidence is None:
-                detail = f"exit 0 but {reason}"
+                # Keep what Boltz said, because the exit code says nothing.
+                #
+                # This branch is "ran to completion and produced no result",
+                # and it threw away the stdout and stderr it was holding, so
+                # the record read "exit 0 but no confidence JSON written" and
+                # the reason was unrecoverable: Boltz leaves only an empty
+                # predictions directory and a hparams.yaml behind.
+                #
+                # bench06's 1,223-token refinement hit this twice, 9,492s
+                # across both attempts, and why is still unknown because the
+                # evidence was discarded here (F238). The non-zero branch
+                # below has kept the tail since it was written; this one is
+                # the case where the tail is the only information there is.
+                said = (stderr or stdout or "").strip().splitlines()
+                tail = " | ".join(said[-3:])[:300] if said else "and said nothing"
+                detail = f"exit 0 but {reason}: {tail}"
                 continue
             return JobOutcome(
                 job_id=job_id, status="done", seconds=seconds, tokens=job["tokens"],

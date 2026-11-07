@@ -11171,3 +11171,66 @@ The log-failure scanner reports "none in 9 log file(s)" while job 14's first
 attempt has failed. That is consistent rather than a second defect: the runner
 printed nothing about it, which is the gap the retry notice closes from the
 next runner invocation.
+
+## F238. Boltz exited 0, wrote nothing, and the runner discarded the only evidence
+
+Job 14 of the tier-2 queue resolved:
+
+```
+failed: exit 0 but no confidence JSON written in 9492.4s (7.7615 s/token)
+attempts: 2
+```
+
+Not a crash and not a timeout. Boltz featurised the input, ran for 9,492
+seconds across both attempts, exited 0, and wrote no predictions. Comparing
+the directory against a refinement that worked:
+
+```
+bench06 (failed)   processed/{manifest,records,msa,structures,constraints,mols}
+                   lightning_logs/version_0, version_1   <- one per attempt
+                   predictions/                           <- empty
+bench04 (worked)   predictions/<job>/confidence_*.json, plddt_*, pae_*, pde_*
+```
+
+**Why is not recoverable, and that is the finding.** Boltz leaves no log of
+its own beyond `hparams.yaml`. The runner was holding Boltz's stdout and
+stderr at that moment and threw them away: the branch read
+`detail = f"exit 0 but {reason}"`, recording the shape of the failure and
+discarding its cause. The non-zero branch two lines below has kept the tail
+since it was written. This is the one path where the exit code carries no
+information at all, and it was the one path that kept none of the output.
+
+Fixed: that branch now appends the last lines of what Boltz said, and records
+"and said nothing" when there were none, so silence is distinguishable from
+a discarded message. Two tests, one asserting an out-of-memory line survives
+into the detail.
+
+A test had pinned the old line verbatim, asserting
+`'detail = f"exit 0 but {reason}"' in source`, and broke on the fix. Its
+intent, that the reason reaches the detail rather than a generic one, is
+preserved and now stronger, so the assertion moved to the behaviour: run the
+job, check the reason and the output both arrive. A test that pins a source
+line defends the implementation rather than the property, which is the third
+stale-test shape this session after F234's bound and F100's arithmetic.
+
+**What it costs now.** The queue has moved to job 15, the second of ten
+1,223-token bench06 refinements, and nothing has changed to make it behave
+differently: two attempts of the same seed failed identically, and a seed
+changes initialisation rather than the footprint. Nine more at about 2.64
+hours each is roughly 24 hours of near-certain waste, against 161 hours
+remaining, so G1 stays closed either way.
+
+**What I have not done.** Removing bench06 from the live tier-2 queue would
+save those hours and needs either an edit to a queue the runner is reading or
+fabricated state rows for jobs that never ran. The second writes a
+measurement that was not made, which this project refuses, and the first
+risks the stage mid-run. The runner's own fallback ladder has already done
+its part: retried once, recorded a named failure, and carried on. So the
+jobs run and fail honestly, and whether to interrupt the stage to skip them
+is Marc's, because it means killing a running tier-2 runner to save 24 of 161
+spare hours.
+
+The diagnostic fix takes effect at the next runner invocation, since the
+running process imported the module before it was written. So the nine
+remaining failures will still say only "exit 0 but no confidence JSON
+written", and the first one to carry a cause will be in whatever runs next.
