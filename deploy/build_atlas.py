@@ -384,17 +384,21 @@ def main() -> int:
             queue = other / queue_name
             if not queue.exists():
                 continue
-            total = sum(1 for line in queue.read_text().splitlines()
-                        if line.strip())
+            # Read through paths.read_jsonl(tolerate_torn=True), like
+            # everything else that reads a runner's output. `state.jsonl` is
+            # appended one row at a time by a process that may be killed at
+            # any moment, so a torn final line is expected and parsing it
+            # strictly would fail an atlas build over a row whose absence
+            # changes nothing. F111 made this sweep once and did not reach
+            # `deploy/` (F301).
+            total = len(paths.read_jsonl(queue, tolerate_torn=True))
             state = other / state_name
             done = 0
             if state.exists():
-                import json as _json
                 done = len({
-                    _json.loads(line)["job_id"]
-                    for line in state.read_text().splitlines()
-                    if line.strip()
-                    and _json.loads(line).get("status") == "done"
+                    row["job_id"]
+                    for row in paths.read_jsonl(state, tolerate_torn=True)
+                    if row.get("status") == "done" and row.get("job_id")
                 })
             if done < total:
                 outstanding.append({
@@ -439,10 +443,8 @@ def main() -> int:
         if not source.exists():
             continue
         rows = []
-        for line in source.read_text().splitlines():
-            if not line.strip():
-                continue
-            row = redact(json.loads(line))
+        for raw in paths.read_jsonl(source, tolerate_torn=True):
+            row = redact(raw)
             structure = row.get("structure")
             if structure:
                 origin = Path(structure)
@@ -633,8 +635,10 @@ def main() -> int:
         validation = json.loads((campaign / "validation.json").read_text())
         recovery = validation["layers"]["pose_recovery"]["summary"]["by_pair"]
         scored = {
-            json.loads(line)["pair_id"]: json.loads(line)
-            for line in (campaign / "scores.jsonl").read_text().splitlines() if line.strip()
+            row["pair_id"]: row
+            for row in paths.read_jsonl(campaign / "scores.jsonl",
+                                        tolerate_torn=True)
+            if row.get("pair_id")
         }
         points = []
         for pair_id, stats_row in sorted(recovery.items()):
@@ -698,14 +702,14 @@ def main() -> int:
     # campaign as complete, which is a status panel telling a lie.
     source_queue = campaign / "queue.jsonl"
     if source_queue.exists():
-        summary["jobs_total"] = sum(
-            1 for line in source_queue.read_text().splitlines() if line.strip()
-        )
-        pair_ids = set()
-        for line in source_queue.read_text().splitlines():
-            if line.strip():
-                pair_ids.add(json.loads(line).get("pair_id"))
-        summary["pairs_total"] = len(pair_ids)
+        # One pass instead of two, and torn-tolerant. A torn queue line
+        # understates both totals by that row; the queue is written in one
+        # pass by the assembler, so a torn line means the assembly itself was
+        # killed, which is what the campaign's own completeness check is for.
+        queued = paths.read_jsonl(source_queue, tolerate_torn=True)
+        summary["jobs_total"] = len(queued)
+        summary["pairs_total"] = len({row.get("pair_id") for row in queued
+                                      if row.get("pair_id")})
 
     structures = list((OUT / "structures").glob("*.cif"))
     summary["structures"] = len(structures)

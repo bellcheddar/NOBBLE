@@ -14,7 +14,7 @@
           "within_3.0A": 0.0,
           "within_5.0A": 0.0154,
           "n": 65,
-          "median_rmsd": 17.535
+          "median_rmsd": 17.14
         },
         "by_pair": {
           "bench01_GSPT1_CRBN": {
@@ -33,16 +33,16 @@
           },
           "bench02_BRD4_VHL": {
             "n": 10,
-            "best_rmsd": 14.443,
-            "median_rmsd": 18.478,
-            "worst_rmsd": 65.566,
+            "best_rmsd": 15.311,
+            "median_rmsd": 19.235,
+            "worst_rmsd": 26.814,
             "curve": {
               "within_1.0A": 0.0,
               "within_2.0A": 0.0,
               "within_3.0A": 0.0,
               "within_5.0A": 0.0,
               "n": 10,
-              "median_rmsd": 18.478
+              "median_rmsd": 19.235
             }
           },
           "bench03_BRD4_CRBN": {
@@ -116,7 +116,212 @@
             }
           }
         },
-        "frame": "superposed on the receptor, peptide backbone atoms only"
+        "frame": "superposed on the receptor, peptide backbone atoms only",
+        "footprint": {
+          "bench01_GSPT1_CRBN": {
+            "status": "measured",
+            "receptor_anchor_atoms": 436,
+            "window_residues": 15,
+            "centroid_gap_a": 21.98,
+            "deposited_contacts": 11,
+            "predicted_contacts": 59,
+            "shared_contacts": 2,
+            "jaccard": 0.029,
+            "window_residues_touched": 0,
+            "ca_deviation_a": [
+              34.01,
+              28.89,
+              24.38,
+              22.36,
+              17.05,
+              17.18,
+              13.9,
+              14.36,
+              21.1,
+              20.61,
+              21.58,
+              26.66,
+              29.84,
+              31.89,
+              33.35
+            ],
+            "cutoff_a": 4.5
+          },
+          "bench02_BRD4_VHL": {
+            "status": "measured",
+            "receptor_anchor_atoms": 560,
+            "window_residues": 15,
+            "centroid_gap_a": 7.53,
+            "deposited_contacts": 7,
+            "predicted_contacts": 16,
+            "shared_contacts": 7,
+            "jaccard": 0.438,
+            "window_residues_touched": 10,
+            "ca_deviation_a": [
+              15.72,
+              11.12,
+              9.6,
+              8.75,
+              9.68,
+              8.6,
+              5.23,
+              5.29,
+              6.5,
+              9.97,
+              15.83,
+              16.12,
+              19.43,
+              25.1,
+              30.73
+            ],
+            "cutoff_a": 4.5
+          },
+          "bench03_BRD4_CRBN": {
+            "status": "not_measurable: the deposited window makes no receptor contact within the cutoff",
+            "receptor_anchor_atoms": 424,
+            "window_residues": 15,
+            "centroid_gap_a": 14.37,
+            "deposited_contacts": 0,
+            "predicted_contacts": 16,
+            "shared_contacts": 0,
+            "jaccard": 0.0,
+            "window_residues_touched": 2,
+            "ca_deviation_a": [
+              14.41,
+              10.92,
+              13.66,
+              11.21,
+              14.35,
+              15.0,
+              12.35,
+              17.19,
+              17.82,
+              17.69,
+              18.41,
+              18.68,
+              22.17,
+              23.3,
+              28.56
+            ],
+            "cutoff_a": 4.5
+          },
+          "bench04_IKZF1_CRBN": {
+            "status": "measured",
+            "receptor_anchor_atoms": 436,
+            "window_residues": 15,
+            "centroid_gap_a": 3.1,
+            "deposited_contacts": 10,
+            "predicted_contacts": 11,
+            "shared_contacts": 10,
+            "jaccard": 0.909,
+            "window_residues_touched": 15,
+            "ca_deviation_a": [
+              8.06,
+              5.83,
+              3.55,
+              2.17,
+              1.72,
+              1.29,
+              0.66,
+              0.47,
+              0.54,
+              2.25,
+              2.91,
+              3.28,
+              5.49,
+              9.63,
+              10.72
+            ],
+            "cutoff_a": 4.5
+          },
+          "bench05_CSNK1A1_CRBN": {
+            "status": "measured",
+            "receptor_anchor_atoms": 436,
+            "window_residues": 15,
+            "centroid_gap_a": 6.33,
+            "deposited_contacts": 15,
+            "predicted_contacts": 22,
+            "shared_contacts": 13,
+            "jaccard": 0.542,
+            "window_residues_touched": 13,
+            "ca_deviation_a": [
+              2.42,
+              3.19,
+              4.72,
+              3.75,
+              7.79,
+              8.42,
+              10.56,
+              16.01,
+              13.8,
+              13.64,
+              12.13,
+              11.97,
+              13.24,
+              16.58,
+              19.02
+            ],
+            "cutoff_a": 4.5
+          },
+          "bench06_RBM39_DCAF15": {
+            "status": "measured",
+            "receptor_anchor_atoms": 824,
+            "window_residues": 15,
+            "centroid_gap_a": 2.68,
+            "deposited_contacts": 13,
+            "predicted_contacts": 10,
+            "shared_contacts": 8,
+            "jaccard": 0.533,
+            "window_residues_touched": 15,
+            "ca_deviation_a": [
+              2.8,
+              3.17,
+              4.19,
+              3.59,
+              1.83,
+              2.41,
+              2.99,
+              2.44,
+              1.37,
+              1.13,
+              2.68,
+              7.22,
+              13.02,
+              11.04,
+              5.26
+            ],
+            "cutoff_a": 4.5
+          },
+          "bench07_CDK12_DDB1": {
+            "status": "measured",
+            "receptor_anchor_atoms": 1240,
+            "window_residues": 15,
+            "centroid_gap_a": 43.23,
+            "deposited_contacts": 5,
+            "predicted_contacts": 59,
+            "shared_contacts": 0,
+            "jaccard": 0.0,
+            "window_residues_touched": 0,
+            "ca_deviation_a": [
+              40.33,
+              41.04,
+              45.35,
+              45.77,
+              47.73,
+              47.24,
+              46.25,
+              44.79,
+              43.05,
+              44.58,
+              44.56,
+              43.68,
+              44.98,
+              43.23,
+              41.54
+            ],
+            "cutoff_a": 4.5
+          }
+        }
       },
       "detail": [
         {
@@ -894,10 +1099,10 @@
           "pdb_id": "5T35",
           "job_id": "bench02_BRD4_VHL__ternary__conditioned__seed1",
           "seed": 1,
-          "rmsd": 18.748,
+          "rmsd": 18.958,
           "atoms_compared": 60,
           "receptor_anchor_atoms": 560,
-          "receptor_rmsd": 0.539,
+          "receptor_rmsd": 0.537,
           "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
           "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
           "peptide_identity": 1.0,
@@ -908,10 +1113,10 @@
           "pdb_id": "5T35",
           "job_id": "bench02_BRD4_VHL__ternary__conditioned__seed2",
           "seed": 2,
-          "rmsd": 17.535,
+          "rmsd": 17.993,
           "atoms_compared": 60,
           "receptor_anchor_atoms": 560,
-          "receptor_rmsd": 0.699,
+          "receptor_rmsd": 0.615,
           "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
           "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
           "peptide_identity": 1.0,
@@ -922,10 +1127,10 @@
           "pdb_id": "5T35",
           "job_id": "bench02_BRD4_VHL__ternary__conditioned__seed3",
           "seed": 3,
-          "rmsd": 65.566,
+          "rmsd": 23.684,
           "atoms_compared": 60,
           "receptor_anchor_atoms": 560,
-          "receptor_rmsd": 0.637,
+          "receptor_rmsd": 0.675,
           "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
           "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
           "peptide_identity": 1.0,
@@ -936,10 +1141,10 @@
           "pdb_id": "5T35",
           "job_id": "bench02_BRD4_VHL__ternary__conditioned__seed4",
           "seed": 4,
-          "rmsd": 18.506,
+          "rmsd": 23.4,
           "atoms_compared": 60,
           "receptor_anchor_atoms": 560,
-          "receptor_rmsd": 0.861,
+          "receptor_rmsd": 0.772,
           "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
           "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
           "peptide_identity": 1.0,
@@ -950,10 +1155,10 @@
           "pdb_id": "5T35",
           "job_id": "bench02_BRD4_VHL__ternary__conditioned__seed5",
           "seed": 5,
-          "rmsd": 17.817,
+          "rmsd": 19.235,
           "atoms_compared": 60,
           "receptor_anchor_atoms": 560,
-          "receptor_rmsd": 0.634,
+          "receptor_rmsd": 0.568,
           "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
           "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
           "peptide_identity": 1.0,
@@ -964,10 +1169,10 @@
           "pdb_id": "5T35",
           "job_id": "bench02_BRD4_VHL__ternary__unconstrained__seed1",
           "seed": 1,
-          "rmsd": 18.665,
+          "rmsd": 15.457,
           "atoms_compared": 60,
           "receptor_anchor_atoms": 560,
-          "receptor_rmsd": 0.549,
+          "receptor_rmsd": 0.486,
           "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
           "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
           "peptide_identity": 1.0,
@@ -978,10 +1183,10 @@
           "pdb_id": "5T35",
           "job_id": "bench02_BRD4_VHL__ternary__unconstrained__seed2",
           "seed": 2,
-          "rmsd": 17.348,
+          "rmsd": 17.14,
           "atoms_compared": 60,
           "receptor_anchor_atoms": 560,
-          "receptor_rmsd": 0.691,
+          "receptor_rmsd": 0.607,
           "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
           "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
           "peptide_identity": 1.0,
@@ -992,10 +1197,10 @@
           "pdb_id": "5T35",
           "job_id": "bench02_BRD4_VHL__ternary__unconstrained__seed3",
           "seed": 3,
-          "rmsd": 14.443,
+          "rmsd": 15.311,
           "atoms_compared": 60,
           "receptor_anchor_atoms": 560,
-          "receptor_rmsd": 0.687,
+          "receptor_rmsd": 0.684,
           "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
           "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
           "peptide_identity": 1.0,
@@ -1006,10 +1211,10 @@
           "pdb_id": "5T35",
           "job_id": "bench02_BRD4_VHL__ternary__unconstrained__seed4",
           "seed": 4,
-          "rmsd": 18.478,
+          "rmsd": 23.329,
           "atoms_compared": 60,
           "receptor_anchor_atoms": 560,
-          "receptor_rmsd": 0.866,
+          "receptor_rmsd": 0.744,
           "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
           "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
           "peptide_identity": 1.0,
@@ -1020,10 +1225,10 @@
           "pdb_id": "5T35",
           "job_id": "bench02_BRD4_VHL__ternary__unconstrained__seed5",
           "seed": 5,
-          "rmsd": 17.924,
+          "rmsd": 26.814,
           "atoms_compared": 60,
           "receptor_anchor_atoms": 560,
-          "receptor_rmsd": 0.598,
+          "receptor_rmsd": 0.642,
           "peptide_predicted_sequence": "PVDVEALGLHDYCDI",
           "peptide_deposited_sequence": "PVDVEALGLHDYCDI",
           "peptide_identity": 1.0,
@@ -1041,7 +1246,7 @@
         "retrospective": {
           "label": "deposited before the cutoff: may be memorised",
           "n": 7,
-          "median_rmsd": 18.478,
+          "median_rmsd": 19.235,
           "members": [
             {
               "pair_id": "bench01_GSPT1_CRBN",
@@ -1053,7 +1258,7 @@
               "pair_id": "bench02_BRD4_VHL",
               "pdb_id": "5T35",
               "release_date": "2017-03-08",
-              "median_rmsd": 18.478
+              "median_rmsd": 19.235
             },
             {
               "pair_id": "bench03_BRD4_CRBN",
@@ -1108,6 +1313,10 @@
         "statistic": "delta_iptm",
         "positives": 24,
         "matched_negatives": 96,
+        "positives_expected": 24,
+        "matched_negatives_expected": 96,
+        "coverage": "complete: all 24 positive(s) and 96 matched negative(s) of the arm are on the curve",
+        "scored_without_the_statistic": {},
         "pairs_outside_the_arm_excluded": 38,
         "non_finite_dropped": 0,
         "source": "Sievers zinc-finger screen: negatives assayed in the same screen",
@@ -1137,7 +1346,124 @@
           0.5842
         ],
         "confidence_level": 95.0,
-        "interpretation": "not distinguishable from chance at 95 per cent confidence"
+        "interpretation": "not distinguishable from chance at 95 per cent confidence",
+        "companions": [
+          {
+            "statistic": "delta_iptm_median",
+            "computed": true,
+            "status": "computed",
+            "auc": 0.4147,
+            "ci95": [
+              0.3051,
+              0.5326
+            ],
+            "positives": 24,
+            "matched_negatives": 96,
+            "coverage": "complete: all 24 positive(s) and 96 matched negative(s) of the arm are on the curve",
+            "interpretation": "not distinguishable from chance at 95 per cent confidence"
+          },
+          {
+            "statistic": "bridge_formation_rate",
+            "computed": true,
+            "status": "computed",
+            "auc": 0.5232,
+            "ci95": [
+              0.4204,
+              0.6241
+            ],
+            "positives": 24,
+            "matched_negatives": 96,
+            "coverage": "complete: all 24 positive(s) and 96 matched negative(s) of the arm are on the curve",
+            "interpretation": "not distinguishable from chance at 95 per cent confidence"
+          },
+          {
+            "statistic": "bridge_percentile",
+            "computed": true,
+            "status": "computed",
+            "auc": 0.5237,
+            "ci95": [
+              0.3968,
+              0.6463
+            ],
+            "positives": 22,
+            "matched_negatives": 89,
+            "coverage": "partial: 22 of 24 positive(s) and 89 of 96 matched negative(s). The interval widens with a smaller sample, and 9 of the missing pair(s) were scored and carry no bridge_percentile: those are absent because of the outcome, not because the run is unfinished, so the curve is over pairs selected on the quantity it measures",
+            "interpretation": "not distinguishable from chance at 95 per cent confidence"
+          }
+        ],
+        "statistics_tried": 4,
+        "component_curves": [
+          {
+            "component": "bridge_percentile",
+            "statistic": "bridge_percentile",
+            "computed": true,
+            "status": "computed",
+            "auc": 0.5237,
+            "ci95": [
+              0.3968,
+              0.6463
+            ],
+            "positives": 22,
+            "matched_negatives": 89,
+            "coverage": "partial: 22 of 24 positive(s) and 89 of 96 matched negative(s). The interval widens with a smaller sample, and 9 of the missing pair(s) were scored and carry no bridge_percentile: those are absent because of the outcome, not because the run is unfinished, so the curve is over pairs selected on the quantity it measures"
+          },
+          {
+            "component": "delta_iptm",
+            "statistic": "delta_iptm",
+            "computed": true,
+            "status": "computed",
+            "auc": 0.4583,
+            "ci95": [
+              0.3316,
+              0.5842
+            ],
+            "positives": 24,
+            "matched_negatives": 96,
+            "coverage": "complete: all 24 positive(s) and 96 matched negative(s) of the arm are on the curve"
+          },
+          {
+            "component": "convergence_score",
+            "statistic": "convergence_score",
+            "computed": true,
+            "status": "computed",
+            "auc": 0.5931,
+            "ci95": [
+              0.4614,
+              0.7131
+            ],
+            "positives": 24,
+            "matched_negatives": 96,
+            "coverage": "complete: all 24 positive(s) and 96 matched negative(s) of the arm are on the curve"
+          },
+          {
+            "component": "plip_fingerprint_match",
+            "statistic": "plip_fingerprint_match",
+            "computed": true,
+            "status": "computed",
+            "auc": 0.5074,
+            "ci95": [
+              0.4049,
+              0.5977
+            ],
+            "positives": 24,
+            "matched_negatives": 96,
+            "coverage": "complete: all 24 positive(s) and 96 matched negative(s) of the arm are on the curve"
+          },
+          {
+            "component": "lysine_reach",
+            "statistic": "lysine_reach_exposed_fraction",
+            "computed": true,
+            "status": "computed",
+            "auc": 0.6232,
+            "ci95": [
+              0.5021,
+              0.7328
+            ],
+            "positives": 23,
+            "matched_negatives": 93,
+            "coverage": "partial: 23 of 24 positive(s) and 93 of 96 matched negative(s). The interval widens with a smaller sample, and 4 of the missing pair(s) were scored and carry no lysine_reach_exposed_fraction: those are absent because of the outcome, not because the run is unfinished, so the curve is over pairs selected on the quantity it measures"
+          }
+        ]
       },
       "detail": [],
       "notes": [],

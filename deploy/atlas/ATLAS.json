@@ -2,11 +2,11 @@
   "campaign": "campaign_20261104T004632Z",
   "files": {
     "campaign.json": 1868,
-    "validation.json": 39604,
-    "weights.json": 1503,
+    "validation.json": 49918,
+    "weights.json": 1940,
     "scores.jsonl": 158,
     "results.jsonl": 2360,
-    "results_tier2.jsonl": 136,
+    "results_tier2.jsonl": 149,
     "benchmark.json": 7,
     "crystals": 7,
     "about.json": 16,
@@ -17,20 +17,38 @@
   "redactions": 0,
   "outstanding": [
     {
-      "campaign": "design_20261104T094939Z",
+      "campaign": "benchmark_20261103T192126Z",
+      "tier": 2,
       "jobs_done": 0,
-      "jobs_total": 240
+      "jobs_total": 10,
+      "published": false
+    },
+    {
+      "campaign": "campaign_20261104T004632Z",
+      "tier": 2,
+      "jobs_done": 149,
+      "jobs_total": 225,
+      "published": true
+    },
+    {
+      "campaign": "design_20261104T094939Z",
+      "tier": 1,
+      "jobs_done": 0,
+      "jobs_total": 240,
+      "published": false
     },
     {
       "campaign": "tier_b_20261105T202811Z",
+      "tier": 1,
       "jobs_done": 0,
-      "jobs_total": 1540
+      "jobs_total": 1540,
+      "published": false
     }
   ],
   "comparison_conclusion": "F6 supported: 6 pair(s) improved by more than 2 A with the whole domain, the control held, and none got worse. Bridge formation agrees and is independent of the crystal: 4 pair(s) bridged in more seeds and none in fewer",
   "jobs_total": 2360,
   "pairs_total": 158,
-  "structures": 2496,
-  "bytes": 279469194,
+  "structures": 2509,
+  "bytes": 282962746,
   "redacted_ligands": []
 }

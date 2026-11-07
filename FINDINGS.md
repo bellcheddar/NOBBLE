@@ -14658,3 +14658,84 @@ pair with the known input defect, so the obvious objection is that its row
 came from hydroxyproline-folded structures. Both campaigns report zero
 featurisation disagreements. The confound was only ever in the main campaign,
 which F297 does not read.
+
+## F301. The atlas build read a runner's output line by line
+
+F111 found seven readers of `results.jsonl` and `state.jsonl` that parsed
+every line strictly and fixed them. It did not reach `deploy/`.
+`build_atlas.py` had six line-by-line readers and no use of
+`paths.read_jsonl` at all. Three called `json.loads` per line, so a kill at
+the wrong moment would have failed the build; the other three counted
+`splitlines()`, so a torn line was counted as a job and inflated
+`jobs_total`, a denominator wrong in the direction that reads as more
+complete than it is.
+
+The build runs straight after a runner in `tools/refresh.sh`, so a torn final
+line is an ordinary state. All six now go through
+`paths.read_jsonl(tolerate_torn=True)`, and a test parses the module and
+requires the flag on every call rather than merely the function's presence:
+`read_jsonl` without it raises, which is the whole hazard.
+
+The summary's totals also did two passes over the queue for a count and a set
+of pair ids. One pass now.
+
+## F302. The chain redid a finished correction on every start, for an hour
+
+`tools/corrections.sh` has known since F267 that both of its operations clear
+results, so it has to decide whether anything is left to correct, and it
+reads that off a rehearsal because the exit code cannot carry it:
+`rerun_pair.py` exits 2 both for "nothing to correct" and for several real
+failures. F267's comment put the cost of getting this wrong at "about an hour
+of GPU to arrive back where it started".
+
+`tools/run_chain.sh` did not use that script. It called
+`rerun_pair.py bench02_BRD4_VHL --apply` directly, unconditionally, on every
+start. The reference-copy path of that tool has no refusal of its own: it
+corrects what it can and then drops rows and clears caches regardless.
+
+So on today's restart, forty minutes after `corrections.sh --apply` had
+corrected and re-run those fifteen jobs, the chain printed
+
+    corrected 0 YAML(s) from a known-good campaign
+    dropped 30 row(s) from state.jsonl
+    removed 15 cached output directory/ies
+
+and began re-running them. F267 had predicted the cost to the hour, and I
+paid it, because the guard was in the script the chain was not calling.
+
+Two fixes, since the duplicate spelling is the cause and the missing guard is
+the mechanism. The chain now goes through `corrections.sh --apply
+--no-refresh`, which also covers scr_bench03 as that stage never did, and the
+`--no-refresh` flag exists because the next stage refreshes anyway. And the
+reference path of `rerun_pair.py` now refuses on its own when nothing needed
+correcting *and* the featurisation check ran and found nothing, so any caller
+gets it. On an unknown featurisation it proceeds and says so: a stale cache
+left in place is the expensive error and a re-run of a correct job is the
+cheap one.
+
+Cosmetic, found on the way: `${APPLY:+applied}${APPLY:-rehearsed}` printed
+"applied1", because the second expansion falls back only when `APPLY` is
+empty.
+
+### Two slips of mine in the tests for this
+
+`test_the_chain_corrects_through_the_guarded_script` first asserted that the
+string `rerun_pair.py bench02_BRD4_VHL` does not appear in `run_chain.sh`,
+and failed on the comment I had just written there explaining what the stage
+used to do. F296 exactly, a text check defeated by my own prose, and the
+second time today. It now strips comments and reads code.
+
+`test_a_disagreeing_cache_still_clears` asserted that a disagreeing cache is
+cleared. It cannot be, in a fixture: F146 refuses to clear a job with no
+known-good reference, and `_known_good` searches the real `campaigns/` tree
+rather than `tmp_path`. The honest assertion is that execution reaches past
+the new guard and stops at F146's, which is what the test now makes. Claiming
+the stronger thing would have been testing F146's guard and calling it this
+one.
+
+One existing test had to change shape. `test_the_chain_handles_a_refusal`
+asked for the literal word `else`, which was the `if/then/else` the stage
+used to have; a `|| echo` handles a refusal just as well. It now asks for a
+failure branch of either shape, and additionally that the branch writes to
+stderr, because a refusal printed on stdout in a forty-hour log is a refusal
+nobody reads.

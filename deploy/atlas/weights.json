@@ -1,13 +1,13 @@
 {
   "status": "fitted",
   "weights": {
-    "bridge_percentile": 0.2857,
+    "bridge_percentile": 0.4444,
     "delta_iptm": 0.0,
-    "convergence_score": 0.1429,
-    "plip_fingerprint_match": 0.2857,
-    "lysine_reach_exposed_fraction": 0.2857
+    "convergence_score": 0.1111,
+    "plip_fingerprint_match": 0.2222,
+    "lysine_reach_exposed_fraction": 0.2222
   },
-  "objective": 0.7173,
+  "objective": 0.6988,
   "labelled_pairs": 158,
   "positives": 31,
   "negatives": 127,
@@ -20,15 +20,37 @@
   ],
   "caveats": [
     "2 of 158 labelled pair(s) contributed a different number of seeds from the modal 5 binary, 10 ternary, so their delta_iptm is a difference of differently sized minima. Reported rather than refused: the ROC refuses on this and is scoped to the Sievers arm, where every pair matches, while the fit spans the panel too (spec 4.8)",
-    "AUC 0.7173 is in-sample: the grid maximised it on the same 158 labelled pairs. It describes the fit, not performance on unseen pairs",
-    "lysine_reach_exposed_fraction carries weight 0.2857 despite having no validated discriminating power: BINMAN measured its reach window at or below chance (D-NOB-024). On this few pairs that weight is as likely to be noise as signal"
+    "AUC 0.6988 is in-sample: the grid maximised it on the same 158 labelled pairs. It describes the fit, not performance on unseen pairs",
+    "lysine_reach_exposed_fraction carries weight 0.2222 despite having no validated discriminating power: BINMAN measured its reach window at or below chance (D-NOB-024). On this few pairs that weight is as likely to be noise as signal"
   ],
   "per_component_auc": {
-    "bridge_percentile": 0.5627,
-    "delta_iptm": 0.5236,
-    "convergence_score": 0.595,
-    "plip_fingerprint_match": 0.5513,
+    "bridge_percentile": 0.558,
+    "delta_iptm": 0.5196,
+    "convergence_score": 0.5889,
+    "plip_fingerprint_match": 0.5401,
     "lysine_reach_exposed_fraction": 0.5855
+  },
+  "per_component_n": {
+    "bridge_percentile": {
+      "positives": 28,
+      "negatives": 113
+    },
+    "delta_iptm": {
+      "positives": 31,
+      "negatives": 127
+    },
+    "convergence_score": {
+      "positives": 31,
+      "negatives": 127
+    },
+    "plip_fingerprint_match": {
+      "positives": 29,
+      "negatives": 125
+    },
+    "lysine_reach_exposed_fraction": {
+      "positives": 27,
+      "negatives": 120
+    }
   },
   "seed_shapes": {
     "5 binary, 10 ternary": 156,

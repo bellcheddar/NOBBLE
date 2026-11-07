@@ -39,7 +39,14 @@ SCI="$ROOT/../BINMAN/.pixi/envs/default/bin/python"
 export KMP_DUPLICATE_LIB_OK=TRUE PYTHONPATH="$ROOT"
 
 APPLY=""
-[[ "${1:-}" == "--apply" ]] && APPLY="1"
+NO_REFRESH=""
+for arg in "$@"; do
+  case "$arg" in
+    --apply) APPLY="1" ;;
+    --no-refresh) NO_REFRESH="1" ;;
+    *) echo "corrections: unknown argument $arg" >&2; exit 2 ;;
+  esac
+done
 
 # shellcheck source=tools/newest_complete.sh
 source "$ROOT/tools/newest_complete.sh"
@@ -103,7 +110,12 @@ failed=0
 run_one bench02_BRD4_VHL || failed=1
 run_one scr_bench03_BRD4_CRBN --regenerate || failed=1
 
-if [[ -n "$APPLY" ]]; then
+# `--no-refresh` is for a caller that refreshes anyway, which is
+# `tools/run_chain.sh`: it refreshes the campaign in the next stage, and
+# refreshing twice scores and rebuilds the atlas for nothing (F302).
+if [[ -n "$NO_REFRESH" ]]; then
+  echo "--- refresh: skipped on request, the caller does it"
+elif [[ -n "$APPLY" ]]; then
   echo "--- refresh: score, validate, throughput, atlas"
   bash tools/refresh.sh "$CAMPAIGN" || failed=1
 else
@@ -112,7 +124,11 @@ fi
 
 echo
 if [[ "$failed" -eq 0 ]]; then
-  echo "=== corrections ${APPLY:+applied}${APPLY:-rehearsed} with no refusal ==="
+  if [[ -n "$APPLY" ]]; then
+    echo "=== corrections applied with no refusal ==="
+  else
+    echo "=== corrections rehearsed with no refusal ==="
+  fi
 else
   echo "=== one or more corrections refused: see above ===" >&2
 fi

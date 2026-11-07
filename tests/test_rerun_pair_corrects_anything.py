@@ -227,13 +227,29 @@ def test_it_refuses_a_queue_whose_paths_leave_the_campaign(tmp_path, monkeypatch
 
 
 def test_the_chain_handles_a_refusal():
+    """A refusal must take a branch and say what it means for the publish.
+
+    This asked for the literal word `else`, which was the shape of the
+    `if ... then ... else` the stage used to have. F302 replaced that with
+    `corrections.sh ... || echo ...`, which handles the refusal just as well,
+    so the test now asks for a failure branch of either shape. It also asks
+    that the branch writes to stderr, because a refusal printed on stdout in
+    the middle of a forty-hour log is a refusal nobody reads.
+    """
     chain = (ROOT / "tools" / "run_chain.sh").read_text()
     section = chain[chain.index("correcting the F47 pair"):]
     section = section[:section.index("scoring, validating")]
-    assert "else" in section and "refuses" in section, (
-        "the chain does not say what a failed correction means for the "
-        "publish, so a refusal would scroll past"
+    code = "\n".join(line for line in section.splitlines()
+                      if not line.strip().startswith("#"))
+    assert "else" in code or "||" in code, (
+        "the correction stage has no failure branch, so a refusal would "
+        "scroll past"
     )
+    assert "refuses" in code, (
+        "the chain does not say what a failed correction means for the "
+        "publish"
+    )
+    assert ">&2" in code, "the refusal is not written to stderr"
 
 
 def test_the_live_correction_has_exactly_one_reference():

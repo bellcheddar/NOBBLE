@@ -114,15 +114,26 @@ else
     # and nothing has been published. The run_queue call that follows skips
     # every job already in state, so it runs exactly the fifteen this
     # clears and nothing else.
-    say "correcting the F47 pair"
-    if "$SENV/bin/python" tools/rerun_pair.py bench02_BRD4_VHL \
-         --campaign "$CAMPAIGN" --apply; then
-      bash tools/run_queue.sh --campaign "$CAMPAIGN" || true
-    else
-      echo "the F47 correction failed: bench02_BRD4_VHL still holds results" \
-           "run on a YAML the current code would not emit. The atlas build" \
-           "refuses while that is true, so nothing wrong is published." >&2
-    fi
+    # Through tools/corrections.sh, not rerun_pair.py directly (F302).
+    #
+    # This called `rerun_pair.py bench02_BRD4_VHL --apply` unconditionally,
+    # and that path clears results whether or not anything needs correcting.
+    # On the 2026-11-07 restart, forty minutes after the same fifteen jobs
+    # had been corrected, it printed "corrected 0 YAML(s)" and then removed
+    # fifteen output directories: an hour of GPU on every chain start to
+    # arrive back where it started, with the correct results destroyed
+    # first.
+    #
+    # `corrections.sh` has had the guard since F267, reads "nothing to
+    # correct" off a rehearsal rather than off an ambiguous exit code, and
+    # covers scr_bench03 as well, which this stage never did. Two spellings
+    # of one correction, and the chain was using the one without the guard.
+    # `--no-refresh` because the next stage refreshes.
+    say "correcting the F47 pair and the scramble inputs"
+    bash tools/corrections.sh --apply --no-refresh || \
+      echo "a correction refused: see above. The atlas build refuses while" \
+           "an input disagrees with its results, so nothing wrong is" \
+           "published." >&2
 
     say "scoring, validating and publishing the main campaign"
     bash tools/refresh.sh "$CAMPAIGN" || true

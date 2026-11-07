@@ -114,7 +114,7 @@
     "LVY": "5FQD"
   },
   "software": {
-    "measured_at": "2026-11-06T23:01:38Z",
+    "measured_at": "2026-11-07T22:37:21Z",
     "boltz": "2.2.1",
     "torch": "2.10.0",
     "status": "ok",

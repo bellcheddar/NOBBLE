@@ -372,6 +372,48 @@ def main(argv: list[str] | None = None) -> int:
         corrected += 1
     print(f"  corrected {corrected} YAML(s) from a known-good campaign")
 
+    # The guard the --regenerate path has had since F146, on this path too
+    # (F302).
+    #
+    # `--regenerate` refuses when the current code emits every YAML
+    # byte-identical to what is on disk, because clearing results to re-run
+    # an identical input spends the compute and changes nothing. The
+    # reference-copy path had no such refusal: it corrected zero YAMLs and
+    # then dropped thirty state rows, fifteen results, one score and fifteen
+    # output directories anyway.
+    #
+    # `tools/run_chain.sh` calls this unconditionally on every start, so that
+    # was an hour of GPU re-running fifteen correct jobs on each chain
+    # restart, with the correct results destroyed first. Measured on the
+    # 2026-11-07 restart, forty minutes after the same fifteen had been
+    # corrected: "corrected 0 YAML(s)" above "removed 15 cached output
+    # directory/ies".
+    #
+    # Two conditions, because the F219 case is real: the YAMLs can already
+    # match while the cached featurisation does not, and that genuinely needs
+    # clearing. So this refuses only when nothing was corrected *and* the
+    # featurisation check ran and found nothing.
+    #
+    # On an unknown featurisation it proceeds and says so. Refusing on
+    # unknown would leave a stale cache in place, which is the expensive
+    # error rather than the wasteful one: the wasteful one re-runs fifteen
+    # jobs and the expensive one publishes a number computed from an input
+    # the campaign no longer declares.
+    if corrected == 0:
+        folded = _folded_disagreements(campaign, args.pair_id)
+        if folded is not None and not folded:
+            print(f"\nREFUSING: no YAML of {args.pair_id} needed correcting "
+                  "and no cached featurisation disagrees with its YAML, so "
+                  "there is nothing to correct and clearing the results "
+                  "would re-run the same input (F146, F302).",
+                  file=sys.stderr)
+            return 2
+        if folded is None:
+            print("  no YAML needed correcting and whether any cached "
+                  "featurisation disagrees could not be checked, so "
+                  "proceeding: a stale cache left in place is the expensive "
+                  "error, a re-run of a correct job is the cheap one")
+
     # Dropping the results is what makes the jobs re-run, so it must not
     # happen for a job whose input could not be verified (F146).
     #

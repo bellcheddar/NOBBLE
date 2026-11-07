@@ -100,5 +100,279 @@
     "ubiquitylated_median_cb_cb": 18.73,
     "unmodified_median_cb_cb": 14.89,
     "source": "BINMAN data/interim/degradability_reach.json and D-068"
+  },
+  "crystal_control": {
+    "rows": [
+      {
+        "job_id": "5HXB:Z+X",
+        "structure": "/Users/dellboy/Documents/Vibe_Coding/BINMAN/data/cache/rcsb_assemblies/5HXB-assembly1.cif.gz",
+        "found": true,
+        "dsasa_receptor": 684.9025046662209,
+        "dsasa_peptide": 528.523385237746,
+        "dsasa_total": 1213.425889903967,
+        "contacts_receptor": 86,
+        "contacts_peptide": 55,
+        "bridging_balance": 0.7717,
+        "buried_fraction": 0.9488054608015206,
+        "heavy_atoms": 31,
+        "bridge_percentile": 86.91,
+        "percentile_basis": "dsasa_total against 285996 experimentally observed bridges in BINMAN's atlas",
+        "reject_reason": null,
+        "notes": [
+          "deposited: 85C against 5HXB chain Z (receptor) and chain X (substrate)"
+        ],
+        "pair_id": "bench01_GSPT1_CRBN",
+        "pdb_id": "5HXB",
+        "glue_ccd": "85C",
+        "receptor_chain": "Z",
+        "receptor_choice": "CRBN_CULT is one accession",
+        "substrate_chain": "X",
+        "measurable": true
+      },
+      {
+        "job_id": "5T35:every-other-chain+A",
+        "structure": "/Users/dellboy/Documents/Vibe_Coding/BINMAN/data/cache/rcsb_assemblies/5T35-assembly1.cif.gz",
+        "found": true,
+        "dsasa_receptor": 983.413645173845,
+        "dsasa_peptide": 980.6930777018079,
+        "dsasa_total": 1964.1067228756528,
+        "contacts_receptor": 83,
+        "contacts_peptide": 51,
+        "bridging_balance": 0.9972,
+        "buried_fraction": 0.8147956467049113,
+        "heavy_atoms": 69,
+        "bridge_percentile": 99.45,
+        "percentile_basis": "dsasa_total against 285996 experimentally observed bridges in BINMAN's atlas",
+        "reject_reason": null,
+        "notes": [
+          "deposited: 759 against 5T35 chain None (receptor) and chain A (substrate)"
+        ],
+        "pair_id": "bench02_BRD4_VHL",
+        "pdb_id": "5T35",
+        "glue_ccd": "759",
+        "receptor_chain": null,
+        "receptor_choice": "VHL_VCB offers 3 accessions, so every non-substrate chain",
+        "substrate_chain": "A",
+        "measurable": true
+      },
+      {
+        "job_id": "6BNB:B+C",
+        "structure": "/Users/dellboy/Documents/Vibe_Coding/BINMAN/data/cache/rcsb_assemblies/6BNB-assembly1.cif.gz",
+        "found": false,
+        "dsasa_receptor": null,
+        "dsasa_peptide": null,
+        "dsasa_total": null,
+        "contacts_receptor": null,
+        "contacts_peptide": null,
+        "bridging_balance": null,
+        "buried_fraction": null,
+        "heavy_atoms": null,
+        "bridge_percentile": null,
+        "percentile_basis": null,
+        "reject_reason": "glue_not_modelled_in_deposition",
+        "notes": [
+          "6BNB carries no heteroatom large enough to be a glue, so there is no bridge in the coordinates to find"
+        ],
+        "pair_id": "bench03_BRD4_CRBN",
+        "pdb_id": "6BNB",
+        "glue_ccd": null,
+        "receptor_chain": "B",
+        "receptor_choice": "CRBN_CULT is one accession",
+        "substrate_chain": "C",
+        "measurable": false
+      },
+      {
+        "job_id": "6H0F:B+C",
+        "structure": "/Users/dellboy/Documents/Vibe_Coding/BINMAN/data/cache/rcsb_assemblies/6H0F-assembly1.cif.gz",
+        "found": true,
+        "dsasa_receptor": 540.5682945963235,
+        "dsasa_peptide": 228.28199512295078,
+        "dsasa_total": 768.8502897192743,
+        "contacts_receptor": 93,
+        "contacts_peptide": 31,
+        "bridging_balance": 0.4223,
+        "buried_fraction": 0.9898732439468879,
+        "heavy_atoms": 20,
+        "bridge_percentile": 50.08,
+        "percentile_basis": "dsasa_total against 285996 experimentally observed bridges in BINMAN's atlas",
+        "reject_reason": null,
+        "notes": [
+          "deposited: Y70 against 6H0F chain B (receptor) and chain C (substrate)"
+        ],
+        "pair_id": "bench04_IKZF1_CRBN",
+        "pdb_id": "6H0F",
+        "glue_ccd": "Y70",
+        "receptor_chain": "B",
+        "receptor_choice": "CRBN_CULT is one accession",
+        "substrate_chain": "C",
+        "measurable": true
+      },
+      {
+        "job_id": "5FQD:B+C",
+        "structure": "/Users/dellboy/Documents/Vibe_Coding/BINMAN/data/cache/rcsb_assemblies/5FQD-assembly1.cif.gz",
+        "found": true,
+        "dsasa_receptor": 530.2434384699591,
+        "dsasa_peptide": 215.35709024322023,
+        "dsasa_total": 745.6005287131793,
+        "contacts_receptor": 93,
+        "contacts_peptide": 21,
+        "bridging_balance": 0.4061,
+        "buried_fraction": 0.9775391867345988,
+        "heavy_atoms": 19,
+        "bridge_percentile": 47.9,
+        "percentile_basis": "dsasa_total against 285996 experimentally observed bridges in BINMAN's atlas",
+        "reject_reason": null,
+        "notes": [
+          "deposited: LVY against 5FQD chain B (receptor) and chain C (substrate)"
+        ],
+        "pair_id": "bench05_CSNK1A1_CRBN",
+        "pdb_id": "5FQD",
+        "glue_ccd": "LVY",
+        "receptor_chain": "B",
+        "receptor_choice": "CRBN_CULT is one accession",
+        "substrate_chain": "C",
+        "measurable": true
+      },
+      {
+        "job_id": "6Q0W:every-other-chain+D",
+        "structure": "/Users/dellboy/Documents/Vibe_Coding/BINMAN/data/cache/rcsb_assemblies/6Q0W-assembly1.cif.gz",
+        "found": true,
+        "dsasa_receptor": 626.1742264118948,
+        "dsasa_peptide": 329.7593298314496,
+        "dsasa_total": 955.9335562433444,
+        "contacts_receptor": 58,
+        "contacts_peptide": 20,
+        "bridging_balance": 0.5266,
+        "buried_fraction": 0.889468701349964,
+        "heavy_atoms": 24,
+        "bridge_percentile": 68.18,
+        "percentile_basis": "dsasa_total against 285996 experimentally observed bridges in BINMAN's atlas",
+        "reject_reason": null,
+        "notes": [
+          "deposited: EF6 against 6Q0W chain None (receptor) and chain D (substrate)"
+        ],
+        "pair_id": "bench06_RBM39_DCAF15",
+        "pdb_id": "6Q0W",
+        "glue_ccd": "EF6",
+        "receptor_chain": null,
+        "receptor_choice": "DCAF15_DDB1_DDA1 offers 3 accessions, so every non-substrate chain",
+        "substrate_chain": "D",
+        "measurable": true
+      },
+      {
+        "job_id": "6TD3:A+B",
+        "structure": "/Users/dellboy/Documents/Vibe_Coding/BINMAN/data/cache/rcsb_assemblies/6TD3-assembly1.cif.gz",
+        "found": true,
+        "dsasa_receptor": 287.32546971760166,
+        "dsasa_peptide": 850.5137970532705,
+        "dsasa_total": 1137.8392667708722,
+        "contacts_receptor": 26,
+        "contacts_peptide": 61,
+        "bridging_balance": 0.3378,
+        "buried_fraction": 0.9355545975705998,
+        "heavy_atoms": 32,
+        "bridge_percentile": 82.74,
+        "percentile_basis": "dsasa_total against 285996 experimentally observed bridges in BINMAN's atlas",
+        "reject_reason": null,
+        "notes": [
+          "deposited: RC8 against 6TD3 chain A (receptor) and chain B (substrate)"
+        ],
+        "pair_id": "bench07_CDK12_DDB1",
+        "pdb_id": "6TD3",
+        "glue_ccd": "RC8",
+        "receptor_chain": "A",
+        "receptor_choice": "DDB1_BPC is one accession",
+        "substrate_chain": "B",
+        "measurable": true
+      }
+    ],
+    "status": "measured",
+    "predictions": {
+      "15-mer|01": {
+        "n_bridged": 3,
+        "receptor": 657.4845257036377,
+        "substrate": 150.6172356552006,
+        "total": 808.8299625787686
+      },
+      "15-mer|02": {
+        "n_bridged": 4,
+        "receptor": 935.8690721272105,
+        "substrate": 255.58051966942867,
+        "total": 1182.2638408953999
+      },
+      "15-mer|03": {
+        "n_bridged": 4,
+        "receptor": 751.6875349754746,
+        "substrate": 290.43818176075774,
+        "total": 1051.4794508120708
+      },
+      "15-mer|04": {
+        "n_bridged": 10,
+        "receptor": 520.7418512326922,
+        "substrate": 211.8304684728464,
+        "total": 729.4026230184963
+      },
+      "15-mer|05": {
+        "n_bridged": 10,
+        "receptor": 523.3859429101785,
+        "substrate": 191.17512919544674,
+        "total": 713.1984334424058
+      },
+      "15-mer|06": {
+        "n_bridged": 10,
+        "receptor": 612.0037385061878,
+        "substrate": 287.3750108240938,
+        "total": 897.7994930156574
+      },
+      "15-mer|07": {
+        "n_bridged": 0,
+        "receptor": null,
+        "substrate": null,
+        "total": null
+      },
+      "whole domain|01": {
+        "n_bridged": 10,
+        "receptor": 632.0891794673744,
+        "substrate": 516.4043541889041,
+        "total": 1148.4935336562785
+      },
+      "whole domain|02": {
+        "n_bridged": 10,
+        "receptor": 964.4071400270695,
+        "substrate": 984.7340414331902,
+        "total": 1949.1411814602598
+      },
+      "whole domain|03": {
+        "n_bridged": 5,
+        "receptor": 634.5314256611318,
+        "substrate": 752.9648242509529,
+        "total": 1385.720378010973
+      },
+      "whole domain|04": {
+        "n_bridged": 10,
+        "receptor": 520.7418512326922,
+        "substrate": 211.8304684728464,
+        "total": 729.4026230184963
+      },
+      "whole domain|05": {
+        "n_bridged": 10,
+        "receptor": 525.6752673897872,
+        "substrate": 198.81689219444524,
+        "total": 723.9313159760513
+      },
+      "whole domain|06": {
+        "n_bridged": 10,
+        "receptor": 609.0586790886955,
+        "substrate": 329.40757464713806,
+        "total": 938.5398118181356
+      },
+      "whole domain|07": {
+        "n_bridged": 6,
+        "receptor": 270.9402948113493,
+        "substrate": 858.9716757498609,
+        "total": 1128.9275111130264
+      }
+    },
+    "predictions_status": "measured"
   }
 }
