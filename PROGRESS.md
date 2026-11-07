@@ -1,6 +1,6 @@
 # NOBBLE progress
 
-Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T02:52:00Z.
+Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T03:12:00Z.
 
 ## Gate G6 answered: the headline is a negative result, and publication is held
 

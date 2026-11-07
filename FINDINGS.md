@@ -10293,3 +10293,43 @@ re-run is not a correction being made again, it is a correction being allowed
 to take. Four mutations of the new behaviour were caught by the tests,
 including the refusal exiting 0 and the unknown featurisation reading as
 clean.
+
+## F222. The status report promised a build that was refusing in the same report
+
+Found by sweeping for printed assurances, which is what F218 was: a guarantee
+announced rather than checked. One survivor, and it was live.
+
+`bash tools/status.sh` prints `tools/provenance.py`, which is the file an
+operator reads to decide whether to rebuild. It printed this:
+
+```
+   stale inputs  none; the atlas build has nothing to refuse
+   superseded    no substrate differs from the current plan
+   atlas         the rebuild refused: REFUSED: the cached featurisation does
+                 not match the YAML for these jobs (F219)
+```
+
+Two lines apart, in one report, the opposite answers to one question.
+
+The `stale inputs` line was computed from `inputs.stale_inputs`, which
+compares the YAML against the queue row that describes it. The build has two
+input checks, and the second compares the cached featurisation against the
+YAML (F219). While both were failing on `bench02_BRD4_VHL` the line was true
+by accident. Once the 6 November run corrected the fifteen YAMLs the first
+check went clean and the second did not, and the line started asserting the
+opposite of its own next paragraph. The claim was never scoped to what it
+measured: "the atlas build has nothing to refuse" is a statement about the
+build, made from one of the build's two checks.
+
+It now consults both and names which found what, so the two lines agree. A
+featurisation comparison that cannot be run prints as unknown rather than as
+clean, because the direction this file errs in is the one that tells the
+operator everything is fine.
+
+The test checks the report against the featurisation rather than against a
+fixed string, so it keeps working once the correction has run and the answer
+flips. **Not covered:** the unknown branch. `provenance.py` resolves the
+import from `tools/` at the head of `sys.path`, so a deliberately broken shim
+cannot be injected without restructuring the script for the test's benefit,
+which is a larger change than this fix warrants. The branch is reasoned, not
+exercised, and this is the record of that.
