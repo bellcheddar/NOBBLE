@@ -11769,3 +11769,46 @@ Scope: this is about NOBBLE not redistributing. What BINMAN does with its own
 copies is outside this repository and outside what spec 2.1 asks of this one.
 
 No change.
+
+## F249. Asserting on source text is this project's norm, and the defect is narrower than that
+
+I wrote two tests today that asserted a string appeared in a source file where
+the behaviour could have been exercised: `pose_site`'s handler shape, which
+pinned the defect F244 fixed by asserting `return set()` appeared twice, and
+the benchmark template's guard, which asserted the guard's text rather than
+rendering the panel. A third, pre-existing, asserted the literal line
+`detail = f"exit 0 but {reason}"` and broke when that line gained Boltz's
+output. All three are now behavioural.
+
+Three in a day looked like a pattern worth sweeping, so I swept: 113 tests
+across 67 files read a source file and assert on its text.
+
+**That is the norm here, and most of it is right.** Two kinds of claim cannot
+be made any other way:
+
+* **Absence.** `test_no_percentile_literal_is_left_in_the_bootstrap`,
+  `test_the_cap_comes_from_config_and_is_not_written_in_the_tool`,
+  `test_the_options_are_not_written_into_the_template`. You cannot run a
+  program to show it contains no literal; the whole threshold discipline in
+  CLAUDE.md rests on scans like these.
+* **Ordering inside something a test cannot execute.**
+  `test_deploy_checks_the_hold_before_opening_a_connection`,
+  `test_the_chain_arms_it_before_running_anything`. These are shell scripts
+  whose real run needs a droplet or a GPU, and the ordering is the property.
+
+So the defect is not "asserts on source". It is "asserts that an
+implementation is present, where running it was available". Absence and
+unrunnable ordering are the legitimate cases; presence of a reachable
+mechanism is the one to refuse.
+
+**No mass change, and no test for this.** Telling the two apart requires
+judging whether a behaviour is exercisable, which a scan cannot do, and
+rewriting 113 tests on a rule a scan cannot enforce would be churn with a
+regression risk and no guard behind it. The rule is for me, written here: before
+asserting that a string appears, ask whether the thing can be run.
+
+The three instances also share a tell. Each was written in the same minute as
+the code it tested, when the implementation was the thing in mind and the
+behaviour had not been exercised yet. All three were caught by the same thing
+later: the implementation changed and the test either broke for the wrong
+reason or kept passing while the property it named went away.
