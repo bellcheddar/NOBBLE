@@ -15183,3 +15183,34 @@ having no rule.
 What this is not: a general lesson about care. Each of the three is a
 specific, mechanical fact with a specific, mechanical remedy, which is the
 only kind worth writing in a file that is read every time.
+
+### F310b. The count is transient, the invariant is not
+
+The copies kept coming. Measured over three quarters of an hour on the same
+bundle: zero immediately after the rebuild, 336 twenty minutes later, zero
+after I cleaned them, then 586, then 991, against 2,509 real structures.
+
+The second burst being larger than the first rules out the explanation I was
+reaching for, that my own deletions were feeding the loop: that would cap at
+the 336 I removed. A count climbing toward the file count is iCloud restoring
+its copy of the version the rebuild replaced, file by file, which converges
+and stops. **Every one of the 991 has a plain sibling and none is unmatched.**
+
+So cleaning on a timer is the wrong instrument and so is asserting the count.
+Three tests asserted "no conflict copy in the bundle", which is true the
+moment a build finishes and false for the hour after, and a test that is red
+for an hour after every rebuild teaches you to ignore the suite. That is the
+same argument that made the cleaner remove rather than refuse, applied to
+the tests that watch it.
+
+They now assert the invariant: **no conflict-shaped name in the bundle is the
+only copy of anything.** That is the property which makes them harmless, it
+does not drift, and its negation is the real hazard, because an unmatched
+name may be a file rather than a duplicate and the cleaner must not remove
+it.
+
+The strict assertion stays where it is load-bearing.
+`test_no_tracked_file_is_a_sync_conflict_copy` is unchanged and unweakened: a
+copy that gets committed is published, and that is both F173's failure and
+mine. Cleanliness at publish time is enforced by `deploy/deploy.sh`, which
+clears the provable copies and refuses on anything left.

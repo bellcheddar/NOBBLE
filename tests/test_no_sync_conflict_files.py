@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -51,21 +52,47 @@ def test_no_tracked_file_is_a_sync_conflict_copy():
     )
 
 
-def test_no_file_in_the_published_bundle_is_a_sync_conflict_copy():
+def test_no_conflict_copy_in_the_bundle_is_the_only_copy_of_anything():
+    """The bundle half, asked as an invariant rather than as a count (F310).
+
+    This asserted the bundle holds none at all, which was right when F173
+    found one. The bundle is now 2,509 structures and 330 MB, and iCloud
+    reconciles the whole of it after a rebuild: measured on 2026-11-07, zero
+    immediately after the build, then 336, then zero after cleaning, then 586
+    and 991 over the following minutes, climbing toward the file count. Red
+    for an hour after every rebuild is a test that teaches you to ignore the
+    suite.
+
+    The strict assertion stays where it is load-bearing, which is
+    `test_no_tracked_file_is_a_sync_conflict_copy` above: a copy that gets
+    committed is published, and that is the failure F173 recorded. Here the
+    question is whether any of them is the only copy of a file, because that
+    is the one case where the cleaner must not remove it and where the name
+    might not be a duplicate at all.
+
+    Cleanliness at publish time is enforced by `deploy/deploy.sh`, which
+    clears the provable copies and then refuses on anything left.
+    """
     atlas = ROOT / "deploy" / "atlas"
     if not atlas.exists():
         # Skip rather than return. A bare return makes a test that examined
         # nothing indistinguishable from one that examined everything and
         # found it clean, which is the shape F152 was written to find.
         pytest.skip("no published bundle to check")
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    import clean_sync_conflicts as cleaner
+
     found = sorted(
         str(path.relative_to(ROOT))
         for path in atlas.rglob("*")
         if path.is_file() and CONFLICT.search(path.name)
+        and cleaner.plain_sibling(path) is None
     )
     assert found == [], (
-        "sync-conflict copies are sitting in the bundle rsync publishes, "
-        f"where nothing references them: {found}"
+        "conflict-shaped names in the bundle with no plain sibling, so each "
+        f"may be the only copy of a file rather than a restored duplicate: "
+        f"{found}"
     )
 
 

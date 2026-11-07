@@ -64,18 +64,48 @@ def test_both_directories_are_scanned():
     assert keys == {"structures", "crystals"}
 
 
-def test_the_live_bundle_is_clean():
-    """The state the cleanup left, asserted rather than assumed: if a
-    rebuild reintroduces them, this fails here as well as refusing there."""
+def test_every_conflict_copy_in_the_bundle_is_provably_a_copy():
+    """The invariant, not the count.
+
+    This asserted the bundle holds no name with a space in it, which is true
+    the moment a build finishes and false for the hour after. Measured on
+    2026-11-07: zero immediately after the rebuild, 336 twenty minutes later,
+    zero after cleaning, then 586 and 991 over the following minutes, all
+    climbing toward the bundle's 2,509 structures. iCloud is restoring its
+    copy of the version the rebuild replaced, file by file, and it converges
+    and stops.
+
+    A test that is red for an hour after every rebuild trains you to ignore
+    the suite, which is the same argument that made the cleaner remove
+    rather than refuse. So the count is not asserted. What is asserted is
+    the property that makes them harmless and that does not drift: every
+    conflict-shaped name has a plain sibling, so every one is removable
+    without losing anything. A name without a sibling is the real hazard,
+    because it might be the only copy of a file, and the cleaner refuses on
+    exactly that.
+
+    The publish path is where cleanliness is enforced:
+    `deploy/deploy.sh` clears the provable copies and then refuses on
+    anything left (F310).
+    """
+    import sys as _sys
+
+    _sys.path.insert(0, str(ROOT / "tools"))
+    import clean_sync_conflicts as cleaner
+
     bundle = ROOT / "deploy" / "atlas"
     if not bundle.exists():
         import pytest
         pytest.skip("no published bundle on this checkout")
-    spaced = sorted(str(path.relative_to(bundle))
-                    for path in bundle.rglob("* *"))
-    assert not spaced, (
-        f"{len(spaced)} file(s) in the bundle have a space in the name, which "
-        f"this build never writes: {spaced[:3]}"
+
+    unmatched = [path for path in bundle.rglob("*")
+                 if path.is_file()
+                 and cleaner.CONFLICT.search(path.name)
+                 and cleaner.plain_sibling(path) is None]
+    assert not unmatched, (
+        f"{len(unmatched)} conflict-shaped name(s) in the bundle have no "
+        "plain sibling, so each one may be the only copy of a file rather "
+        f"than a restored duplicate: {[str(p) for p in unmatched[:3]]}"
     )
 
 
@@ -99,8 +129,18 @@ def test_every_published_structure_is_named_for_a_job():
                         in paths.read_jsonl(path, tolerate_torn=True)
                         if row.get("job_id")}
     assert job_ids, "the published bundle names no jobs"
+    # Conflict-shaped names are excluded: they are covered by the invariant
+    # above, and while iCloud reconciles a rebuilt bundle there are hundreds
+    # of them, none of which is a published structure the site would serve
+    # under that name.
+    import sys as _sys
+
+    _sys.path.insert(0, str(ROOT / "tools"))
+    import clean_sync_conflicts as cleaner
+
     orphans = sorted(path.name for path in bundle.iterdir()
-                     if path.stem not in job_ids)
+                     if path.stem not in job_ids
+                     and not cleaner.CONFLICT.search(path.name))
     assert not orphans, (
         f"{len(orphans)} published structure(s) are not named for any job in "
         f"the bundle's own results: {orphans[:3]}"
