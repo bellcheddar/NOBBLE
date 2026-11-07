@@ -221,3 +221,63 @@ def test_one_uncomputed_curve_renders_nothing():
         "corrected_recovery_curve": {"status": "not computed"}})
     assert "<table" not in rendered, rendered
     assert "17.14" not in rendered, rendered
+
+
+def _bundle_with_curves(tmp_path):
+    """The published bundle, plus the two curve keys, in a temporary copy."""
+    import json
+    import shutil
+
+    atlas = ROOT / "deploy" / "atlas"
+    if not (atlas / "comparison.json").exists():
+        return None
+    target = tmp_path / "atlas"
+    shutil.copytree(atlas, target)
+    payload = json.loads((target / "comparison.json").read_text())
+    payload["baseline_recovery_curve"] = COMPUTED_BASE
+    payload["corrected_recovery_curve"] = COMPUTED_CORR
+    (target / "comparison.json").write_text(json.dumps(payload))
+    return target
+
+
+def test_the_whole_benchmark_page_renders_with_the_curves(tmp_path):
+    """The snippet tests render the panel; this renders the page.
+
+    A template error outside the panel, or a route that does not pass
+    `comparison` at all, would not show in a snippet render and would surface
+    as a 500 at request time. The published bundle has no curve keys yet, so
+    without a prepared copy this path is never exercised at all.
+    """
+    bundle = _bundle_with_curves(tmp_path)
+    if bundle is None:
+        pytest.skip("no published bundle to copy")
+
+    from nobble.app import create_app
+
+    app = create_app(str(bundle))
+    app.config["TESTING"] = True
+    response = app.test_client().get("/benchmark")
+
+    assert response.status_code == 200, response.status_code
+    body = response.get_data(as_text=True)
+    assert "17.14" in body and "2.494" in body, (
+        "the page rendered without the contrast the bundle now carries")
+    assert "fragment (15-mer)" in body and "whole domain" in body, body[:0]
+
+
+def test_the_benchmark_page_renders_without_them_too(tmp_path):
+    """The live bundle, unmodified: a 200 and no contrast table."""
+    atlas = ROOT / "deploy" / "atlas"
+    if not (atlas / "comparison.json").exists():
+        pytest.skip("no published bundle")
+
+    from nobble.app import create_app
+
+    app = create_app(str(atlas))
+    app.config["TESTING"] = True
+    response = app.test_client().get("/benchmark")
+
+    assert response.status_code == 200, response.status_code
+    body = response.get_data(as_text=True)
+    assert "fragment (15-mer)" not in body, (
+        "the contrast table rendered from a bundle that carries no curves")
