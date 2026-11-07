@@ -14739,3 +14739,47 @@ used to have; a `|| echo` handles a refusal just as well. It now asks for a
 failure branch of either shape, and additionally that the branch writes to
 stderr, because a refusal printed on stdout in a forty-hour log is a refusal
 nobody reads.
+
+## F303. The duplicates reached the published bundle, and 706 reached a commit
+
+F300 found 26 duplicate-named files in three campaign job directories and
+recorded the cause as unestablished. The scale was larger than that. The atlas
+rebuild at 17:37 left **2,014** of them in the published bundle: 2,007 in
+`deploy/atlas/structures` and 7 in `deploy/atlas/crystals`, each one a
+sibling's name with " 2" inserted before the extension, each beside the real
+file. About 150 MB of unreferenced copies in a bundle built for a droplet
+with 3.8 GB of RAM.
+
+I found them because a commit took more than ten minutes. `git add -A` was
+hashing 2,067 changed paths, 2,027 of which were untracked and whose names
+`git status` was quoting, which is how I noticed they contained spaces. The
+commit landed with 706 of them in it before I stopped the task; it had not
+been pushed, so `git reset HEAD~1` undid it and nothing left the machine.
+With the duplicates removed the same rebuild is 53 changed files, which is
+what a fifteen-job re-run plus one new `about.json` key should be.
+
+Nothing in `build_atlas.py` can produce such a name. `shutil.copy` writes the
+name it is given, and a job id and a PDB id contain no spaces. So this is
+outside the project, as F300 concluded, and the cause is still not
+established. What is in the project's hands is not shipping them.
+
+The build now records every name it writes into `structures/` and
+`crystals/`, compares that against what is in those directories at the end,
+and returns non-zero naming the extras. Checked by name rather than by
+pattern: a pattern catches the shape seen once, and this catches anything that
+appears in a directory that gets rsynced to a public host. The bundle is the
+deliverable, so an unreferenced file in it is a published file.
+
+### What this says about the earlier readings
+
+F300 said one stray file was holding publication. That was true of the
+F219 refusal and it understated the problem by three orders of magnitude: the
+same mechanism had put 2,014 files into the thing being published. I had the
+evidence for the scale at the time, in that `find campaigns -name "* [0-9].*"`
+returned 26, and I did not run the same find over `deploy/`. The finding
+generalised the mechanism and not the search.
+
+The tests assert the live bundle is clean as well as that the build would
+refuse, because a guard in the build says nothing about the bundle sitting on
+disk now. One of them checks the stronger invariant directly: every published
+structure's name is a job id in the bundle's own results.

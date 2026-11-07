@@ -346,6 +346,11 @@ def main() -> int:
 
     if OUT.exists():
         shutil.rmtree(OUT)
+    # What the build means to put in each published directory, so that
+    # anything else found there afterwards can be refused rather than
+    # shipped (F303).
+    intended_structures: set[str] = set()
+    intended_crystals: set[str] = set()
     (OUT / "structures").mkdir(parents=True)
 
     reset_redactions()
@@ -450,6 +455,7 @@ def main() -> int:
                 origin = Path(structure)
                 if origin.exists():
                     published = f"{row['job_id']}.cif"
+                    intended_structures.add(published)
                     shutil.copy(origin, OUT / "structures" / published)
                     row["structure"] = f"structures/{published}"
                 else:
@@ -536,6 +542,7 @@ def main() -> int:
             source = _structures.assembly_path(pdb_id)
             if source.exists():
                 shutil.copy(source, OUT / "crystals" / f"{pdb_id}.cif.gz")
+                intended_crystals.add(f"{pdb_id}.cif.gz")
                 published_crystals += 1
             else:
                 print(f"  crystal {pdb_id} is not in the assembly cache, so "
@@ -710,6 +717,37 @@ def main() -> int:
         summary["jobs_total"] = len(queued)
         summary["pairs_total"] = len({row.get("pair_id") for row in queued
                                       if row.get("pair_id")})
+
+    # Nothing in the bundle that the build did not put there (F303).
+    #
+    # The 2026-11-07 rebuild left 2,014 files in `structures/` and
+    # `crystals/` whose names were a sibling's with " 2" inserted before the
+    # extension, each beside the real file, totalling about 150 MB of
+    # unreferenced copies in a bundle meant for a 3.8 GB droplet. Nothing in
+    # this script can produce such a name: `shutil.copy` writes the name it
+    # is given, and a job id and a PDB id contain no spaces. So they came
+    # from outside the build, and the cause is not established (F300).
+    #
+    # Checked by name against what the build recorded itself writing, rather
+    # than by pattern. A pattern would catch the shape seen once; this
+    # catches anything that appears in these two directories, which is the
+    # property a published bundle needs.
+    unexpected = {
+        "structures": sorted(path.name for path
+                             in (OUT / "structures").iterdir()
+                             if path.name not in intended_structures),
+        "crystals": sorted(path.name for path in (OUT / "crystals").iterdir()
+                           if path.name not in intended_crystals)
+        if (OUT / "crystals").exists() else [],
+    }
+    extra = unexpected["structures"] + unexpected["crystals"]
+    if extra:
+        print(f"REFUSING: {len(extra)} file(s) in the bundle that this build "
+              f"did not write, first {extra[:3]}. The bundle is what gets "
+              "deployed, so an unreferenced file in it is published. Remove "
+              "them and rebuild.", file=sys.stderr)
+        return 1
+    summary["unexpected_files"] = 0
 
     structures = list((OUT / "structures").glob("*.cif"))
     summary["structures"] = len(structures)
