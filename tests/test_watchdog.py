@@ -62,13 +62,39 @@ def test_a_job_past_the_runners_own_bound_is_stalled(tmp_path):
 
 
 def test_the_bound_comes_from_the_runner_not_from_a_constant():
-    """If the runner's timeout or retries change, the bound must follow."""
+    """If the runner's timeout changes, the bound must follow.
+
+    This test used to multiply by `RETRIES + 1`, which was the runner's
+    arithmetic until F100 made the budget cover the job rather than each
+    attempt. Keeping it pinned the stale model: the bound was twice what the
+    runner can allow, so a hung runner went uncalled for an extra hour and a
+    half at tier 1 and six at tier 2.
+    """
     settings = runner.settings_from_config(tier=1)
-    expected = (settings["job_timeout_seconds"] * (runner.RETRIES + 1)
-                + runner.KILL_GRACE_SECONDS)
-    assert watchdog.hard_bound_seconds() > expected
+    budget = settings["job_timeout_seconds"]
+    bound = watchdog.hard_bound_seconds()
+    assert bound > budget + runner.KILL_GRACE_SECONDS, bound
+    # The margin is the only thing above the runner's own allowance, so the
+    # bound must not reach a second attempt's worth.
+    assert bound < budget * (runner.RETRIES + 1), (
+        f"the bound {bound} still allows a second full attempt, which the "
+        "runner's per-job budget does not")
     # tier 2 jobs get a longer timeout, so a longer bound
     assert watchdog.hard_bound_seconds(tier=2) > watchdog.hard_bound_seconds(tier=1)
+
+
+def test_a_jobs_own_timeout_override_sets_its_bound():
+    """The runner reads `job.get("timeout_seconds") or settings[...]`.
+
+    A bound taken from the tier default alone does not follow the runner: the
+    main campaign's tier-2 rows carry 39,000 seconds against a tier default
+    of 21,600, so the default bound would call such a job stalled at 22,320
+    while the runner was still legitimately inside its allowance.
+    """
+    default = watchdog.hard_bound_seconds(tier=2)
+    overridden = watchdog.hard_bound_seconds(tier=2, job_timeout_seconds=39000)
+    assert overridden > default, (overridden, default)
+    assert overridden > 39000, overridden
 
 
 def test_a_merely_slow_job_is_overdue_rather_than_stalled(tmp_path):

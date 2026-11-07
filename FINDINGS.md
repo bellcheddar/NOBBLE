@@ -10952,3 +10952,51 @@ will write a results row carrying the detail. If it fails, the question is
 whether to drop bench06 from tier 2 and record the refinement table as five of
 seven for a stated reason, or to reduce its sampling so the job fits. Both are
 scope decisions and both want the error message first.
+
+## F234. The stall detector's bound was twice the runner's, and two errors were cancelling
+
+The watchdog's `stalled` verdict is the one that matters, and its docstring
+says why: the bound is "derived from the runner rather than configured, so it
+cannot drift away from the behaviour it describes". It had drifted, twice, in
+opposite directions.
+
+**It multiplied by attempts.** The bound was
+`job_timeout_seconds * (RETRIES + 1) + kill grace + margin`. That was the
+runner's arithmetic until F100 made the budget cover the job rather than each
+attempt: `remaining = budget - elapsed`, so two attempts share one allowance
+and the runner cannot hold a job past `budget` plus the kill grace.
+Multiplying made the bound twice what the runner can allow, 11,520 seconds
+against 6,120 at tier 1 and 43,920 against 22,320 at tier 2. A genuinely hung
+runner went uncalled for an extra hour and a half, or six.
+
+Pinned in two places and described in a third:
+`test_the_bound_comes_from_the_runner_not_from_a_constant` asserted the bound
+exceeded `job_timeout_seconds * (RETRIES + 1) + KILL_GRACE_SECONDS`, so the
+stale model had a test defending it, and the docstring said "once per attempt"
+throughout. F100 changed the runner and left all three.
+
+**It read the tier default, not the job's own timeout.** The runner reads
+`job.get("timeout_seconds") or settings[...]`. The main campaign's tier-2 rows
+carry 39,000 seconds against a tier default of 21,600, so a bound from the
+default alone would call such a job stalled at 22,320 while the runner was
+still inside its allowance.
+
+**The two cancelled.** 21,600 doubled is 43,920 with the margin, comfortably
+above 39,000, so no queue on disk could produce a false stall today: measured
+across every queue, zero. That is why this survived. The bound was wrong in
+both directions at once and right by accident, which is worse than being
+wrong, because the arithmetic that saved it is not the arithmetic anyone
+intended.
+
+Both fixed. The bound is now the job's own budget plus the kill grace plus the
+margin, taken per running job: 6,120 at tier 1, 22,320 at tier 2, and 39,720
+for the bench06 job that carries the override. The test that pinned the old
+model now asserts the new one and also that the bound cannot reach a second
+attempt's worth, which is the property that went missing.
+
+Worth saying plainly: this is the instrument I have quoted all session as
+saying the chain is healthy. Its `overdue` reading, which is the one I was
+actually relying on, never depended on this bound, and the live job sits at
+about 5,800 seconds against 39,720 either way. But I was reading a detector
+whose headline verdict was calibrated to a runner that changed five findings
+ago.

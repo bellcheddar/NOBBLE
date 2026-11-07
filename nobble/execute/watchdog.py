@@ -113,17 +113,50 @@ def _tokens_by_job(queue_path: Path) -> dict[str, int]:
     return tokens
 
 
-def hard_bound_seconds(tier: int = 1) -> float:
+def hard_bound_seconds(tier: int = 1,
+                       job_timeout_seconds: float | None = None) -> float:
     """The longest one job can legitimately occupy the runner.
 
     Derived from the runner rather than configured, so it cannot drift away
-    from the behaviour it describes: the timeout, once per attempt, plus the
-    window a kill is given, plus a configured margin.
+    from the behaviour it describes: the job's whole budget, plus the window
+    a kill is given, plus a configured margin.
+
+    **Once per job, not once per attempt.** It used to multiply by
+    `RETRIES + 1`, which was right until F100 made the runner's budget cover
+    the job rather than each attempt: `remaining = budget - elapsed`, so two
+    attempts share one allowance and the runner cannot hold a job past
+    `budget` plus the kill grace. Multiplying made the bound twice what the
+    runner can allow, 11,520 seconds against 6,120 at tier 1 and 43,920
+    against 22,320 at tier 2, so a genuinely hung runner went uncalled for an
+    extra hour and a half, or six. The docstring said "once per attempt"
+    throughout, and `test_the_bound_comes_from_the_runner_not_from_a_constant`
+    asserted that arithmetic, so the stale model was pinned in two places and
+    described in a third.
+
+    `job_timeout_seconds` is the queue row's own override where it has one.
+    The runner reads `job.get("timeout_seconds") or settings[...]`, so a bound
+    taken from the tier default alone does not follow the runner either: the
+    main campaign's tier-2 rows carry 39,000 against a tier default of 21,600.
+    No queue today can be called stalled while legitimately running, because
+    the doubling happened to cover the gap, but the two errors were
+    cancelling rather than absent.
     """
     settings = runner.settings_from_config(tier=tier)
-    attempts = runner.RETRIES + 1
+    budget = float(job_timeout_seconds or settings["job_timeout_seconds"])
     margin = float(paths.thresholds()["watchdog"]["stall_margin_minutes"]) * 60.0
-    return settings["job_timeout_seconds"] * attempts + runner.KILL_GRACE_SECONDS + margin
+    return budget + runner.KILL_GRACE_SECONDS + margin
+
+
+def _timeouts_by_job(queue: Path) -> dict[str, float]:
+    """Each job's own timeout override, where the queue row carries one."""
+    out: dict[str, float] = {}
+    if not queue.exists():
+        return out
+    for row in paths.read_jsonl(queue, tolerate_torn=True):
+        value = row.get("timeout_seconds")
+        if row.get("job_id") and value:
+            out[row["job_id"]] = float(value)
+    return out
 
 
 def stall_report(campaign: Path, tier: int = 1, now: float | None = None,
@@ -177,7 +210,8 @@ def stall_report(campaign: Path, tier: int = 1, now: float | None = None,
     # (F130).
     typical_rate = rates[len(rates) // 2] if rates else None
     multiple = float(paths.thresholds()["watchdog"]["overdue_multiple"])
-    bound = hard_bound_seconds(tier)
+    timeouts = _timeouts_by_job(queue)
+    default_bound = hard_bound_seconds(tier)
 
     for job_id, row in sorted(records.items()):
         if row.get("status") in TERMINAL or str(row.get("status", "")).startswith("failed"):
@@ -199,8 +233,9 @@ def stall_report(campaign: Path, tier: int = 1, now: float | None = None,
         # read it looking for a runner to kill.
         if alive is False:
             report["abandoned"].append(entry)
-        elif elapsed > bound:
-            entry = dict(entry, bound_seconds=round(bound, 1))
+        elif elapsed > (job_bound := hard_bound_seconds(
+                tier, timeouts.get(job_id))):
+            entry = dict(entry, bound_seconds=round(job_bound, 1))
             report["stalled"].append(entry)
         elif typical_rate is not None and tokens.get(job_id):
             expected = typical_rate * tokens[job_id]
