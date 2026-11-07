@@ -199,3 +199,20 @@ for f in logs/*.log; do
   fi
 done
 [[ "$found" -eq 0 ]] && echo "   none in $(ls logs/*.log 2>/dev/null | wc -l | tr -d ' ') log file(s)"
+
+echo
+echo "-- registered predictions"
+# F251, F252 and F253 were recorded before their data existed, and a
+# prediction nobody scores becomes a description. check_prediction.py is
+# called by the chain's last stage for F13's two; this is its counterpart for
+# the three whose stages have not finished, and it prints "not yet testable"
+# with the missing file until they have.
+#
+# Here rather than in tools/run_chain.sh because that script is executing
+# while this is written and bash reads a script incrementally, so editing it
+# mid-run corrupts it. status.sh is invoked fresh, including by the chain's
+# own last line. Wiring the chain itself is left for when it is not running.
+# --brief: the claim and the falsifier do not change once registered, so the
+# status carries only the verdicts and `tools/check_registered.py` on its own
+# gives the detail.
+"$SCI" tools/check_registered.py --brief 2>&1 || true

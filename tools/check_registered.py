@@ -184,6 +184,8 @@ def main(argv: list[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(description="Score F251, F252 and F253.")
     parser.add_argument("--campaign", default=None)
+    parser.add_argument("--brief", action="store_true",
+                        help="one line per prediction, for tools/status.sh")
     args = parser.parse_args(argv)
 
     main_campaign = Path(args.campaign) if args.campaign else None
@@ -203,6 +205,19 @@ def main(argv: list[str] | None = None) -> int:
     scored = [r for r in results if r["status"] in ("supported", "WRONG",
                                                     "unclear")]
     wrong = [r for r in scored if r["status"] == "WRONG"]
+    if args.brief:
+        # A status command is scanned, not read. The claim and the falsifier
+        # are the same every time once they are registered, so they stay in
+        # the full output and the summary carries only what changes.
+        print(f"   {len(results)} recorded, {len(scored)} testable, "
+              f"{len(wrong)} wrong")
+        for row in results:
+            note = row["status"]
+            if row["status"] == "not yet testable":
+                note += f": {row['detail'].split(':')[0]}"
+            print(f"   {row['finding']:6} {note}")
+        return 1 if wrong else 0
+
     print(f"registered predictions: {len(results)} recorded, {len(scored)} "
           f"testable, {len(wrong)} wrong\n")
     for row in results:

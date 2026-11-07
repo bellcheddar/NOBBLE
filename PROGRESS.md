@@ -1,6 +1,6 @@
 # NOBBLE progress
 
-Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T06:29:59Z.
+Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T09:57:54Z.
 
 ## Gate G6 answered: the headline is a negative result, and publication is held
 
@@ -210,6 +210,24 @@ MSAs, which is not a comparison.
 have no known glue. A hit is a hypothesis, and a uniform absence of hits is
 the likely result and still informative, because it says the chemotypes that
 work on CRBN and VHL do not transfer.
+
+## Registered predictions, pending their data
+
+Three claims recorded before their stages finish, scored mechanically by
+`tools/check_registered.py` and summarised by `bash tools/status.sh`. The
+scorer exits non-zero only when one is wrong.
+
+| Finding | Claim | Needs | Verdict today |
+|---|---|---|---|
+| F251 | refinement does not improve Delta-ipTM's discrimination (noise) | `scores_tier2.jsonl` | not yet testable |
+| F252 | the design scan's most sensitive position falls in {5, 6, 7}, which carry four or more CRBN contacts | the scan's `scan_profile.json` | not yet testable |
+| F253 | no Tier B pair bridges in 8 of 10 seeds while its own scramble bridges in 2 or fewer | Tier B's `scores.jsonl` | not yet testable |
+
+Outstanding: `tools/run_chain.sh` calls `check_prediction.py` for F13's two
+and does not call this one, because the chain was executing when it was
+written and bash reads a script incrementally. The chain's last line runs
+`status.sh`, so the verdicts do appear at the end of a run; calling the
+scorer at each stage is the part still to wire.
 
 ## Waiting on Marc
 

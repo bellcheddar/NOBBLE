@@ -138,3 +138,46 @@ def test_f253_needs_the_scramble_before_it_judges(tmp_path):
 def test_the_live_state_is_every_prediction_pending():
     """Today: nothing has run, so nothing is scored and nothing is wrong."""
     assert _module().main([]) == 0
+
+
+def test_the_brief_mode_is_one_line_per_prediction():
+    """A status command is scanned, so the claims stay in the full output."""
+    import io
+    import contextlib
+
+    module = _module()
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
+        module.main(["--brief"])
+    lines = [line for line in buffer.getvalue().splitlines() if line.strip()]
+    # One summary line plus one per prediction.
+    assert len(lines) == 4, lines
+    assert all("falsifier" not in line for line in lines), lines
+    for finding in ("F251", "F252", "F253"):
+        assert any(finding in line for line in lines), (finding, lines)
+
+
+def test_the_status_command_surfaces_the_verdicts():
+    """Wired where it is read, since the chain cannot be edited mid-run."""
+    text = (ROOT / "tools" / "status.sh").read_text()
+    assert "check_registered.py --brief" in text, (
+        "status.sh does not surface the registered predictions, so a verdict "
+        "would only appear if someone ran the tool by hand")
+
+
+def test_the_chain_wiring_is_recorded_as_outstanding():
+    """run_chain.sh was executing when this was written.
+
+    Editing a running bash script corrupts it, because the shell reads it
+    incrementally. The chain already calls status.sh as its last line, so the
+    verdicts do appear at the end of a run; what is outstanding is calling the
+    scorer at each stage, and the reason it was not done is in status.sh.
+    """
+    # Normalised, because the comment wraps and the phrase crosses a line
+    # with a "# " between: searching the raw text for it cannot match, which
+    # is how this assertion failed when it was written.
+    raw = (ROOT / "tools" / "status.sh").read_text()
+    text = " ".join(raw.replace("#", " ").split())
+    assert "executing while this is written" in text, (
+        "the reason the chain itself is not wired has been lost")
+    assert "bash tools/status.sh" in (ROOT / "tools" / "run_chain.sh").read_text()
