@@ -280,6 +280,36 @@ def main() -> int:
               "featurises the YAML.", file=sys.stderr)
         return 1
 
+    # And whether that check could see the campaign at all.
+    #
+    # It skipped three cases silently and the caller read "no disagreements"
+    # as "every job agrees". Two of the three are the guard being blind: a
+    # job that ran with no `processed/structures/*.npz` under it, and an npz
+    # with no `chains` or `residues` array, which is what a change in Boltz's
+    # cache format would look like. Either one turns the refusal above into a
+    # pass for the whole campaign, which re-enables F219 through a guard
+    # reporting success: exactly the shape F218 and F232 record.
+    #
+    # Refusing rather than warning, because this is the guard that stands
+    # between a superseded input and a published pose, and because it costs
+    # nothing today: all three run campaigns check every queued job, 2,360 of
+    # 2,360 for the main one, with no skip of any kind.
+    seen = featurisation_check.coverage(campaign)
+    if seen["blind"]:
+        print(f"\nREFUSED: the featurisation check could not compare "
+              f"{seen['blind']} job(s) that ran, so whether their poses came "
+              "from a superseded input is unknown rather than fine:",
+              file=sys.stderr)
+        print(f"    {seen['no_cache']} with no cached featurisation, "
+              f"{seen['unreadable_cache']} whose cache could not be read, "
+              f"{seen['missing_yaml']} with no YAML on disk",
+              file=sys.stderr)
+        for job_id in seen["blind_examples"]:
+            print(f"    {job_id}", file=sys.stderr)
+        print(f"    {seen['checked']} of {seen['queued']} queued job(s) were "
+              f"compared, {seen['no_output']} have not run.", file=sys.stderr)
+        return 1
+
     if OUT.exists():
         shutil.rmtree(OUT)
     (OUT / "structures").mkdir(parents=True)

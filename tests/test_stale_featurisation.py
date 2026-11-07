@@ -263,3 +263,92 @@ def test_the_runner_actually_removes_the_stale_cache(tmp_path, monkeypatch):
         "the output directory was not cleared, only part of it"
     )
     assert output.exists(), "the output directory was removed and not recreated"
+
+
+def _campaign_with_cache(tmp_path, *, keys=("chains", "residues"),
+                         write_npz=True, run=True):
+    """A one-job campaign whose cache can be made absent or unreadable."""
+    import numpy as np
+
+    campaign = tmp_path / "campaign_synthetic"
+    (campaign / "yaml").mkdir(parents=True)
+    job = "pairX__ternary__unconstrained__seed1"
+    yaml_path = campaign / "yaml" / f"{job}.yaml"
+    yaml_path.write_text(
+        "version: 1\nsequences:\n- protein:\n    id: P\n    sequence: PVD\n")
+    (campaign / "queue.jsonl").write_text(json.dumps({
+        "job_id": job, "pair_id": "pairX", "yaml": str(yaml_path)}) + "\n")
+
+    if run:
+        cache = campaign / "outputs" / job / "boltz_results_x" / "processed" / "structures"
+        cache.mkdir(parents=True)
+        if write_npz:
+            arrays = {}
+            if "chains" in keys:
+                arrays["chains"] = np.array(
+                    [("P", 0)], dtype=[("name", "S8"), ("res_idx", "i4")])
+            if "residues" in keys:
+                arrays["residues"] = np.array(
+                    [("PRO",)], dtype=[("name", "S8")])
+            if not arrays:
+                arrays["something_else"] = np.array([1])
+            np.savez(cache / "s.npz", **arrays)
+    return campaign, job
+
+
+def test_a_job_that_ran_with_no_cache_is_counted_blind(tmp_path):
+    """Not agreement. The job ran and there was nothing to compare."""
+    campaign, _ = _campaign_with_cache(tmp_path, write_npz=False)
+    seen = SF.coverage(campaign)
+    assert seen["no_cache"] == 1, seen
+    assert seen["checked"] == 0, seen
+    assert seen["blind"] == 1, seen
+    assert SF.disagreements(campaign) == []
+
+
+def test_a_cache_without_the_expected_arrays_is_counted_blind(tmp_path):
+    """What a change in Boltz's cache format would look like.
+
+    Every job in the campaign would return None, `disagreements` would be
+    empty, and the guard the atlas build refuses on would report success over
+    a campaign it had not compared. F219 re-enabled by a passing check.
+    """
+    campaign, _ = _campaign_with_cache(tmp_path, keys=())
+    seen = SF.coverage(campaign)
+    assert seen["unreadable_cache"] == 1, seen
+    assert seen["checked"] == 0, seen
+    assert seen["blind"] == 1, seen
+    assert SF.disagreements(campaign) == []
+
+
+def test_an_unrun_job_is_not_blind(tmp_path):
+    """The honest skip: no output directory means it has not run."""
+    campaign, _ = _campaign_with_cache(tmp_path, run=False)
+    seen = SF.coverage(campaign)
+    assert seen["no_output"] == 1, seen
+    assert seen["blind"] == 0, seen
+
+
+def test_a_readable_cache_is_checked(tmp_path):
+    campaign, _ = _campaign_with_cache(tmp_path)
+    seen = SF.coverage(campaign)
+    assert seen["checked"] == 1, seen
+    assert seen["blind"] == 0, seen
+    assert seen["queued"] == 1, seen
+
+
+def test_the_live_campaigns_are_fully_covered():
+    """The refusal added to the build costs nothing today, and this says so.
+
+    If this starts failing, the guard has gone blind somewhere and the build
+    will refuse, which is the intended behaviour and not a regression here.
+    """
+    from nobble import paths as nobble_paths
+
+    for campaign in sorted(nobble_paths.CAMPAIGNS.glob("*")):
+        if not (campaign / "queue.jsonl").exists():
+            continue
+        seen = SF.coverage(campaign)
+        assert seen["blind"] == 0, (campaign.name, seen)
+        assert seen["checked"] + seen["no_output"] == seen["queued"], (
+            campaign.name, seen)

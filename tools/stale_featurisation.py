@@ -80,18 +80,55 @@ def yaml_first_modifications(yaml_path: Path) -> dict[str, str]:
     return wanted
 
 
-def disagreements(campaign: Path) -> list[dict]:
-    """Jobs whose cached featurisation does not match their YAML."""
-    out = []
+def _scan(campaign: Path) -> tuple[list[dict], dict]:
+    """One pass: the disagreements, and what could not be looked at.
+
+    The skips used to be three bare `continue`s and the caller printed "every
+    cached featurisation matches its YAML" over whatever was left. Two of the
+    three are the guard being blind rather than the campaign being clean:
+
+    * `no_cache`: the job has an output directory, so it ran, and no
+      `processed/structures/*.npz` under it. Nothing to compare.
+    * `unreadable_cache`: an npz is there and has no `chains` or `residues`
+      array, or will not load. That is what a change in Boltz's cache format
+      looks like, and it would turn every job in the campaign into a silent
+      pass while this guard is the one the atlas build refuses on. F219 would
+      be re-enabled by a guard reporting success.
+
+    `no_output` is the honest one: the job has not run.
+
+    Counted and returned rather than inferred from the difference, because a
+    reader comparing `checked` against the queue length needs to know which
+    kind of skip made up the gap (F74), and because concluding absence from a
+    filter without printing what it excluded is the mistake F232 records four
+    times over.
+    """
+    out: list[dict] = []
+    counts = {"queued": 0, "checked": 0, "no_output": 0, "no_cache": 0,
+              "unreadable_cache": 0, "missing_yaml": 0}
+    blind: list[str] = []
     for row in paths.read_jsonl(campaign / "queue.jsonl", tolerate_torn=True):
+        counts["queued"] += 1
         job_id = row.get("job_id")
         yaml_path = Path(row.get("yaml", ""))
         output = campaign / "outputs" / str(job_id)
-        if not yaml_path.exists() or not output.exists():
+        if not yaml_path.exists():
+            counts["missing_yaml"] += 1
+            blind.append(str(job_id))
+            continue
+        if not output.exists():
+            counts["no_output"] += 1
             continue
         cached = cached_first_residues(output)
         if cached is None:
+            key = ("no_cache"
+                   if not list(output.glob(
+                       "boltz_results_*/processed/structures/*.npz"))
+                   else "unreadable_cache")
+            counts[key] += 1
+            blind.append(str(job_id))
             continue
+        counts["checked"] += 1
         wanted = yaml_first_modifications(yaml_path)
         for chain, folded in cached.items():
             asked = wanted.get(chain)
@@ -107,7 +144,26 @@ def disagreements(campaign: Path) -> list[dict]:
                             "yaml_asks": f"unmodified {PARENT_OF[folded]}",
                             "folded": folded,
                             "reading": "the cache predates the YAML"})
-    return out
+    counts["blind_examples"] = blind[:5]
+    counts["blind"] = (counts["no_cache"] + counts["unreadable_cache"]
+                       + counts["missing_yaml"])
+    return out, counts
+
+
+def disagreements(campaign: Path) -> list[dict]:
+    """Jobs whose cached featurisation does not match their YAML."""
+    return _scan(campaign)[0]
+
+
+def coverage(campaign: Path) -> dict:
+    """How much of the campaign this guard could actually look at.
+
+    `blind` is the count it could not: a job that ran whose cache is absent
+    or unreadable, or whose YAML is gone. Zero of these is what makes
+    `disagreements()` returning nothing a statement about the campaign rather
+    than about the guard.
+    """
+    return _scan(campaign)[1]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -121,10 +177,27 @@ def main(argv: list[str] | None = None) -> int:
     for campaign in targets:
         if not (campaign / "queue.jsonl").exists():
             continue
-        found = disagreements(campaign)
+        found, seen = _scan(campaign)
         if not found:
+            scope = (f"{seen['checked']} checked, {seen['no_output']} not run")
+            if seen["blind"]:
+                print(f"   UNKNOWN  {campaign.name}: {seen['blind']} job(s) "
+                      f"ran and could not be compared ({scope}, "
+                      f"{seen['no_cache']} without a cache, "
+                      f"{seen['unreadable_cache']} unreadable, "
+                      f"{seen['missing_yaml']} with no YAML). "
+                      f"e.g. {', '.join(seen['blind_examples'][:2])}")
+                worst = max(worst, 1)
+                continue
+            if not seen["checked"]:
+                # No claim to make. "Every cached featurisation matches its
+                # YAML (0 checked)" is true and says nothing, which is the
+                # thing this change exists to stop.
+                print(f"   ok       {campaign.name}: nothing to compare yet "
+                      f"({scope})")
+                continue
             print(f"   ok       {campaign.name}: every cached featurisation "
-                  "matches its YAML")
+                  f"matches its YAML ({scope})")
             continue
         worst = 1
         print(f"   STALE    {campaign.name}: {len(found)} job(s) folded "
