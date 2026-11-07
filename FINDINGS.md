@@ -12809,7 +12809,30 @@ registering rather than reasoning about.
 Scored by `tools/check_registered.py`, which reports it not yet testable until
 all five unconstrained jobs have been attempted, counts the denominator from
 the queue as F258 requires, and ignores a `running` record so a job in flight
-cannot look like an attempt. Adding it broke a test asserting the brief output
+cannot look like an attempt.
+
+**First evidence, 7 November.** The first unconstrained refinement failed in
+the same way as the five conditioned ones, and the durations are what carries
+the weight:
+
+```
+conditioned    seed1   9492.4s   attempts 2   exit 0, no confidence JSON
+conditioned    seed2   9440.0s   attempts 2   exit 0, no confidence JSON
+conditioned    seed3   9536.3s   attempts 2   exit 0, no confidence JSON
+conditioned    seed4   9468.0s   attempts 2   exit 0, no confidence JSON
+conditioned    seed5   9601.8s   attempts 2   exit 0, no confidence JSON
+unconstrained  seed1   9534.1s   attempts 2   exit 0, no confidence JSON
+```
+
+Six attempted, none succeeded, and the spread is 9,440 to 9,602 seconds: 1.7
+per cent across six jobs and both conditionings, with the unconstrained one
+landing at the conditioned median. A pocket constraint that caused the failure
+would have to leave both the outcome and the duration unchanged when removed,
+which is not what a cause does.
+
+The verdict stays "not yet testable" on 1 of 5, which is F258's rule applied
+to my own prediction: the four unscored jobs are where a success would be, and
+"none succeeded" over one attempt is not the claim. Adding it broke a test asserting the brief output
 has exactly five lines; the property is one line per prediction, so that test
 now counts from the summary line's own figure.
 
