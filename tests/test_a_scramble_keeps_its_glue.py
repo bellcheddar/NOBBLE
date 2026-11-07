@@ -154,3 +154,64 @@ def test_preflight_passes_when_the_glue_is_there(tmp_path):
     assert report["ternary_jobs_missing_their_ligand"] == 0, report
     assert not [item for item in report["errors"]
                 if "no ligand chain" in item["problem"]], report["errors"]
+
+
+def _over_cap(tmp_path: Path, construct: str) -> dict:
+    """An over-cap job with a peptide chain, for the exception list.
+
+    The peptide chain matters: the check that broke the cap check only runs
+    for chain P, so a fixture without one cannot reproduce it.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "preflight", ROOT / "tools" / "preflight.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    campaign = tmp_path / "campaign_cap"
+    (campaign / "yaml").mkdir(parents=True)
+    msa = campaign / "receptor.a3m"
+    msa.write_text(">query\nMKVLA\n")
+    path = campaign / "yaml" / "job1.yaml"
+    path.write_text(yaml_lib.safe_dump({"version": 1, "sequences": [
+        {"protein": {"id": "A", "sequence": "MKVLA", "msa": str(msa)}},
+        {"protein": {"id": "P", "sequence": "IYKPGKTITMIKDKM", "msa": "empty"}},
+    ]}))
+    (campaign / "queue.jsonl").write_text(json.dumps({
+        "job_id": "job1", "pair_id": "p", "complex_type": "binary",
+        "peptide_sequence": "IYKPGKTITMIKDKM", "tokens": 100_000,
+        "construct": construct, "yaml": str(path)}) + "\n")
+    return module.preflight(campaign)
+
+
+def test_a_declared_exception_is_still_allowed_over_the_cap():
+    """The check that broke, and the way it broke.
+
+    The peptide-sequence check was first written with a local named
+    `declared`, which is also the name of the token-cap exception list a few
+    lines above. After the first peptide chain was scanned the cap check was
+    asking whether a construct name appears inside a peptide sequence, which
+    fired on 50 jobs across two campaigns that are declared exceptions. No
+    test caught it: every preflight fixture either had no peptide chain or no
+    job over the cap, so the two checks never met.
+    """
+    from nobble.curate import constructs as C
+
+    exceptions = C.declared_exceptions()
+    if not exceptions:
+        pytest.skip("no declared token-cap exceptions in config")
+    report = _over_cap(Path(__import__("tempfile").mkdtemp()),
+                       sorted(exceptions)[0])
+    cap_errors = [item for item in report["errors"]
+                  if "over the" in item["problem"]]
+    assert not cap_errors, (
+        f"a declared exception was flagged over the cap: {cap_errors}")
+
+
+def test_an_undeclared_construct_is_still_flagged_over_the_cap():
+    """The other half, so the test above cannot pass by the check being dead."""
+    report = _over_cap(Path(__import__("tempfile").mkdtemp()),
+                       "NOT_A_DECLARED_CONSTRUCT")
+    assert any("over the" in item["problem"] for item in report["errors"]), (
+        report["errors"])

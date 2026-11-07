@@ -12477,3 +12477,46 @@ What is not fixed by this: the campaign on disk. Those five jobs need
 re-running, which needs the GPU, so they join the F47 correction in the queue
 of things waiting for the device. Until then `scr_bench03_BRD4_CRBN`'s 0.0 is
 an artefact and is recorded here as one.
+
+## F263
+
+Every other record-against-YAML disagreement, swept, and one check that broke
+another.
+
+F262 was one pair whose record named a glue its YAML lacked. The obvious
+question is what else the records and the inputs disagree about, since the
+record is what every downstream number is labelled with and the YAML is what
+was folded. Four classes, swept over 4,340 jobs in five campaigns:
+
+```
+peptide sequence differs from the record        0
+declared modification absent from the YAML      0
+YAML carries a glue no record names             0
+YAML or peptide chain missing                   0
+```
+
+Clean, including the main campaign's 2,360. The peptide-sequence one is the
+case that would matter most: a job folding one sequence and reporting another
+would put every number it produces against the wrong peptide, in the manifest,
+the scores and the site alike, and nothing downstream could tell. So this is a
+negative result worth having rather than an absence of news, and F262 stands
+as an isolated defect rather than an instance of a pattern.
+
+The three checks now live in `tools/preflight.py`, which already parses every
+YAML beside its record, so they cost nothing per run and cannot go stale the
+way a swept number does.
+
+Adding them, I broke the check above. The peptide-sequence check was written
+with a local named `declared`, which is also the name of the token-cap
+exception list read fifteen lines earlier. After the first peptide chain was
+scanned, `job["construct"] not in declared` was asking whether a construct
+name appears somewhere inside a peptide sequence, so the cap check fired on 50
+jobs across two campaigns that are declared exceptions, and Tier B went from
+`ok: true` to refusing. I caught it because the error count had changed from 5
+to 55 against a run I had done twenty minutes earlier, not because anything
+failed.
+
+No test caught it, and the reason is worth recording: every preflight fixture
+either had no peptide chain or no job over the cap, so the two checks had never
+met in a test. There is now a fixture with both, in each direction, and the
+shadowing reintroduced by hand to confirm the test fails on it.

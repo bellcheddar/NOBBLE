@@ -118,6 +118,42 @@ def preflight(campaign: Path) -> dict:
             if kind == "protein":
                 cached = body.get("msa") not in ("empty", None)
                 is_peptide = body.get("id") == "P"
+                if is_peptide:
+                    # The sequence folded against the sequence recorded. If
+                    # these disagree, every number the job produces is about
+                    # a different peptide from the one the manifest, the
+                    # scores and the site all name, and nothing downstream
+                    # could tell. Swept across 4,340 jobs in five campaigns
+                    # and clean, which is worth keeping that way rather than
+                    # re-establishing by hand (F263).
+                    # Not `declared`: that name is already the token-cap
+                    # exception list from line 93, and shadowing it here made
+                    # the cap check ask whether a construct name appears
+                    # inside a peptide sequence, which fired on 50 jobs that
+                    # are declared exceptions. One of the two checks was
+                    # wrong from the moment the other was written.
+                    declared_peptide = job.get("peptide_sequence")
+                    if declared_peptide and (
+                            body.get("sequence") != declared_peptide):
+                        errors.append({
+                            "job": job_id,
+                            "problem": "the YAML peptide differs from the "
+                                       "record: folding "
+                                       f"{(body.get('sequence') or '')[:24]} "
+                                       f"and reporting "
+                                       f"{declared_peptide[:24]}"})
+                    # A declared modification absent from the block is F47's
+                    # shape one level up from F219's: that one was the cached
+                    # featurisation disagreeing with a corrected YAML, this
+                    # is the YAML disagreeing with its own record.
+                    if job.get("required_modification") and (
+                            "modifications" not in body):
+                        errors.append({
+                            "job": job_id,
+                            "problem": f"declares modification "
+                                       f"{job['required_modification']} and "
+                                       "its YAML peptide has no "
+                                       "modifications block"})
                 if is_peptide and cached:
                     errors.append({"job": job_id,
                                    "problem": "peptide chain carries an MSA (spec 1.3)"})
@@ -176,6 +212,17 @@ def preflight(campaign: Path) -> dict:
         # alone: a ternary job with no declared ligand is a different
         # question, and this is the disagreement between what the campaign
         # wrote down and what it would fold.
+        # The reverse of the above: a glue in the YAML that no record names.
+        # Less harmful, since what was folded is what the ternary arm is for,
+        # but it is still the record and the input disagreeing, and whichever
+        # way round that is it means one of them is wrong.
+        if has_ligand and not job.get("ligand_key"):
+            errors.append({
+                "job": job_id,
+                "problem": "its YAML carries a ligand chain and the record "
+                           "names no ligand, so the campaign cannot say what "
+                           "was folded"})
+
         if (job.get("complex_type") == "ternary"
                 and job.get("ligand_key") and not has_ligand):
             errors.append({
