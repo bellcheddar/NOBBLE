@@ -11865,3 +11865,60 @@ meets that fact where it would otherwise infer the opposite.
 This is F79's shape once more, an affordance nobody exercises, with a twist:
 here the unexercised thing is kept looking exercised by a test that is itself
 correct.
+
+## F251. A registered prediction: does refinement improve discrimination?
+
+Recorded before the numbers exist, which is the only time it can be.
+
+Tier 2's purpose for the Sievers arm is the question the headline rests on:
+the matched-control ROC is a null at tier 1 (AUC 0.4583, and 0.4147 on the
+collapse-robust statistic, F231), and refinement is the remaining rung of the
+ladder. Ten Sievers pairs now have tier-2 results, four degraded and six not:
+
+```
+sv_pos_E4F1_e7901a    10 jobs   degraded       tier-1 delta  0.0283
+sv_pos_ZN517_849030   10 jobs   degraded                     0.0394
+sv_pos_ZN582_ba3680    4 jobs   degraded                     0.0642
+sv_pos_ZN653_50f6a7   10 jobs   degraded                     0.1023
+sv_neg_BCL6B_c2c0a3   10 jobs   not_degraded                 0.0587
+sv_neg_TF3A_f31a9b    10 jobs   not_degraded                -0.5656
+sv_neg_ZBT38_f0981b   10 jobs   not_degraded                 0.0469
+sv_neg_ZFP28_7d3349   10 jobs   not_degraded                -0.4809
+sv_neg_ZN112_86532d   10 jobs   not_degraded                -0.0525
+sv_neg_ZN346_d5063d   10 jobs   not_degraded                 0.1790
+```
+
+`scores_tier2.jsonl` does not exist yet, so no tier-2 Delta-ipTM has been
+computed. Deriving it here from raw ipTM would reimplement the scorer's seed
+aggregation, tier partitioning and collapse detection, which is a second
+answer to one question (F242) and the duplication D-NOB-007 forbids. So the
+measurement waits for `nobble.score.run`, and what is written now is what
+would count as an answer.
+
+**The only defensible comparison is paired.** These ten are the top decile by
+tier-1 composite, not a matched subset: the arm pairs each positive with four
+composition-matched negatives, and that structure is not preserved here. An
+AUC over four positives and six negatives is not an estimate of anything. So
+the comparison is tier-1 against tier-2 Delta-ipTM **on these same ten pairs**,
+which at least holds the subset fixed, and it indicates direction only. It
+cannot replace the 24-against-96 curve and must not be reported as a new AUC.
+
+**Registered now:**
+
+* *Supported* if the paired tier-2 AUC over these ten exceeds the paired
+  tier-1 AUC over the same ten by more than 0.10, and the ordering of the four
+  positives against the six negatives improves rather than one outlier moving.
+* *Refuted* if it falls by more than 0.10, which would say refinement makes
+  the statistic worse and the ladder's last rung is spent.
+* *Noise* for anything between, which on ten pairs is the expected outcome and
+  should be reported as such rather than as a trend.
+
+The prediction, before looking: **noise**. Two reasons. Refinement sharpened
+poses without recovering them on the benchmark panel (F215), and the three
+pairs whose site is right were already right at tier 1 (F227), so refinement
+is not what finds the site. And the negatives here include two at -0.48 and
+-0.57, far below every positive, so tier-1 ordering on this subset is already
+better than its full-arm AUC suggests; there is little room for a 0.10 gain
+that is not an artefact of ten points.
+
+Whoever runs the scorer should read this entry first, then the numbers.
