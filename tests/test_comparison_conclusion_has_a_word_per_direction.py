@@ -200,18 +200,37 @@ def test_both_curves_present_renders_the_contrast():
 
 
 def test_a_bundle_without_the_curves_renders_nothing():
-    """The live state: the published bundle predates the keys.
+    """A bundle that carries no curves, as a fixture rather than as the live
+    one.
 
-    It was built before compare.compare carried them, so the guard is
-    load-bearing now rather than in principle.
+    This used to read `deploy/atlas/comparison.json` and assert it rendered
+    nothing, on the premise that the published bundle predated the keys. The
+    2026-11-07 rebuild gave it the keys, so the premise expired and the test
+    failed on an improvement. A guard against rendering half a comparison
+    should be exercised by a comparison that is half there, not by whatever
+    the last build happened to produce (F307).
     """
-    import json
-
-    published = json.loads(
-        (ROOT / "deploy" / "atlas" / "comparison.json").read_text())
-    rendered = _curve_panel().render(comparison=published)
+    rendered = _curve_panel().render(comparison={"conclusion": "something"})
     assert "<table" not in rendered, rendered
     assert rendered.strip() == "", rendered
+
+
+def test_the_published_bundle_now_carries_the_curves():
+    """The live state, asserted as a fact about today rather than smuggled in
+    as a guard's premise. If a rebuild drops the keys this says so, and the
+    guard above keeps working either way."""
+    import json
+
+    published_path = ROOT / "deploy" / "atlas" / "comparison.json"
+    if not published_path.exists():
+        pytest.skip("no published bundle")
+    published = json.loads(published_path.read_text())
+    missing = [key for key in ("baseline_recovery_curve",
+                               "corrected_recovery_curve")
+               if not published.get(key)]
+    assert not missing, (
+        f"the published comparison has lost {missing}, so the contrast table "
+        "stops rendering and the panel falls back to the conclusion alone")
 
 
 def test_one_uncomputed_curve_renders_nothing():
@@ -265,15 +284,31 @@ def test_the_whole_benchmark_page_renders_with_the_curves(tmp_path):
     assert "fragment (15-mer)" in body and "whole domain" in body, body[:0]
 
 
-def test_the_benchmark_page_renders_without_them_too(tmp_path):
-    """The live bundle, unmodified: a 200 and no contrast table."""
+def test_the_benchmark_page_renders_without_the_curves_too(tmp_path):
+    """A bundle with the curve keys removed: a 200 and no contrast table.
+
+    Was the live bundle unmodified, for the same expired premise as above.
+    Now a copy with the keys taken out, which is the state the guard is
+    about and which no longer depends on when the bundle was last built
+    (F307).
+    """
+    import json
+    import shutil
+
     atlas = ROOT / "deploy" / "atlas"
     if not (atlas / "comparison.json").exists():
         pytest.skip("no published bundle")
 
+    target = tmp_path / "atlas"
+    shutil.copytree(atlas, target)
+    comparison = json.loads((target / "comparison.json").read_text())
+    for key in ("baseline_recovery_curve", "corrected_recovery_curve"):
+        comparison.pop(key, None)
+    (target / "comparison.json").write_text(json.dumps(comparison, indent=2))
+
     from nobble.app import create_app
 
-    app = create_app(str(atlas))
+    app = create_app(str(target))
     app.config["TESTING"] = True
     response = app.test_client().get("/benchmark")
 

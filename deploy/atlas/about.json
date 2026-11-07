@@ -105,7 +105,6 @@
     "rows": [
       {
         "job_id": "5HXB:Z+X",
-        "structure": "/Users/dellboy/Documents/Vibe_Coding/BINMAN/data/cache/rcsb_assemblies/5HXB-assembly1.cif.gz",
         "found": true,
         "dsasa_receptor": 684.9025046662209,
         "dsasa_peptide": 528.523385237746,
@@ -131,7 +130,6 @@
       },
       {
         "job_id": "5T35:every-other-chain+A",
-        "structure": "/Users/dellboy/Documents/Vibe_Coding/BINMAN/data/cache/rcsb_assemblies/5T35-assembly1.cif.gz",
         "found": true,
         "dsasa_receptor": 983.413645173845,
         "dsasa_peptide": 980.6930777018079,
@@ -157,7 +155,6 @@
       },
       {
         "job_id": "6BNB:B+C",
-        "structure": "/Users/dellboy/Documents/Vibe_Coding/BINMAN/data/cache/rcsb_assemblies/6BNB-assembly1.cif.gz",
         "found": false,
         "dsasa_receptor": null,
         "dsasa_peptide": null,
@@ -183,7 +180,6 @@
       },
       {
         "job_id": "6H0F:B+C",
-        "structure": "/Users/dellboy/Documents/Vibe_Coding/BINMAN/data/cache/rcsb_assemblies/6H0F-assembly1.cif.gz",
         "found": true,
         "dsasa_receptor": 540.5682945963235,
         "dsasa_peptide": 228.28199512295078,
@@ -209,7 +205,6 @@
       },
       {
         "job_id": "5FQD:B+C",
-        "structure": "/Users/dellboy/Documents/Vibe_Coding/BINMAN/data/cache/rcsb_assemblies/5FQD-assembly1.cif.gz",
         "found": true,
         "dsasa_receptor": 530.2434384699591,
         "dsasa_peptide": 215.35709024322023,
@@ -235,7 +230,6 @@
       },
       {
         "job_id": "6Q0W:every-other-chain+D",
-        "structure": "/Users/dellboy/Documents/Vibe_Coding/BINMAN/data/cache/rcsb_assemblies/6Q0W-assembly1.cif.gz",
         "found": true,
         "dsasa_receptor": 626.1742264118948,
         "dsasa_peptide": 329.7593298314496,
@@ -261,7 +255,6 @@
       },
       {
         "job_id": "6TD3:A+B",
-        "structure": "/Users/dellboy/Documents/Vibe_Coding/BINMAN/data/cache/rcsb_assemblies/6TD3-assembly1.cif.gz",
         "found": true,
         "dsasa_receptor": 287.32546971760166,
         "dsasa_peptide": 850.5137970532705,

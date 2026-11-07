@@ -471,12 +471,27 @@ def main() -> int:
         summary["files"][name] = len(rows)
 
     # Verify the redaction actually happened, rather than trusting it.
+    #
+    # And, in the same pass, that no published document carries an absolute
+    # local path. `tests/test_no_local_paths_published.py` has checked that
+    # since F128 and it caught this build publishing `/Users/dellboy/...`
+    # inside `about.json`: the crystal control's rows carried the path to
+    # BINMAN's assembly cache, which `_relocate` does not rewrite because it
+    # is outside this project's root.
+    #
+    # The suite catching it is not enough, which is F304's lesson. The suite
+    # does not run between a rebuild and the rsync that publishes it, and a
+    # home directory name in a public bundle is the kind of thing that is
+    # noticed by someone else. Checked here so the build refuses.
     leaked = []
     for path in OUT.rglob("*"):
         if path.is_file() and path.suffix in (".json", ".jsonl"):
             body = path.read_text(errors="replace")
             if "CC1=C(C)C2=C(S1)" in body:
                 leaked.append(str(path.relative_to(OUT)))
+            if "/Users/" in body:
+                leaked.append(f"{path.relative_to(OUT)}: an absolute local "
+                              "path under /Users/")
     if leaked:
         print(f"REFUSING TO PUBLISH: PROTAC-DB chemistry still present in {leaked}",
               file=sys.stderr)
@@ -563,8 +578,17 @@ def main() -> int:
         sys.path.insert(0, str(ROOT / "tools"))
         import bridge_on_crystals
 
-        crystal_control = {"rows": bridge_on_crystals.crystal_rows(),
-                           "status": "measured"}
+        # `structure` on each row is the path to BINMAN's cached assembly,
+        # which is of no use to a reader of the bundle and is an absolute
+        # local path. `_relocate` would not catch it, because it rewrites
+        # paths under this project's root and the cache is under BINMAN's, so
+        # it is dropped here rather than rewritten. The PDB id is the
+        # identifier a reader wants and is already on the row.
+        crystal_control = {
+            "rows": [{key: value for key, value in row.items()
+                      if key != "structure"}
+                     for row in bridge_on_crystals.crystal_rows()],
+            "status": "measured"}
     except Exception as problem:                        # noqa: BLE001
         crystal_control = {
             "rows": [],

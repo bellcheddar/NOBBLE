@@ -178,12 +178,24 @@ def test_it_does_not_promise_a_clean_build_while_the_build_would_refuse():
     if campaign is None:
         pytest.skip("no campaign assembled")
 
+    # Keyed on the refusal, not on the noun phrase.
+    #
+    # This asserted that "folded from a superseded input" is absent when
+    # nothing was folded, and the clean message is "nothing was folded from a
+    # superseded input", which contains it. The test could not see the
+    # difference between the two states it exists to tell apart, and it only
+    # showed once the 2026-11-07 correction made the campaign clean and the
+    # clean branch ran for the first time. "the atlas build refuses on that"
+    # appears only in the dirty message (F307).
     folded = featurisation.disagreements(campaign)
     if folded:
         assert "nothing to refuse" not in out, (
             f"{len(folded)} job(s) were folded from a superseded input, so "
             "the build refuses, and the report says it has nothing to "
             f"refuse:\n{out}")
-        assert "folded from a superseded input" in out, out
+        assert "the atlas build refuses on that" in out, out
     else:
-        assert "folded from a superseded input" not in out, out
+        assert "the atlas build refuses on that" not in out, out
+        assert "nothing to refuse" in out, (
+            "nothing was folded, so the report should say the build has "
+            f"nothing to refuse:\n{out}")

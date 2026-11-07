@@ -48,7 +48,8 @@
   "comparison_conclusion": "F6 supported: 6 pair(s) improved by more than 2 A with the whole domain, the control held, and none got worse. Bridge formation agrees and is independent of the crystal: 4 pair(s) bridged in more seeds and none in fewer",
   "jobs_total": 2360,
   "pairs_total": 158,
+  "unexpected_files": 0,
   "structures": 2509,
-  "bytes": 282962746,
+  "bytes": 282961931,
   "redacted_ligands": []
 }

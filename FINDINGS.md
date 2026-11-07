@@ -14976,3 +14976,58 @@ tested: an attempt at the full count failing again says nothing about this
 claim, and a job with no recorded count ran before F298, so reading a missing
 count as a reduced one would score the prediction on the very evidence that
 motivated it.
+
+## F307. Three tests failed because the campaign finally became clean
+
+The full suite came back 1,720 passed and 5 failed. Two of the five were the
+atlas drift tests, failing because the bundle genuinely drifted mid-rebuild
+and passing once it settled. The other three were tests whose premise had
+expired, and all three expired in the same direction: the thing they assumed
+was broken got fixed.
+
+**`test_provenance_report.py::test_it_does_not_promise_a_clean_build_while_
+the_build_would_refuse`** asserted that the phrase "folded from a superseded
+input" is absent when nothing was folded. The clean message is "nothing was
+folded from a superseded input", which contains it. The test could not
+distinguish the two states it exists to tell apart, and that only showed when
+the correction made the campaign clean and the clean branch ran for the first
+time. Now keyed on "the atlas build refuses on that", which appears only in
+the dirty message, and it asserts the clean wording positively as well.
+
+**`test_comparison_conclusion_has_a_word_per_direction.py`**, two tests, read
+`deploy/atlas/comparison.json` and asserted it renders no contrast table, on
+the stated premise that "the published bundle predates the keys". The rebuild
+gave it the keys. A guard against rendering half a comparison should be
+exercised by a comparison that is half there, not by whatever the last build
+produced, so both now use fixtures. A third test asserts the live bundle
+carries the curves, which is the fact about today stated as a fact rather
+than smuggled in as a guard's premise.
+
+That is the same shape as F299's drift allowlist, which also failed when the
+correction it recorded landed, except that F299's test was designed to fail
+that way and said so. These three were not.
+
+## F308. I edited a running shell script and killed the chain
+
+`tools/run_chain.sh` printed `line 146: syntax error near unexpected token
+'else'` and exited, having finished the refresh and never reached tier 2. The
+file on disk is valid; `bash -n` passes. Bash reads a script incrementally
+rather than parsing it whole, so my F302 edit shifted the byte offsets under
+a copy that was already executing and it resumed in the middle of a
+statement.
+
+The cost was the tier-2 start, about forty minutes of idle GPU before I
+noticed, and it was avoidable: the chain runs seven scripts and I edited one
+of them while it was running.
+
+For the next forty hours, `tools/run_chain.sh`, `tools/tier2.sh`,
+`tools/refresh.sh`, `tools/corrections.sh`, `tools/wait_for_gpu.sh` and
+`tools/run_queue.sh` are not to be edited while the chain holds them. A
+Python module is safer, because the interpreter reads the whole file at
+import, but only safer: an edit still takes effect on the next import and the
+runner imports per stage.
+
+The restart confirmed F302's fix, which is the one good thing to come out of
+it: the correction stage now prints "nothing to correct: inputs match and no
+cache disagrees" and "nothing to correct: the YAMLs are already what the code
+emits", clears nothing and re-runs nothing.
