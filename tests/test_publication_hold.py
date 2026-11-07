@@ -319,3 +319,41 @@ def test_the_contrast_quotes_the_same_curve_the_hold_refuses_on():
     assert "median" in text, text
     assert "within 3.0 A" in text, (
         "the contrast omits the radius the hold's own reason names")
+
+
+def test_the_whole_domain_curve_carries_the_time_split_caveat():
+    """The positive result must not be read as prospective.
+
+    The time-split layer reports no blind set: all seven benchmark
+    depositions predate the 2021-09-30 training cutoff. That sentence was
+    attached to the retrospective number and not to the whole-domain
+    recovery, which is the figure a reader meets first and the one they would
+    read as generalisation (F282).
+
+    Calling `representation_contrast` directly, the way the test above does.
+    Driving `main` and capturing the streams skipped itself twice: once for
+    capturing stdout when the refusal goes to stderr, and again for reasons I
+    did not chase, which is two attempts at an invocation this file already
+    had a working form of.
+    """
+    import importlib.util
+    import os
+
+    spec = importlib.util.spec_from_file_location(
+        "publication_hold", ROOT / "tools" / "publication_hold.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    cwd = os.getcwd()
+    try:
+        os.chdir(ROOT)
+        lines = module.representation_contrast()
+    finally:
+        os.chdir(cwd)
+
+    text = "\n".join(lines)
+    if "no corrected-construct campaign" in text:
+        pytest.skip("no corrected campaign on disk")
+    assert "whole-domain campaign" in text, text
+    assert "prospective" in text, text
+    assert "2021-09-30" in text, text

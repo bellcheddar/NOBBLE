@@ -170,6 +170,12 @@ what it says.
   within 3 A at a median of 2.494 A, against none and 17.54 A for the 15-mers.
   So the recovery failure belongs to an input representation rather than to
   the method, and the atlas is built from the campaign where it fails.
+- **Neither result is prospective.** All seven benchmark depositions predate
+  the model's 2021-09-30 training cutoff, so the time-split layer reports no
+  blind set at all. The failure is therefore not explained by novelty, which
+  strengthens the representation reading; the success is on structures the
+  model may have memorised, so it is consistent with recall as much as with
+  prediction. Settling that needs a post-cutoff deposition, not more compute.
 
 **Publication is therefore held** (`DECISIONS.md`, D-NOB-076), and held by the
 scripts rather than by a note: `config/publication_hold.toml` is read by

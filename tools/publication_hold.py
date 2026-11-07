@@ -143,6 +143,15 @@ def representation_contrast() -> list[str]:
             f"    the same curve on the whole-domain campaign: "
             f"{curve.get('n')} pose(s), median {curve.get('median_rmsd')} A",
             f"      {within}",
+            # The caveat the time-split layer exists to make, beside the
+            # number rather than only beside the retrospective one. All
+            # seven depositions predate the 2021-09-30 training cutoff, so
+            # there is no blind set: the 15-mer failure is not explained by
+            # novelty and the whole-domain success is not generalisation
+            # (F282).
+            "      neither arm is prospective: all seven depositions predate "
+            "the 2021-09-30 training cutoff, so the failure is not explained "
+            "by novelty and the recovery is consistent with recall",
         ]
 
     lines = [

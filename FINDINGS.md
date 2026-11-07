@@ -13501,3 +13501,47 @@ table's zero weight are the same result reached twice, and together they say
 the project's primary statistic is not merely unproven on these labels but
 dispensable to the best in-sample combination of everything measured
 alongside it.
+
+## F282
+
+The whole-domain recovery is on structures the model may have memorised, and
+nothing said so.
+
+The time-split layer exists for this. It reports that all seven benchmark
+depositions, 5FQD 5HXB 5T35 6BNB 6H0F 6Q0W 6TD3, were released before the
+2021-09-30 training cutoff, that none was released after it, and that no
+pair's release date is unknown. Its status says the consequence in as many
+words: "no benchmark deposition was released after the training cutoff, so
+this campaign has no blind set. The retrospective number stands alone and must
+not be read as prospective performance."
+
+That sentence is attached to the retrospective number. It is not attached to
+the positive result, and the corrected campaign uses the same seven
+depositions, which I checked rather than assumed.
+
+So the caveat cuts both ways and neither half was written down.
+
+**The 15-mer failure cannot be excused by novelty.** All seven pairs are
+potentially in the training set, and the 15-mer representation still recovers
+none of them within 3 A at a median of 17.535 A, with a contact footprint of
+0.211 among the failures (F279). A model that may have seen these complexes
+cannot place a 15-mer degron on them. That strengthens the representation
+explanation rather than weakening it: the failure survives the most
+favourable possible data conditions.
+
+**The whole-domain success cannot be claimed as generalisation.** The same
+seven depositions, 35 of 65 poses within 3 A at a median of 2.494 A, footprint
+median 0.909. On pre-cutoff structures that is consistent with recall as much
+as with prediction, and F236, F278 and F279 as written say none of it. Neither
+does the README's bullet. The number is right and the inference a reader would
+draw from it is not supported.
+
+What would settle it is a deposition released after the cutoff, which is what
+the prospective arm is for and why it reports n=0. Four of the seven
+degraders have post-2021 ternary structures in the literature; whether any is
+in the PDB with a usable degron window is a curation question for BINMAN and
+not something this campaign can answer by computing harder.
+
+Recorded here, and added to the README's whole-domain bullet and to
+`tools/publication_hold.py`, which prints the whole-domain comparison as part
+of the refusal and is the place a reader meets the number first.
