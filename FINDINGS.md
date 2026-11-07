@@ -14860,3 +14860,22 @@ for this one. The cost was three findings written on a false premise, a
 paragraph of invalid reasoning about iCloud, and a wrong statement to Marc
 about an unexplained phenomenon on his machine. Searching first costs one
 command.
+
+### F304b. The probe that did not reproduce it
+
+Before finding F173 I ran an experiment: write twenty files into a directory
+inside the project tree, wait ninety seconds, delete the directory, recreate
+it with the same names and different content, wait three minutes, count the
+conflict copies. **Zero.**
+
+That is worth recording and worth not over-reading. It says a small, fast
+delete-and-recreate cycle does not trigger the mechanism within three
+minutes. It says nothing about the real case, which was 2,014 files across a
+rebuild that replaced a 330 MB bundle, and nothing against the recorded
+cause: iCloud's conflict resolution depends on whether it had uploaded the
+file it is holding, and twenty small files in ninety seconds is not a case
+where it would have.
+
+A negative from a four-minute probe is not evidence about a phenomenon
+measured over hours. The reason to keep the result is that it would have been
+easy to present it as one.
