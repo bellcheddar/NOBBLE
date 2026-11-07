@@ -11284,3 +11284,46 @@ The diagnostic fix takes effect at the next runner invocation, since the
 running process imported the module before it was written. So the nine
 remaining failures will still say only "exit 0 but no confidence JSON
 written", and the first one to carry a cause will be in whatever runs next.
+
+## F239. One failed job in 2,709, and F238's failure mode has never happened before
+
+Asked whether F238's "exit 0 and an empty predictions directory" is a
+recurring silent loss or a one-off, since the answer changes how much of the
+project's record to distrust. Every state and results file in every campaign,
+for any status that is not `done` or `running`:
+
+```
+campaign_20261104T004632Z  state_tier2.jsonl  abandoned   3
+campaign_20261104T004632Z  state_tier2.jsonl  failed      1   attempts=2
+                                              failed: exit 0 but no
+                                              confidence JSON written
+```
+
+That is the whole list. Across 2,709 jobs there is exactly one failed record,
+and it is bench06's. The mode is new rather than previously missed, so nothing
+already scored needs re-examining on its account.
+
+**The three abandoned records are the recovery mechanism working, and one of
+them needed checking.** Their histories:
+
+```
+bench01_GSPT1_CRBN  seed1   running -> abandoned -> running -> done
+bench07_CDK12_DDB1  seed3   running -> abandoned -> running -> done
+sv_pos_ZN582_ba3680 seed5   running -> abandoned
+```
+
+All three are from the deliberate stop of tier 2 on 6 November (D-NOB-077):
+`run_campaign` closes out whatever a previous runner left mid-flight, writes
+an `abandoned` record and re-runs it. Two show that round trip completed. The
+third ends at `abandoned`, which is the shape a silently dropped job would
+also have, and a job dropped from a 225-job queue is the failure F111 and the
+resume tests exist to prevent.
+
+It is not dropped. It sits at position 110 of 225 with 30 not-done jobs ahead
+of it, so the queue simply has not reached it: the runner loaded all 225 at
+start and is at 15 of 89 unrun. Worth the two minutes to check rather than
+assume, because "abandoned with nothing after it" is indistinguishable from
+"lost" without looking at the queue position.
+
+So the job-level record is 2,708 of 2,709 accounted for, one genuine failure
+with a named reason, and no job unaccounted for anywhere.
