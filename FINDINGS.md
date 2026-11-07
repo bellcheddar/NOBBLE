@@ -11411,3 +11411,39 @@ guards sitting above the chown rather than below it.
 the unset case, so this needed an empty value rather than a missing one. I
 checked that rather than assuming either way, because "set -euo pipefail is
 at the top" is the kind of reassurance that reads as covering both.
+
+## F242. A check that writes into the campaign, deliberately, and safely
+
+Swept `tools/` for the F240 and F241 shape. The shell scripts only remove
+their own temporary logs. The one thing that looked wrong is
+`tools/atlas_drift.py` writing `validation.json` and `weights.json` into the
+campaign: a check named for comparing, mutating what it compares, and one that
+`deploy.sh` waits on and `status.sh` runs, so this session has triggered it
+repeatedly.
+
+It is deliberate and its reason is written down beside it. The published atlas
+carries those layers; if the rebuild it compares against read the campaign's
+stale copies, both sides would be stale and the comparison would say nothing.
+`refresh.sh` performs the same step before publishing, so the check is doing
+what the normal flow does rather than inventing a side effect, and skipping it
+is what let staleness hide in the first place.
+
+**What makes that safe is determinism, so I checked it rather than reading the
+seed.** The ROC layer bootstraps its confidence interval, and an unseeded
+bootstrap would rewrite different numbers on every run, which would make the
+drift check compare the published bundle against a moving target and report
+drift it had caused itself. `_bootstrap_interval` takes `seed=20261103`, and
+two consecutive `layers.run` calls on the main campaign produce byte-identical
+JSON, 3.5 and 3.2 seconds.
+
+Two consequences worth stating. A reader who notices a checker writing into a
+campaign should not undo it. And it is why the main campaign's
+`validation.json` now carries the `footprint` block from D-NOB-080 without
+anyone running `refresh.sh`: `status.sh` recomputed it with the new layer code,
+which is also how `tools/publication_hold.py` had footprints to print.
+
+`scores.jsonl` and `campaign.json` are deliberately not recomputed, and the
+file says why: scoring runs PLIP over every structure and takes minutes, which
+a check a deploy waits on cannot afford, and `campaign.json` records what an
+assembler built with nothing to recompute it from. So a stale `scores.jsonl`
+is invisible to this check, which is a stated limit rather than an oversight.
