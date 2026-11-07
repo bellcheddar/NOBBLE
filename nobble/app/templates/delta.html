@@ -16,10 +16,12 @@
   {% else %}
     <div class="split split--2">
       <div>
-        <div class="chart" id="scatter"></div>
+        <div class="chart" id="scatter" role="img"
+             aria-label="Delta-ipTM against bridge percentile, one point per pair"></div>
       </div>
       <div>
-        <div class="chart" id="marginal"></div>
+        <div class="chart" id="marginal" role="img"
+             aria-label="Distribution of Delta-ipTM by peptide label, with counts in the caption below"></div>
         {# chart__caption, not panel__hint: its content is counts the
            pipeline produces, which CLAUDE.md's copy budget excludes, and
            the budget tool's filter named that class while nothing in the
@@ -56,7 +58,8 @@
       <p>Needs the Sievers matched set, which runs after the benchmark panel.</p>
       <p id="roc-counts" class="mono"></p>
     </div>
-    <div class="chart chart--short" id="roc" hidden></div>
+    <div class="chart chart--short" id="roc" hidden role="img"
+         aria-label="Matched-control ROC curve. Its AUC and interval are stated in the line above"></div>
   </div>
 </section>
 {% endblock %}

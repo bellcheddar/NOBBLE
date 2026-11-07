@@ -14066,3 +14066,51 @@ and I was looking for it. The instances are each a real defect with a test
 behind it, and the frequency is not evidence that this class is seventeen
 times more common than any other. It is evidence that it is the one I was
 holding.
+
+## F294
+
+No page had a top-level heading, and four charts announced as empty groups.
+
+Nothing in the suite asserted anything about how the app reads to someone
+navigating by headings or hearing a chart described. `test_app_chrome.py` is
+about theme colours and the manifest. So this axis was measurable and
+unmeasured, which is the only reason it is a finding rather than a
+preference.
+
+Measured across all eight pages:
+
+```
+                lang  skip link   h1   th   th with scope   charts   named
+every page       yes        yes    0   75               4        4       0
+```
+
+`lang` and the skip link were already right everywhere. Two things were not.
+
+**Every page began at `h2`.** Depot gives each panel its own `h2`, and the
+house header that would carry an `h1` does not apply to the app UI, so the
+document had no top-level heading at all and a reader navigating by headings
+started a level down with nothing naming the page. `base.html` now renders
+`page_title` as a visually hidden `h1` inside `main`. Hidden rather than
+rendered because the alternative is a visible heading above every panel on
+eight pages, which changes the layout to fix something about the heading
+tree.
+
+**Four chart containers had no accessible name**, so each announced as an
+empty group: the contact map, the Delta-ipTM scatter, its marginal
+distribution and the ROC curve. Each now carries `role="img"` and a label
+naming the quantity rather than the word chart, and the ROC's points at the
+line above it, where its AUC and interval are already text.
+
+The tests assert `lang` and the skip link too, although both were already
+right, because a check covering only what was broken stops being a check the
+moment something else breaks. They also assert that no page skips a heading
+level, which the hidden `h1` makes meaningful: it is only useful if the `h2`s
+beneath it are the panels.
+
+**What I measured and did not fix.** `scope` appears on 4 of about 75 `th`
+elements. It matters most for tables where a data cell belongs to both a row
+and a column header, and these are mostly one header row over simple columns,
+which browsers associate without it. Adding it would be seventy edits across
+six templates for a refinement, so it is recorded here rather than done, and
+the test file deliberately does not assert it. If a table ever grows row
+headers, that is the point to revisit.

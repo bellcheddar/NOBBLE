@@ -157,6 +157,13 @@
 </div>
 
 <main id="main" class="app-main">
+  {# Every page began at h2, so the document had no top-level heading at all
+     and a reader navigating by headings started one level down with nothing
+     naming the page. Visually hidden rather than rendered, because Depot's
+     panels carry their own h2 titles and adding a visible h1 above them
+     would change the layout of all eight pages to fix something that is
+     about the heading tree (F294). #}
+  <h1 class="visually-hidden">{{ page_title }}</h1>
   {% block content %}{% endblock %}
 </main>
 
