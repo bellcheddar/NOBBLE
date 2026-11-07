@@ -10333,3 +10333,46 @@ import from `tools/` at the head of `sys.path`, so a deliberately broken shim
 cannot be injected without restructuring the script for the test's benefit,
 which is a larger change than this fix warrants. The branch is reasoned, not
 exercised, and this is the record of that.
+
+## F223. The script run by hand against production was the untested one
+
+`deploy/enable_gzip.sh` splices compression directives into the live nginx
+vhost, as root. It is deliberately separate from `deploy.sh`, because certbot
+owns lines in that file and regenerating it would take HTTPS off the site. A
+direct ssh to the vhost is declined to me, so the script is written to be read
+before Marc runs it.
+
+Every other script here has tests. This one had none, and it is the one with
+the highest cost of being wrong: the others can be re-run, and this one can
+take the site off the air. "Written to be read" was carrying the whole of the
+verification.
+
+Read is weaker than run, and run was available all along. The remote half is a
+self-contained heredoc; with the vhost path and the block path taken from the
+environment it runs against a fixture with a fake `nginx` and `systemctl` on
+PATH. Seven tests now hold it: the block lands after the anchor and before the
+`location`, a second run is a no-op, nginx is reloaded once and only after a
+passing `nginx -t`, a vhost with no anchor is refused and left byte-identical,
+a configuration nginx rejects is restored and nothing is reloaded, the
+original is kept, and the block under test is extracted from the script rather
+than copied into the test, so it cannot pass against a splice the script no
+longer performs. Four mutations were caught, including removing the restore
+and removing the `nginx -t` gate.
+
+Writing them found a real defect, though not one production would ever have
+hit. The splice used `sed -i` with no suffix, which is a GNU extension: BSD
+sed reads the next argument as the backup extension, so off Ubuntu it consumed
+the script and failed with `invalid command code`. The droplet is Ubuntu, so
+the script would have worked where it matters. The point is the other
+direction: a splice that only runs on the target cannot be demonstrated
+anywhere else, which is why it had no test and why "read it carefully" was the
+plan.
+
+It now writes a sibling and renames it, which is portable and is also the
+right shape for the live web server's configuration: an in-place rewrite is a
+window in which the file is half a vhost, and `mv` within a directory is
+atomic. The same reasoning as `state.jsonl` in F109, arrived at from the
+opposite direction.
+
+**Unchanged:** F132 is still Marc's to run, since the ssh is not mine. What
+changed is that reading it is no longer the only check on it.
