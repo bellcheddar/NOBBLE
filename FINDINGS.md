@@ -11303,6 +11303,11 @@ its output directory was recreated at 07:22:54Z for the retry. Its
 `lightning_logs` carries `version_0` and `version_1`, one per attempt, and
 its `predictions/` directory holds zero files.
 
+Job 15 has since resolved: `failed: exit 0 but no confidence JSON written in
+9440.0s`, against job 14's 9492.4s. Two full jobs, four attempts, and the two
+totals are 0.55 per cent apart, which is as close to deterministic as this
+machine measures anything. Job 16 is the third.
+
 Two jobs, four attempts, the same silent completion. A seed changes the
 initialisation and not the footprint, so the remaining eight will go the same
 way: ten jobs at about 2.64 hours each is 26.4 hours, of which roughly 5.3
@@ -11812,3 +11817,51 @@ the code it tested, when the implementation was the thing in mind and the
 behaviour had not been exercised yet. All three were caught by the same thing
 later: the implementation changed and the test either broke for the wrong
 reason or kept passing while the property it named went away.
+
+## F250. Three unreferenced functions, and one keeps a threshold looking live
+
+Swept every public module-level function in `nobble/` against every reference
+in `nobble/`, `tools/`, `deploy/`, `tests/` and the templates. Of 221, nine
+are referenced nowhere else, and six of those are Flask route handlers that
+the decorator calls rather than any name: `api_ask`, `api_components`,
+`api_pairs`, `api_schema`, `api_state`, `api_status`. A name scan cannot see
+a decorator, so those are the scan's limitation and not findings.
+
+Three are genuinely orphaned:
+
+```
+nobble/execute/campaign.py:171  assemble_benchmark(reuse_latest=True)
+nobble/curate/plddt.py:31       has_model(accession)
+nobble/curate/structures.py:88  ligand_chains(pdb_id, min_atoms=None)
+```
+
+`has_model` is a one-line wrapper over `model_path(accession).exists()`.
+`assemble_benchmark` emits the benchmark campaign, which exists, so it ran at
+some point and is no longer wired to anything.
+
+**`ligand_chains` is the one worth recording.** It finds heteroatom residues
+large enough to be a glue, and it is the only consumer of
+`LIGAND_MIN_HEAVY_ATOMS`, which is read from
+`config/thresholds.toml [geometry]`. So a configured threshold is read into a
+constant, used by exactly one function, and that function is never called,
+while `tests/test_no_hardcoded_cutoffs.py` asserts the constant resolves from
+config. The assertion is correct and the cutoff reads as live, which it is
+not.
+
+It is not duplicated code either, which was the first thing I checked: nothing
+else in the project finds heteroatom ligands. Ligands arrive as CCD codes from
+BINMAN's curated tables, 85C, 759, Y70, LVY, EF6, RC8, which is why no
+structure-parsing route is needed. So this was an approach superseded by
+reading BINMAN rather than re-deriving, consistent with `binman_store`'s
+opening line, and the function stayed behind.
+
+**Nothing deleted.** `assemble_benchmark` is a legitimate entry point someone
+may run by hand, and removing public functions on a hunch risks an
+undocumented workflow for no gain while the chain is mid-run. The threshold is
+Marc's to retire with the function. What is fixed is the misleading part: the
+cutoff assertion now says its consumer is unused, so an audit of thresholds
+meets that fact where it would otherwise infer the opposite.
+
+This is F79's shape once more, an affordance nobody exercises, with a twist:
+here the unexercised thing is kept looking exercised by a test that is itself
+correct.

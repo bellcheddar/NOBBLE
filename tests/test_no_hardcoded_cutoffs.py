@@ -350,6 +350,11 @@ def test_the_moved_defaults_resolve_from_config():
     t = paths.thresholds()
     assert tier2.DECILE_FRACTION == float(t["tier2"]["decile_fraction"])
     assert peptides.NEGATIVES_PER_POSITIVE == int(t["peptide"]["negatives_per_positive"])
+    # Configured correctly, and its only consumer is currently unused:
+    # `structures.ligand_chains` is the sole caller and nothing calls that
+    # (F250). Asserting the constant resolves from config is still right, and
+    # a reader auditing thresholds should know this one is not exercised, or
+    # a passing line here reads as a live cutoff.
     assert structures.LIGAND_MIN_HEAVY_ATOMS == int(
         t["geometry"]["ligand_min_heavy_atoms"])
     assert yaml_gen.POCKET_CONTACT_CUTOFF == float(
