@@ -283,3 +283,33 @@ def test_a_missing_corrected_campaign_says_so_rather_than_nothing(tmp_path):
     finally:
         os.chdir(cwd)
     assert any("no corrected-construct campaign" in line for line in lines), lines
+
+
+def test_the_contrast_quotes_the_same_curve_the_hold_refuses_on():
+    """The reason is "no pose reaches 3 A", which is an overall_curve.
+
+    So the answer has to be the other campaign's overall_curve, not a list of
+    per-pair medians: 0 of 65 within 3 A at a median of 17.54 A, against 53.8
+    per cent within 3 A at 2.494 A. One measurement, two representations.
+    """
+    import importlib.util
+    import os
+
+    spec = importlib.util.spec_from_file_location(
+        "publication_hold", ROOT / "tools" / "publication_hold.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    cwd = os.getcwd()
+    try:
+        os.chdir(ROOT)
+        text = "\n".join(module.representation_contrast())
+    finally:
+        os.chdir(cwd)
+
+    if "no corrected-construct campaign" in text:
+        pytest.skip("no corrected campaign on disk")
+    assert "the same curve on the whole-domain campaign" in text, text
+    assert "median" in text, text
+    assert "within 3.0 A" in text, (
+        "the contrast omits the radius the hold's own reason names")

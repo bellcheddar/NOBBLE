@@ -11068,7 +11068,26 @@ IKZF1 / CRBN                5.357          5.357    +0.00   10/10 -> 10/10
 ```
 
 Six of seven improved by more than 2 A, none got worse, and three reach 1.2 to
-1.7 A. The seventh is the control: IKZF1's substrate is a linear epitope and
+1.7 A.
+
+**In the units the failure is quoted in**, which is the comparison that
+actually answers the hold's reason, because "no pose reaches 3 A" is an
+`overall_curve` and so is this:
+
+```
+                        within 1 A   within 2 A   within 3 A   median   n
+15-mer (main campaign)       0.0          0.0          0.0      17.54   65
+whole domain (corrected)     0.1538       0.4154       0.5385    2.494  65
+```
+
+Thirty-five of sixty-five poses within 3 A against none, at a median of 2.494
+A against 17.54. Per pair, `corr06_RBM39_DCAF15` runs 0.642 to 0.860 A across
+all ten poses, `corr01_GSPT1_CRBN` 1.015 to 1.546, `corr02_BRD4_VHL` 1.017 to
+2.454. The two that do not recover are `corr03_BRD4_CRBN` at 15.5 to 18.0 and
+the IKZF1 control, which is the 15-mer in both and should not move.
+
+By the same measurement the main campaign fails, the whole-domain campaign
+passes. The seventh is the control: IKZF1's substrate is a linear epitope and
 was deliberately left as a 15-mer in both campaigns, so it should not move, and
 it moved by exactly 0.000.
 

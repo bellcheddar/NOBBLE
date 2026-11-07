@@ -1,6 +1,6 @@
 # NOBBLE progress
 
-Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T05:25:41Z.
+Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T06:29:59Z.
 
 ## Gate G6 answered: the headline is a negative result, and publication is held
 
@@ -93,6 +93,12 @@ CDK12 44.921 to 5.278, CSNK1A1 12.240 to 6.189, BRD4 20.399 to 16.519. The
 seventh is the control, a linear epitope left as a 15-mer in both, and it
 moved by exactly 0.000. Bridge formation rose in four pairs, which is what
 F9 found predicts recovery at r = -0.871.
+
+In the units the failure is quoted in: 0 of 65 poses within 3 A at a median
+of 17.54 A for the 15-mer campaign, against 35 of 65 within 3 A at a median
+of 2.494 A for the whole-domain one, with 41.5 per cent inside 2 A and 15.4
+per cent inside 1 A. `corr06_RBM39_DCAF15` runs 0.642 to 0.860 A across all
+ten poses.
 
 That was measured on 3 November and `compare.compare` has reported it since;
 what is new is that this picture did not carry it. It does not rescue the

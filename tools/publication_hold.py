@@ -123,6 +123,28 @@ def representation_contrast() -> list[str]:
     improved = report.get("improved") or []
     worse = report.get("worse") or []
     compared = report.get("pairs_compared")
+
+    # The same curve, in the same units the failure is quoted in.
+    #
+    # The hold's reason is "no pose reaches 3 A". That is the main campaign's
+    # overall_curve, so what answers it is the corrected campaign's
+    # overall_curve rather than a list of per-pair medians: 0 of 65 within
+    # 3 A at a median of 17.54 A, against 53.8 per cent within 3 A at a
+    # median of 2.494 A. Side by side, because they are one measurement on
+    # two representations and the gate is about which the atlas is built from.
+    curve_lines: list[str] = []
+    corrected_summary = recovery_now(Path(corrected[-1]) / "validation.json")
+    if corrected_summary:
+        curve = corrected_summary.get("overall_curve") or {}
+        within = ", ".join(
+            f"within {key.removeprefix('within_').removesuffix('A')} A: {value}"
+            for key, value in sorted(curve.items()) if key.startswith("within_"))
+        curve_lines = [
+            f"    the same curve on the whole-domain campaign: "
+            f"{curve.get('n')} pose(s), median {curve.get('median_rmsd')} A",
+            f"      {within}",
+        ]
+
     lines = [
         f"    with the whole domain instead of a 15-mer: {len(improved)} of "
         f"{compared} pair(s) improved by more than 2 A, {len(worse)} worse, "
@@ -146,7 +168,7 @@ def representation_contrast() -> list[str]:
             note = ("   <- control: a linear epitope, left as a 15-mer in "
                     "both, so it should not move")
         lines.append(f"      {str(gene):22s} {base:7.3f} -> {corr:7.3f} A{note}")
-    return lines
+    return lines + curve_lines
 
 
 def describe(summary: dict | None, confounded: set[str] | None = None) -> list[str]:
