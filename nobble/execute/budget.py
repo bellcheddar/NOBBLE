@@ -50,37 +50,88 @@ from nobble.numeric import finite
 TIER2_SUFFIX = "__tier2"
 
 
+def _seconds_of(path: Path, keep) -> tuple[float, int]:
+    """Summed `seconds` over the records of `path` that `keep` accepts.
+
+    Torn lines are skipped rather than tolerated into a total, since a
+    half-written record has no usable `seconds`. `finite`, not truthiness:
+    a NaN is truthy and would poison the sum.
+    """
+    seconds = 0.0
+    jobs = 0
+    for line in path.read_text().splitlines():
+        if not line.strip():
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not keep(record):
+            continue
+        value = record.get("seconds")
+        if not finite(value) or value <= 0:
+            continue
+        seconds += float(value)
+        jobs += 1
+    return seconds, jobs
+
+
 def hours_spent(root: Path | None = None) -> dict:
     """Wall clock already spent, summed over every campaign beside this one.
 
-    Measured rather than projected, and over both tiers: a results file is
-    the record of what ran. Torn lines are skipped rather than tolerated
-    into a total, since a half-written record has no usable `seconds`.
+    Measured rather than projected, and over both tiers.
+
+    Over failures as well as successes, which it did not do. `results.jsonl`
+    is appended only when `outcome.status == "done"`, so this read only
+    successful work, and a gate whose whole purpose is to catch overspend
+    could not see time spent on anything that failed. bench06's refinement
+    exits 0 without writing a confidence JSON after about two and a half
+    hours a job, ten jobs of it, and all 26 hours of that registered here as
+    zero while `remaining = max_hours - spent` reported them as still
+    available (F255).
+
+    The failed time comes from the state files, where `outcome.to_dict()` is
+    written for every outcome including the failures, with `seconds` intact.
+    Only non-`done` records are taken from there: a success appears in both
+    files, so summing all of state on top of results would count every
+    finished job twice. `running` records carry no `seconds` at all and so
+    contribute nothing, which is right, since a job still going has no
+    settled cost; `abandoned` records are written without one too, so the
+    wall clock of a killed runner is still missing and is the one case this
+    cannot account for.
     """
     root = Path(root) if root is not None else paths.CAMPAIGNS
     per_campaign: dict[str, float] = {}
+    succeeded_seconds = 0.0
+    failed_seconds = 0.0
     jobs = 0
+    failed_jobs = 0
     if root.exists():
         for results in sorted(root.glob("*/results*.jsonl")):
-            seconds = 0.0
-            for line in results.read_text().splitlines():
-                if not line.strip():
-                    continue
-                try:
-                    record = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                value = record.get("seconds")
-                if not finite(value) or value <= 0:
-                    continue
-                seconds += float(value)
-                jobs += 1
+            seconds, counted = _seconds_of(results, lambda record: True)
+            succeeded_seconds += seconds
+            jobs += counted
             key = results.parent.name
             per_campaign[key] = per_campaign.get(key, 0.0) + seconds
-    total = sum(per_campaign.values())
+        for state in sorted(root.glob("*/state*.jsonl")):
+            # `startswith`, because a failure's status carries its reason:
+            # "failed: exit 0 but no confidence JSON written", not "failed".
+            # An equality test against "done" is the only safe shape here,
+            # and the first draft of this measurement compared the other
+            # side against "failed" and summed nothing at all.
+            seconds, counted = _seconds_of(
+                state, lambda record: str(record.get("status")) != "done")
+            failed_seconds += seconds
+            failed_jobs += counted
+            key = state.parent.name
+            per_campaign[key] = per_campaign.get(key, 0.0) + seconds
+    total = succeeded_seconds + failed_seconds
     return {
         "hours": round(total / 3600.0, 2),
         "jobs": jobs,
+        "succeeded_hours": round(succeeded_seconds / 3600.0, 2),
+        "failed_hours": round(failed_seconds / 3600.0, 2),
+        "failed_jobs": failed_jobs,
         "by_campaign": {k: round(v / 3600.0, 2)
                         for k, v in sorted(per_campaign.items())},
     }

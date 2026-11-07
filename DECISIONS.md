@@ -2587,3 +2587,39 @@ the next rebuild, which is the drift check working rather than a new fault.
 **Reversal.** Remove the `collapsed` set and the `usable` filter from
 `_default_parent`; the ranking returns to the raw maximum. The flag it reads
 is computed by the scorer either way and is in every scores row.
+
+## D-NOB-082: let bench06's remaining refinement jobs run rather than stop the chain
+
+bench06_RBM39_DCAF15's tier-2 jobs cannot succeed: every attempt exits 0 after
+about two and a half hours without writing a confidence JSON. Eight remain in
+the live run, about 21 hours of certain waste.
+
+Nothing written to disk can stop them. `run_campaign` reads the queue and the
+state file once, before its loop, and computes `pending` from them there; so
+editing `queue_tier2.jsonl` or appending to `state_tier2.jsonl` has no effect
+on a run already in progress. Writing a `done` record would skip them, and
+would be a false entry in the manifest, which is not a trade worth making for
+any number of hours.
+
+The only lever is killing the runner. That was rejected. The eight bench06
+jobs sit ahead of 66 Sievers and scramble refinements in the queue order, and
+those are the jobs F253 and F254 are registered against. Killing the runner
+mid-stage hands `tier2.sh` a non-zero code which it carries to the end
+without aborting (F195), so the chain would continue to its later stages and
+the Sievers refinements would simply never run. Trading 21 hours of waste for
+two unanswerable predictions is the worse outcome.
+
+The budget tolerates it, now that the budget can see it (F255). With the
+corrected instrument the run ends at about 130 h of the 240 h cap, so G1 stays
+closed either way and nothing downstream is blocked by the waste.
+
+Alternatives: kill and restart the tier-2 stage with bench06 dropped, which
+costs the Sievers work or a second GPU process contending for MPS; or raise
+the per-job timeout so the jobs are killed sooner, which does not help because
+they are not timing out, they are returning successfully with nothing written.
+
+Reversal: drop bench06's rows from `queue_tier2.jsonl` before the stage is next
+started from cold, which is the F47 correction's refresh. Removal is
+load-bearing rather than cosmetic: `completed()` treats only `done` as
+terminal, so the recorded failures do not stop a later run from re-attempting
+all ten and spending the 26 hours again.

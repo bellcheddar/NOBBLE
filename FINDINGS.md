@@ -12117,3 +12117,45 @@ did not find.
 seeds is not pushed in a fixed direction by drawing more samples, which is why
 this comparison is legitimate where F251's was not. Tier 1 and tier 2 both
 report a fraction of their own seeds, and both arms have ten.
+
+## F255
+
+The compute budget could not see time spent on anything that failed.
+
+`budget.hours_spent` summed `campaigns/*/results*.jsonl`, and the runner
+appends to a results file only when `outcome.status == "done"`. So the one
+instrument that answers how much of `max_compute_hours` is left counted
+successful work only, and `gate_g1` computes `remaining = max_compute_hours -
+spent`, which means an understated spend overstated the headroom. That is the
+wrong direction for a gate whose purpose is to stop a run before it overruns.
+
+bench06_RBM39_DCAF15's refinement is what exposed it. The job exits 0 without
+writing a confidence JSON after about two and a half hours, it has done so on
+every attempt, and there are ten of them in the tier-2 queue: roughly 26
+hours that the budget read as zero while reporting them as still available.
+
+The data was already on disk. `outcome.to_dict()` is written to the state file
+for every outcome, failures included, with `seconds` and `tokens` intact; only
+the results file is filtered. So the fix reads the state files for non-`done`
+records and adds those seconds, taking only non-`done` ones because a success
+appears in both files and summing all of state on top of results would count
+every finished job twice.
+
+Measured across the project: 78.85 h of successful work and 5.26 h of failed
+work that had not been counted, rising to about 26 h as bench06 finishes.
+
+Two things this still does not account for. `running` records carry
+`started_at` and no `seconds`, so a job in flight contributes nothing, which
+is correct because its cost is not settled. `abandoned` records are written
+without `seconds` too, so the wall clock of a runner killed mid-job remains
+missing: three records project-wide, and the one case the measurement cannot
+reach.
+
+A note on how the first draft of this measurement read zero. A failure's
+status carries its reason, `failed: exit 0 but no confidence JSON written`
+rather than `failed`, so a filter comparing the status to `"failed"` matched
+nothing and summed 0.0 on a campaign with two failures sitting in the file.
+The honest shape is to exclude `done` rather than to enumerate the failures,
+and a test keeps arbitrary reason text in its fixture so an equality test
+cannot pass it. This is F232's pattern again: the aggregate hid its own
+subject, and the subject here was the cost of the failures.
