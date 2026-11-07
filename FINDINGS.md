@@ -11220,6 +11220,27 @@ changes initialisation rather than the footprint. Nine more at about 2.64
 hours each is roughly 24 hours of near-certain waste, against 161 hours
 remaining, so G1 stays closed either way.
 
+**It is not a resource limit, and the project had already sized for one.**
+`tier2.job_budget`'s docstring names this pair: F100 worked out that the
+DCAF15 assembly is 1,223 tokens by construction, that its worst tier-1 job
+took 918s, and that its implied bound of 7.2 hours exceeded the 6.0 hour cap,
+so the budget is raised from the measured tier-1 cost rather than capped.
+That is why the queue row carries 39,000 seconds. The note ends "had the
+decile fallen the other way, ten jobs would each have run for six hours and
+been killed while working", which is exactly the decile this run drew.
+
+So the one failure mode anticipated for this pair was being killed while on
+course, and the budget was fixed to prevent it. It was not reached: the job
+used 79 minutes of the 648 it was allowed, twice, and returned nothing. The
+cause is something in Boltz at this size and these sampling settings, not
+exhaustion of anything the project controls.
+
+Which also settles whether a guard was missed. A preflight line saying "this
+job is larger than anything completed at this tier" would have been vacuous
+on the first tier-2 run, when nothing had completed at tier 2 at all, and
+nothing short of running it predicts a clean exit with an empty predictions
+directory. The right fix was keeping the evidence, and that is done.
+
 **Why skipping them is not available.** `run_campaign` does
 `jobs = paths.read_jsonl(queue_path)` once, under a comment saying "the queue
 is written once, before anything runs, and nothing appends to it". So editing
