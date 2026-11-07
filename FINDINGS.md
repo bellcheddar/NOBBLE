@@ -12664,3 +12664,60 @@ on the GPU beside F47's:
 
     python tools/rerun_pair.py scr_bench03_BRD4_CRBN \
         --campaign campaigns/campaign_20261104T004632Z --regenerate --apply
+
+## F266
+
+An input's provenance has three links and only two were checked.
+
+`inputs.stale_inputs` compares a YAML against the job record that describes
+it. `tools/stale_featurisation.py` compares the cached featurisation against
+the YAML, which is F219's guard. Nothing compared the YAML against the
+assembler that wrote it.
+
+That is the link F262 broke, and it is why every guard reported the campaign
+clean. `scr_bench03_BRD4_CRBN`'s ternary YAMLs were wrong from the moment they
+were written: the record said dBET57, the YAML had no ligand, the cache
+matched that YAML exactly, and the poses matched the cache. Each pairwise
+comparison agreed. Only the code disagreed, and nothing asked it.
+
+`inputs._regenerated_scan` now asks. It regenerates every job through
+`campaign.regenerate_all`, which F265 factored out, and compares the text
+against the file on disk. Two seconds for 2,360 jobs, nothing written.
+`deploy/build_atlas.py` refuses on a disagreement, beside the two refusals it
+already has, because this is the guard between a superseded input and a
+published pose. `tools/provenance.py` prints the link, so `status.sh` shows
+the whole chain:
+
+```
+stale inputs  none against the queue, but 15 job(s) ... folded from a
+              superseded input: the atlas build refuses on that (F219)
+superseded    no substrate differs from the current plan
+from code     5 job(s) of 2360 compared hold a YAML the current code would
+              not write
+```
+
+Three things I got wrong writing it, two caught by the suite.
+
+`paths` is not imported in `inputs.py`, and `compared` was assigned inside
+the `try` and read after it, so a failure part way would have raised
+NameError instead of the handler's report. The exception handler caught the
+first and reported `unavailable`, which is the honest shape working as
+intended on my own mistake.
+
+Asking `regenerate_pair` once per pair rebuilt the manifest 158 times and
+turned a two-second scan into twenty-three. `regenerate_all` builds it once.
+
+And the one that mattered: I reported a campaign from a different assembler as
+`unavailable`, and made the publish gate refuse on `unavailable`. The atlas is
+legitimately built from the benchmark campaign, so that refused a valid build,
+which `test_redaction_count` caught immediately. "The comparison failed" is an
+unknown and must refuse; "there is no comparison to make" is neither a pass
+nor a failure. Those are now `unavailable` and `not_applicable`, and the gate
+refuses only on the first.
+
+A note on the earlier version of the scope rule: compared against the campaign
+manifest, Tier B reported all 154 of its pairs as work the code would not
+emit, a confident answer to a question nobody asked, while the benchmark
+campaign compared clean because its job ids happen to coincide with the main
+manifest's. The second is luck rather than design and is not a basis for a
+check, so both are out of scope by name.

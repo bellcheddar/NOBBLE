@@ -310,6 +310,40 @@ def main() -> int:
               f"compared, {seen['no_output']} have not run.", file=sys.stderr)
         return 1
 
+    # And the third link of the chain, which nothing checked.
+    #
+    # `stale_inputs` compares a YAML against the job record that describes
+    # it; the two checks above compare the cached featurisation against the
+    # YAML. Neither compares the YAML against the code that emits it, which
+    # is the link F262 broke: the ligand resolution dropped a SMILES-only
+    # glue, so scr_bench03_BRD4_CRBN's ternary YAMLs were wrong from the
+    # moment they were written and agreed with their own record and their own
+    # cache all the way down. Every guard reported the campaign clean.
+    #
+    # Refusing rather than warning, for the reason the comment above gives:
+    # this stands between a superseded input and a published pose. It costs
+    # about two seconds, and it reports "unavailable" rather than "clean"
+    # when it cannot compare, so a failure here cannot read as a pass.
+    from nobble.validate import inputs as input_check
+
+    regenerated, regenerated_status = input_check._regenerated_scan(campaign)
+    if regenerated:
+        print("\nREFUSED: these jobs hold a YAML the current code would not "
+              "write, so their poses came from an input the assembler no "
+              "longer produces (F262, F266):", file=sys.stderr)
+        for row in regenerated[:10]:
+            print(f"    {row['job_id']}: {row['problem']}", file=sys.stderr)
+        print(f"    {len(regenerated)} job(s). {regenerated_status}.",
+              file=sys.stderr)
+        print("    tools/rerun_pair.py --regenerate rewrites them from the "
+              "current code and clears their results.", file=sys.stderr)
+        return 1
+    if regenerated_status.startswith("unavailable"):
+        print(f"\nREFUSED: {regenerated_status}, so whether the inputs on "
+              "disk are the ones the code would write is unknown rather than "
+              "fine.", file=sys.stderr)
+        return 1
+
     if OUT.exists():
         shutil.rmtree(OUT)
     (OUT / "structures").mkdir(parents=True)

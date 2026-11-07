@@ -88,6 +88,19 @@ else:
     else:
         print("   superseded    no substrate differs from the current plan")
 
+# The third link: the YAML against the code that emits it. `stale_inputs`
+# compares a YAML with the record that describes it and
+# `stale_featurisation.py` compares the cache with the YAML; nothing compared
+# the YAML with the assembler that wrote it, which is the link F262 broke
+# (F266).
+try:
+    from nobble.validate.inputs import regenerated_status
+
+    print(f"   from code     {regenerated_status(campaign)}")
+except Exception as problem:                            # noqa: BLE001
+    print(f"   from code     not resolved: {type(problem).__name__}: "
+          f"{problem}")
+
 # Whether the published bundle is what the code builds. Reported here as
 # well as gated in deploy.sh, because a drift noticed at deploy time is a
 # refused deploy and a drift noticed in status is a rebuild (F97).

@@ -386,8 +386,23 @@ def assemble_tier_b(reuse_latest: bool = True) -> dict:
         return {"path": str(directory), "reused": False, **summary}
 
 
+def regenerate_all() -> dict[str, str]:
+    """`{job_id: yaml text}` for the whole main campaign, manifest built once.
+
+    `regenerate_pair` builds the manifest itself, which is right for one pair
+    and wasteful for all of them: 158 pairs at about 0.15 s of manifest each
+    turned a two-second scan into twenty-three.
+    """
+    return _regenerate(None)
+
+
 def regenerate_pair(pair_id: str) -> dict[str, str]:
-    """`{job_id: yaml text}` for one pair, as the current code would write it.
+    """`{job_id: yaml text}` for one pair, as the current code would write it."""
+    return _regenerate(pair_id)
+
+
+def _regenerate(only: str | None) -> dict[str, str]:
+    """Every job's YAML text, or one pair's when `only` names a pair.
 
     Nothing is written and no campaign directory is created. That last part
     is why this exists: re-deriving a YAML used to mean calling
@@ -418,7 +433,7 @@ def regenerate_pair(pair_id: str) -> dict[str, str]:
 
     out: dict[str, str] = {}
     for job in manifest["jobs"]:
-        if job.pair_id != pair_id:
+        if only is not None and job.pair_id != only:
             continue
         pair = pair_by_id.get(job.pair_id)
         row = rows.get(job.peptide_id)

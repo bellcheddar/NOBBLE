@@ -283,3 +283,97 @@ def _superseded_scan(campaign: Path) -> tuple[list[dict], str]:
                        "construct from the one the plan describes"),
         }
     return sorted(seen.values(), key=lambda row: row["pair_id"]), "compared"
+
+
+def _regenerated_scan(campaign: Path) -> tuple[list[dict], str]:
+    """Jobs whose YAML on disk is not what the current code would write.
+
+    The provenance chain for an input has three links and only two were
+    checked. `stale_inputs` compares a YAML against the job record that
+    describes it, and `tools/stale_featurisation.py` compares the cached
+    featurisation against the YAML (F219). Nothing compared the YAML against
+    the code that emits it, which is the link F262 broke: the ligand
+    resolution dropped a SMILES-only glue, so the YAML was wrong from the
+    moment it was written and agreed with its own record and its own cache
+    the whole way down.
+
+    Costs about two seconds for a 2,360-job campaign, almost all of it the
+    manifest build, because `regenerate_pair` writes nothing and the
+    documents are plain dicts.
+
+    `([], "unavailable: ...")` when the comparison cannot be made, never
+    `([], "clean")`: a failed manifest build means no job was compared
+    against anything, which is F216's mistake in whichever file repeats it.
+    """
+    campaign = Path(campaign)
+    queue = campaign / "queue.jsonl"
+    if not queue.exists():
+        return [], f"unavailable: no queue.jsonl in {campaign.name}"
+    # Only the campaign assembler's own output. `regenerate_all` reproduces
+    # `assemble_campaign`, and a Tier B, design or corrected campaign comes
+    # from a different builder, so comparing one against this manifest
+    # reports every pair it has as work the code would not emit: a confident
+    # answer to a question nobody asked. The benchmark campaign's job ids
+    # happen to coincide with the main manifest's and so compared clean,
+    # which is luck rather than design and not a basis for a check.
+    #
+    # `not_applicable`, not `unavailable`, and the difference decides whether
+    # the publish gate refuses. "The comparison failed" is an unknown and
+    # must refuse; "there is no comparison to make" is neither a pass nor a
+    # failure. Reported as `unavailable` it refused a legitimate build from
+    # the benchmark campaign, which `test_redaction_count` caught at once.
+    if not campaign.name.startswith("campaign_"):
+        return [], (f"not_applicable: {campaign.name} is not the campaign "
+                    "assembler's output, and this compares against that "
+                    "assembler")
+    # Initialised outside the try, because they are read after it: a failure
+    # part way through the scan would otherwise raise NameError here, which
+    # is a worse report than the one the handler is there to give.
+    out: list[dict] = []
+    compared = 0
+    try:
+        from nobble import paths
+        from nobble.execute import campaign as assembler
+
+        rows = paths.read_jsonl(queue, tolerate_torn=True)
+        # One manifest for the whole campaign. Asking per pair rebuilt it 158
+        # times and turned a two-second scan into twenty-three.
+        fresh = assembler.regenerate_all()
+        for row in rows:
+            job_id = row.get("job_id")
+            path = Path(row.get("yaml") or "")
+            text = fresh.get(job_id)
+            if text is None:
+                # A job the current manifest no longer emits. Reported rather
+                # than skipped: the campaign holds work the code would not
+                # produce today, which is the same class of disagreement one
+                # step larger.
+                out.append({"pair_id": row.get("pair_id"), "job_id": job_id,
+                            "problem": "the current manifest emits no such "
+                                       "job"})
+                continue
+            if not path.exists():
+                continue
+            compared += 1
+            if path.read_text() != text:
+                out.append({"pair_id": row.get("pair_id"), "job_id": job_id,
+                            "problem": "the YAML on disk is not what the "
+                                       "current code emits"})
+    except Exception as problem:                        # noqa: BLE001
+        return [], f"unavailable: {type(problem).__name__}: {problem}"
+    if not compared:
+        return out, "unavailable: no job could be compared"
+    if out:
+        return out, (f"{len(out)} job(s) of {compared} compared hold a YAML "
+                     "the current code would not write")
+    return [], f"clean: all {compared} YAML(s) match what the code emits"
+
+
+def regenerated_disagreements(campaign: Path) -> list[dict]:
+    """Jobs whose YAML differs from what the current code would emit."""
+    return _regenerated_scan(campaign)[0]
+
+
+def regenerated_status(campaign: Path) -> str:
+    """One line for the status page, distinguishing clean from unknown."""
+    return _regenerated_scan(campaign)[1]
