@@ -502,3 +502,23 @@ def scores_for_pages() -> list[dict]:
          if key not in PAGE_PAYLOAD_OMITS}
         for row in scores()
     ]
+
+
+def crystal_control_counts(control: dict | None) -> dict:
+    """Found, measurable and intended counts for the crystal control (F297).
+
+    Computed here rather than in the template because a count belongs in
+    Python, and because the three numbers are not interchangeable: a
+    deposition whose glue was never modelled is not a crystal the filter
+    missed, and the panel has to be able to say both without the reader
+    working out the subtraction.
+    """
+    rows = (control or {}).get("rows") or []
+    measurable = [row for row in rows if row.get("measurable")]
+    return {
+        "intended": len(rows),
+        "measurable": len(measurable),
+        "found": len([row for row in measurable if row.get("found")]),
+        "unmeasurable": [row for row in rows if not row.get("measurable")],
+        "status": (control or {}).get("status"),
+    }

@@ -14311,3 +14311,33 @@ Mutation-checked: blinding `bridge_from_groups` so that it never selects a
 bridge fails `test_every_deposited_glue_is_found_to_bridge` with all six
 pairs named, and the other five tests still pass, which is the split those
 tests are for.
+
+### F297b. Where the control is shown
+
+The control is only useful to someone deciding whether to trust the bridge
+percentile, so it is on the About page beside the statistics it qualifies
+rather than in a tool they would have to know to run.
+`deploy/build_atlas.py` computes it into `about.json`, because it needs gemmi
+and FreeSASA and the droplet has neither. A failure records itself as
+`unavailable: <reason>` rather than leaving the key absent, which is F266's
+rule: an omitted measurement that renders as a clean result is worse than a
+stated refusal.
+
+The panel keeps four cases apart, which is F293 on screen. A bridge found, a
+bridge missed, a deposition with no glue modelled, and a bundle built before
+the control existed. The third and fourth both mean no measurement and the
+first two are the measurement, so an empty table must not render as six of
+six. `tests/test_the_crystal_control_panel.py` renders all four.
+
+The retrospective caveat is not repeated in the panel. The time split panel
+sits above it on the same page and makes it for the same depositions, and
+CLAUDE.md's rule is that a caveat on every panel reads as a lack of
+confidence in the numbers rather than as rigour. The panel instead says
+"same depositions as the time split above", which is one clause and points
+at the caveat rather than restating it.
+
+One stale allowance fell out: `ligand_chains` was in
+`test_no_public_function_is_orphaned.py`'s allowlist as a function kept alive
+only to hold a threshold reference, and the new tool calls it. F296's own
+staleness check caught that on the full run, which is the half of F250 that
+the sweep had not left behind.

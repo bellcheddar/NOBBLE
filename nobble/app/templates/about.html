@@ -316,6 +316,62 @@
 
 </section>
 
+{# The only check on the primary signal whose label does not come from the
+   signal. Placed after the ROC panel because a reader who has just seen the
+   composite fail to separate the arms should next see what the component it
+   is built on does against coordinates. The retrospective caveat is not
+   repeated here: the time split panel above makes it for the same
+   depositions, and a caveat on every panel reads as a lack of confidence
+   rather than as rigour. #}
+<section class="panel">
+  <h2>The bridge detector against deposited coordinates</h2>
+  {% if crystal_control and crystal_control.get('status') == 'measured' %}
+    <p class="panel__hint">Spec 4.1's filter run on the deposited ternaries
+      rather than on predictions, so the label is the deposition and not the
+      filter. Same depositions as the time split above.</p>
+    <div class="stat-row">
+      <div class="stat"><span class="stat__label">Found to bridge</span>
+        <span class="stat__value">{{ crystal_counts.found }} / {{ crystal_counts.measurable }}</span>
+        <span class="stat__sub">of {{ crystal_counts.intended }} benchmark pair(s)</span></div>
+    </div>
+    <table class="ntable">
+      <thead><tr>
+        <th scope="col">Pair</th><th scope="col">Deposition</th>
+        <th scope="col">Glue</th><th scope="col">Receptor</th>
+        <th scope="col">Substrate</th><th scope="col">Total dSASA</th>
+        <th scope="col">Percentile</th>
+      </tr></thead>
+      <tbody>
+        {% for row in crystal_control.rows %}
+          <tr>
+            <td>{{ row.pair_id }}</td>
+            <td class="mono">{{ row.pdb_id }}</td>
+            {% if row.measurable and row.found %}
+              <td class="mono">{{ row.glue_ccd }}</td>
+              <td class="mono">{{ row.dsasa_receptor|round(1) }}</td>
+              <td class="mono">{{ row.dsasa_peptide|round(1) }}</td>
+              <td class="mono">{{ row.dsasa_total|round(1) }} A&sup2;</td>
+              <td class="mono">{{ row.bridge_percentile }}</td>
+            {% elif not row.measurable %}
+              <td colspan="5"><span class="flag flag--pending">not measurable</span>
+                {{ row.reject_reason }}</td>
+            {% else %}
+              <td colspan="5"><span class="flag flag--fail">missed</span>
+                {{ row.reject_reason }}</td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% for row in crystal_counts.unmeasurable %}
+      {% for note in row.notes %}<p class="panel__hint">{{ note }}</p>{% endfor %}
+    {% endfor %}
+  {% else %}
+    <p class="panel__hint"><span class="flag flag--pending">not computed</span>
+      {{ (crystal_control or {}).get('status', 'this bundle was built before the control existed') }}</p>
+  {% endif %}
+</section>
+
 {% if throughput %}
 <section class="panel">
   <h2>The design arm, and what it is not</h2>

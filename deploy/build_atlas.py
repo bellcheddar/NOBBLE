@@ -541,12 +541,34 @@ def main() -> int:
         summary["files"]["crystals"] = published_crystals
 
 
+    # The bridging filter against deposited coordinates (F297), which is the
+    # only check on spec 4.1's primary signal that does not use the filter's
+    # own output as its label. Computed here rather than at request time
+    # because it needs gemmi and FreeSASA and the droplet has neither.
+    #
+    # A failure records itself. An omitted key renders as no control having
+    # been run, which is honest; a swallowed exception that leaves the key
+    # absent while the stack was in fact broken is the F266 shape, so the
+    # reason is carried instead.
+    try:
+        sys.path.insert(0, str(ROOT / "tools"))
+        import bridge_on_crystals
+
+        crystal_control = {"rows": bridge_on_crystals.crystal_rows(),
+                           "status": "measured"}
+    except Exception as problem:                        # noqa: BLE001
+        crystal_control = {
+            "rows": [],
+            "status": f"unavailable: {type(problem).__name__}: {problem}",
+        }
+
     about = {
         "sources": binman_store.available(),
         "unavailable": list(binman_store.UNAVAILABLE),
         "bridge_reference": binman_store.bridge_reference_count(),
         "construct_budget": constructs.budget_report(),
         "reach_auc": lysine.BINMAN_REACH_AUC,
+        "crystal_control": crystal_control,
     }
     (OUT / "about.json").write_text(json.dumps(about, indent=2, default=str))
     summary["files"]["about.json"] = len(about["sources"])

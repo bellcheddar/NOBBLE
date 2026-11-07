@@ -241,6 +241,12 @@ def about():
         bridge_reference=precomputed.get("bridge_reference", 0),
         construct_budget=precomputed.get("construct_budget", []),
         reach_auc=precomputed.get("reach_auc", {}),
+        # The bridging filter against deposited coordinates (F297). Absent
+        # from a bundle built before it existed, and the panel then says so
+        # rather than rendering an empty table as a clean result.
+        crystal_control=precomputed.get("crystal_control"),
+        crystal_counts=data.crystal_control_counts(
+            precomputed.get("crystal_control")),
         weight_fit=data.weight_fit(),
         validation=data.precomputed("validation.json"),
         # Each component's matched-arm curve, keyed by component, so the
