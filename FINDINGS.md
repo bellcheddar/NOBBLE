@@ -14013,3 +14013,56 @@ an acceptance. It does not: a label appearing more than once is the definition
 of a repeat, and there is no number at which a repeat becomes acceptable. It
 is in `INTEGER_ALLOWED` with that reason, which is the seventh time today a
 guard of this project has corrected something I wrote.
+
+## F293
+
+The denominator class, measured rather than remembered.
+
+`tools/findings.py --grep denominator` matches 17 of 300 findings. Reading
+them, they are one defect wearing four coats, and the project has named it
+piecemeal since F33 without ever writing down the rule.
+
+**A count whose total is unknown.** F33: an unmeasurable seed counted as a
+seed that failed to bridge, so a pair with four usable ternaries read "4/4
+bridged" with half its evidence missing. F271: my own guard compiled 8 of 11
+embedded Python blocks and said it compiled every script. F276: my own test
+named 3 of the atlas build's 9 refusals and read as covering them.
+
+**A verdict over a subset selected on the outcome.** F280 and F285:
+`bridge_percentile` runs on 22 of 24 positives because the nine missing pairs
+have no percentile, no seed having bridged, so the curve is drawn over pairs
+selected for bridging. F74 and F78 are the same shape through non-finite
+values rather than absent ones.
+
+**A sum whose parts are never checked individually.** F273 to F277: the atlas
+build's refusals, preflight's seven checks, the manifest's three errors and
+`stale_featurisation`'s three blindness causes were each tested by the gate's
+verdict, so removing any one left the others failing whatever was in front of
+them. `ok is False` is the weakest assertion a gate with N reasons admits.
+
+**A claim that cannot be refuted because its data is absent.** F258: "no pair
+clears the bridging line" is vacuously true of an empty arm, so one scored row
+would have reported the prediction supported. F268 is the same risk in a
+prediction of mine, which is why its scorer refuses until all five jobs have
+been attempted.
+
+The rule the instances share: **a count needs the total it is out of, and the
+total comes from what was intended rather than from what is on disk.** The
+queue, the manifest, the enumeration of refusing branches, the arm's own
+composition. A fraction whose denominator is the data present always improves
+as the data shrinks, which is the direction that reads as success.
+
+Where it is now enforced: `jobs_total` from the queue in `build_atlas`,
+`pairs_expected` in pose recovery, `positives_expected` in the ROC,
+`positives_expected` in F253's scorer, `per_component_n` in the fit, the
+heading count in the embedded-Python guard, and the named refusal list in the
+publish-gate test.
+
+**The honest caveat.** Twelve of the seventeen are from 7 November, which is
+one day of 300 findings' worth of work. Some of that is a real cluster, since
+the campaign finished and its numbers came under scrutiny for the first time.
+Much of it is a lens: once I had the shape, I found it everywhere I looked,
+and I was looking for it. The instances are each a real defect with a test
+behind it, and the frequency is not evidence that this class is seventeen
+times more common than any other. It is evidence that it is the one I was
+holding.
