@@ -14582,3 +14582,79 @@ says that the strict check is the guard.
 The dict is kept rather than deleted. The mechanism is worth having for the
 next correction, and a named expected failure is a record where an unnamed one
 is a red suite that trains you to ignore it.
+
+## F300. One stray file was holding publication
+
+The atlas build has refused since F219 because `tools/stale_featurisation.py`
+reported bench02's binary seed 1 as folded with a hydroxyproline its YAML does
+not ask for. After the correction re-ran all fifteen bench02 jobs the
+disagreement was still there, on a job whose output directory had been
+recreated forty minutes earlier and whose YAML has no modification block at
+all.
+
+Its `processed/structures/` directory holds two files:
+
+    bench02_..._seed1 2.npz    03:50
+    bench02_..._seed1.npz      16:46
+
+`cached_first_residues` did `found = list(...glob("*.npz"))` and read
+`found[0]`. The glob order is the filesystem's, the orphan came first, and
+the guard was comparing the old input against the new YAML. The reading was
+correct about the file it read and wrong about the job.
+
+So the F219 refusal had outlived the defect by some hours, and the thing
+standing between this campaign and a buildable atlas was a file nobody put
+there.
+
+`cached_npz` now chooses by name: the npz whose stem is the job id. With no
+exact match a single candidate is still used, because that is the ordinary
+case and nothing is being guessed. Several candidates and no match returns
+None, counted as `ambiguous_cache` and blind rather than resolved by picking
+one, since either pick is a coin toss between a false disagreement and a
+missed one and both verdicts are consequential. The main campaign now reports
+**no disagreements, 2,356 of 2,360 jobs checked, nothing blind**.
+
+### How far the duplicates go, and what caused them
+
+Twenty-six duplicate-named files across three job directories, all of them
+`binary__unconstrained` seeds of the two pairs the corrections touched, all in
+the main campaign. **The cause is not established.** `~/Documents` is a real
+local directory rather than a link into `Mobile Documents`, there are no
+`.icloud` placeholders in the project and no extended attributes on the
+duplicate, so the obvious suspect does not fit; nothing in the project copies
+an output directory, and `run_job` clears one before it runs. Recorded as
+unexplained rather than attributed to the first plausible mechanism.
+
+### The reader that was already safe, and why that was luck
+
+`runner._best_structure` sorts on `(own file, mmCIF, has a rank, the rank,
+the name)`, and the name tie-break prefers `"X_model_0 2.cif"` because a
+space sorts below a dot. It would have picked the duplicate, which would have
+put a job's recorded ipTM and its scored structure on an orphan from the old
+input: F219's confound through a second door, and this time in the numbers
+rather than in a guard.
+
+It does not, because `_model_rank` requires the tail after `_model_` to be
+all digits, `"0 2"` is not, so the duplicate carries no rank and loses a
+round earlier. That strictness was added for F99's unrelated reason about
+unpadded ranks. It is now pinned by a test, so it stops being incidental.
+
+All forty `glob` sites outside the tests were checked. The only other picks
+are `sorted(glob("campaigns/benchmark_*"))[-1]`, newest campaign by name,
+which is the intent.
+
+**My first version of that scan was wrong in a way worth recording.** It
+filtered out every line containing `sorted(`, on the thought that a sorted
+glob is deterministic. `sorted(glob(...))[0]` is the exact pattern being
+hunted, and the determinism is precisely what makes it reliably pick the
+orphan. One wrong exclusion and the scan would have reported the codebase
+clean, which is F232's shape: concluding absence from a filter without
+checking what it excluded.
+
+### The one confound that could have invalidated F297
+
+F297's calibration reads `benchmark_*` and `corrected_*`, and bench02 is the
+pair with the known input defect, so the obvious objection is that its row
+came from hydroxyproline-folded structures. Both campaigns report zero
+featurisation disagreements. The confound was only ever in the main campaign,
+which F297 does not read.

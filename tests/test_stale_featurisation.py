@@ -352,3 +352,101 @@ def test_the_live_campaigns_are_fully_covered():
         assert seen["blind"] == 0, (campaign.name, seen)
         assert seen["checked"] + seen["no_output"] == seen["queued"], (
             campaign.name, seen)
+
+
+# --------------------------------------------------------------------------- #
+# A second npz in the same directory (F300)
+# --------------------------------------------------------------------------- #
+
+def test_the_job_s_own_cache_wins_over_a_stray_duplicate(tmp_path):
+    """The live case: a clean re-run beside an orphan from the old input.
+
+    Three job directories in the main campaign held a second file named
+    `<job_id> 2.npz`, older than the re-run's own `<job_id>.npz`. The reader
+    took `found[0]` in filesystem order, read the orphan, and reported
+    bench02's binary seed 1 as folded with a hydroxyproline its YAML does not
+    ask for. `deploy/build_atlas.py` refuses on that reading, so one stray
+    file was holding publication on a disagreement that did not exist.
+    """
+    campaign = tmp_path / "campaign_x"
+    campaign.mkdir()
+    _job(campaign, "j1", yaml_text=PLAIN, folded={"P": ["PRO", "VAL"]})
+    structures = (campaign / "outputs" / "j1" / "boltz_results_j1"
+                  / "processed" / "structures")
+    _npz(structures / "j1 2.npz", {"P": ["HYP", "VAL"]})
+
+    assert SF.disagreements(campaign) == []
+    assert SF.coverage(campaign)["checked"] == 1
+    assert SF.coverage(campaign)["blind"] == 0
+
+
+def test_a_space_sorts_before_a_dot_which_is_why_order_was_wrong(tmp_path):
+    """The mechanism, pinned. `"j1 2.npz"` sorts before `"j1.npz"` because
+    a space is below a dot, so any reader that sorts and takes the first gets
+    the orphan. This fails if the fix is ever replaced by sorting."""
+    campaign = tmp_path / "campaign_x"
+    campaign.mkdir()
+    _job(campaign, "j1", yaml_text=PLAIN, folded={"P": ["PRO", "VAL"]})
+    structures = (campaign / "outputs" / "j1" / "boltz_results_j1"
+                  / "processed" / "structures")
+    _npz(structures / "j1 2.npz", {"P": ["HYP", "VAL"]})
+
+    names = sorted(path.name for path in structures.glob("*.npz"))
+    assert names[0] == "j1 2.npz", "the premise of this test has changed"
+    chosen = SF.cached_npz(campaign / "outputs" / "j1", "j1")
+    assert chosen is not None and chosen.name == "j1.npz"
+
+
+def test_two_caches_and_neither_is_this_job_s_is_blind_not_clean(tmp_path):
+    """Refusing to choose is the only safe answer: either file could be the
+    real one, and a wrong pick is a false disagreement or a missed one."""
+    campaign = tmp_path / "campaign_x"
+    campaign.mkdir()
+    _job(campaign, "j1", yaml_text=PLAIN, folded={"P": ["PRO", "VAL"]})
+    structures = (campaign / "outputs" / "j1" / "boltz_results_j1"
+                  / "processed" / "structures")
+    (structures / "j1.npz").unlink()
+    _npz(structures / "other 2.npz", {"P": ["HYP", "VAL"]})
+    _npz(structures / "other 3.npz", {"P": ["PRO", "VAL"]})
+
+    assert SF.cached_npz(campaign / "outputs" / "j1", "j1") is None
+    assert SF.disagreements(campaign) == []
+    seen = SF.coverage(campaign)
+    assert seen["ambiguous_cache"] == 1
+    assert seen["blind"] == 1
+    assert seen["checked"] == 0
+
+
+def test_one_cache_under_another_name_is_still_used(tmp_path):
+    """The ordinary case where Boltz named the file differently. One
+    candidate means nothing is being guessed."""
+    campaign = tmp_path / "campaign_x"
+    campaign.mkdir()
+    _job(campaign, "j1", yaml_text=PLAIN, folded={"P": ["HYP", "VAL"]})
+    structures = (campaign / "outputs" / "j1" / "boltz_results_j1"
+                  / "processed" / "structures")
+    (structures / "j1.npz").rename(structures / "renamed.npz")
+
+    found = SF.disagreements(campaign)
+    assert len(found) == 1 and found[0]["folded"] == "HYP"
+    assert SF.coverage(campaign)["checked"] == 1
+
+
+def test_the_runner_is_not_fooled_by_the_same_duplicate():
+    """Incidental protection, pinned so it stops being incidental.
+
+    `_best_structure` sorts on `(own file, mmCIF, has a rank, the rank, the
+    name)` and the name tie-break would prefer `"X_model_0 2.cif"`, since a
+    space is below a dot. It does not, because `_model_rank` requires the
+    tail after `_model_` to be all digits and `"0 2"` is not, so the
+    duplicate has no rank and loses a round earlier. That strictness was
+    added for F99's unrelated reason about unpadded ranks, and without this
+    test nothing would notice if it were relaxed.
+    """
+    import sys as _sys
+
+    _sys.path.insert(0, str(ROOT))
+    from nobble.execute import runner
+
+    assert runner._model_rank(Path("x_model_0 2.cif")) is None
+    assert runner._model_rank(Path("x_model_0.cif")) == 0

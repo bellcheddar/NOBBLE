@@ -36,14 +36,45 @@ from nobble import paths  # noqa: E402
 PARENT_OF = {"HYP": "PRO", "SEP": "SER", "TPO": "THR"}
 
 
-def cached_first_residues(job_output: Path) -> dict[str, str] | None:
-    """Each chain's first folded residue, or None if there is no cache."""
-    import numpy as np
+def cached_npz(job_output: Path, job_id: str | None = None) -> Path | None:
+    """The one featurisation cache for this job, or None if that is ambiguous.
 
-    found = list(job_output.glob("boltz_results_*/processed/structures/*.npz"))
+    `found[0]` was a bug with teeth (F300). A job's structures directory
+    normally holds one npz, and this one held two: the re-run's
+    `<job_id>.npz` from 16:46 and an orphan `<job_id> 2.npz` from 03:50, the
+    shape a duplicating copy leaves behind. `glob` order is the filesystem's,
+    the orphan came first, and the guard reported bench02's binary seed 1 as
+    folded with a hydroxyproline its YAML does not ask for. That reading is
+    what `deploy/build_atlas.py` refuses on, so one stray file was holding
+    publication on a disagreement that did not exist.
+
+    So the choice is made by name rather than by order: the npz whose stem is
+    the job id. With no job id, or no exact match, a single candidate is still
+    used, because that is the ordinary case and nothing is being guessed.
+    Anything else returns None, and `_scan` counts it as `ambiguous_cache`
+    and blind. Refusing to choose is the only safe answer: picking either
+    file is a coin toss between a real disagreement and a false one, and both
+    verdicts are consequential.
+    """
+    found = sorted(job_output.glob("boltz_results_*/processed/structures/*.npz"))
     if not found:
         return None
-    data = np.load(found[0], allow_pickle=True)
+    if job_id:
+        exact = [path for path in found if path.stem == job_id]
+        if len(exact) == 1:
+            return exact[0]
+    return found[0] if len(found) == 1 else None
+
+
+def cached_first_residues(job_output: Path,
+                          job_id: str | None = None) -> dict[str, str] | None:
+    """Each chain's first folded residue, or None if there is no one cache."""
+    import numpy as np
+
+    chosen = cached_npz(job_output, job_id)
+    if chosen is None:
+        return None
+    data = np.load(chosen, allow_pickle=True)
     if "chains" not in data.files or "residues" not in data.files:
         return None
     residues = data["residues"]
@@ -89,6 +120,9 @@ def _scan(campaign: Path) -> tuple[list[dict], dict]:
 
     * `no_cache`: the job has an output directory, so it ran, and no
       `processed/structures/*.npz` under it. Nothing to compare.
+    * `ambiguous_cache`: more than one npz and none of them named for this
+      job, so which one was folded cannot be established. Blind, not clean,
+      and deliberately not resolved by picking one: see `cached_npz` (F300).
     * `unreadable_cache`: an npz is there and has no `chains` or `residues`
       array, or will not load. That is what a change in Boltz's cache format
       looks like, and it would turn every job in the campaign into a silent
@@ -105,7 +139,7 @@ def _scan(campaign: Path) -> tuple[list[dict], dict]:
     """
     out: list[dict] = []
     counts = {"queued": 0, "checked": 0, "no_output": 0, "no_cache": 0,
-              "unreadable_cache": 0, "missing_yaml": 0}
+              "unreadable_cache": 0, "ambiguous_cache": 0, "missing_yaml": 0}
     blind: list[str] = []
     for row in paths.read_jsonl(campaign / "queue.jsonl", tolerate_torn=True):
         counts["queued"] += 1
@@ -119,12 +153,16 @@ def _scan(campaign: Path) -> tuple[list[dict], dict]:
         if not output.exists():
             counts["no_output"] += 1
             continue
-        cached = cached_first_residues(output)
+        cached = cached_first_residues(output, str(job_id))
         if cached is None:
-            key = ("no_cache"
-                   if not list(output.glob(
-                       "boltz_results_*/processed/structures/*.npz"))
-                   else "unreadable_cache")
+            npz = list(output.glob("boltz_results_*/processed/structures/*.npz"))
+            if not npz:
+                key = "no_cache"
+            elif cached_npz(output, str(job_id)) is None:
+                # Several caches and none of them this job's: see cached_npz.
+                key = "ambiguous_cache"
+            else:
+                key = "unreadable_cache"
             counts[key] += 1
             blind.append(str(job_id))
             continue
@@ -146,7 +184,7 @@ def _scan(campaign: Path) -> tuple[list[dict], dict]:
                             "reading": "the cache predates the YAML"})
     counts["blind_examples"] = blind[:5]
     counts["blind"] = (counts["no_cache"] + counts["unreadable_cache"]
-                       + counts["missing_yaml"])
+                       + counts["ambiguous_cache"] + counts["missing_yaml"])
     return out, counts
 
 
