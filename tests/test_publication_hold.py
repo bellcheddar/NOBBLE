@@ -148,3 +148,85 @@ def test_no_success_radius_was_invented_to_decide_this():
     )
     thresholds = (ROOT / "config" / "thresholds.toml").read_text()
     assert "recovery_success_a" not in thresholds
+
+
+def _with_footprint(tmp_path: Path, footprint: dict) -> Path:
+    campaign = tmp_path / "campaign_footprint"
+    campaign.mkdir()
+    (campaign / "validation.json").write_text(json.dumps({
+        "layers": {"pose_recovery": {
+            "computed": True,
+            "summary": {
+                "overall_curve": {"n": 2, "median_rmsd": 9.0},
+                "by_pair": {"pair_a": {"median_rmsd": 5.0},
+                            "pair_b": {"median_rmsd": 13.0}},
+                "footprint": footprint,
+            },
+        }},
+    }))
+    return campaign
+
+
+MEASURED = {"status": "measured", "jaccard": 0.9,
+            "window_residues_touched": 15, "window_residues": 15}
+
+
+def test_the_refusal_says_where_the_poses_are_not_only_how_far(tmp_path):
+    """An RMSD cannot distinguish a missed site from a wrong register (F227).
+
+    Whoever reads this output is deciding whether to release the hold, so the
+    split belongs in front of them rather than in a tool they would have to
+    know to run.
+    """
+    campaign = _with_footprint(tmp_path, {"pair_a": MEASURED})
+    out = _run(_held(tmp_path), campaign=campaign).stderr
+    assert "contact jaccard 0.9" in out, out
+    assert "15 of 15 window residue(s) touched" in out, out
+
+
+def test_a_confounded_pair_is_not_counted_as_measurable(tmp_path):
+    """The validation layer cannot know this; this file can, so it must.
+
+    Without it the footprint presents a pair whose poses came from an input
+    no longer on disk as a measurement of the current input, which is F222's
+    mistake one file over.
+    """
+    campaign = _with_footprint(tmp_path, {"pair_a": MEASURED,
+                                          "pair_b": dict(MEASURED)})
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "publication_hold", ROOT / "tools" / "publication_hold.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    summary = json.loads((campaign / "validation.json").read_text())[
+        "layers"]["pose_recovery"]["summary"]
+
+    clean = "\n".join(module.describe(summary, confounded=set()))
+    assert "2 of 2 measurable" in clean, clean
+
+    flagged = "\n".join(module.describe(summary, confounded={"pair_b"}))
+    assert "1 of 2 measurable" in flagged, flagged
+    assert "pair_b" in flagged and "confounded" in flagged, flagged
+
+
+def test_an_unknown_confounded_check_is_not_read_as_none_confounded(tmp_path):
+    """Unknown is not clean, which is F216 in a third file."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "publication_hold", ROOT / "tools" / "publication_hold.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    campaign = _with_footprint(tmp_path, {"pair_a": MEASURED})
+    summary = json.loads((campaign / "validation.json").read_text())[
+        "layers"]["pose_recovery"]["summary"]
+
+    unknown = "\n".join(module.describe(summary, confounded=None))
+    assert "could not be checked" in unknown, unknown
+
+
+def test_a_campaign_with_no_footprint_says_so(tmp_path):
+    campaign = _with_footprint(tmp_path, {})
+    assert "footprint: not computed" in _run(
+        _held(tmp_path), campaign=campaign).stderr

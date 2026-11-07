@@ -67,7 +67,32 @@ def recovery_now(validation: Path | None) -> dict | None:
     return summary if isinstance(summary, dict) else None
 
 
-def describe(summary: dict | None) -> list[str]:
+def confounded_pairs(campaign: Path | None) -> set[str] | None:
+    """Pairs whose poses came from an input no longer on disk (F219).
+
+    The validation layer cannot work this out, because it would mean a module
+    under `nobble/` importing from `tools/` (D-NOB-080). This file is in
+    `tools/`, so it can, and it must: without it the footprint below presents
+    a confounded pair as measurable, which is F222's mistake one file over.
+
+    None means the comparison could not be made, which is not the same as no
+    pair being confounded.
+    """
+    if campaign is None:
+        return None
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import stale_featurisation as featurisation
+    except ImportError:
+        return None
+    try:
+        rows = featurisation.disagreements(campaign)
+    except OSError:
+        return None
+    return {row["job_id"].split("__")[0] for row in rows}
+
+
+def describe(summary: dict | None, confounded: set[str] | None = None) -> list[str]:
     """The curve as lines, or one line saying there is no curve to read."""
     if summary is None:
         return ["    pose recovery: not computed in the newest campaign"]
@@ -83,6 +108,41 @@ def describe(summary: dict | None) -> list[str]:
             lines.append(f"      within {radius} A: {value}")
     for pair_id, record in sorted(pairs.items()):
         lines.append(f"      {pair_id:28s} median {record.get('median_rmsd')} A")
+
+    # And where the poses are, not only how far.
+    #
+    # An RMSD alone cannot distinguish a model that never found the degron
+    # site from one that found it and laid the chain along it in the wrong
+    # register (F227), and the two read differently for a decision about
+    # publishing. Whoever reads this is deciding whether to release the hold,
+    # so the decision-relevant split belongs here rather than in a tool they
+    # would have to know to run. Taken from the layer's own summary
+    # (D-NOB-080), so it is the same numbers the campaign computed.
+    footprint = summary.get("footprint")
+    if not isinstance(footprint, dict) or not footprint:
+        lines.append("    footprint: not computed in this campaign")
+        return lines
+
+    stale = confounded or set()
+    measured = {pair: record for pair, record in footprint.items()
+                if record.get("status") == "measured"
+                and record.get("jaccard") is not None
+                and pair not in stale}
+    others = sorted(pair for pair in footprint if pair not in measured)
+    unknown = "" if confounded is not None else (
+        " (whether any pair is confounded could not be checked)")
+    lines.append(f"    footprint of each pair's best pose, {len(measured)} of "
+                 f"{len(footprint)} measurable{unknown}:")
+    for pair_id, record in sorted(measured.items()):
+        lines.append(
+            f"      {pair_id:28s} contact jaccard {record.get('jaccard')}, "
+            f"{record.get('window_residues_touched')} of "
+            f"{record.get('window_residues')} window residue(s) touched")
+    for pair_id in others:
+        status = ("confounded: folded from a superseded input"
+                  if pair_id in stale else
+                  str(footprint[pair_id].get("status", "")).split(":")[0])
+        lines.append(f"      {pair_id:28s} {status}")
     return lines
 
 
@@ -97,7 +157,8 @@ def main() -> int:
     hold = read_hold(args.config)
     validation = (args.campaign / "validation.json" if args.campaign
                   else newest_validation())
-    lines = describe(recovery_now(validation))
+    lines = describe(recovery_now(validation),
+                     confounded_pairs(validation.parent if validation else None))
 
     if not hold.get("held"):
         released = str(hold.get("released_by") or "").strip()
