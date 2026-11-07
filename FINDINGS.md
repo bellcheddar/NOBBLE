@@ -11922,3 +11922,63 @@ better than its full-arm AUC suggests; there is little room for a 0.10 gain
 that is not an artefact of ten points.
 
 Whoever runs the scorer should read this entry first, then the numbers.
+
+## F252. Zinc tracks the motif, not the gene, and a registered prediction for the design scan
+
+Started from what looked like a defect. 6H0F carries zinc in both chain B and
+chain C, so the deposited IKZF1 degron coordinates it, and none of bench04's
+fifteen YAMLs mention zinc while 2,160 of the main campaign's 4,340 do.
+
+It is not a defect, and the rule is sharper than D-NOB-034 states. That
+decision reads "a C2H2 zinc finger is submitted with its zinc, in both arms",
+written when the Sievers arm was about to submit 120 whole fingers as bare
+chains. bench04's substrate is the 15-mer `PFQCNQCGASFTQKG`: two cysteines and
+no histidine, so it carries no complete C2H2 site and an ion would have
+nothing to coordinate. Tested across all 2,360 peptide-bearing YAMLs:
+
+```
+peptide has an intact C2H2 motif      1845   zinc added
+a scramble of one                      315   zinc added
+no motif and no zinc                   200   the 15-mer windows
+genuine inconsistencies                  0
+```
+
+The 315 are every scramble, and they are the interesting row: a
+composition-matched scramble keeps the cysteines and histidines and destroys
+their spacing, so it has no site, and it still gets the ion because
+D-NOB-034's "in both arms" means the comparison must not differ by a cofactor
+(D-NOB-038). So zinc follows the motif where there is one, and follows the
+pair where the arms must match. My first pass counted those 315 as
+inconsistent, which was my regex plus not accounting for the negative controls.
+
+**And a registered prediction for the design scan, before it runs.** The scan
+is 240 jobs over 16 pairs on the IKZF1 parent, priced at 4.4 hours, and its
+durable claim is the ordering of positions rather than any absolute lift.
+Measured now, from the deposition, how many CRBN residues each window
+position contacts within 4.5 A:
+
+```
+pos  1 PRO 0   2 PHE 0   3 GLN 2   4 CYS 1   5 ASN 4
+     6 GLN 4   7 CYS 6   8 GLY 3   9 ALA 2  10 SER 1
+    11 PHE 1  12 THR 0  13 GLN 0  14 LYS 0  15 GLY 0
+```
+
+Those are also where the model is most accurate: F228's per-residue deviations
+bottom out at positions 7, 8 and 9 at 0.7, 0.5 and 0.5 A. The interface and
+the accuracy coincide.
+
+*Predicted:* the scan's `most_sensitive` position falls in {5, 6, 7}, the three
+with four or more CRBN contacts. *Refuted* if it falls in {1, 2, 12, 13, 14,
+15}, which touch CRBN not at all, since a position with no interface contact
+should not be the one whose substitution costs the most glue dependence.
+*Uninformative* if it lands on 3, 4, 8, 9, 10 or 11.
+
+Two cautions recorded with it. No design YAML carries zinc, which is correct
+by the rule above, and it means a substitution at CYS 4 or CYS 7 cannot
+disrupt a zinc site because there is none to disrupt: a large lift at 7 is
+about the interface, not the fold. And position 9 is already alanine, which is
+why variants are named like `A9G`; `lift.py` refuses a residue substituted for
+itself as the noise floor, so the generator moved it to glycine instead. A
+large lift at 8 or 9, both glycine or alanine, would be about backbone
+flexibility rather than a lost side chain, and should not be read as an
+interface result.
