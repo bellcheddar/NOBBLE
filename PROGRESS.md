@@ -1421,3 +1421,41 @@ the comment as a record of what it held, so
 live guard with no allowlist. That is the designed end state.
 
 Everything else passes: 1,696 passed, 29 skipped, one deliberate failure.
+
+## Current state, 2026-11-08T02:30Z
+
+**The corrections are done and the atlas builds again.** `corrections.sh
+--apply` cleared bench02's stale featurisations and regenerated
+scr_bench03's five ternary YAMLs, all 25 jobs re-ran, and `refresh.sh` scored,
+validated and rebuilt the bundle with no refusal. F219's and F266's refusals
+are both cleared, and the main campaign reports no featurisation
+disagreements over 2,356 of 2,360 jobs with nothing blind.
+
+**The chain is running** and is finishing a redundant re-run of bench02's
+fifteen jobs, which is F302: the stage called `rerun_pair.py --apply`
+unconditionally and that path clears results whether or not anything needs
+correcting. The rows were already dropped by the time I found it, so the
+jobs have to re-run either way; the fix stops it recurring. After that the
+chain refreshes and goes to tier 2, where bench06 refines at nine samples
+instead of twenty-five (F298) and F268 becomes answerable for the first time.
+
+**Open, and the user's to decide:**
+
+- 706 orphan files reached the remote in a commit that was reversed forward
+  rather than rewritten (F303). The tracked tree at HEAD is clean. Excising
+  the blobs from history needs a force push, which is not mine to make. The
+  case is weak: they are byte-identical to files already tracked.
+- Something on this machine creates `file 2.ext` duplicates in directories as
+  they are written, and it put 2,014 of them into the published bundle.
+  `SyncMate` (Eltima) is running as a login item and is the most plausible
+  candidate, though its configuration does not name the project in plain
+  text. Not project code: `shutil.copy` writes the name it is given and job
+  ids contain no spaces. A probe is running to test whether a
+  delete-and-recreate inside the project tree brings the old files back.
+- `bash deploy/enable_gzip.sh` on the droplet (F132), still Marc's to run.
+
+**One cost worth knowing.** `deploy/atlas` is tracked, 2,515 files and 330 MB,
+while `campaigns/` is gitignored. Every atlas rebuild therefore makes a large
+commit; the one that found F303 took over ten minutes in `git add`. That
+looks deliberate, since the deployed bundle is then versioned and
+reproducible, so it is recorded rather than changed.
