@@ -1,6 +1,6 @@
 # NOBBLE progress
 
-Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T04:10:00Z.
+Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T05:05:00Z.
 
 ## Gate G6 answered: the headline is a negative result, and publication is held
 
@@ -46,6 +46,18 @@ backbone atoms, and peptide sequence identity is 1.0 on all seven pairs. So
 the poses really are 5 to 44 A out, while ternary ipTM reads 0.887 to 0.933.
 A Delta-ipTM that fails to separate glue from matched control is
 indistinguishable from a Delta-ipTM computed over poses in the wrong place.
+
+**The failure is two failures, and the split is per pair** (F227).
+`tools/pose_site.py` compares footprints rather than backbones, over all 65
+poses: bench04, bench06 and bench05 put the degron on its own footprint in
+every one of ten poses (contact Jaccard 0.909, 0.533, 0.500; median RMSD
+5.35, 6.04, 12.21 A), while bench01 and bench07 touch none of the fifteen
+window residues in any pose and sit 22 and 43 A away. No pair splits by seed.
+bench03 is not measurable, since its deposited window makes no CRBN contact,
+and bench02 is confounded. So for three of five measurable pairs the site is
+identified reliably and the register is wrong; nothing reaches 3 A either way,
+and whether this re-scopes the headline is G6's to decide rather than the
+tool's.
 
 Two rungs of the ladder are already read off structures on disk: pocket
 conditioning does nothing (14.95 A against 17.92 A median, under 0.5 A per
