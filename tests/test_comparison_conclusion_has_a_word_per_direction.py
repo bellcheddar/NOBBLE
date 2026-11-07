@@ -165,10 +165,59 @@ def test_the_benchmark_page_renders_both_curves():
     assert "15-mer" in template and "whole domain" in template
 
 
-def test_the_curve_table_is_guarded_on_both_being_computed():
-    """A half-populated comparison must not render as two blank rows."""
-    template = (ROOT / "nobble" / "app" / "templates" / "benchmark.html").read_text()
-    guard = "base_curve.get('status') == 'computed' and corr_curve.get('status') == 'computed'"
-    assert guard in template, (
-        "the curve table is not guarded, so a campaign without validation "
-        "would render empty cells as if measured")
+def _curve_panel():
+    """The comparison panel's curve table, as a renderable snippet.
+
+    Rendered rather than grepped. The first version of this test asserted the
+    guard's text appeared in the template, which says nothing about what the
+    template does with it: the same reason the "exit 0 but" detail test moved
+    from matching a source line to running the job.
+    """
+    from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+    env = Environment(
+        loader=FileSystemLoader(str(ROOT / "nobble" / "app" / "templates")),
+        autoescape=select_autoescape())
+    source = (ROOT / "nobble" / "app" / "templates" / "benchmark.html").read_text()
+    start = source.index("{% set base_curve")
+    end = source.index("{% endif %}", start) + len("{% endif %}")
+    return env.from_string(source[start:end])
+
+
+COMPUTED_BASE = {"status": "computed", "median_rmsd": 17.14,
+                 "within_3.0A": 0.0, "within_2.0A": 0.0, "n": 65}
+COMPUTED_CORR = {"status": "computed", "median_rmsd": 2.494,
+                 "within_3.0A": 0.5385, "within_2.0A": 0.4154, "n": 65}
+
+
+def test_both_curves_present_renders_the_contrast():
+    rendered = _curve_panel().render(comparison={
+        "baseline_recovery_curve": COMPUTED_BASE,
+        "corrected_recovery_curve": COMPUTED_CORR})
+    assert "<table" in rendered, rendered
+    assert "17.14" in rendered and "2.494" in rendered, rendered
+    assert "0.5385" in rendered, rendered
+
+
+def test_a_bundle_without_the_curves_renders_nothing():
+    """The live state: the published bundle predates the keys.
+
+    It was built before compare.compare carried them, so the guard is
+    load-bearing now rather than in principle.
+    """
+    import json
+
+    published = json.loads(
+        (ROOT / "deploy" / "atlas" / "comparison.json").read_text())
+    rendered = _curve_panel().render(comparison=published)
+    assert "<table" not in rendered, rendered
+    assert rendered.strip() == "", rendered
+
+
+def test_one_uncomputed_curve_renders_nothing():
+    """Half a comparison must not render as a measured row beside a blank."""
+    rendered = _curve_panel().render(comparison={
+        "baseline_recovery_curve": COMPUTED_BASE,
+        "corrected_recovery_curve": {"status": "not computed"}})
+    assert "<table" not in rendered, rendered
+    assert "17.14" not in rendered, rendered
