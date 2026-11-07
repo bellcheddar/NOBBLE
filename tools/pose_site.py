@@ -84,6 +84,21 @@ def _confounded(campaign: Path) -> set[str]:
     return {row["job_id"].split("__")[0] for row in rows}
 
 
+def _every_pose(campaign: Path) -> list[dict]:
+    """Every pose with an RMSD, not just each pair's best.
+
+    The best pose per pair is a best-case selection, so a footprint that
+    agrees only there is one seed out of ten agreeing. Whether the agreement
+    survives the other seeds is the difference between a result and a
+    cherry-pick, and it is not a thing to caveat when it can be measured.
+    """
+    validation = campaign / "validation.json"
+    if not validation.exists():
+        return []
+    layer = json.loads(validation.read_text())["layers"].get("pose_recovery", {})
+    return [row for row in (layer.get("detail") or []) if row.get("rmsd") is not None]
+
+
 def _best_per_pair(campaign: Path) -> dict[str, dict]:
     validation = campaign / "validation.json"
     if not validation.exists():
@@ -100,7 +115,8 @@ def _best_per_pair(campaign: Path) -> dict[str, dict]:
 
 
 def footprints(campaign: Path, cutoff: float | None = None,
-               only: set[str] | None = None) -> list[dict]:
+               only: set[str] | None = None,
+               every_pose: bool = False) -> list[dict]:
     """One record per pair, for the lowest-RMSD ternary pose it has.
 
     `only` restricts to named pairs. Each record reads two structures off
@@ -115,8 +131,15 @@ def footprints(campaign: Path, cutoff: float | None = None,
                 in (campaign / "results.jsonl").read_text().splitlines()
                 if line.strip())}
 
+    if every_pose:
+        candidates = [(row["pair_id"], row) for row in
+                      sorted(_every_pose(campaign),
+                             key=lambda r: (r["pair_id"], r["job_id"]))]
+    else:
+        candidates = sorted(_best_per_pair(campaign).items())
+
     records = []
-    for pair_id, best in sorted(_best_per_pair(campaign).items()):
+    for pair_id, best in candidates:
         if only is not None and pair_id not in only:
             continue
         record = {"pair_id": pair_id, "job_id": best["job_id"],
@@ -243,6 +266,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("campaign", nargs="?", default=None)
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--every-pose", action="store_true",
+                        help="every pose, not each pair's best")
     args = parser.parse_args(argv)
 
     campaign = args.campaign
@@ -253,7 +278,7 @@ def main(argv: list[str] | None = None) -> int:
         print("no campaign found", file=sys.stderr)
         return 2
 
-    records = footprints(Path(campaign))
+    records = footprints(Path(campaign), every_pose=args.every_pose)
     if args.json:
         print(json.dumps(records, indent=2))
         return 0

@@ -10539,3 +10539,76 @@ over the 400 cap, and all ten are `DCAF8L1_WD40`, one of the three declared
 exceptions, which is why preflight passes them. I had written my own YAML and
 MSA scan before running preflight, which already does both and checks the a3m
 contents as well: the same habit as the budget figures, in the same tick.
+
+## F227. The pose-recovery failure is two different failures, and the split is per pair
+
+Pose recovery reports 0 of 65 poses within 3 A and a median of 17.54 A (F212),
+and refinement sharpens without recovering (F215). One RMSD cannot say whether
+the model never found the degron site or found it and laid the chain along it
+in the wrong register, and the headline reads differently in each case.
+
+`tools/pose_site.py` asks the question the RMSD cannot. It superposes on the
+receptor exactly as `poses.recovery_against_crystal` does, then compares
+footprints: which receptor residues the deposited degron window touches, which
+the predicted peptide touches, and how many of the window's own fifteen
+residues the prediction lands on. The window is resolved through
+`peptide_start_res` and `substrate_frame.to_deposited`, not from the whole
+substrate chain, which for CSNK1A1 and GSPT1 is a domain rather than a degron.
+Contacts at 4.5 A, from `contact_cutoff_a` in `config/thresholds.toml`.
+
+Over all 65 poses, not the best one per pair:
+
+```
+pair                      n   window 15/15   any contact   jaccard   rmsd
+bench04_IKZF1_CRBN       10         10/10         10/10     0.909    5.35
+bench06_RBM39_DCAF15     10          7/10         10/10     0.533    6.04
+bench05_CSNK1A1_CRBN     10          0/10         10/10     0.500   12.21
+bench01_GSPT1_CRBN       10          0/10          0/10     0.022   29.14
+bench07_CDK12_DDB1       10          0/10          0/10     0.000   44.66
+bench02_BRD4_VHL         10          0/10          9/10     0.182   18.20   confounded
+bench03_BRD4_CRBN         5          0/5           2/5      0.000   20.40   not measurable
+```
+
+jaccard and rmsd are medians over the pair's poses.
+
+**Three of the five measurable pairs put the degron on its own footprint, in
+every one of ten poses.** bench04 touches all fifteen window residues in all
+ten and shares ten of eleven receptor contacts. bench06 touches all fifteen in
+seven of ten and some in all ten. bench05 touches some in all ten and shares
+thirteen of fifteen receptor contacts at its best. Their median RMSDs are
+5.35, 6.04 and 12.21 A: the site is right and the backbone is placed along it
+wrongly.
+
+**Two put it on a different surface of the same protein, in every one of ten
+poses.** bench01 and bench07 touch none of the fifteen window residues in any
+pose, share two and zero receptor contacts, and sit 22 and 43 A from the
+window's centroid. They contact the receptor chain heavily, 59 residues each,
+so the peptide is bound, just not there.
+
+**There is no pair where some seeds find the site and others do not.** The
+split is a property of the pair, which is why the every-pose check was worth
+running: on the best pose per pair alone, three pairs agreeing could have been
+one seed in ten agreeing three times.
+
+**What this changes and what it does not.** It does not rescue the control:
+nothing reaches 3 A, bench04's best pose is 4.99 A, and the matched-control
+ROC is still a null at AUC 0.4583. It does mean "the poses are in the wrong
+place" was too coarse a reading of the failure. For three of five measurable
+pairs the model identifies the correct degron footprint reliably and misplaces
+the backbone by 5 to 12 A. That is a different negative result, and whether it
+re-scopes the headline is a G6 decision for Marc rather than one this records.
+
+**Two pairs are excluded and both for stated reasons.** bench03's deposited
+window makes no contact with CRBN at all within the cutoff: it sits on BRD4
+against the glue, so its overlap is zero whatever the pose, and the tool says
+`not_measurable` rather than printing a 0.0 beside bench07's measured 0.0.
+bench02's poses came from a superseded input (F219), so its 9 of 10 window
+contacts and 0.182 median are not a measurement of the current input; the
+correction may make it a fourth measurable pair.
+
+**No verdict and no new threshold.** Printing "right site" above some Jaccard
+would be inventing an acceptance cutoff to decide a failed positive control,
+which is exactly what D-NOB-076 refused to do for pose recovery. The numbers
+are reported and the reading is in this paragraph, where it can be argued with.
+A test enforces that structurally through `ast`, after its first version
+failed on the docstring explaining the absence it was checking for.
