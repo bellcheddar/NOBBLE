@@ -11646,3 +11646,44 @@ Worth noting what the sweep did not find. No test function in the suite lacks
 an assertion, and nothing else is tautological. The two cases both came from
 the same impulse, hedging a line that was about to be the real check, which
 is a thing to watch for in myself rather than a property of the codebase.
+
+## F246. The licensing guarantee holds structurally, and the machinery built for it never fires
+
+Pre-flighting the atlas build that follows the F47 correction, so a
+forty-minute GPU run is not followed by a surprise refusal. The two chemistry
+refusals will pass. Measured by applying `redact()` to all 2,667 score and
+result rows of the main campaign:
+
+```
+rows examined                                 2667
+rows whose SMILES redact() withheld              0
+rows that would publish a SMILES              none
+sources outside the publishable allow-list    none
+```
+
+Nothing is withheld because nothing is carried. The campaign identifies its
+ligands by CCD code, 85C, 759, Y70, LVY, EF6 and RC8, with one exception:
+`bench03_BRD4_CRBN` uses dBET57, which has no CCD entry, so its chemistry is
+a SMILES written into the job's YAML. YAMLs are not published. So the only
+SMILES in the campaign sits on disk for internal use, which spec 2.1 permits,
+and the publish path never sees chemistry at all.
+
+**The guarantee is therefore met by a different mechanism than the one built
+to meet it.** `redact()` and the provenance allow-list F218 made real are both
+correct and both unexercised here. `ATLAS.json` records `redactions: 0` and
+`redacted_ligands: []`, and F72 added that second field precisely because "a
+count alone cannot distinguish nothing needed withholding from the detection
+stopped firing". With both empty the distinction still cannot be drawn from
+the output, and the tests that would exercise redaction skip with "no
+published ligand chemistry in the bundle".
+
+So a reader seeing `redactions: 0` should not read it as redaction having
+worked. On this campaign it had nothing to do, and the licensing guarantee
+rests on the publish path not carrying SMILES rather than on chemistry being
+caught and withheld. Both are true and only one is a mechanism.
+
+Nothing to fix: the machinery is right, the state is right, and inventing
+chemistry to exercise it would be a test of a fixture. Recorded because the
+next person to audit the licensing guarantee will find a passing check, a
+zero count and two skipped tests, and that combination reads as verified when
+it is vacuous.
