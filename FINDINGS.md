@@ -11309,6 +11309,27 @@ way: ten jobs at about 2.64 hours each is 26.4 hours, of which roughly 5.3
 are already spent. The 23.7-hour figure above was the likely case and is now
 the expected one.
 
+**The obvious fix is not to retry these, and I am not making it.** The
+runner already refuses to retry a timeout, and its reason reads: "an
+identical command on an identical input, having been killed for taking too
+long, will be killed again". Exit 0 with an empty predictions directory looks
+like the same argument, and halving two attempts to one would save about
+thirteen of the twenty-six hours.
+
+It is not the same argument. A timeout is self-explaining: the thing that
+ended the attempt is the clock, and the clock will run again. Here the cause
+is unknown, which is why keeping Boltz's output was the fix. A transient, a
+full disk or a device hiccup would also exit 0 with nothing written, and in
+that case the retry is the thing that saves the job. Two jobs and four
+attempts show the failure is reproducible at this size; they do not show that
+every exit-0-with-no-output is reproducible, and generalising from the former
+to the latter on two data points is the inference this session has caught
+itself making repeatedly.
+
+So the retry stays, the thirteen hours are the price of not guessing, and the
+evidence capture is what will make the next instance decidable rather than
+arguable.
+
 **Why skipping them is not available.** `run_campaign` does
 `jobs = paths.read_jsonl(queue_path)` once, under a comment saying "the queue
 is written once, before anything runs, and nothing appends to it". So editing
