@@ -11280,6 +11280,17 @@ jobs run and fail honestly, and whether to interrupt the stage to skip them
 is Marc's, because it means killing a running tier-2 runner to save 24 of 161
 spare hours.
 
+**And removing them is not optional if the stage is ever re-run.**
+`completed()` treats only `done` as terminal, so `failed` and `abandoned`
+both re-run on the next invocation. That is deliberate and tested
+(`test_a_failed_job_is_retried_on_the_next_run`), and it is the fallback
+ladder working: a failure retries. But it means a recorded failure does not
+stop a retry, so restarting tier 2 to reclaim these hours would spend them
+again on the same ten jobs unless their rows come out of
+`queue_tier2.jsonl` first. The recommendation is "re-run the stage with
+bench06 removed", and the removal is the load-bearing half of it rather than
+a tidy-up.
+
 The diagnostic fix takes effect at the next runner invocation, since the
 running process imported the module before it was written. So the nine
 remaining failures will still say only "exit 0 but no confidence JSON
