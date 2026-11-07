@@ -403,6 +403,25 @@ def run_job(job: dict, campaign: Path, settings: dict) -> JobOutcome:
         tail = (stderr or stdout or "").strip().splitlines()
         detail = " | ".join(tail[-3:])[:400] if tail else f"exit {returncode}"
 
+        # Said now, not when the job resolves.
+        #
+        # A failed attempt was silent: the queue line printed once, the job
+        # kept the same state row, and the only way to tell a retry from a
+        # slow job was to notice the Boltz child's elapsed time reset in the
+        # process table. On a job carrying a 39,000-second budget that is
+        # hours of invisible loss, and the budget is per job (F100), so the
+        # retry runs on what the failed attempt left rather than on a fresh
+        # allowance. Printed with the figures that decide whether to wait.
+        if attempts <= RETRIES:
+            spent = time.monotonic() - started
+            print(f"    attempt {attempts} failed after {spent:.0f}s "
+                  f"({detail[:120]}); retrying with "
+                  f"{budget - spent:.0f}s of a {budget:.0f}s budget left",
+                  flush=True)
+        else:
+            print(f"    attempt {attempts} failed, no retries left "
+                  f"({detail[:120]})", flush=True)
+
     return JobOutcome(
         job_id=job_id, status=f"failed: {detail[:200]}",
         seconds=time.monotonic() - started, tokens=job["tokens"],

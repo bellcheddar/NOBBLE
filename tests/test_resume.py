@@ -156,3 +156,42 @@ def test_resume_against_the_real_campaign_queue(tmp_path):
     assert victim in {job["job_id"] for job in pending}, "a job left running was not re-queued"
     assert not (done & {job["job_id"] for job in pending}), "a completed job was re-queued"
     assert len(pending) + len(resumed) == len(jobs), "a job was dropped"
+
+
+def test_a_failed_attempt_is_announced_before_the_job_resolves(capsys, tmp_path,
+                                                               monkeypatch):
+    """An 84-minute failed attempt was invisible in the chain log.
+
+    The queue line prints once, the state row keeps saying `running`, and the
+    only way to tell a retry from one slow job was to notice the Boltz child's
+    elapsed time reset in the process table. The budget is per job (F100), so
+    the retry spends what the failed attempt left: on a job carrying 39,000
+    seconds that is hours of loss with nothing said (F233).
+    """
+    from nobble.execute import runner as runner_module
+
+    calls = {"n": 0}
+
+    def _fail_then_fail(command, env, timeout):
+        calls["n"] += 1
+        return "ok", 1, "", f"boom {calls['n']}"
+
+    monkeypatch.setattr(runner_module, "_run_boltz", _fail_then_fail)
+    monkeypatch.setattr(runner_module, "RETRIES", 1)
+
+    campaign = tmp_path / "campaign_x"
+    (campaign / "outputs").mkdir(parents=True)
+    job = {"job_id": "pairX__ternary__unconstrained__seed1", "tokens": 10,
+           "yaml": str(tmp_path / "x.yaml"), "timeout_seconds": 600,
+           "seed": 1, "pair_id": "pairX", "complex_type": "ternary"}
+    (tmp_path / "x.yaml").write_text("version: 1\n")
+
+    outcome = runner_module.run_job(
+        job, campaign, runner_module.settings_from_config(tier=1))
+    printed = capsys.readouterr().out
+
+    assert outcome.status.startswith("failed"), outcome.status
+    assert calls["n"] == 2, calls
+    assert "attempt 1 failed after" in printed, printed
+    assert "budget left" in printed, printed
+    assert "no retries left" in printed, printed

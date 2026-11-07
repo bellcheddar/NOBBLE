@@ -10925,6 +10925,20 @@ all bench06. At two attempts of roughly 84 minutes each that is about 28
 hours producing nothing, against 19.3 hours for the whole remainder as priced.
 The other 66 are at proven sizes.
 
+That 28 hours is the likely case and not the worst one. The queue row carries
+`timeout_seconds: 39000`, overriding the tier-2 default of 21,600, and the
+budget is per job rather than per attempt (F100), so one of these jobs may
+spend up to 10.8 hours across its two attempts before being recorded as
+failed. Ten of them at the full budget is 108 hours, which against 78.5 spent
+and 37.2 for the design scan and Tier B would reach the 240-hour ceiling that
+Gate G1 is defined against. The likely case leaves the projection at about
+151 hours; the worst case is a G1 question.
+
+The automatic scope reduction available is to drop bench06 from tier 2, which
+costs one pair's refinement and is the pair whose refinement is most worth
+seeing. That is why this waits for the error rather than being decided on the
+arithmetic.
+
 **What it costs scientifically.** More than the hours. bench06 is one of the
 three pairs that put the degron on its own footprint in every one of ten
 poses, at contact Jaccard 0.533 with eleven of fifteen window residues within
