@@ -12340,3 +12340,45 @@ compared with `>=` reads as complete for any number of scored pairs, which is
 the failure this exists to prevent. And the page prints the line only when the
 arm is partial, because a caveat beside every number reads as a lack of
 confidence in the numbers rather than as rigour.
+
+## F260
+
+I broke the status page's gates section and a shell syntax check passed it.
+
+The F255 edit replaced the `spent` line in `tools/status.sh` with a
+multi-line version. That line appears twice, once at four spaces and once at
+eight inside the `if not t2["priceable"]` branch, and the four-space pattern
+is a substring of the eight-space one. So the replacement matched both, as
+intended, and left the deeper copy at the wrong indentation. The embedded
+Python then raised `IndentationError` and the whole gates section printed
+nothing: no G5 disk line, no G1 tier-1 line, no G1 refine line, no spend.
+
+I checked that edit with `bash -n`, which validates the shell and treats a
+heredoc as opaque text, so it reported no problem. The sections either side
+of the gates still printed normally, which is what let it past a look at the
+output: the failure removed a section rather than producing a visible error at
+the end.
+
+Two lessons, and the second is the useful one.
+
+A pattern that is a substring of a more deeply indented copy of itself cannot
+be replaced by text carrying its own indentation. Asserting the match count,
+which I did, confirms both copies were found and says nothing about whether
+either is still valid.
+
+And a syntax check of the wrapper is not a syntax check of what it embeds.
+`tests/test_embedded_python_compiles.py` now compiles every Python block in
+every script under `tools/` and `deploy/`, in both forms: the `<<'PY'`
+heredocs that `status.sh` uses, and the `python -c "..."` blocks that
+`run_chain.sh` uses. The second form matters more rather than less, because
+each chain stage runs behind `|| true`, so a syntax error there fails its
+stage and the chain proceeds to the next one with the stage having done
+nothing. Shell interpolations inside a block are replaced with a placeholder
+rather than skipped, since skipping would exempt every block that uses one,
+and both patterns have a test asserting they still match the scripts they
+were written for, because a regex that matches nothing passes everything.
+
+Six blocks across four scripts compile. The gates section prints again, and it
+now shows both of the day's changes: 86.76 hours spent of which 7.91 on three
+failed attempts (F255), and refinement priced at 70.73 to 72.39 hours where
+the pooled factor said about 38 (F257).

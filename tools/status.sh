@@ -147,13 +147,13 @@ if camps:
               f"{len(ranked)} pair(s), no tier-1 ternary job of this "
               f"campaign has completed")
         # The split, because the total alone cannot say whether the budget is
-    # being spent on results or on a job that cannot succeed. bench06's
-    # refinement burns about two and a half hours a job and writes no
-    # confidence JSON, and until F255 none of it appeared here at all.
-    print(f"   spent        {spent['hours']} h over {spent['jobs']} job(s)"
-          + (f", of which {spent['failed_hours']} h on "
-             f"{spent['failed_jobs']} failed attempt(s)"
-             if spent['failed_hours'] else ""))
+        # being spent on results or on a job that cannot succeed. bench06's
+        # refinement burns about two and a half hours a job and writes no
+        # confidence JSON, and until F255 none of it appeared here at all.
+        print(f"   spent        {spent['hours']} h over {spent['jobs']} job(s)"
+              + (f", of which {spent['failed_hours']} h on "
+                 f"{spent['failed_jobs']} failed attempt(s)"
+                 if spent['failed_hours'] else ""))
         raise SystemExit(0)
     print(f"   G1 refine    {'OPEN' if report['gate_g1_open'] else 'closed'}  "
           f"{t2['hours_low']} to {t2['hours_high']} h for {t2['jobs']} job(s) "
