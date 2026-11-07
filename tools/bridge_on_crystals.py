@@ -43,10 +43,12 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from functools import lru_cache
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from nobble import paths                                    # noqa: E402
 from nobble.curate import constructs as C                   # noqa: E402
 from nobble.curate import structures                        # noqa: E402
 from nobble.numeric import median_of                        # noqa: E402
@@ -77,17 +79,35 @@ def glue_of(pdb_id: str) -> tuple[str | None, int | None]:
     return best["ccd"], best["seqid"]
 
 
-def construct_of(pair_id: str) -> str | None:
-    """The construct a benchmark pair's own jobs were built on."""
+@lru_cache(maxsize=1)
+def _construct_by_pair() -> dict[str, str]:
+    """Every pair's construct, from one pass over the campaigns.
+
+    Cached and built once. The per-pair version rescanned both campaigns'
+    results for each of the seven pairs, which is about thirty thousand JSON
+    parses for seven answers, and `build_atlas` calls this on every rebuild.
+
+    Read through `paths.read_jsonl(tolerate_torn=True)` rather than
+    `json.loads` per line. These files are appended to one row at a time by a
+    runner that may be killed at any moment, so a torn final line is an
+    expected state and not a reason to fail: parsing it strictly would let a
+    kill at the wrong moment take down an atlas build over a line whose
+    absence changes nothing (F111).
+    """
+    found: dict[str, str] = {}
     for _label, pattern, _prefix in REPRESENTATIONS:
         for results in sorted(Path("campaigns").glob(f"{pattern}/results.jsonl")):
-            for line in results.read_text().splitlines():
-                if not line.strip():
-                    continue
-                job = json.loads(line)
-                if job.get("pair_id") == pair_id:
-                    return job.get("construct")
-    return None
+            for job in paths.read_jsonl(results, tolerate_torn=True):
+                pair_id = job.get("pair_id")
+                construct = job.get("construct")
+                if pair_id and construct:
+                    found.setdefault(str(pair_id), str(construct))
+    return found
+
+
+def construct_of(pair_id: str) -> str | None:
+    """The construct a benchmark pair's own jobs were built on."""
+    return _construct_by_pair().get(pair_id)
 
 
 def receptor_side(pair_id: str, target: dict) -> tuple[str | None, str]:
@@ -143,10 +163,7 @@ def predicted_rows() -> dict[tuple[str, str], dict]:
     for label, pattern, prefix in REPRESENTATIONS:
         per: dict[str, list[tuple]] = {}
         for results in sorted(Path("campaigns").glob(f"{pattern}/results.jsonl")):
-            for line in results.read_text().splitlines():
-                if not line.strip():
-                    continue
-                job = json.loads(line)
+            for job in paths.read_jsonl(results, tolerate_torn=True):
                 pair_id = str(job.get("pair_id") or "")
                 if (job.get("complex_type") != "ternary"
                         or not pair_id.startswith(prefix)):

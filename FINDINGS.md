@@ -14514,3 +14514,31 @@ reads a tier-2 pose comparison should be able to see which side of it they
 are on rather than reconstruct it. The alternative was to leave bench06
 unrefined, which is six hours per job for nothing and leaves F268
 unanswerable.
+
+### F297f. The crystal control was the eighth reader that could not take a torn line
+
+F111 found seven readers of `results.jsonl` and `state.jsonl` that parsed
+every line strictly. Those files are appended one row at a time by a runner
+that may be killed at any moment, so a torn final line is an expected state
+and the rows before it are good, which is why
+`paths.read_jsonl(tolerate_torn=True)` exists.
+
+`tools/bridge_on_crystals.py` was the eighth. Both of its readers used a bare
+`json.loads` per line, and `deploy/build_atlas.py` now calls it on every
+rebuild, so a kill at the wrong moment would have taken down an atlas build
+over a line whose absence changes nothing. Found by noticing that the tool
+reads files the live corrections run is appending to, not by a sweep.
+
+The same pass replaced seven scans with one. `construct_of` rescanned both
+campaigns' results for each of the seven pairs, about thirty thousand JSON
+parses for seven answers, on every atlas rebuild. It is now one cached pass.
+
+**And the cache broke a test of mine, in the way a shared cache does.**
+`_construct_by_pair` is a module-level `lru_cache`, so the new tests, which
+fill it from a `tmp_path` campaign holding one pair, left that mapping in
+place for whatever ran next. Clearing it on the way in fixed the new tests
+and broke `test_the_receptor_comparator_is_derived_from_the_construct`, which
+then saw one pair with one accession and reported that every benchmark
+construct now has the same arity. Its guard against becoming vacuous fired
+correctly on a cause it was not written for. The fixture now clears before
+and after, and both orderings were run.
