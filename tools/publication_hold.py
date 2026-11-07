@@ -165,8 +165,18 @@ def representation_contrast() -> list[str]:
                 or row.get("corrected_pair") or "pair")
         note = ""
         if control_gene and gene == control_gene:
-            note = ("   <- control: a linear epitope, left as a 15-mer in "
-                    "both, so it should not move")
+            # What the control controls for, which is not sampling noise.
+            # It is the same 15-mer, PFQCNQCGASFTQKG, with the same five
+            # seeds, re-run in a separate campaign, and Boltz is
+            # deterministic given an input and a seed: F219 measured a re-run
+            # as ipTM bit-identical to sixteen significant figures. So an
+            # exact match is what a sound apparatus produces, and what this
+            # rules out is a campaign-to-campaign offset in the comparison
+            # itself rather than run-to-run variation. What rules out noise
+            # is the size of the six improvements, 1.7 to 39.6 A (F269).
+            note = ("   <- control: the same 15-mer and seeds re-run, so an "
+                    "exact match is the apparatus agreeing with itself, not "
+                    "an effect surviving noise")
         lines.append(f"      {str(gene):22s} {base:7.3f} -> {corr:7.3f} A{note}")
     return lines + curve_lines
 

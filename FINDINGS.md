@@ -12809,3 +12809,47 @@ the queue as F258 requires, and ignores a `running` record so a job in flight
 cannot look like an attempt. Adding it broke a test asserting the brief output
 has exactly five lines; the property is one line per prediction, so that test
 now counts from the summary line's own figure.
+
+## F269
+
+The IKZF1 control is a control for the apparatus, not for noise.
+
+The whole-domain comparison reports six pairs improving by more than 2 A, one
+unchanged, and "control held: True". The unchanged pair is IKZF1 and it moves
+5.357 to 5.357 A, identical to three decimals, which is what sent me looking:
+a control that cannot move is not a control.
+
+It did run. `corr04_IKZF1_CRBN` has fifteen jobs of its own, with their own
+job ids, in a separate campaign that was separately scored and separately
+validated. What it ran is `IKZF1_peptide_15mer`, PFQCNQCGASFTQKG, fifteen
+residues with seeds 1 to 5, and `bench04_IKZF1_CRBN` ran the same sequence
+with the same seeds. The corrected campaign's other six pairs are folded
+domains: GSPT1's is 99 residues.
+
+So the identical number is not a coincidence and not a near miss. Boltz is
+deterministic given an input and a seed, which this project has measured
+rather than assumed: F219 found fifteen re-run jobs returning ipTM
+bit-identical to sixteen significant figures. An exact match is what a sound
+apparatus produces here.
+
+That makes the control worth having, and worth describing accurately. What it
+rules out is a campaign-to-campaign offset in the comparison itself, which is
+a real thing to rule out: two campaigns, different pair ids, different peptide
+ids, separate scoring and separate validation, and a systematic shift anywhere
+in that chain would have moved IKZF1 as well. What it does not rule out is
+sampling noise, because with fixed seeds there is no sampling noise for an
+effect to survive. What rules that out is the size of the six improvements,
+1.7 to 39.6 A, against a control that moved by 0.000.
+
+The hold said "a linear epitope, left as a 15-mer in both, so it should not
+move", which is true and invites the reading that it might have moved. It now
+says the exact match is the apparatus agreeing with itself rather than an
+effect surviving noise. The distinction matters because this output is the
+project's own account of its headline result, and D-NOB-076 holds publication
+on the strength of it.
+
+A test holds the premises rather than the wording alone: the control pair must
+be the same sequence and seeds in both campaigns, and it must be the only pair
+held fixed. If a second pair ever became a 15-mer in the corrected campaign,
+the comparison would no longer be what it says and the control would no longer
+be the thing being controlled.

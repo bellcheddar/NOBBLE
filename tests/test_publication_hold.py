@@ -263,8 +263,14 @@ def test_the_refusal_contrasts_the_two_representations():
     assert "with the whole domain instead of a 15-mer" in text, text
     assert "control held" in text, text
     # And the control is named, or a row that correctly does not move reads
-    # as a row that failed to improve.
-    assert "control: a linear epitope" in text, text
+    # as a row that failed to improve. Asserted on the marker and the row it
+    # sits on, not on the sentence: this pinned the wording "control: a
+    # linear epitope", and F269 replaced it with a note saying what the
+    # control controls for, which is the same property stated better.
+    control_rows = [line for line in text.splitlines()
+                    if "<- control:" in line]
+    assert len(control_rows) == 1, text
+    assert "IKZF1" in control_rows[0], control_rows[0]
 
 
 def test_a_missing_corrected_campaign_says_so_rather_than_nothing(tmp_path):
