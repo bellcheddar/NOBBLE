@@ -10803,3 +10803,40 @@ window is a pose-recovery target at all is a panel-composition question, and it
 goes to G6 with the rest: "0 of 65 poses within 3 A" is computed over a panel
 that includes two targets of that kind, and bench03 is already excluded from
 the footprint comparison for the same reason (F227).
+
+## F231. The ROC null is not a seed-collapse artefact
+
+D-NOB-081 found the design scan's parent being chosen by one collapsed binary
+seed, which makes an obvious question about the headline: the matched-control
+ROC uses the same statistic, so is its null an artefact of the same thing.
+
+It is not. The layer takes the statistic as a parameter, so the check runs on
+the same matched rows rather than dropping any, which would break the
+matching:
+
+```
+statistic            auc      positives   matched negatives   reading
+delta_iptm        0.4583             24                  96   not distinguishable
+                                                              from chance at 95%
+delta_iptm_median 0.4147             24                  96   the same
+```
+
+The collapse-robust companion is slightly worse, not better, and both readings
+are the layer's own. `non_finite_dropped` is zero in both, and the seed balance
+reads "every pair on both sides contributed 10 ternary and 5 binary seeds", so
+neither the denominator nor the seed counts move between them.
+
+Why it barely moves: 21 of the arm's 120 rows carry
+`seed_collapse_affects_delta`, 4 of the 24 positives and 17 of the 96
+negatives. That is 16.7 per cent against 17.7 per cent, so the collapse falls
+on both sides alike. The layer already guards the related failure, a seed-count
+imbalance between the arms, and names it in the summary; this is the same
+concern for seeds that ran and collapsed rather than seeds that never
+finished, and it comes out even.
+
+**Recorded because it is a negative.** The temptation with a result like
+D-NOB-081 is to look for the same defect behind the headline, and if the AUC
+had moved to 0.6 on the robust statistic that would be the most important
+number in the project. It moved to 0.41. The null stands, the pose-recovery
+failure (F212) that makes it uninterpretable stands, and nothing about G6
+changes.
