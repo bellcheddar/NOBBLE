@@ -135,3 +135,47 @@ def test_the_pages_show_the_row_counts():
     if "Fitted weight" in about:
         assert "on 31 / 127" in about or "on " in about, (
             "the composite table shows AUCs without their row counts")
+
+
+def test_the_composite_table_shows_the_matched_arm_curve():
+    """Both figures per component: in-sample alone, and on the matched arm.
+
+    The standalone AUC has no confidence interval and is maximised on the
+    rows it is computed over. The matched-arm curve has one. Showing them
+    together is the honest summary of what each component discriminates, and
+    the only figure in the table with an interval is the second (F287).
+    """
+    campaign = _campaign()
+    if campaign is None:
+        pytest.skip("no campaign assembled")
+    from nobble.app import create_app
+
+    app = create_app(str(campaign))
+    app.config["TESTING"] = True
+    text = app.test_client().get("/about").get_data(as_text=True)
+    if "Fitted weight" not in text:
+        pytest.skip("the composite table is absent from this bundle")
+    assert "AUC on the matched arm" in text, (
+        "the composite table shows only the in-sample figure")
+    assert "AUC alone, in-sample" in text, (
+        "the in-sample column is no longer labelled as in-sample")
+
+
+def test_an_older_bundle_renders_the_column_as_not_computed():
+    """The published bundle predates the component curves.
+
+    A missing key must render the column rather than raise, which is what
+    `arm_curves.get(name)` returning None has to do.
+    """
+    atlas = ROOT / "deploy" / "atlas"
+    if not (atlas / "validation.json").exists():
+        pytest.skip("no published bundle")
+    from nobble.app import create_app
+
+    app = create_app(str(atlas))
+    app.config["TESTING"] = True
+    page = app.test_client().get("/about")
+    assert page.status_code == 200, page.status_code
+    text = page.get_data(as_text=True)
+    if "Fitted weight" in text:
+        assert "AUC on the matched arm" in text, text[:0] or "column missing"

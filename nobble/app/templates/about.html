@@ -151,7 +151,9 @@
     </p>
     <div class="table-wrap" tabindex="0" role="group" aria-label="Scrollable table" style="max-height:none">
       <table class="ntable">
-        <thead><tr><th>Component</th><th class="num">Fitted weight</th><th class="num">AUC alone</th></tr></thead>
+        <thead><tr><th>Component</th><th class="num">Fitted weight</th>
+          <th class="num">AUC alone, in-sample</th>
+          <th class="num">AUC on the matched arm</th></tr></thead>
         <tbody>
           {% for name, w in weight_fit.weights.items() %}
           <tr>
@@ -160,6 +162,15 @@
             <td class="num">{{ weight_fit.per_component_auc.get(name, 'not computed') }}
               {% set n = (weight_fit.get('per_component_n') or {}).get(name) %}
               {% if n %}<span class="stat__sub">on {{ n.positives }} / {{ n.negatives }}</span>{% endif %}</td>
+            {# The matched-control curve for the same component, which is the
+               only figure here with a confidence interval. Every one contains
+               0.5 except a 0.0021-wide exclusion on the component an
+               independent measurement of 369 lysines puts at chance (F286). #}
+            {% set arm = arm_curves.get(name) or arm_curves.get(name.replace('_exposed_fraction', '')) %}
+            <td class="num">{% if arm and arm.auc is not none %}{{ arm.auc }}
+              <span class="stat__sub">{{ arm.ci95[0] }} to {{ arm.ci95[1] }},
+                {{ arm.positives }} / {{ arm.matched_negatives }}</span>
+              {% else %}not computed{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>

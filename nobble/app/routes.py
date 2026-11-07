@@ -243,6 +243,17 @@ def about():
         reach_auc=precomputed.get("reach_auc", {}),
         weight_fit=data.weight_fit(),
         validation=data.precomputed("validation.json"),
+        # Each component's matched-arm curve, keyed by component, so the
+        # composite table can put it beside that component's in-sample
+        # standalone AUC. Computed by the validation layer and carried in
+        # validation.json; an older bundle has no such key and the template
+        # renders the column as not computed (F287).
+        arm_curves={
+            row.get("component"): row
+            for row in ((((data.precomputed("validation.json").get("layers")
+                           or {}).get("matched_control_roc") or {})
+                         .get("summary") or {}).get("component_curves") or [])
+        },
         throughput=data.throughput(),
         components=data.COMPONENTS,
         # Which Boltz produced the coordinates. Read from the published

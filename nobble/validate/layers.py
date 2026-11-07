@@ -834,6 +834,12 @@ def run(campaign: Path) -> dict:
         # tried on the same labels.
         primary.summary["companions"] = roc_companions(campaign)
         primary.summary["statistics_tried"] = 1 + len(ROC_COMPANIONS)
+        # And the same curve for every component the composite offers, which
+        # is what lets the app put the matched-arm figure beside each
+        # component's in-sample standalone AUC. Five curves, one of which
+        # overlaps `delta_iptm` above; the overlap is harmless and naming the
+        # components separately is what makes the table joinable (F287).
+        primary.summary["component_curves"] = component_curves(campaign)
     layers = [pose_recovery(campaign), time_split(campaign), primary]
     report = {
         "campaign": campaign.name,

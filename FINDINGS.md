@@ -13748,3 +13748,46 @@ argument: my first version let a blanket text replacement give that function
 the caller's local `read`, with nothing to bind it to, and it raised
 NameError on the first call. That is the third time today one substitution
 reached a second scope, after F260's indentation and F263's shadowing.
+
+## F287
+
+Both figures per component, in one table.
+
+F286 made every component's matched-arm curve computable. The about page's
+composite table showed only the in-sample standalone AUC, which is the figure
+without a confidence interval and the one maximised over the rows it is
+computed on. The two together are the honest summary of what each component
+discriminates:
+
+```
+component                      weight   AUC alone   on the matched arm
+convergence_score              0.1429      0.5950   0.5931  0.4614 to 0.7131
+lysine_reach_exposed_fraction  0.2857      0.5855   0.6232  0.5021 to 0.7328
+bridge_percentile              0.2857      0.5627   0.5237  0.3968 to 0.6463
+plip_fingerprint_match         0.2857      0.5513   0.5074  0.4049 to 0.5977
+delta_iptm                     0.0000      0.5236   0.4583  0.3316 to 0.5842
+```
+
+`component_curves` travels in `validation.json` with the primary curve, the
+about route keys it by component, and the table gains a column. Each cell
+carries its interval and its pair counts, because the two columns do not share
+a denominator and neither shares one with the fit.
+
+The in-sample column is now labelled "AUC alone, in-sample" rather than "AUC
+alone". It always was in-sample; the label said so only in a caveat below the
+table.
+
+Two mistakes worth recording, both from not reading before editing.
+
+The route block I added landed in `delta()`, because `roc = ((data.precomputed
+("validation.json")...` appears in two routes and I anchored on the first
+occurrence. `about()` builds its own context and passes `roc` as the whole
+layer; `delta()` passes `roc_summary`. The template raised `UndefinedError` on
+the first request, which is the clearest possible failure and still took a
+traceback to locate. That is the fourth time today a text anchor matched a
+site I had not looked at, and the first three are F260, F263 and F286.
+
+And the unused variable: having put it in `delta()`, the fix was to remove it
+there rather than leave it computed and ignored. A route that builds a mapping
+nothing renders is the kind of thing that survives for months because it costs
+nothing visible.
