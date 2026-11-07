@@ -10427,3 +10427,59 @@ defect, and "the chain ran the old code", which is F219 behaving exactly as
 recorded. `%ct` and an explicit conversion settle it. The rule that keeps
 being relearned is that a timestamp should carry its own offset, not a letter
 I appended.
+
+## F225. The design scan rehearses clean, and my own budget figure was wrong
+
+The design scan's inference half is recorded as unrehearsed and GPU-bound.
+Its gate is not. `campaigns/design_20261104T094939Z` is assembled and has
+never run: no `state.jsonl`, no results. Everything up to the inference call
+was exercised against it, read-only:
+
+```
+tools/preflight.py        ok: true, 240 jobs, 16 pairs,
+                          pairs_with_asymmetric_cofactor: 0
+240 of 240 YAMLs          present
+MSA paths referenced       1 distinct, present; 240 `msa: empty` for the
+                           peptide chain, which is the expected shape
+tokens                     124 to 144, median 144, against a 400 ceiling
+```
+
+So the one gate that can refuse 240 jobs passes, every input it names is on
+disk, and nothing in the queue is near the token ceiling. What remains
+unrehearsed is the runner call itself, which has run thousands of jobs on
+three other campaign shapes. Worth knowing seventeen hours before the chain
+reaches that stage rather than at it.
+
+**And a correction to a number I gave.** I reported the chain projecting to
+roughly 133 hours. It projects to 141.1, from the project's own instruments:
+
+```
+78.48  spent            budget.hours_spent(), 2,708 jobs
+19.3   tier 2 left      77 jobs, each priced from its own tier-1 seconds
+                        times the measured factor 4.614 (n=148)
+ 4.4   design scan      projected_hours, 240 jobs in 4 token bands
+38.9   Tier B           measured, 1,540 jobs
+```
+
+Two errors, and both are F45 in miniature. The design scan was simply missing:
+I had added tier 2 and Tier B to the spent figure and not the stage between
+them. And I priced the tier-2 remainder at the flat median of finished jobs,
+2.2370 s/token, giving 16.1 hours. Banded by job size it is 19.5, and the
+instrument's own per-job method gives 19.3. The flat median underprices it
+because the remaining mix is not the finished mix: 9 of the 148 finished
+tier-2 jobs are 400 tokens or larger, against 21 of the 77 left, and large
+jobs run at 2.9491 s/token against 2.2354 for the rest.
+
+F45 is exactly this mistake, made by the code, found and fixed in the code.
+`budget.tier2_projection` prices every job from its own measured tier-1 time
+and is right. I reached past it for a one-line median and reproduced the bug
+it was written to remove.
+
+Nothing operational changes: G1 is defined against 240 hours and 141.1 leaves
+about 99 spare. The figure was simply wrong when I said it.
+
+**Minor, noted not fixed:** once any refinement has run, `scaling_range`
+collapses to the measured factor, so `hours_low` and `hours_high` come back
+identical and the projection's "as a range" is a point. That is the right
+answer, since a measured factor beats a bounded one, but the two keys and the
+docstring still say range.
