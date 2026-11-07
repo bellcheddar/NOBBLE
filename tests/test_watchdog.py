@@ -304,3 +304,20 @@ def test_the_status_command_asks_both_tiers():
         "status.sh calls the watchdog without a tier, so a tier-2 job in "
         "flight shows as no running jobs")
     assert "for tier in 1 2" in text, text
+
+
+def test_the_status_table_shows_refinement_progress():
+    """A finished tier 1 beside a running tier 2 read as "done".
+
+    The campaigns table counted queue.jsonl against state.jsonl, so the main
+    campaign printed "2360/2360 100.0% done" while its 225-job refinement
+    queue was two thirds through. The work in flight appeared only as
+    "1 running" two sections below.
+    """
+    script = Path(__file__).resolve().parents[1] / "tools" / "status.sh"
+    text = script.read_text()
+    assert "queue_tier2.jsonl" in text, (
+        "the campaigns table never reads the refinement queue, so a campaign "
+        "whose tier-1 work is finished reads as done while tier 2 runs")
+    assert "state_tier2.jsonl" in text, text
+    assert "tier 2 refinement" in text, text

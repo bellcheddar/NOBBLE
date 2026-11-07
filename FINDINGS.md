@@ -11153,6 +11153,20 @@ closed on 52.5 h projected and 37.86 h to refine, G5 closed at 508.3 GB, spent
 oddity is cosmetic and known: "37.86 to 37.86 h" is `scaling_range` collapsing
 to the measured factor, so the printed range is a point (F225).
 
+**And a third place with the same blindness, found by the same sweep.** The
+campaigns table counted `queue.jsonl` against `state.jsonl`, so the main
+campaign printed `2360/2360 100.0% done` while its 225-job refinement queue
+was two thirds through. The work actually in flight was absent from the table
+that exists to show progress. It now reads:
+
+```
+   campaign_20261104T004632Z           2360/2360  100.0%  done     scored 158
+     tier 2 refinement                  149/225    66.2%  running
+```
+
+That also surfaced a queue nobody had mentioned: the benchmark panel carries
+its own ten-job tier-2 queue, never run.
+
 The log-failure scanner reports "none in 9 log file(s)" while job 14's first
 attempt has failed. That is consistent rather than a second defect: the runner
 printed nothing about it, which is the gap the retry notice closes from the

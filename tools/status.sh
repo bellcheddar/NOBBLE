@@ -46,6 +46,33 @@ for d in sorted(glob.glob("campaigns/*")):
     pct = 100.0 * len(done) / total if total else 0.0
     mark = "done" if len(done) >= total else "running" if done else "queued"
     print(f"   {p.name:34s} {len(done):5d}/{total:<5d} {pct:5.1f}%  {mark:8s} scored {scored}")
+
+    # And the refinement queue, which this table did not mention at all.
+    #
+    # It read queue.jsonl and state.jsonl, so a campaign whose tier-1 work is
+    # finished printed "2360/2360 100.0% done" while a 225-job tier-2 queue
+    # was partway through. The work actually in flight was invisible here and
+    # showed only as "1 running" two sections down: the same per-tier
+    # blindness as F216 and F237, in a third place.
+    tier2_queue = p / "queue_tier2.jsonl"
+    if tier2_queue.exists():
+        t2_total = sum(1 for line in tier2_queue.read_text().splitlines()
+                       if line.strip())
+        t2_done = set()
+        t2_state = p / "state_tier2.jsonl"
+        if t2_state.exists():
+            for line in t2_state.read_text().splitlines():
+                try:
+                    r2 = json.loads(line)
+                except Exception:
+                    continue
+                if r2.get("status") == "done":
+                    t2_done.add(r2["job_id"])
+        t2_pct = 100.0 * len(t2_done) / t2_total if t2_total else 0.0
+        t2_mark = ("done" if len(t2_done) >= t2_total
+                   else "running" if t2_done else "queued")
+        print(f"   {'  tier 2 refinement':34s} {len(t2_done):5d}/"
+              f"{t2_total:<5d} {t2_pct:5.1f}%  {t2_mark:8s}")
 PY
 echo
 
