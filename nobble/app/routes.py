@@ -56,6 +56,7 @@ def campaign():
         # and by the JavaScript that sets it (F106).
         fitted_aliases=data.FITTED_ALIASES,
         fitted_weight=data.fitted_weight,
+        component_auc=data.component_auc,
     )
 
 

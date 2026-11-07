@@ -106,6 +106,19 @@
             {% set start_w = fitted_weight(fitted_w, key, meta.default_weight) %}
             <span class="weight__value" data-weight-display>{{ start_w }}</span>
           </div>
+          {# What the component achieves on its own, beside the weight it was
+             given. Only the lysine component's note carried a number, so
+             four of the five read as endorsed while none has validated
+             discriminating power: every standalone AUC here is between 0.52
+             and 0.60, and the two put to the matched-control arm have
+             intervals containing 0.5 (F280, F281, F284). A label rather
+             than prose, so the copy budget is unaffected. #}
+          {% set alone = (weight_fit.per_component_auc if weight_fit and weight_fit.get('fitted') else {}) %}
+          {% set alone_auc = component_auc(alone, key) %}
+          {% if alone_auc is not none %}
+            <p class="weight__note">AUC alone {{ alone_auc }}, in-sample on
+              {{ weight_fit.labelled_pairs }} labelled pairs</p>
+          {% endif %}
           <input type="range" id="w-{{ key }}" min="0" max="1" step="0.05"
                  value="{{ start_w }}"
                  aria-describedby="wn-{{ key }}">

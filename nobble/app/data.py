@@ -360,6 +360,23 @@ def campaign_state() -> dict:
 FITTED_ALIASES = {"lysine_reach": "lysine_reach_exposed_fraction"}
 
 
+def component_auc(per_component: dict | None, key: str):
+    """The standalone AUC for a UI component key, through the same aliases.
+
+    `FITTED_ALIASES` exists because the UI calls one component `lysine_reach`
+    and the fit calls it `lysine_reach_exposed_fraction`. A bare
+    `per_component.get(key)` misses it, which is F106 in the weight lookup
+    and was F284 here: four of the five components rendered their AUC and the
+    one whose note already admits it sits at chance rendered nothing.
+
+    One function, so the template cannot resolve the name one way and the
+    weight lookup another.
+    """
+    if not per_component:
+        return None
+    return per_component.get(FITTED_ALIASES.get(key, key))
+
+
 def fitted_weight(fitted: dict | None, key: str, default=None):
     """The fitted weight for a UI component key, or `default`.
 

@@ -13583,3 +13583,54 @@ to stop: the level is computed from `scoring.significance_alpha` and a literal
 95 in markup disagrees with the interval beside it the moment alpha changes
 (F119). The placeholder is now "not computed" and the header reads the level
 off the layer.
+
+## F284
+
+Four of five components read as endorsed, and the trust word was doing it.
+
+`data.COMPONENTS` carries a `trust` field: `bridge_percentile` "primary",
+`delta_iptm` "headline", `convergence_score` and `plip_fingerprint_match`
+"high", `lysine_reach` "not validated". The campaign page uses it for exactly
+one thing, a CSS class on the single component marked "not validated", so the
+other four carry no mark at all.
+
+The measurements do not support that ranking:
+
+```
+component                      trust            AUC alone   matched-control arm
+bridge_percentile              primary             0.5627   0.5237, CI contains 0.5
+delta_iptm                     headline            0.5236   0.4583, CI contains 0.5
+convergence_score              high                0.5950   never put to it
+plip_fingerprint_match         high                0.5513   never put to it
+lysine_reach                   not validated       0.5855   never put to it
+```
+
+Every standalone figure sits between 0.52 and 0.60 and is in-sample (F281).
+The two that have a matched-control curve give intervals containing 0.5
+(F280). The component labelled "headline" is the one the grid gives a weight
+of zero. The component labelled "not validated" has the second-highest
+standalone AUC of the five, which is the clearest sign that `trust` is not
+about discrimination.
+
+In fairness to the field, it looks like provenance rather than power:
+`bridge_percentile` is "measured against 285,996 observed bridges" and
+`delta_iptm` is "model-derived", and on that reading "primary" over "headline"
+is a statement about what the number rests on. But the word is `trust`, the
+only thing it changes on screen is which component is greyed out, and a
+reader meets four unmarked sliders.
+
+So each slider now shows the component's own AUC beside its fitted weight,
+from `weight_fit.per_component_auc`, labelled in-sample. A measured number in
+place of an implied ranking, and it is a label rather than prose so the copy
+budget is untouched. The about page already showed the same figures in its
+composite table; the campaign page is where the sliders are.
+
+The first version of the line rendered four of five. The fit calls the fifth
+`lysine_reach_exposed_fraction` where the UI calls it `lysine_reach`, which is
+precisely F106, and the template comment three lines above warns about it in
+as many words: "A bare `fitted_w.get(key, ...)` misses the lysine component".
+I wrote `alone.get(key)` anyway. There is now a `data.component_auc` that
+resolves through the same `FITTED_ALIASES` map as the weight lookup, because
+two resolutions of one name is what F106 was about, and a test asserts the
+count of AUCs shown equals the number of components rather than merely that
+some appear.
