@@ -137,7 +137,7 @@ def hours_spent(root: Path | None = None) -> dict:
     }
 
 
-def measured_scaling(campaign: Path) -> dict:
+def measured_scaling(campaign: Path, include_failed: bool = True) -> dict:
     """The observed tier-2 over tier-1 factor, if any refinement has run.
 
     Paired by job id, because the tier-2 job id is the tier-1 one with a
@@ -171,6 +171,18 @@ def measured_scaling(campaign: Path) -> dict:
         for line in _lines(campaign / name):
             status = str(line.get("status"))
             if status == "running" or status == "abandoned":
+                continue
+            # `include_failed` is the difference between pricing a queue and
+            # judging whether a running job is healthy, and the two want
+            # opposite answers. Pricing wants the failures: a refinement that
+            # ran two and a half hours and wrote nothing cost two and a half
+            # hours. A stall detector must not have them, because the only
+            # jobs in the 800 to 1,600 token band are bench06's own four
+            # failures, so an expectation taken from that band would be
+            # bench06's failed attempts, and a fifth identical failure would
+            # look perfectly healthy: the watchdog calibrated on the
+            # pathology it exists to notice (F270).
+            if not include_failed and status != "done":
                 continue
             seconds = line.get("seconds")
             tokens = line.get("tokens")

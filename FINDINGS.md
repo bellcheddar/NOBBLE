@@ -12853,3 +12853,47 @@ be the same sequence and seeds in both campaigns, and it must be the only pair
 held fixed. If a second pair ever became a 15-mer in the corrected campaign,
 the comparison would no longer be what it says and the control would no longer
 be the thing being controlled.
+
+## F270
+
+Pricing a queue and detecting a stall want the same measurement with opposite
+treatment of failures.
+
+F257 widened `budget.measured_scaling` to include failed refinements, because
+a job that ran two and a half hours and wrote nothing cost two and a half
+hours and a projection that cannot see it overstates the headroom. That is
+right for the caller it was written for.
+
+It has a second caller. The watchdog's tier-2 yardstick is the same job's own
+tier-1 time times this factor, which F235 introduced because one rate per
+token cannot tell a large molecule from a slow one. The obvious next step
+after F257 is to give the watchdog the banded factor too, and it would have
+been a mistake.
+
+On this campaign the only jobs in the 800 to 1,600 token band are bench06's
+own four failed refinements, at ratios 10.46, 10.50, 10.52 and 10.58. An
+expectation drawn from that band is the duration of the failure itself. A
+fifth identical failure would then sit comfortably inside its own overdue
+line and never be flagged: the watchdog calibrated on exactly the pathology it
+exists to notice, which is F232's shape in a new place.
+
+So `include_failed` is now a parameter rather than a policy. `tier2_projection`
+takes the default and sees everything. The watchdog passes `False` and judges
+against the jobs that worked.
+
+The numbers, on bench06 at 1,223 tokens from a 902-second tier-1 run:
+
+```
+include_failed=True    153 refinement(s)   800-band present, 4 job(s)   9,493 s expected
+include_failed=False   149 refinement(s)   800-band absent, pooled      4,162 s expected
+```
+
+The watchdog's expectation is therefore unchanged at 4,162 seconds, with its
+overdue line at about 12,486, which is where F235 left it. What has changed is
+that it stays there by design rather than because 147 successes happened to
+dilute 4 failures out of the pooled median. The next large pair to fail four
+times would have moved it.
+
+A test holds both directions, because the symmetrical mistake is to "fix" the
+projection to match the watchdog: a projection that ignored failed time is
+F255's defect arriving by a different route.

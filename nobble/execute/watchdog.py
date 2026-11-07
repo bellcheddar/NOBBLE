@@ -270,7 +270,13 @@ def stall_report(campaign: Path, tier: int = 1, now: float | None = None,
                 if (row.get("status") in TERMINAL
                         and finite(row.get("seconds")) and row["seconds"] > 0):
                     tier1_seconds[row["job_id"]] = float(row["seconds"])
-        refinement_factor = budget_module.measured_scaling(campaign)["factor"]
+        # Successes only. F257 widened this to include failed refinements,
+        # which is right for pricing and wrong here: the band bench06 falls
+        # in is made of bench06's own failures, so an expectation drawn from
+        # it would be the failure's own duration and a repeat of it would
+        # never read as overdue (F270).
+        refinement_factor = budget_module.measured_scaling(
+            campaign, include_failed=False)["factor"]
         # From budget, where the suffix is defined, rather than guessed here.
         # The first version of this looked for it on `runner` behind a
         # hasattr guard, which is always false, so the lookup below would
