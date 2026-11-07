@@ -12762,3 +12762,50 @@ The decision now reads the rehearsal regardless of exit code, and the tests
 pin both patterns against the four rehearsal texts, two states per path, plus
 the placement structurally, because the defect was where the check sat rather
 than what it said.
+
+## F268
+
+Registered: bench06's refinement fails for its size, not for its constraint.
+
+bench06_RBM39_DCAF15 is the single largest waste in the tier-2 run, about 26
+hours of it, so what breaks it is worth knowing. The diagnosis, from the
+output directories rather than from the log:
+
+The featurisation completes. Every failed job holds its MSAs, its constraints
+npz, its records and its `processed/structures` npz. `predictions/` exists and
+is empty. `attempts: 2` on every record, and two `lightning_logs` versions,
+so the runner's retry ran the model a second time and it produced nothing
+again. Boltz exits 0 having written no confidence JSON and, on this run, said
+nothing at all on either stream.
+
+It will not say anything more on this run either. The live runner process
+started 2026-11-06T18:01 and `runner.py`'s change to keep Boltz's output in
+the failure detail landed 2026-11-07T07:29, thirteen hours later. A Python
+module is loaded at process start, so the improvement cannot reach the five
+jobs still to come.
+
+What can be told apart is the mechanism, because the run does it for free. All
+ten bench06 refinements are 1,223 tokens, conditioned and unconstrained alike,
+so conditioning changes the constraint and not the size. Five conditioned jobs
+have now been attempted and all five failed. Five unconstrained ones remain.
+
+**Claim**: every bench06 refinement fails, whatever its conditioning.
+**Falsifier**: an unconstrained bench06 tier-2 job writes a confidence JSON.
+
+The evidence for the claim is that the limit tracks size rather than
+constraints: the largest refinement that has ever succeeded in this project is
+454 tokens, bench06 is 2.7 times that, and bench06's own thirty tier-1 jobs at
+1,199 and 1,223 tokens all succeeded, so the size is only fatal at tier-2
+settings, which is where the 25 diffusion samples are.
+
+If it is refuted, the pair is refinable without conditioning and the 13 hours
+still to be spent are not waste at all. Either way the answer arrives within
+about thirteen hours at no extra cost, which is the only reason this is worth
+registering rather than reasoning about.
+
+Scored by `tools/check_registered.py`, which reports it not yet testable until
+all five unconstrained jobs have been attempted, counts the denominator from
+the queue as F258 requires, and ignores a `running` record so a job in flight
+cannot look like an attempt. Adding it broke a test asserting the brief output
+has exactly five lines; the property is one line per prediction, so that test
+now counts from the summary line's own figure.

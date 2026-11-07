@@ -235,10 +235,17 @@ def test_the_brief_mode_is_one_line_per_prediction():
     with contextlib.redirect_stdout(buffer):
         module.main(["--brief"])
     lines = [line for line in buffer.getvalue().splitlines() if line.strip()]
-    # One summary line plus one per prediction.
-    assert len(lines) == 5, lines
+    # One summary line plus one per prediction. Counted from the summary
+    # line's own figure rather than from a literal, which went stale the
+    # moment a fifth prediction was registered: the property is one line per
+    # prediction, not five lines.
+    import re
+
+    recorded = re.search(r"(\d+) recorded", lines[0])
+    assert recorded, lines[0]
+    assert len(lines) == int(recorded.group(1)) + 1, lines
     assert all("falsifier" not in line for line in lines), lines
-    for finding in ("F251", "F252", "F253", "F254"):
+    for finding in ("F251", "F252", "F253", "F254", "F268"):
         assert any(finding in line for line in lines), (finding, lines)
 
 
@@ -333,3 +340,83 @@ def test_the_f253_denominator_comes_from_the_queue(tmp_path):
     verdict = _module().f253_tier_b_bridging(campaign)
     assert verdict["positives_expected"] == 0, verdict
     assert verdict["status"] == "supported", verdict
+
+
+def _bench06(tmp_path, unconstrained_states: dict[str, list[str]]) -> Path:
+    """A campaign whose bench06 refinements are in a given state.
+
+    Five unconstrained jobs are queued either way, because the denominator
+    comes from the queue (F258) and "none succeeded" over nothing attempted
+    is not a result.
+    """
+    campaign = tmp_path / "campaign_f268"
+    campaign.mkdir()
+    pair = "bench06_RBM39_DCAF15"
+    queue, state = [], []
+    for conditioning in ("conditioned", "unconstrained"):
+        for seed in range(1, 6):
+            job = f"{pair}__ternary__{conditioning}__seed{seed}__tier2"
+            queue.append({"job_id": job, "pair_id": pair, "tokens": 1223})
+    for seed in range(1, 6):
+        job = f"{pair}__ternary__conditioned__seed{seed}__tier2"
+        state.append({"job_id": job,
+                      "status": "failed: exit 0 but no confidence JSON "
+                                "written", "seconds": 9492.0})
+    for job, states in unconstrained_states.items():
+        for status in states:
+            state.append({"job_id": job, "status": status, "seconds": 9400.0})
+    _write(campaign / "queue_tier2.jsonl", queue)
+    _write(campaign / "state_tier2.jsonl", state)
+    return campaign
+
+
+def test_f268_is_not_testable_until_the_unconstrained_jobs_run(tmp_path):
+    verdict = _module().f268_refinement_size_limit(_bench06(tmp_path, {}))
+    assert verdict["status"] == "not yet testable", verdict
+    assert verdict["unconstrained_queued"] == 5, verdict
+    assert verdict["conditioned_attempted"] == 5, verdict
+
+
+def test_f268_is_supported_when_every_conditioning_fails(tmp_path):
+    """The size reading: conditioning does not change the 1,223 tokens."""
+    states = {f"bench06_RBM39_DCAF15__ternary__unconstrained__seed{s}__tier2":
+              ["failed: exit 0 but no confidence JSON written"]
+              for s in range(1, 6)}
+    verdict = _module().f268_refinement_size_limit(_bench06(tmp_path, states))
+    assert verdict["status"] == "supported", verdict
+    assert "454 tokens" in verdict["detail"], verdict
+
+
+def test_f268_is_wrong_when_one_unconstrained_job_completes(tmp_path):
+    """One success refutes it, as with F253: the claim is that none does.
+
+    And it says what the success would mean, which is the point of the
+    prediction: the limit would follow the pocket constraint rather than the
+    size, and the pair would be refinable without conditioning.
+    """
+    states = {f"bench06_RBM39_DCAF15__ternary__unconstrained__seed{s}__tier2":
+              ["failed: exit 0 but no confidence JSON written"]
+              for s in range(2, 6)}
+    states["bench06_RBM39_DCAF15__ternary__unconstrained__seed1__tier2"] = [
+        "failed: exit 0 but no confidence JSON written", "done"]
+    verdict = _module().f268_refinement_size_limit(_bench06(tmp_path, states))
+    assert verdict["status"] == "WRONG", verdict
+    assert verdict["unconstrained_done"] == [
+        "bench06_RBM39_DCAF15__ternary__unconstrained__seed1__tier2"], verdict
+    assert "pocket constraint" in verdict["detail"], verdict
+
+
+def test_f268_ignores_a_running_job(tmp_path):
+    """A job in flight has not failed and has not succeeded.
+
+    Counting a `running` record as an attempt would report the prediction
+    testable while the deciding job was still going.
+    """
+    states = {f"bench06_RBM39_DCAF15__ternary__unconstrained__seed{s}__tier2":
+              ["failed: exit 0 but no confidence JSON written"]
+              for s in range(1, 5)}
+    states["bench06_RBM39_DCAF15__ternary__unconstrained__seed5__tier2"] = [
+        "running"]
+    verdict = _module().f268_refinement_size_limit(_bench06(tmp_path, states))
+    assert verdict["status"] == "not yet testable", verdict
+    assert verdict["unconstrained_attempted"] == 4, verdict

@@ -228,6 +228,71 @@ def f253_tier_b_bridging(campaign: Path | None) -> dict:
     return verdict
 
 
+F268_PAIR = "bench06_RBM39_DCAF15"
+
+
+def f268_refinement_size_limit(campaign: Path) -> dict:
+    """Does bench06's refinement fail because of its size or its constraint?"""
+    verdict = {"finding": "F268",
+               "claim": "every bench06 refinement fails, whatever its "
+                        "conditioning",
+               "falsifier": "an unconstrained bench06 tier-2 job writes a "
+                            "confidence JSON"}
+    state = campaign / "state_tier2.jsonl"
+    if not state.exists():
+        verdict.update(status="not yet testable",
+                       detail="no state_tier2.jsonl: refinement has not run")
+        return verdict
+    attempts: dict[str, list[str]] = {}
+    for row in _rows(state):
+        job_id = str(row.get("job_id") or "")
+        if not job_id.startswith(F268_PAIR + "__"):
+            continue
+        status = str(row.get("status"))
+        if status == "running":
+            continue
+        attempts.setdefault(job_id, []).append(status)
+
+    unconstrained = {job: states for job, states in attempts.items()
+                     if "__unconstrained__" in job}
+    conditioned = {job: states for job, states in attempts.items()
+                   if "__conditioned__" in job}
+    succeeded = sorted(job for job, states in unconstrained.items()
+                       if "done" in states)
+    if succeeded:
+        verdict.update(
+            status="WRONG", unconstrained_done=succeeded,
+            conditioned_attempted=len(conditioned),
+            detail=("an unconstrained refinement completed, so the failure "
+                    "is specific to the pocket constraint rather than to the "
+                    "1,223-token size, and the pair is refinable without "
+                    "conditioning"))
+        return verdict
+    # The denominator is the queue, as F258 established: five unconstrained
+    # jobs are queued, and "none succeeded" over nothing is not a result.
+    queued = len({row["job_id"] for row in _rows(campaign / "queue_tier2.jsonl")
+                  if str(row.get("job_id", "")).startswith(F268_PAIR + "__")
+                  and "__unconstrained__" in str(row.get("job_id"))})
+    if len(unconstrained) < queued:
+        verdict.update(
+            status="not yet testable", unconstrained_attempted=len(unconstrained),
+            unconstrained_queued=queued,
+            conditioned_attempted=len(conditioned),
+            detail=(f"{len(unconstrained)} of {queued} unconstrained "
+                    "refinement(s) have been attempted; the ones still to run "
+                    "are where a success would be"))
+        return verdict
+    verdict.update(
+        status="supported", unconstrained_attempted=len(unconstrained),
+        unconstrained_queued=queued, conditioned_attempted=len(conditioned),
+        detail=("no bench06 refinement completed at either conditioning, so "
+                "the limit follows the 1,223-token size rather than the "
+                "pocket constraint: the largest refinement that has ever "
+                "succeeded is 454 tokens, and bench06's tier-1 jobs at the "
+                "same size all succeeded"))
+    return verdict
+
+
 def main(argv: list[str] | None = None) -> int:
     import argparse
     import glob
@@ -255,6 +320,11 @@ def main(argv: list[str] | None = None) -> int:
               "detail": "no campaign on disk"},
         f252_design_scan_position(Path(design[-1]) if design else None),
         f253_tier_b_bridging(Path(tier_b[-1]) if tier_b else None),
+        f268_refinement_size_limit(main_campaign) if main_campaign
+        else {"finding": "F268", "status": "not yet testable",
+              "claim": "every bench06 refinement fails, whatever its "
+                       "conditioning",
+              "detail": "no campaign on disk"},
     ]
     scored = [r for r in results if r["status"] in ("supported", "WRONG",
                                                     "unclear")]
