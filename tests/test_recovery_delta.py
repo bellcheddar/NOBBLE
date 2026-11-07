@@ -227,3 +227,59 @@ def test_the_confound_is_detected_from_the_cache_not_assumed():
     confounded = delta._confounded_pairs(campaigns[-1].parent)
     # Whatever it finds, it must be pair ids rather than job ids.
     assert all("__" not in pair for pair in confounded), confounded
+
+
+def test_an_unrunnable_featurisation_check_marks_pairs_not_comparable():
+    """Unknown comparability is not comparability.
+
+    `_confounded_pairs` returned an empty set both for "no pair is
+    confounded" and for "the check could not run", and an empty set marks
+    every pair comparable. The G6 table would then report a move for a pair
+    whose two tiers may have folded different molecules, which is the thing
+    D-NOB-079 keeps bench02 out of the table to prevent (F244).
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "recovery_delta", ROOT / "tools" / "recovery_delta.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    campaigns = sorted((ROOT / "campaigns").glob("campaign_*/queue.jsonl"))
+    if not campaigns:
+        pytest.skip("no campaign assembled")
+    campaign = campaigns[-1].parent
+
+    original = module._confounded_pairs
+    try:
+        module._confounded_pairs = lambda path: None
+        report = module.compare(campaign)
+    finally:
+        module._confounded_pairs = original
+
+    by_pair = report.get("by_pair") or {}
+    if not by_pair:
+        pytest.skip("this campaign has no refined pair to compare")
+    assert all(not row["comparable"] for row in by_pair.values()), (
+        "a pair was called comparable while the check that decides it could "
+        "not be run")
+    assert all("unknown" in row["comparability"] for row in by_pair.values())
+
+
+def test_a_runnable_check_still_reports_measured_comparability():
+    """The flag is additive: the normal path is unchanged."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "recovery_delta", ROOT / "tools" / "recovery_delta.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    campaigns = sorted((ROOT / "campaigns").glob("campaign_*/queue.jsonl"))
+    if not campaigns:
+        pytest.skip("no campaign assembled")
+    report = module.compare(campaigns[-1].parent)
+    by_pair = report.get("by_pair") or {}
+    if not by_pair:
+        pytest.skip("nothing refined yet")
+    assert all(row["comparability"] == "measured" for row in by_pair.values())

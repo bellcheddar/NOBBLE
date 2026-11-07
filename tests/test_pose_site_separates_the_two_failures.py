@@ -136,17 +136,41 @@ def test_a_confounded_pair_is_flagged_rather_than_reported():
 
 
 def test_an_unrunnable_featurisation_check_does_not_clear_every_pair():
-    """A failed import must not read as "nothing is confounded" (F216)."""
-    module = _module()
+    """A failed import must not read as "nothing is confounded" (F216).
+
+    This test used to assert the opposite without noticing: it pinned
+    `body.count("return set()") == 2`, and an empty set is exactly what marks
+    every pair clean. It documented the defect F244 fixed, which is what a
+    test written about a structure rather than a behaviour can do.
+    """
+    import ast
+
     source = (ROOT / "tools" / "pose_site.py").read_text()
-    assert "return set()" in source
-    # The only two ways to reach that empty set are an ImportError and an
-    # OSError from the comparison itself, both of which are the absence of an
-    # answer. Neither may be reached by a comparison that ran and found
-    # disagreements.
     body = source[source.index("def _confounded"):source.index("def _best_per_pair")]
-    assert body.count("return set()") == 2, body
-    assert "disagreements(campaign)" in body
+    assert "disagreements(campaign)" in body, body
+    assert "return set()" not in body, (
+        "an unavailable check returns an empty set again, which marks every "
+        f"pair comparable: {body}")
+
+    # Every handler in it returns None, which the caller reads as unknown.
+    # Located by parsing the file and finding the function, rather than by
+    # slicing and re-indenting the text, which is its own thing to get wrong.
+    tree = ast.parse(source)
+    function = next(
+        (node for node in ast.walk(tree)
+         if isinstance(node, ast.FunctionDef) and node.name == "_confounded"),
+        None)
+    assert function is not None, "tools/pose_site.py has no _confounded"
+    handlers = [node for node in ast.walk(function)
+                if isinstance(node, ast.ExceptHandler)]
+    assert handlers, ast.unparse(function)
+    for handler in handlers:
+        returns = [node for node in ast.walk(handler)
+                   if isinstance(node, ast.Return)]
+        assert returns, ast.unparse(handler)
+        for node in returns:
+            assert node.value is not None and ast.unparse(node.value) == "None", (
+                ast.unparse(node))
 
 
 def test_the_per_residue_profile_accompanies_every_measured_record():
@@ -257,3 +281,22 @@ def test_the_tool_and_the_layer_measure_the_same_thing():
                 "shared_contacts", "window_residues",
                 "window_residues_touched", "centroid_gap_a", "ca_deviation_a"):
         assert records[0][key] == mine[key], (key, records[0][key], mine[key])
+
+
+def test_an_unavailable_confounded_check_is_not_reported_as_measured():
+    """Same question, same answer shape as publication_hold's.
+
+    `_confounded` returned an empty set both for "nothing is confounded" and
+    for "the check could not run", so a footprint measured against a
+    superseded input would have read as `measured` whenever the comparison
+    failed (F244).
+    """
+    campaign = _newest_campaign()
+    if campaign is None:
+        pytest.skip("no campaign assembled")
+    module = _module()
+    module._confounded = lambda path: None
+    records = module.footprints(campaign, only={"bench04_IKZF1_CRBN"})
+    if not records:
+        pytest.skip("the pair has no pose in this campaign")
+    assert records[0]["status"].startswith("confounded_unknown"), records[0]

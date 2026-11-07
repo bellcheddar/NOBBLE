@@ -64,11 +64,19 @@ def _recovery(job: dict):
         return None
 
 
-def _confounded_pairs(campaign: Path) -> set[str]:
+def _confounded_pairs(campaign: Path) -> set[str] | None:
     """Pairs whose tier-1 featurisation disagrees with the YAML on disk.
 
     Imported inside the function so that importing this module does not pull
     in numpy, matching how the recovery target lookup is handled.
+
+    `None` means the comparison could not be made, which is not the same as
+    no pair being confounded. It returned an empty set for both, and an empty
+    set here marks every pair comparable: the G6 table would then compare a
+    pair whose tiers folded different molecules and say nothing about it,
+    which is the failure D-NOB-079 exists to prevent. Same shape as F222 and
+    F242, and `tools/publication_hold.py` already answers this question the
+    right way round (F244).
     """
     import sys
 
@@ -76,9 +84,12 @@ def _confounded_pairs(campaign: Path) -> set[str]:
     try:
         import stale_featurisation as featurisation
     except ImportError:
-        return set()
-    return {_pair_of(row["job_id"])
-            for row in featurisation.disagreements(campaign)}
+        return None
+    try:
+        rows = featurisation.disagreements(campaign)
+    except OSError:
+        return None
+    return {_pair_of(row["job_id"]) for row in rows}
 
 
 def _pair_of(job_id: str) -> str:
@@ -135,7 +146,15 @@ def compare(campaign: Path) -> dict:
     for pair_id in sorted({row["pair_id"] for row in rows}):
         mine = [row for row in rows if row["pair_id"] == pair_id]
         by_pair[pair_id] = {
-            "comparable": pair_id not in confounded,
+            # Unknown reads as not comparable, not as comparable. A pair
+            # whose tiers may have folded different molecules must not be
+            # reported as a move because the check that would have caught it
+            # did not run.
+            "comparable": (pair_id not in confounded
+                           if confounded is not None else False),
+            "comparability": ("measured" if confounded is not None
+                              else "unknown: the featurisation comparison "
+                                   "could not be run"),
             "n": len(mine),
             "tier1_best": round(min(row["tier1_rmsd"] for row in mine), 3),
             "tier2_best": round(min(row["tier2_rmsd"] for row in mine), 3),
@@ -151,6 +170,16 @@ def compare(campaign: Path) -> dict:
     # Confounded pairs are excluded from every aggregate, not just flagged in
     # their own row: a median over poses that includes them is the same
     # mixture one level up.
+    # With the check unavailable nothing is comparable, so no aggregate is
+    # computed rather than one computed over pairs that may be mixtures.
+    if confounded is None:
+        return {"status": "no comparable pose: the featurisation comparison "
+                          "could not be run, so whether each pair's two "
+                          "tiers folded the same molecule is unknown",
+                "campaign": campaign.name, "confounded": [],
+                "comparability": "unknown",
+                "by_pair": by_pair, "pairs": by_pair}
+
     rows = [row for row in rows if row["pair_id"] not in confounded]
     if not rows:
         return {"status": "no comparable pose: every refined pair's tier-1 "

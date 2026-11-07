@@ -45,17 +45,23 @@ def contact_cutoff() -> float:
     return poses.CONTACT_CUTOFF
 
 
-def _confounded(campaign: Path) -> set[str]:
-    """Pairs whose poses came from an input no longer on disk (F219)."""
+def _confounded(campaign: Path) -> set[str] | None:
+    """Pairs whose poses came from an input no longer on disk (F219).
+
+    `None` for "could not be checked", which is not "nothing is confounded".
+    It returned an empty set for both, so a footprint measured against a
+    superseded input would have been reported as `measured` whenever the
+    comparison failed to run (F244).
+    """
     sys.path.insert(0, str(ROOT / "tools"))
     try:
         import stale_featurisation as featurisation
     except ImportError:
-        return set()
+        return None
     try:
         rows = featurisation.disagreements(campaign)
     except OSError:
-        return set()
+        return None
     return {row["job_id"].split("__")[0] for row in rows}
 
 
@@ -114,7 +120,10 @@ def footprints(campaign: Path, cutoff: float | None = None,
         # Campaign-level, so it overrides the geometric status: a footprint
         # measured against a superseded input is not wrong, it is about an
         # input that is no longer there.
-        if pair_id in confounded:
+        if confounded is None:
+            record["status"] = ("confounded_unknown: the featurisation "
+                                "comparison could not be run")
+        elif pair_id in confounded:
             record["status"] = "confounded"
         records.append(record)
     return records

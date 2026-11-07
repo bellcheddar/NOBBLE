@@ -11502,3 +11502,47 @@ branch would have raised `NameError` the first time a checkout lacked the
 cached AlphaFold models. Fixed, as was the same thing in `test_resume.py`.
 Nine other files call `pytest.skip` after importing pytest inside the function
 that uses it, which works and was left alone.
+
+## F244. One question, three answers, two of which read unknown as clean
+
+Walked every exception handler in `nobble/`, `tools/` and `deploy/` with
+`ast`, looking for the shape F222 and F242 are about: a handler whose whole
+body is a silent fallback. Forty-nine, most of them right, a torn line
+skipped or an optional lookup returning None. The dangerous ones return an
+empty collection that a caller reads as "nothing wrong", and three of them
+answer the same question:
+
+```
+tools/publication_hold.confounded_pairs   -> None    printed as
+                                                     "could not be checked"
+tools/pose_site._confounded               -> set()   reads as clean
+tools/recovery_delta._confounded_pairs    -> set()   reads as clean
+```
+
+All three ask whether a pair's poses came from an input no longer on disk
+(F219). I wrote the first correctly a few hours ago and left the other two
+as they were, so the project held one question answered three ways, and the
+two wrong answers are in the tools that matter most.
+
+`recovery_delta` is the worse of them. An empty set marks every pair
+comparable, so with the comparison unavailable the G6 table would have
+reported a move for a pair whose two tiers may have folded different
+molecules, and D-NOB-079 keeps bench02 out of that table for exactly that
+reason. `pose_site` would have reported a footprint measured against a
+superseded input as `measured`.
+
+Both now return `None` for unknown. `recovery_delta` treats unknown as not
+comparable and returns before computing any aggregate, rather than averaging
+over pairs that may be mixtures; `pose_site` marks the record
+`confounded_unknown`. The normal path is unchanged: the live G6 table still
+reads 45 poses over 5 of 7 pairs with bench02 excluded.
+
+**Two of my own tests were wrong, and both failed usefully.** The first,
+written with the `pose_site` guard hours ago, asserted
+`body.count("return set()") == 2`: it pinned the defect in place, which is
+what a test written about a structure rather than a behaviour can do. It now
+locates the function with `ast` and asserts every handler returns `None`. The
+second caught an incomplete fix: `recovery_delta` used `confounded` in a
+second place I had not updated, and the test failed with
+`TypeError: argument of type 'NoneType' is not iterable` rather than letting
+a half-applied change through.
