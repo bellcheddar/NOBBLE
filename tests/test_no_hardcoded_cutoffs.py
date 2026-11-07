@@ -634,3 +634,52 @@ def test_the_recovery_correlation_minimum_resolves_from_config():
     assert "len(points) >= 3" not in builder, (
         "the literal is still there beside the configured lookup"
     )
+
+
+def test_no_assertion_in_the_suite_can_pass_unconditionally():
+    """An `or True` makes a test pass whatever it was checking.
+
+    Two were written in this project, both as a hedge beside a real
+    assertion: `assert "F217" in output or True`, and
+    `assert layers._auc(...) != layers._auc(...) or True`. Neither could
+    fail, and in both cases the property was covered by the line next to it,
+    so the hedge bought nothing and hid the fact that it bought nothing.
+
+    Also checks for a test function with no assertion at all, which passes by
+    reaching its end.
+    """
+    import ast
+
+    def truthy(node):
+        return isinstance(node, ast.Constant) and bool(node.value)
+
+    tautologies, assertionless = [], []
+    for path in sorted((ROOT / "tests").glob("test_*.py")):
+        tree = ast.parse(path.read_text())
+        for function in [node for node in ast.walk(tree)
+                         if isinstance(node, ast.FunctionDef)
+                         and node.name.startswith("test_")]:
+            asserts = [node for node in ast.walk(function)
+                       if isinstance(node, ast.Assert)]
+            for node in asserts:
+                if truthy(node.test):
+                    tautologies.append(f"{path.name}:{node.lineno}")
+                elif isinstance(node.test, ast.BoolOp) and isinstance(
+                        node.test.op, ast.Or) and any(
+                        truthy(v) for v in node.test.values):
+                    tautologies.append(f"{path.name}:{node.lineno}")
+            helpers = any(
+                isinstance(node, ast.Attribute)
+                and node.attr in ("raises", "warns", "skip", "fail", "xfail")
+                for node in ast.walk(function))
+            called = any(
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr.startswith("assert")
+                for node in ast.walk(function))
+            if not asserts and not helpers and not called:
+                assertionless.append(f"{path.name}:{function.lineno} "
+                                     f"{function.name}")
+
+    assert not tautologies, f"assertions that cannot fail: {tautologies}"
+    assert not assertionless, f"tests that cannot fail: {assertionless}"

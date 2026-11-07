@@ -94,7 +94,11 @@ def test_one_estimator_serves_both_callers():
     empty-side contract its caller needs."""
     from nobble.validate import layers
 
-    assert layers._auc([], [1.0]) != layers._auc([], [1.0]) or True
+    # `assert layers._auc(...) != layers._auc(...) or True` stood here and
+    # could not fail: `or True` makes any test unconditional, and the NaN
+    # inequality it was reaching for is asserted properly on the next line
+    # anyway. Removed rather than repaired, because the property it meant to
+    # check was already covered (F245).
     assert math.isnan(layers._auc([], [1.0])), "the layer reports absence as NaN"
     assert weights._auc([], [1.0]) is None, "the fitter declines that grid point"
     assert layers._auc([0.3], [0.1]) == mann_whitney_auc([0.3], [0.1]) == 1.0

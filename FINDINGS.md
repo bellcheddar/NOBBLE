@@ -11546,3 +11546,33 @@ second caught an incomplete fix: `recovery_delta` used `confounded` in a
 second place I had not updated, and the test failed with
 `TypeError: argument of type 'NoneType' is not iterable` rather than letting
 a half-applied change through.
+
+## F245. One assertion in the suite could not fail, and now none can
+
+Same `ast` walk, pointed at the tests: an `assert` whose test is a truthy
+constant, or an `or` with one, and a test function with no assertion at all.
+
+One hit, `tests/test_composite_clamp.py:97`:
+
+```python
+assert layers._auc([], [1.0]) != layers._auc([], [1.0]) or True
+assert math.isnan(layers._auc([], [1.0])), "the layer reports absence as NaN"
+```
+
+`or True` makes the first line pass whatever `_auc` returns, and the NaN
+inequality it was reaching for is asserted properly on the line below. So it
+bought nothing, and being unfalsifiable it could not reveal that it bought
+nothing. Removed rather than repaired, since the property was already
+covered.
+
+This is the second of these in the project and I wrote the other one today:
+`assert "F217" in output or True`, also a hedge standing beside a real
+assertion. Two instances of one habit is enough to automate, so the check is
+now a test: no assertion in the suite may pass unconditionally, and no test
+function may reach its end without asserting something. Both were clean
+across 1,409 tests apart from the one above.
+
+Worth noting what the sweep did not find. No test function in the suite lacks
+an assertion, and nothing else is tautological. The two cases both came from
+the same impulse, hedging a line that was about to be the real check, which
+is a thing to watch for in myself rather than a property of the codebase.
