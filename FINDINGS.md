@@ -11295,6 +11295,20 @@ on the first tier-2 run, when nothing had completed at tier 2 at all, and
 nothing short of running it predicts a clean exit with an empty predictions
 directory. The right fix was keeping the evidence, and that is done.
 
+**Confirmed on a second job, so the estimate is no longer a projection.**
+Job 15 is `bench06_RBM39_DCAF15__ternary__conditioned__seed2__tier2`, the
+next 1,223-token refinement. It began when job 14 failed at about 06:02Z, ran
+roughly eighty minutes against job 14's seventy-nine, produced nothing, and
+its output directory was recreated at 07:22:54Z for the retry. Its
+`lightning_logs` carries `version_0` and `version_1`, one per attempt, and
+its `predictions/` directory holds zero files.
+
+Two jobs, four attempts, the same silent completion. A seed changes the
+initialisation and not the footprint, so the remaining eight will go the same
+way: ten jobs at about 2.64 hours each is 26.4 hours, of which roughly 5.3
+are already spent. The 23.7-hour figure above was the likely case and is now
+the expected one.
+
 **Why skipping them is not available.** `run_campaign` does
 `jobs = paths.read_jsonl(queue_path)` once, under a comment saying "the queue
 is written once, before anything runs, and nothing appends to it". So editing
