@@ -64,12 +64,21 @@ echo "==> sending the block"
 echo "==> splicing, testing, reloading"
 "${SSH[@]}" "$DROPLET_SSH" 'bash -s' <<'REMOTE'
 set -euo pipefail
-VHOST=/etc/nginx/sites-available/nobble
+# The two paths this touches, overridable so the splice can be exercised
+# against a fixture instead of only read. The defaults are the live ones, so
+# the script run without them behaves exactly as before. It is the one script
+# in this project that gets run by hand, as root, against production, and it
+# was also the only one with no test: `tests/test_enable_gzip_splices_safely.py`
+# extracts this block from this file and runs it against a fake vhost with a
+# fake nginx on PATH, so the idempotency, the anchor refusal and the
+# restore-on-refusal are demonstrated rather than argued.
+VHOST="${NOBBLE_VHOST:-/etc/nginx/sites-available/nobble}"
+BLOCK="${NOBBLE_GZIP_BLOCK:-/tmp/nobble_gzip.conf}"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 
 if grep -q 'gzip_types' "$VHOST"; then
   echo "    gzip_types already present, nothing to do"
-  rm -f /tmp/nobble_gzip.conf
+  rm -f "$BLOCK"
   exit 0
 fi
 if ! grep -q 'client_max_body_size' "$VHOST"; then
@@ -80,7 +89,23 @@ fi
 cp "$VHOST" "$VHOST.bak.$STAMP"
 # sed's `r` appends a file's contents after the matching line. One anchor,
 # one insertion, nothing generated.
-sed -i "/client_max_body_size/r /tmp/nobble_gzip.conf" "$VHOST"
+#
+# Written to a sibling and renamed rather than edited in place. This is the
+# live web server's configuration and nginx may read it at any moment, so an
+# in-place rewrite is a window in which it is half a vhost; mv within a
+# directory is atomic, which is the same reason rerun_pair writes state.jsonl
+# that way (F109). `cp -p` first so the new file carries the original's mode
+# and owner, since the redirect only truncates a file that already exists.
+#
+# It is also the only form that runs anywhere. `sed -i` with no suffix is a
+# GNU extension: BSD sed reads the next argument as the backup extension, so
+# on macOS this consumed the script and failed with "invalid command code".
+# The droplet is Ubuntu, so production was never affected, but a splice that
+# cannot be run off Ubuntu cannot be demonstrated either, and this one edits
+# a live vhost as root.
+cp -p "$VHOST" "$VHOST.new"
+sed "/client_max_body_size/r $BLOCK" "$VHOST" > "$VHOST.new"
+mv "$VHOST.new" "$VHOST"
 
 if nginx -t; then
   systemctl reload nginx
@@ -90,7 +115,7 @@ else
   cp "$VHOST.bak.$STAMP" "$VHOST"
   exit 1
 fi
-rm -f /tmp/nobble_gzip.conf
+rm -f "$BLOCK"
 REMOTE
 
 echo "==> measuring"
