@@ -1,6 +1,6 @@
 # NOBBLE progress
 
-Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T04:30:50Z.
+Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T04:32:42Z.
 
 ## Gate G6 answered: the headline is a negative result, and publication is held
 
@@ -36,7 +36,11 @@ whole cause (F220).
 
 **The matched-control ROC is a null**: AUC 0.4583, 95 per cent CI 0.3316 to
 0.5842, over 24 positives and 96 matched negatives from the Sievers screen,
-which the code itself reads as "not distinguishable from chance".
+which the code itself reads as "not distinguishable from chance". It is not a
+seed-collapse artefact: on `delta_iptm_median`, the companion that a collapsed
+seed cannot inflate, the same matched rows give 0.4147 and the same reading
+(F231). The collapse falls evenly, 4 of 24 positives and 17 of 96 negatives,
+and the seed counts are balanced on both sides.
 
 **But the pose-recovery positive control has failed** (F212), so that null
 cannot be interpreted. 0 of 65 poses within 3 A, 1.5 per cent within 5 A,
@@ -58,6 +62,27 @@ and bench02 is confounded. So for three of five measurable pairs the site is
 identified reliably and the register is wrong; nothing reaches 3 A either way,
 and whether this re-scopes the headline is G6's to decide rather than the
 tool's.
+
+**Where the register goes wrong, and two explanations that did not survive.**
+No pair is threaded backwards and no pair is offset along the groove: for both
+pairs that find the footprint cleanly the optimal shift is already zero, and
+the reversed mapping is worse everywhere (F228). The error is conformational
+and sits at the window's ends. bench04 places its three central residues at
+0.5 to 0.8 A and nine of fifteen within 4.2 A, bench06 eleven of fifteen
+within 4.1 A, and the worst pose of each differs from the median by under
+1.5 A at every position. The cause proposed for that, that the deposition
+holds the window's ends with the rest of the parent protein, was tested and
+refuted at r = +0.076 and +0.092 (F229); deposited B-factor is a partial
+correlate at +0.33 and +0.57 and is offered as nothing more. Spec 5.1 measures
+recovery over the whole window and by that definition the control fails
+either way; no core RMSD has been substituted for it, because inventing an
+acceptance criterion after seeing the data is what D-NOB-076 refused.
+
+Across pairs, every benchmark window is held more by its own protein than by
+the receptor, bench03 at 32 contacts to nothing and bench07 at 48 to 5
+(F230). Whether a window of that kind is a pose-recovery target is a
+panel-composition question, and it goes to G6 with the rest: the headline is
+computed over a panel that includes two of them.
 
 Two rungs of the ladder are already read off structures on disk: pocket
 conditioning does nothing (14.95 A against 17.92 A median, under 0.5 A per
@@ -291,10 +316,14 @@ stays held until pose recovery passes or the headline is re-scoped.
 - **Tier 2**: built, wired and partitioned (D-NOB-032), not yet run. Queued
   behind the main campaign in the chain, because the decile it refines is
   chosen from the ranking that campaign produces
-- **Design scan**: assembled (`campaigns/design_20261104T012406Z`, 16 pairs,
-  240 jobs), preflighted, queued last. Last on purpose: its own tab says the
-  composite is untrustworthy until the Sievers arm runs, so earlier lifts
-  would need caveating into uselessness and rerunning
+- **Design scan**: assembled (16 pairs, 240 jobs), preflighted, queued last.
+  Last on purpose: its own tab says the composite is untrustworthy until the
+  Sievers arm runs, so earlier lifts would need caveating into uselessness and
+  rerunning. The campaign named here used to be
+  `campaigns/design_20261104T012406Z`, which is not on disk and never was by
+  this name; the one that is, and the one preflighted, holds the IKZF1 parent.
+  `bash tools/status.sh` resolves it, for the same reason the chain's progress
+  is not written here (F168)
 
 ## The design arm
 
@@ -304,11 +333,12 @@ and D-NOB-038, findings in F11.
 | Piece | State |
 |---|---|
 | Generators (alanine scan, saturation, chemistry grouping) | built, 18 tests |
-| Design lift, with refusals for mismatched conditions | built |
+| Design lift, with refusals for mismatched conditions | built. Also flags a lift whose delta-ipTM is driven by a collapsed seed, keeps the number and leaves it out of the ordering, since the ordering of positions is the arm's one durable claim |
 | Campaign assembler, parent re-run alongside its variants | built, preflight clean |
 | Runner (`tools/run_design.sh`): wait, preflight, run, score, profile | built |
 | Tab, 31 selectable parents, scan profile chart | built, deployed, chart verified against a synthetic profile |
-| A real scan | not run: queued last in the chain |
+| A real scan | not run: queued last in the chain. Preflight clean today, 240 jobs over 16 pairs, every YAML and MSA present, priced at 4.4 h (F225) |
+| Which degron it scans | IKZF1 (`benchmark_888fd2c63e`), at Delta-ipTM +0.3156. Chosen from the candidates whose Delta-ipTM is not flagged as a collapsed seed (D-NOB-081): ranking on the raw minimum put ZN565 first at +0.8886, which is one collapsed binary seed, 0.0601 against a median of 0.8619, and +0.0913 by the median |
 
 - `campaigns/benchmark_20261103T192126Z`: 100 YAMLs, queue running in tmux `nobble-bench`
 - 5 conditioned jobs dropped for benchmark member 3, which has no measurable
