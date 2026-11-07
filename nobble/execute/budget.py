@@ -250,8 +250,16 @@ def tier2_projection(campaign: Path, pair_ids: list[str] | None = None,
 def gate_g1(campaign: Path, pair_ids: list[str] | None = None) -> dict:
     """Does refinement fit inside what is left of max_compute_hours?
 
-    Judged on the low end of the range, so a refusal means no split of trunk
-    against structure-module time would make it fit.
+    Judged on the high end, so a refusal means the cheapest reading of the
+    cost still does not fit. The line below says so and `judged_on` reports
+    it as "upper bound", or "measured factor" once a refinement has run and
+    the two ends are the same number.
+
+    This docstring said "the low end" while the code read `hours_high`,
+    which is the opposite claim about a Gate. Nothing downstream read the
+    docstring, so nothing was wrong except what a reader would have believed
+    about when G1 opens; the test below now pins the end the code uses, so
+    the two cannot part again.
     """
     tuning = paths.tuning()["campaign"]
     max_hours = float(tuning["max_compute_hours"])

@@ -318,3 +318,24 @@ def test_the_projection_counts_exactly_the_jobs_the_queue_builds(tmp_path):
     )
     queued = paths.read_jsonl(directory / "queue_tier2.jsonl")
     assert len(queued) == projection["jobs"]
+
+
+def test_the_gate_is_judged_on_the_high_end():
+    """Which end decides is a property of a Gate, so pin it.
+
+    `gate_g1`'s docstring said "the low end of the range" while the code read
+    `hours_high`: the opposite claim about when G1 opens. Nothing downstream
+    read the docstring, so the only thing wrong was what a reader would
+    believe, but a Gate is exactly where that matters.
+    """
+    import inspect
+
+    from nobble.execute import budget
+
+    source = inspect.getsource(budget.gate_g1)
+    assert 'projection["hours_high"] <= remaining' in source, source
+    assert "the low end of the range" not in source, (
+        "the docstring claims the low end again while the code reads the high")
+
+    doc = inspect.getdoc(budget.gate_g1) or ""
+    assert "high end" in doc, doc
