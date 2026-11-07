@@ -12520,3 +12520,47 @@ No test caught it, and the reason is worth recording: every preflight fixture
 either had no peptide chain or no job over the cap, so the two checks had never
 met in a test. There is now a fixture with both, in each direction, and the
 shadowing reintroduced by hand to confirm the test fails on it.
+
+## F264
+
+F252's measurement does not exist yet, so I checked the stage that will make
+it.
+
+No `scan_profile.json` has ever been written, in any campaign. F252 claims the
+most sensitive alanine-scan position falls in {5, 6, 7} and is refuted if it
+falls in {1, 2, 12, 13, 14, 15}, and all of that rests on an artefact from a
+stage that has not run. F251 was registered against a measurement that could
+not exist at all, so the question is worth asking before the stage finishes
+rather than after.
+
+Shape, from `lift.scan_profile`: `most_sensitive` is `ranked[0]`, a row
+carrying a 1-indexed `position` over the parent sequence, ordered by the most
+negative lift and restricted to positions whose lift is not driven by a
+collapsed seed. So F252 reads the right key, and `most_sensitive` is None when
+every scored position is collapse-affected, which the scorer already reports
+as not testable.
+
+Coverage, from the queued scan: 240 jobs over 16 peptides, all 15-mers, one
+parent and 15 variants each differing from it at exactly one position,
+covering 1 to 15 with no gaps. Every position F252 names is scanned, so the
+prediction is answerable in both directions. The substitutions are P1A F2A Q3A
+C4A N5A Q6A C7A G8A A9G S10A F11A T12A Q13A K14A G15A, the ninth being to
+glycine because the wild-type residue there is already alanine.
+
+The parent is `PFQCNQCGASFTQKG`, IKZF1's ZF2 degron, so {5, 6, 7} is the NQC
+motif and the prediction is biologically well-founded rather than arbitrary.
+
+And the confound worth looking for, because it would have sat in exactly the
+predicted position. Cysteines 4 and 7 coordinate zinc in an intact C2H2
+finger, and zinc follows the motif where the submitted chain has one. Had the
+detector added zinc to the parent and not to C4A and C7A, those two lifts
+would have measured the loss of a cofactor rather than the loss of a CRBN
+contact, and position 7 is in the supported set: F252 could have come out
+"supported" for entirely the wrong reason. It has not. Zinc is absent from the
+parent and from all 15 variants in both arms, so the comparison is zinc-free
+throughout and internally consistent. The 15-mer does not fold as a finger
+either way, which is the limitation F236 is about and is already recorded.
+
+A negative result, then, and the second of the day: F263 found no
+record-against-YAML disagreement beyond F262's, and this finds no cofactor
+asymmetry in the scan. Both are now tests rather than numbers I checked once.
