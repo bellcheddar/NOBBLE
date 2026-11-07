@@ -12179,7 +12179,10 @@ one campaign that was mid-stage.
 That liveness is per tier is F216's finding, made in the watchdog. It was then
 missed in `tools/status.sh`, which asked tier 1 only and showed a five-hour
 tier-2 job as an empty heading (F237). This is the third place, and the only
-one of the three that a visitor reads.
+one of the three that a visitor reads, once the slice it belongs to is
+deployed. That qualification is F261's correction applied back here: the
+scan's output reaches a visitor through a deploy, and the deploy is held, so
+today it is read by whoever builds rather than by whoever visits.
 
 The scan now covers both tiers of every campaign including the published one,
 and records `tier` and `published` per entry. On the campaigns as they stand

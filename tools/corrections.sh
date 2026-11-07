@@ -26,8 +26,12 @@
 # but by then the damage would be done, so this waits first and explicitly.
 #
 # The atlas rebuild at the end is the point of the whole exercise: it refuses
-# today on both of these (F219 and F266), and it is what publishes the
-# whole-domain contrast the site is currently missing (F261).
+# today on both of these (F219 and F266). It rebuilds the local slice and
+# does not publish anything: deploying is a separate rsync that
+# publication_hold.py refuses while D-NOB-076 stands, and the live site goes
+# on serving the benchmark panel until that is decided. An earlier version of
+# this comment said the rebuild publishes the contrast the site is missing,
+# which conflated the build directory with the host (F261, corrected).
 set -uo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$(pwd)"

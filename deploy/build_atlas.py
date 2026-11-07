@@ -370,7 +370,8 @@ def main() -> int:
         # was skipped, so the header asserted "published campaign finished"
         # about the one campaign that was mid-stage. Liveness is per tier is
         # F216's finding, made in the watchdog, then missed in tools/status.sh
-        # (F237) and again here, which is the published surface and so the
+        # (F237) and again here, which is the surface a visitor reads once
+        # this slice is deployed, and so the
         # only one a visitor reads.
         #
         # The published campaign is reported for its unfinished tiers alone.

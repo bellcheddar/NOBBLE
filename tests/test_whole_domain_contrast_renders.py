@@ -98,8 +98,10 @@ def test_the_published_bundle_is_missing_the_curves():
                                "corrected_recovery_curve")
                if (payload.get(key) or {}).get("status") == "computed"]
     if len(present) == 2:
-        pytest.skip("the published bundle now carries both curves, so the "
-                    "site shows the contrast and this test has served out")
+        pytest.skip("the built bundle now carries both curves, so the "
+                    "contrast renders from it and this test has served out. "
+                    "Whether the site shows it is a question about the "
+                    "deploy, which the hold still refuses (F261)")
     assert not present, (
         f"the bundle carries {present} and not the other, which would render "
         "half a contrast: the guard needs both")
