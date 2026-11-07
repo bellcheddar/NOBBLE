@@ -14542,3 +14542,43 @@ then saw one pair with one accession and reported that every benchmark
 construct now has the same arity. Its guard against becoming vacuous fired
 correctly on a cause it was not written for. The fixture now clears before
 and after, and both orderings were run.
+
+## F299. The F47 input defect is closed, and the allowlist that recorded it is empty
+
+`KNOWN_DRIFT` held bench02_BRD4_VHL's fifteen jobs from the day F47 was
+found: they were emitted with a hydroxyproline on BRD4 Pro379 because the
+modification rule keyed on the E3 rather than on the degron class. The rule
+and the library were fixed the same day, the YAMLs on disk were not, and
+correcting them mid-run would have left one pair holding two different
+inputs. So the entry recorded the debt and
+`test_the_known_drift_is_still_drifting` was built to fail once the debt was
+paid, on the reasoning that an allowlist which outlives what it allows is a
+hole.
+
+It fired as designed. At 11 of 15 it said the correction had landed and named
+the jobs; at 15 of 15 it was unambiguous. `tools/corrections.sh --apply`
+re-ran all fifteen against the corrected YAMLs, all fifteen now agree between
+campaigns, and the entry is gone.
+
+Two things are worth noting about the shape of this, because neither was
+automatic.
+
+**The strict check is now live with nothing excluded.**
+`test_a_shared_job_predicts_the_same_interface_in_both_campaigns` compares
+every job id shared between two campaigns and previously skipped these
+fifteen. It passes with the allowlist empty, so every shared job in the
+project predicts the same interface in both campaigns to within 1e-6. That is
+a stronger statement than "the correction landed", and it is the one the
+project can now make.
+
+**The empty allowlist's skip says the right thing.** With `KNOWN_DRIFT`
+emptied, the retire test fell through to `if not present` and skipped with
+"none of the known-drifted jobs has been scored in two campaigns yet", which
+is false: there are no known-drifted jobs at all. An empty allowlist and an
+unscored one are different states and the message named the wrong one, which
+is F293's distinction in a skip reason. It now checks the allowlist first and
+says that the strict check is the guard.
+
+The dict is kept rather than deleted. The mechanism is worth having for the
+next correction, and a named expected failure is a record where an unnamed one
+is a red suite that trains you to ignore it.

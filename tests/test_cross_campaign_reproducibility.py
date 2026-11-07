@@ -61,21 +61,24 @@ def _campaign_pairs():
 # happen before the entry goes. An expected failure that is named is a record;
 # an unnamed one is a red suite that trains you to ignore it.
 #
-# These fifteen were emitted with a hydroxyproline on BRD4 Pro379, because the
-# modification rule keyed on the E3 rather than on the degron class (F47). The
-# rule and the library are fixed; the YAMLs already on disk are not, and
-# correcting them mid-run would leave one pair holding two different inputs.
-# `tools/rerun_pair.py bench02_BRD4_VHL --apply` corrects and clears them, to
-# be run when the GPU is free and before the final atlas rebuild. This entry
-# goes with it.
-KNOWN_DRIFT = {
-    f"bench02_BRD4_VHL__{arm}__{conditioning}__seed{seed}":
-        "F47: emitted with HYP on BRD4 Pro379, pending tools/rerun_pair.py"
-    for arm, conditioning in (("binary", "unconstrained"),
-                              ("ternary", "conditioned"),
-                              ("ternary", "unconstrained"))
-    for seed in range(1, 6)
-}
+# **Empty, and that is the end state rather than a gap.**
+#
+# It held bench02_BRD4_VHL's fifteen jobs, emitted with a hydroxyproline on
+# BRD4 Pro379 because the modification rule keyed on the E3 rather than on the
+# degron class (F47). The rule and the library were fixed the same day; the
+# YAMLs already on disk were not, and correcting them mid-run would have left
+# one pair holding two different inputs, so the entry recorded the debt and
+# `test_the_known_drift_is_still_drifting` below was the reminder.
+#
+# `tools/corrections.sh --apply` ran on 2026-11-07 and re-ran all fifteen
+# against the corrected YAMLs. All fifteen now agree between campaigns, which
+# is what made that test fail, so the entry goes and the strict check above
+# becomes the live guard with nothing excluded from it.
+#
+# Kept as an empty dict rather than deleted, because the mechanism is worth
+# having for the next correction and a named expected failure is a record
+# where an unnamed one is a red suite that trains you to ignore it.
+KNOWN_DRIFT: dict[str, str] = {}
 
 
 def test_a_shared_job_predicts_the_same_interface_in_both_campaigns():
@@ -129,6 +132,9 @@ def test_the_known_drift_is_still_drifting():
             if a is not None and b is not None and abs(a - b) > 1e-6:
                 still_drifting.add(job_id)
 
+    if not KNOWN_DRIFT:
+        pytest.skip("the allowlist is empty, so the strict check above is the "
+                    "guard and there is nothing here to retire")
     if not present:
         pytest.skip("none of the known-drifted jobs has been scored in two "
                     "campaigns yet")
