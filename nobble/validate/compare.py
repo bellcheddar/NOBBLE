@@ -118,6 +118,29 @@ def _gene_of(pair_id: str) -> tuple[str, str]:
     return (parts[1], parts[2]) if len(parts) >= 3 else (pair_id, "")
 
 
+def _recovery_curve(campaign: Path) -> dict:
+    """A campaign's own pose-recovery curve, or why there is none.
+
+    Read from the campaign's `validation.json` rather than recomputed: the
+    layer that wrote it is the same one whose number the headline quotes, and
+    recomputing would put a second answer to one question in the bundle.
+    """
+    path = Path(campaign) / "validation.json"
+    if not path.exists():
+        return {"status": f"not computed: no validation.json in {Path(campaign).name}"}
+    try:
+        layers = json.loads(path.read_text()).get("layers", {})
+    except (OSError, json.JSONDecodeError) as problem:
+        return {"status": f"not read: {type(problem).__name__}: {problem}"}
+    layer = layers.get("pose_recovery") or {}
+    if not layer.get("computed"):
+        return {"status": layer.get("status") or "not computed"}
+    curve = (layer.get("summary") or {}).get("overall_curve")
+    if not curve:
+        return {"status": "computed, but the layer wrote no overall curve"}
+    return {"status": "computed", "campaign": Path(campaign).name, **curve}
+
+
 def compare(baseline: Path, corrected: Path) -> dict:
     base_recovery = _recovery_by_pair(baseline)
     corr_recovery = _recovery_by_pair(corrected)
@@ -312,6 +335,22 @@ def compare(baseline: Path, corrected: Path) -> dict:
         "pairs_incomplete": len(incomplete),
         "provisional": bool(incomplete),
         "superseded_substrates": superseded,
+        # Each campaign's own pose-recovery curve, in the units the headline
+        # failure is quoted in.
+        #
+        # The published bundle said "0 of 65 within 3 A, median 17.535" in
+        # validation.json and told the whole-domain story in comparison.json,
+        # with no curve in it and no cross-reference either way. So a reader
+        # of the validation tab saw the negative without the measurement that
+        # scopes it: the same statistic on the whole-domain campaign is 53.8
+        # per cent within 3 A at a median of 2.494 A (F236).
+        #
+        # Here rather than in `layers.pose_recovery`, which is about one
+        # campaign and should not go looking for another, and rather than in
+        # the atlas build, which would make the contrast a property of
+        # publishing. This function's whole job is the two campaigns.
+        "baseline_recovery_curve": _recovery_curve(baseline),
+        "corrected_recovery_curve": _recovery_curve(corrected),
         "control": control.to_dict() if control else None,
         "control_held": control_ok,
         "comparisons": [c.to_dict() for c in comparisons],

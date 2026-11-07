@@ -27,6 +27,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
@@ -101,3 +103,44 @@ def test_the_two_f6_directions_say_opposite_things():
     contradicted = contradicted[:contradicted.index("else:")]
     assert "improved" in supported and "none got worse" in supported
     assert "got worse" in contradicted and "none improved" in contradicted
+
+
+def test_the_report_carries_both_campaigns_recovery_curves():
+    """The published bundle showed the negative without what scopes it.
+
+    validation.json said "0 of 65 within 3 A, median 17.535" and
+    comparison.json told the whole-domain story with no curve in it, in a
+    different tab, with no cross-reference either way. The same statistic on
+    the whole-domain campaign is 53.8 per cent within 3 A at 2.494 A (F236),
+    and a reader of the first number could not get to the second.
+    """
+    from pathlib import Path
+
+    from nobble.validate import compare as compare_module
+
+    from nobble.execute.campaign import latest_or_absent
+
+    baseline = latest_or_absent("benchmark")
+    corrected = latest_or_absent("corrected")
+    if baseline is None or corrected is None:
+        pytest.skip("both campaigns are needed for the contrast")
+
+    report = compare_module.compare(Path(baseline), Path(corrected))
+    for key in ("baseline_recovery_curve", "corrected_recovery_curve"):
+        curve = report.get(key)
+        assert curve, key
+        assert curve.get("status"), curve
+        if curve["status"] != "computed":
+            continue
+        assert "within_3.0A" in curve, curve
+        assert curve.get("median_rmsd") is not None, curve
+        assert curve.get("campaign"), curve
+
+
+def test_a_campaign_without_validation_says_so_rather_than_nothing(tmp_path):
+    """Absent is not zero, and an empty curve would read as a failed one."""
+    from nobble.validate import compare as compare_module
+
+    curve = compare_module._recovery_curve(tmp_path / "campaign_absent")
+    assert curve["status"].startswith("not computed"), curve
+    assert "within_3.0A" not in curve, curve
