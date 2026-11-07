@@ -2518,3 +2518,37 @@ command rather than three remembered ones. Stopping after the featurisation
 check leaves a campaign whose poses are corrected and whose published figures
 are not, which is a worse state than the one being fixed, because every guard
 reads as satisfied.
+
+## D-NOB-080
+
+**The footprint measurement lives in `nobble/score/poses.py` and is computed
+by the validation layer, not by a tool run by hand.** F227 established that an
+RMSD cannot distinguish a model that never found the degron site from one that
+found it and placed the chain along it wrongly, and that the distinction
+changes how the held headline reads. The measurement that separates them is
+therefore part of what the pose-recovery failure is, not a side enquiry.
+
+`poses.footprint(job, target)` shares `recovery_against_crystal`'s receptor
+superposition, so the two numbers are commensurable by construction rather
+than by coincidence. `layers.pose_recovery` calls it for each pair's
+lowest-RMSD pose and writes the result into `validation.json`, which is what
+`tools/provenance.py`, `tools/publication_hold.py` and the app already read.
+
+**Alternatives.** Leaving it in `tools/pose_site.py` was the state for one
+finding and was rejected once the cost was known: gridding the contact search
+the way `docking_check` already does dropped the panel from about ten seconds
+a pair to under two seconds in total, so the only argument for keeping it
+outside the pipeline had gone. A fourth validation layer was rejected because
+spec 5.1 to 5.3 define three, and a footprint is a decomposition of the first
+rather than a fourth kind of validation.
+
+**Reversal.** Delete the `footprint` key from `pose_recovery`'s summary and
+the `_footprints` helper. `poses.footprint` and `tools/pose_site.py` stand
+alone without it, and the tool is what produced every number in F227 to F230.
+
+**What it does not do.** The layer cannot mark a pair `confounded`, because
+that reads `tools/stale_featurisation` and a module under `nobble/` importing
+from `tools/` is the dependency inverted. The flag stays with the tool and
+with `deploy/build_atlas.py`. This is contained rather than open: the build
+refuses the campaign while any featurisation disagrees, so a footprint written
+for a confounded pair cannot reach the atlas.
