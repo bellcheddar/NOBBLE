@@ -13118,3 +13118,47 @@ The thing worth carrying forward: `ok is False` is a weak assertion against
 any gate that collects reasons, and it reads as a strong one. A gate with N
 checks needs N tests that name their own reason, or it has one test N times
 over.
+
+## F275
+
+The curation gate is the third with the same shape, and its three blocking
+checks were untested too.
+
+`manifest.validate` collects issues and the manifest reports `errors` as a
+count of the error-severity ones. `assemble_campaign` refuses to emit when
+that count is non-zero, so the count is the gate. A count is the weakest thing
+to assert against: with any one check removed, the others still raise whatever
+the fixture in front of them raises.
+
+```
+token_cap_exceeded        NOT CAUGHT
+ptm_residue_absent        NOT CAUGHT
+ternary_without_ligand    NOT CAUGHT
+```
+
+The two warnings, `smiles_fallback` and `affinity_unavailable`, have their
+codes asserted in tests elsewhere. The three that block the gate did not.
+
+Each now has a test naming its own code, with a clean job asserting nothing
+fires, and each has its negative case so it cannot pass by meaning something
+broader: a declared exception is allowed over the cap, a peptide that does
+carry the required residue raises nothing, and a binary job with no ligand is
+fine because a binary arm is supposed to have none.
+
+One more case was worth adding. The gate counts errors, so a warning promoted
+to an error would block the campaign: `smiles_fallback` alone covers 110 of
+Tier B's 770 ternary jobs. The severities are now asserted, and promoting one
+is caught.
+
+`ternary_without_ligand` deserves a note because it looks like F262 and is
+not. It catches a ternary job whose record names no ligand at all. F262 was a
+ternary job whose record named dBET57 and whose YAML had no ligand block, so
+this check passed it and `tools/preflight.py` is where that is caught. Neither
+check subsumes the other, and the campaign needed both to be wrong in
+different ways before the pair got through.
+
+Three gates, same finding: the atlas build's refusals (F273), preflight's
+seven checks (F274) and these three. In every case the gate worked and the
+tests of it did not, because each asserted the gate's verdict rather than the
+reason. A verdict is what a gate with one check has; a gate with N checks has
+N reasons, and testing the verdict tests one of them N times.
