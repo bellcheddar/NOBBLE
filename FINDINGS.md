@@ -14404,3 +14404,29 @@ refinements and has one. Under D-NOB-082 it was not pending, it was
 unanswerable: all ten bench06 refinements fail, so the fifth success was
 never coming. The scorer's "not yet testable: 1 of 5" was correct and would
 have stayed correct forever.
+
+### F298b. What else claimed every tier-2 job samples twenty-five
+
+A reduction is not finished when the runner honours it. Three places stated
+the tier's sample count as a fact about every tier-2 job, and one of them
+ships in `tier2.json`.
+
+`scaling_bound` prices a tier-2 job by the ratio of the two tiers' sample
+counts. A reduced job costs less than that, not more, so the bound stays a
+bound; the docstring now says so rather than leaving it to be re-derived by
+whoever next reads it.
+
+The plan's note read "refining the ternary arm to 25 diffusion samples while
+the binary arm stays at 1". The argument it is making, that a ternary minimum
+over more samples than its binary arm is pushed down on sample count alone,
+holds at nine samples as well as twenty-five, but the number was a literal
+and is now read from the settings, with a clause saying a reduced job records
+what it sampled.
+
+The plan also now carries `reduced_sampling`: which selected jobs are over
+the budget and what they will sample instead. In the plan rather than
+discovered at runtime, because `tier2.json` is what gets read before a run of
+tens of hours starts, and "bench06 refines at nine samples" is worth seeing
+beforehand. It asks `runner.sampling_for` rather than recomputing the rule, so
+the plan cannot disagree with the run about what is about to happen, and a
+test parses the module to check that it asks.

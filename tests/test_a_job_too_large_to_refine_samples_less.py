@@ -149,3 +149,36 @@ def test_a_failed_reduced_job_still_records_its_sample_count(tmp_path, monkeypat
     assert outcome.status.startswith("failed")
     assert outcome.diffusion_samples is not None
     assert outcome.diffusion_samples < settings["diffusion_samples"]
+
+
+def test_the_plan_says_which_jobs_will_be_reduced():
+    """Read before a run of tens of hours starts, so "bench06 refines at nine
+    samples" is something to see beforehand rather than to discover in a log.
+
+    Asked of the runner by the plan, not recomputed, or the two could
+    disagree about what is about to happen (F154).
+    """
+    import ast
+
+    from nobble.execute import tier2
+
+    settings = paths.tuning()["campaign"]
+    jobs = [{"job_id": "small", "tokens": LARGEST_SUCCESS_TOKENS},
+            {"job_id": "large", "tokens": SMALLEST_FAILURE_TOKENS}]
+    reduced = tier2._reduced_sampling(jobs, settings)
+    assert "small" not in str(reduced), "a job within the budget was reduced"
+    flat = {job for ids in reduced.values() for job in ids}
+    assert flat == {"large"}
+    count = next(key for key, ids in reduced.items() if "large" in ids)
+    assert int(count) < int(settings["tier2_diffusion_samples"])
+
+    source = (ROOT / "nobble" / "execute" / "tier2.py").read_text()
+    tree = ast.parse(source)
+    called = {node.name: {child.func.attr for child in ast.walk(node)
+                          if isinstance(child, ast.Call)
+                          and isinstance(child.func, ast.Attribute)}
+              for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)}
+    assert "sampling_for" in called.get("_reduced_sampling", set()), (
+        "the plan computes the reduction itself instead of asking the runner, "
+        "so the plan and the run can disagree"
+    )

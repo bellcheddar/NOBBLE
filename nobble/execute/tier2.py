@@ -271,6 +271,25 @@ def tier1_worst_seconds(campaign: Path) -> dict[str, float]:
     return worst
 
 
+def _reduced_sampling(jobs: list[dict], settings: dict) -> dict:
+    """Jobs the sampling budget will reduce, keyed by the count they get.
+
+    Asked of the runner rather than recomputed here: one spelling of the
+    reduction, or the plan and the run disagree about what will happen and
+    the plan is the one that gets read (F154).
+    """
+    from nobble.execute import runner                    # noqa: PLC0415
+
+    tier2 = {"diffusion_samples": int(settings["tier2_diffusion_samples"]),
+             "token_sample_budget": int(settings["tier2_token_sample_budget"])}
+    out: dict[str, list[str]] = {}
+    for job in jobs:
+        samples, note = runner.sampling_for(job, tier2)
+        if note:
+            out.setdefault(str(samples), []).append(job["job_id"])
+    return {count: sorted(ids) for count, ids in sorted(out.items())}
+
+
 def scaling_bound(settings: dict | None = None) -> float:
     """An upper bound on how much more a tier-2 job costs than a tier-1 one.
 
@@ -283,6 +302,10 @@ def scaling_bound(settings: dict | None = None) -> float:
     which are off at tier 1 and on at tier 2 and so appear in no ratio.
 
     Every term comes from config. Nothing here is a literal.
+
+    A job whose sampling is reduced (F298) costs less than this, not more,
+    so the bound stays a bound: it is computed from the tier's configured
+    sample count, which is the most any job runs at.
     """
     settings = settings or paths.tuning()["campaign"]
     samples = (int(settings["tier2_diffusion_samples"])
@@ -404,7 +427,15 @@ def build_tier2_queue(campaign: Path, selection: Selection) -> dict:
             "recycles": settings["tier2_recycles"],
             "diffusion_samples": settings["tier2_diffusion_samples"],
             "potentials": settings["tier2_potentials"],
+            "token_sample_budget": settings["tier2_token_sample_budget"],
         },
+        # Which selected jobs are too large to refine at the tier's sample
+        # count, and what they will sample instead (F298). In the plan rather
+        # than discovered at runtime, because this is read before a run of
+        # tens of hours starts and "bench06 refines at nine samples" is
+        # something to see beforehand. The count a job actually sampled is
+        # recorded on the job as well, since a plan is not a result.
+        "reduced_sampling": _reduced_sampling(refine, settings),
         "budgets": budgets,
         "note": (
             "Ternary jobs only, because spec 1.2 gives tier 2 one purpose: "
@@ -412,11 +443,15 @@ def build_tier2_queue(campaign: Path, selection: Selection) -> dict:
             "measurement of Delta-ipTM, and it must not be read as one. "
             "Delta-ipTM is a difference of two minima over seeds, so it is "
             "only interpretable when both arms were sampled the same way: "
-            "refining the ternary arm to 25 diffusion samples while the "
-            "binary arm stays at 1 would push the ternary minimum down on "
-            "sample count alone. Scoring enforces this rather than trusting "
-            "it, by partitioning on tier_setting, and tier 2 writes to its "
-            "own results file so tier 1 stays immutable."
+            f"refining the ternary arm to {settings['tier2_diffusion_samples']} "
+            f"diffusion samples while the binary arm stays at "
+            f"{settings['tier1_diffusion_samples']} would push the ternary "
+            "minimum down on sample count alone. Scoring enforces this "
+            "rather than trusting it, by partitioning on tier_setting, and "
+            "tier 2 writes to its own results file so tier 1 stays "
+            "immutable. A job too large to refine at the tier's count "
+            "samples fewer and records what it sampled, so the argument "
+            "holds at the reduced count too: see reduced_sampling above."
         ),
     }
 
@@ -425,8 +460,9 @@ def run(campaign: Path, fraction: float | None = None) -> dict:
     """Select, price against the budget, reduce if needed, then queue.
 
     The pricing step is new (F135). Refinement re-runs the decile's ternary
-    jobs at 25 diffusion samples against tier 1's 1, so it is not a rounding
-    error on tier 1, and nothing here compared it to `max_compute_hours`: the
+    jobs at the tier's configured sample count against tier 1's one, 25
+    against 1 as configured today and fewer for a job over the sampling
+    budget (F298), so it is not a rounding error on tier 1, and nothing here compared it to `max_compute_hours`: the
     per-job timeout bounds one job, and a hundred and fifty jobs at a
     six-hour timeout is nine hundred hours against a ninety-six hour gate.
     Priced on this campaign's decile it is 31 to 235 hours against 73 left.
