@@ -31,10 +31,6 @@ ALLOWED = {
     "has_model":
         "a one-line wrapper over model_path(accession).exists(), kept as the "
         "readable form of a check callers currently spell out (F250)",
-    "ligand_chains":
-        "the sole consumer of LIGAND_MIN_HEAVY_ATOMS, which the cutoff sweep "
-        "asserts is read from config: deleting it would leave a threshold "
-        "reading as live with nothing using it (F250)",
 }
 
 

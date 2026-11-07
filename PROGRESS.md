@@ -1326,3 +1326,44 @@ whose shape survives a change of sample count, bridge percentile among them.
 half is exercised by F206's fixture, which computes lifts and the profile
 through the real `nobble/design/lift.py`. The inference half is not, and
 cannot be without the GPU.
+
+## The primary signal now has a positive control (F297)
+
+Spec 4.1's bridging filter is the strongest discriminator in the stack and
+until today it had been checked only against its own output. The one test on
+its success path runs it on a prediction the campaign had already scored as
+bridging, which asks whether it still agrees with itself.
+
+`tools/bridge_on_crystals.py` asks the independent question: it runs the same
+filter, through the same `geometry.bridge_from_groups`, on the seven
+deposited ternaries the benchmark pairs are compared against.
+
+- **6 of 6 measurable depositions are found to bridge.** The filter is not
+  blind to a bridge that is there.
+- **1 of 7 is not measurable**, and this is new information about the
+  benchmark rather than about the filter. 6BNB is titled "DDB1-CRBN-BRD4(BD1)
+  complex bound to dBET57 PROTAC" and its assembly contains no dBET57, only a
+  zinc. bench03's reference ternary has no glue in its coordinates. Nothing
+  downstream was wrong: `derive_pocket` and `degron_gate.check` both return
+  early on an absent ligand, so bench03's conditioned jobs were dropped at
+  assembly and counted.
+- **The measured area is right, not only the verdict.** With the substrate
+  supplied as its folded domain, predicted total dSASA is within 5 per cent
+  of the deposited area on all six: 0.95, 0.99, 0.95, 0.97, 0.98, 0.99.
+- **The 15-mer loses the substrate side, not the glue's seat.** Receptor-side
+  dSASA is close in the 15-mer arm already (657.5 against 684.9 on bench01),
+  and the substrate side collapses (150.6 against 528.5). F236 and F278's
+  whole-domain result, measured on the primary signal rather than on RMSD.
+- **bench07's bridge rate of 0.0 is the prediction, not the instrument.** A
+  rate of zero was equally consistent with both. 6TD3's bridge is 1137.8 A^2
+  at the 82.7th percentile and the filter finds it, the 15-mer arm finds no
+  bridge in any seed, and the whole-domain arm reproduces the crystal to
+  0.99.
+
+Run it with `KMP_DUPLICATE_LIB_OK=TRUE ../BINMAN/.pixi/envs/default/bin/python
+tools/bridge_on_crystals.py --against-predictions`. It writes nothing and
+needs no GPU.
+
+**What this is not.** Every deposition here predates the 2021-09-30 training
+cutoff (F282), so the agreement is consistent with recall and is not evidence
+of generalisation. The tool prints that line under its own table.

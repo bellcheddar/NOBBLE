@@ -44,6 +44,12 @@ MEASUREMENT_FAILURES = (
     "binary_complex_has_no_bridge",
     "no_ligand_chain_in_output",
     "no_peptide_chain_in_output",
+    # Assigned only by `score_deposition`, which runs the same filter on a
+    # deposited assembly rather than a prediction. Both mean the crystal
+    # could not be asked the question: a deposition whose glue was never
+    # modelled is not a crystal in which the glue fails to bridge.
+    "deposition_not_cached",
+    "glue_not_modelled_in_deposition",
 )
 
 
@@ -184,22 +190,42 @@ def score_structure(job: dict) -> BridgeScore:
         )
         return result
 
+    receptor, peptide, ligand = _atom_groups(Path(structure_path), job["construct"])
+    return bridge_from_groups(
+        job_id=job["job_id"], source=str(structure_path), receptor=receptor,
+        partner=peptide, ligand=ligand,
+        ligand_key=job.get("ligand_key") or "LIG",
+    )
+
+
+def bridge_from_groups(
+    *, job_id: str, source: str, receptor, partner, ligand, ligand_key: str,
+) -> BridgeScore:
+    """Run BINMAN's bridging filter on three prepared atom groups.
+
+    The only place the filter is called. `score_structure` supplies groups
+    read out of a predicted mmCIF and `score_deposition` supplies them out of
+    a deposited assembly, and both reach `find_bridges` through this one call
+    with the same glue waiver and the same percentile basis. A crystal control
+    routed through a second spelling of this would be testing that spelling
+    rather than the detector the campaign ran (F154).
+    """
     from pipeline.geometry import SasaCalculator, find_bridges  # noqa: PLC0415
 
-    receptor, peptide, ligand = _atom_groups(Path(structure_path), job["construct"])
+    result = BridgeScore(job_id=job_id, structure=source, found=False)
     if len(ligand) == 0:
         result.reject_reason = "no_ligand_chain_in_output"
         return result
-    if len(peptide) == 0:
+    if len(partner) == 0:
         result.reject_reason = "no_peptide_chain_in_output"
         return result
 
     bridges, halves, reject = find_bridges(
         ligand,
-        job.get("ligand_key") or "LIG",
+        ligand_key,
         [
             ("receptor", "receptor", receptor, False),
-            (PEPTIDE_CHAIN, "peptide", peptide, False),
+            (PEPTIDE_CHAIN, "peptide", partner, False),
         ],
         sasa=SasaCalculator(),
         # The ligand is a known glue or degrader by construction, so the atlas's
@@ -235,6 +261,126 @@ def score_structure(job: dict) -> BridgeScore:
         f"dsasa_total against {len(reference_distribution()['dsasa_total'])} "
         "experimentally observed bridges in BINMAN's atlas"
     )
+    return result
+
+
+def groups_from_deposition(
+    pdb_id: str, receptor_chain: str | None, substrate_chain: str,
+    ligand_ccd: str, ligand_seqid: int | None = None,
+):
+    """Atom groups for the two sides of a deposited bridge and its glue.
+
+    The deposited counterpart of `_atom_groups`. A prediction writes the
+    receptor as chains A onwards, the substrate as P and the glue as L, so
+    that function can read the roles off the chain names; a deposition names
+    its chains however the depositors did, and the glue is a heteroatom
+    residue inside one of the protein chains rather than a chain of its own.
+    The roles therefore come from the caller, which is why
+    `nobble/validate/layers.py` already records a receptor and a substrate
+    chain per benchmark deposition.
+
+    Only the two named chains are read. An assembly often carries more (DDB1
+    beside CRBN, ElonginB and ElonginC beside VHL), and the question here is
+    whether the glue bridges the two chains the campaign's prediction joins,
+    not whether it buries surface against the crystal as a whole. Widening
+    the receptor side to every other protein chain is a different measurement
+    and `tools/bridge_on_crystals.py --whole-assembly` makes it.
+    """
+    import gemmi
+
+    from pipeline.geometry import AtomGroup  # noqa: PLC0415
+
+    from nobble.curate import structures  # noqa: PLC0415
+
+    structure = structures.read_assembly(pdb_id)
+    receptor = AtomGroup(label="receptor")
+    substrate = AtomGroup(label="peptide")
+    ligand = AtomGroup(label="ligand")
+
+    for chain in structure[0]:
+        for residue in chain:
+            if residue.name == ligand_ccd and (
+                    ligand_seqid is None or residue.seqid.num == ligand_seqid):
+                target = ligand
+            elif not structures.is_amino_acid(residue):
+                continue
+            elif chain.name == substrate_chain:
+                target = substrate
+            elif receptor_chain is None or chain.name == receptor_chain:
+                # None means every protein chain that is not the substrate,
+                # which is the --whole-assembly reading.
+                target = receptor
+            else:
+                continue
+            key = f"{residue.name} {residue.seqid.num}"
+            for atom in residue:
+                if atom.element == gemmi.Element("H"):
+                    continue
+                target.add(atom.pos.x, atom.pos.y, atom.pos.z,
+                           atom.element.name, key, atom.name)
+    return receptor, substrate, ligand
+
+
+def score_deposition(
+    pdb_id: str, receptor_chain: str | None, substrate_chain: str,
+    ligand_ccd: str | None, ligand_seqid: int | None = None,
+) -> BridgeScore:
+    """The bridging filter on a deposited ternary, as a positive control.
+
+    `tests/test_geometry_real_bridge.py` exercises the filter's success path
+    on a prediction the campaign itself scored as bridging, which is a
+    regression test: it asks whether the filter still agrees with its own
+    earlier verdict. It cannot say whether the filter is right, because the
+    label it checks against came from the filter.
+
+    This asks the independent question. Every benchmark deposition is a glue
+    or degrader ternary by the terms of its own title, so the glue bridges
+    the two proteins as a matter of experimental record, and a deposition the
+    filter does not call bridging is a false negative of the instrument. The
+    numbers come back on the same scale as a prediction's, through the same
+    `bridge_from_groups`, so the crystal's dSASA and percentile are directly
+    comparable with the campaign's.
+
+    A deposition whose glue was never modelled is refused rather than scored.
+    6BNB is titled "DDB1-CRBN-BRD4(BD1) complex bound to dBET57 PROTAC" and
+    its coordinates contain no dBET57: the only heteroatom in the assembly is
+    a zinc. That is a missing measurement, not a crystal in which a PROTAC
+    fails to bridge, and the two must not land in the same count (F293).
+    """
+    from nobble.curate import structures  # noqa: PLC0415
+
+    job_id = f"{pdb_id}:{receptor_chain or 'every-other-chain'}+{substrate_chain}"
+    if not structures.is_cached(pdb_id):
+        result = BridgeScore(job_id=job_id, structure=str(
+            structures.assembly_path(pdb_id)), found=False)
+        result.reject_reason = "deposition_not_cached"
+        return result
+
+    source = str(structures.assembly_path(pdb_id))
+    if not ligand_ccd:
+        result = BridgeScore(job_id=job_id, structure=source, found=False)
+        result.reject_reason = "glue_not_modelled_in_deposition"
+        result.notes.append(
+            f"{pdb_id} carries no heteroatom large enough to be a glue, so "
+            "there is no bridge in the coordinates to find")
+        return result
+
+    receptor, substrate, ligand = groups_from_deposition(
+        pdb_id, receptor_chain, substrate_chain, ligand_ccd, ligand_seqid)
+    if len(ligand) == 0:
+        result = BridgeScore(job_id=job_id, structure=source, found=False)
+        result.reject_reason = "glue_not_modelled_in_deposition"
+        result.notes.append(
+            f"{ligand_ccd} is named for {pdb_id} but no residue of that name "
+            "is in the assembly")
+        return result
+
+    result = bridge_from_groups(
+        job_id=job_id, source=source, receptor=receptor, partner=substrate,
+        ligand=ligand, ligand_key=ligand_ccd)
+    result.notes.append(
+        f"deposited: {ligand_ccd} against {pdb_id} chain {receptor_chain} "
+        f"(receptor) and chain {substrate_chain} (substrate)")
     return result
 
 

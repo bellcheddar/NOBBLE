@@ -14210,3 +14210,104 @@ the file no longer matches it.
 That is the fifth text-matching slip today, after F260, F263, F286 and F287. In
 four of the five the pattern matched something I had not looked at; in this one
 it matched something I had just written.
+
+## F297. The bridge detector, controlled against deposited coordinates
+
+Spec 4.1's primary signal is BINMAN's bridging filter. Everything resting on
+it, the bridge-formation rate, the bridge percentile, F253, F254, F280's
+statistics and F278's whole-domain contrast, assumes the filter finds a glue
+bridge when one is there and measures its size correctly. Nothing in the
+project had tested that against anything but the filter's own output.
+`tools/findings.py --grep "bridge.*deposited|score_structure.*crystal"`
+returns 0 of 304 findings, and the one test on the success path,
+`test_geometry_real_bridge.py`, says plainly what it does: it runs the filter
+on a prediction the campaign already scored as bridging. The label came from
+the filter, so it is a regression test and cannot say whether the filter is
+right.
+
+The seven benchmark pairs are compared against seven deposited ternaries,
+each titled as a glue or degrader complex, so a bridge is present as a matter
+of experimental record. `tools/bridge_on_crystals.py` runs the same filter on
+those coordinates, through the same `geometry.bridge_from_groups` the
+campaign used.
+
+**Six of six measurable depositions are found to bridge.** The seventh is not
+measurable, for a reason worth recording on its own: 6BNB is titled "Crystal
+structure of DDB1-CRBN-BRD4(BD1) complex bound to dBET57 PROTAC" and its
+assembly carries no dBET57. The only heteroatom in the file is a zinc, which
+the `_chem_comp` list confirms. bench03's reference ternary therefore has no
+glue in its coordinates. That is a missing measurement, not a crystal in
+which a PROTAC fails to bridge, and `score_deposition` refuses it with its
+own reason rather than counting it as a miss (F293). Nothing downstream was
+wrong: `derive_pocket` and `degron_gate.check` both already return early on
+an absent ligand, so bench03's conditioned jobs were dropped at assembly and
+counted in `conditioned_jobs_dropped_no_pocket`.
+
+### What the control also measures: the size, not just the verdict
+
+Reading the halves beside the crystal's turns a yes into a calibration. The
+comparator for each pair is derived from its own construct rather than
+chosen: a construct with one accession is compared against the one deposited
+receptor chain, and a construct with several (VHL_VCB, DCAF15_DDB1_DDA1)
+against every non-substrate protein chain, because that is the surface its
+prediction offered the glue. Comparing a multi-segment prediction against a
+single deposited chain understates the crystal by a third on bench06, which
+is F293's error in a geometry.
+
+Total dSASA, predicted median over the seeds that bridged, as a fraction of
+the crystal's:
+
+| pair | crystal A^2 | 15-mer | whole domain |
+|---|---|---|---|
+| bench01 GSPT1/CRBN | 1213.4 | 0.67 | 0.95 |
+| bench02 BRD4/VHL | 1964.1 | 0.60 | 0.99 |
+| bench03 BRD4/CRBN | no glue modelled | - | - |
+| bench04 IKZF1/CRBN | 768.9 | 0.95 | 0.95 |
+| bench05 CSNK1A1/CRBN | 745.6 | 0.96 | 0.97 |
+| bench06 RBM39/DCAF15 | 955.9 | 0.94 | 0.98 |
+| bench07 CDK12/DDB1 | 1137.8 | no seed bridged | 0.99 |
+
+Three things follow, and the third is the one that changes a reading.
+
+**The filter is quantitatively right on the whole-domain arm.** Six of six
+within 5 per cent of the deposited area.
+
+**The 15-mer loses the substrate side specifically, not the glue's seat in
+the E3.** Receptor-side dSASA is already close in the 15-mer arm (bench01
+657.5 against 684.9; bench02 935.9 against 983.4), while the substrate side
+collapses (150.6 against 528.5; 255.6 against 980.7). So the glue is placed
+correctly in the E3 pocket even when the substrate is a fragment, and what
+the fragment cannot do is bury its own side. That is the mechanism behind
+F236 and F278, measured on the primary signal rather than on RMSD.
+
+**bench07's bridge rate of 0.0 is the prediction's failure and not the
+detector's.** It was the one reading the project could not make: a rate of
+zero is equally consistent with a prediction that does not bridge and with a
+filter blind to the bridge that is there. The crystal settles it. 6TD3's
+bridge is strong, 1137.8 A^2 at the 82.7th percentile of BINMAN's atlas, and
+the filter finds it; the 15-mer arm finds no bridge in any seed; the
+whole-domain arm reproduces the crystal to 0.99. The blindness was in the
+representation.
+
+### What this is not
+
+Every one of these depositions predates the 2021-09-30 training cutoff
+(F282), so the agreement is consistent with recall and is not evidence of
+generalisation. The tool prints that line under the table for the same
+reason the hold prints it under the recovery curve: this is the
+strongest-looking number in the project and it is measured entirely inside
+the training set.
+
+The control is also only as good as its single filter call. A crystal control
+with its own copy of `find_bridges` would be testing the copy: the glue
+waiver, the chain labelling and the percentile basis could all drift from
+what the campaign ran and it would still pass. `score_structure` and
+`score_deposition` were therefore refactored onto one
+`geometry.bridge_from_groups`, and
+`test_the_crystal_and_the_prediction_go_through_one_filter_call` parses the
+module and refuses a second call site (F154).
+
+Mutation-checked: blinding `bridge_from_groups` so that it never selects a
+bridge fails `test_every_deposited_glue_is_found_to_bridge` with all six
+pairs named, and the other five tests still pass, which is the split those
+tests are for.

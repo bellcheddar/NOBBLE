@@ -525,6 +525,12 @@ def test_the_scan_finds_something_to_judge():
 # across the three directories and six are not cutoffs, which is why the
 # allowlist is by comparison rather than by file: a file may hold both.
 INTEGER_ALLOWED = {
+    "tools/bridge_on_crystals.py:len(accessions) > 1":
+        "whether a construct is multi-chain, which decides which deposited "
+        "chains the crystal comparator reads, not an acceptance applied to "
+        "data: one accession means the one named receptor chain and more "
+        "than one means every non-substrate chain, and there is no number "
+        "at which that choice becomes a threshold",
     "tools/findings.py:count > 1":
         "the definition of a repeated heading, not an acceptance applied to "
         "data: a label appearing more than once is what the numbering check "
