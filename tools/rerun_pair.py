@@ -67,6 +67,35 @@ def _known_good(yaml_name: str, exclude: Path) -> Path | None:
     return found[0]
 
 
+def _belongs(row: dict, pair_id: str) -> bool:
+    """Is this row one of `pair_id`'s?
+
+    One predicate, used by the rewrite and by the dry run that predicts it.
+    Two copies of this test would be two things to keep in step, and a dry
+    run that counts rows by a different rule than the rewrite drops them by
+    is a rehearsal of a different operation.
+    """
+    job_id = row.get("job_id") or ""
+    return row.get("pair_id") == pair_id or job_id.startswith(pair_id + "__")
+
+
+def _would_drop(path: Path, pair_id: str) -> int:
+    """How many rows `_rewrite_without` would drop, without dropping them."""
+    if not path.exists():
+        return 0
+    dropped = 0
+    for line in path.read_text().splitlines():
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if _belongs(row, pair_id):
+            dropped += 1
+    return dropped
+
+
 def _rewrite_without(path: Path, pair_id: str) -> int:
     """Drop every row of `pair_id`, keeping a .bak of what was there."""
     if not path.exists():
@@ -79,8 +108,7 @@ def _rewrite_without(path: Path, pair_id: str) -> int:
         except json.JSONDecodeError:
             kept.append(line)
             continue
-        job_id = row.get("job_id") or ""
-        if row.get("pair_id") == pair_id or job_id.startswith(pair_id + "__"):
+        if _belongs(row, pair_id):
             dropped += 1
             continue
         kept.append(line)
@@ -104,6 +132,86 @@ def _rewrite_without(path: Path, pair_id: str) -> int:
     return dropped
 
 
+def _cached_outputs(campaign: Path, jobs: list[dict]) -> list[str]:
+    """Which of these jobs still has a Boltz output directory on disk."""
+    return [row["job_id"] for row in jobs
+            if (campaign / "outputs" / row["job_id"]).exists()]
+
+
+def _folded_disagreements(campaign: Path, pair_id: str) -> list[str] | None:
+    """Jobs of `pair_id` whose cached featurisation disagrees with the YAML.
+
+    None when the comparison could not be made, which is not the same as
+    none found: a caller that reads a failed import as a clean campaign is
+    the F216 mistake in a different file.
+    """
+    sys.path.insert(0, str(ROOT / "tools"))
+    try:
+        import stale_featurisation as featurisation
+    except ImportError:
+        return None
+    try:
+        rows = featurisation.disagreements(campaign)
+    except OSError:
+        return None
+    return sorted(row["job_id"] for row in rows
+                  if row["job_id"].startswith(pair_id + "__"))
+
+
+def _rehearse(campaign: Path, pair_id: str, jobs: list[dict],
+              references: dict[str, Path | None], unverified: list[str]) -> int:
+    """Say what --apply would do, including the parts that are destructive.
+
+    The first version of this reported the state rows and the YAMLs and
+    stopped there, which left out the cached featurised inputs: the one step
+    whose absence made the 6 November correction re-fold the molecule it was
+    correcting (F219). A rehearsal that omits the step that failed rehearses
+    the wrong operation, and reading it would have given exactly the
+    confidence that was misplaced the first time.
+    """
+    if unverified:
+        print(f"\nWOULD REFUSE: {len(unverified)} of {len(jobs)} job(s) have "
+              "no known-good reference, so --apply would correct nothing and "
+              "exit 2 rather than clear results and re-run the same input "
+              "(F146).", file=sys.stderr)
+        for job_id in unverified[:3]:
+            print(f"  {job_id}", file=sys.stderr)
+        if len(unverified) > 3:
+            print(f"  and {len(unverified) - 3} more", file=sys.stderr)
+        return 2
+
+    differ = sum(1 for row in jobs
+                 if references[row["job_id"]].read_text()
+                 != Path(row["yaml"]).read_text())
+    print(f"  {differ} of {len(jobs)} YAML(s) differ from their known-good "
+          f"reference and would be rewritten; {len(jobs) - differ} already "
+          "match")
+
+    for name in ("state.jsonl", "results.jsonl", "scores.jsonl"):
+        print(f"  {_would_drop(campaign / name, pair_id)} row(s) would be "
+              f"dropped from {name}")
+
+    cached = _cached_outputs(campaign, jobs)
+    print(f"  {len(cached)} cached output directory/ies would be removed, so "
+          "the re-run featurises the corrected YAML instead of reusing the "
+          "old one")
+
+    folded = _folded_disagreements(campaign, pair_id)
+    if folded is None:
+        print("  cannot say what was folded: the featurisation comparison "
+              "could not be run, so whether the cache matches the YAML is "
+              "unknown rather than fine")
+    elif folded:
+        print(f"  {len(folded)} of those hold a featurisation that disagrees "
+              "with the YAML today, which is what this removes")
+    else:
+        print("  none of those disagrees with its YAML today, so there is no "
+              "stale featurisation left to clear")
+
+    print("  rerun with --apply to do it")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("pair_id")
@@ -125,15 +233,6 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     print(f"{args.pair_id}: {len(jobs)} job(s) in the queue")
-    if not args.apply:
-        state = campaign / "state.jsonl"
-        done = sum(1 for line in state.read_text().splitlines()
-                   if line.strip() and json.loads(line).get("job_id", "").startswith(
-                       args.pair_id + "__")) if state.exists() else 0
-        print(f"  {done} row(s) in state.jsonl would be dropped")
-        print(f"  {len(jobs)} YAML(s) would be regenerated")
-        print("  rerun with --apply to do it")
-        return 0
 
     # Corrected against a known-good copy of the same job from another
     # campaign, rather than re-derived.
@@ -182,14 +281,26 @@ def main(argv: list[str] | None = None) -> int:
               "rewrite the queue's yaml paths first.", file=sys.stderr)
         return 2
 
+    # Resolved before the --apply branch, not inside it, because the dry run
+    # exists to say what the real run will do and this is the thing it most
+    # often will not do. `--apply` refuses outright when any job has no
+    # known-good reference (F146), so a dry run that skips the lookup can
+    # promise fifteen corrected YAMLs where the real run corrects none and
+    # exits 2. Under F145 that was every invocation.
+    references = {row["job_id"]: _known_good(Path(row["yaml"]).name, campaign)
+                  for row in jobs}
+    unverified = sorted(job_id for job_id, source in references.items()
+                        if source is None)
+
+    if not args.apply:
+        return _rehearse(campaign, args.pair_id, jobs, references, unverified)
+
     corrected = 0
-    unverified = []
     for row in jobs:
         target = Path(row["yaml"])
-        source = _known_good(target.name, campaign)
+        source = references[row["job_id"]]
         if source is None:
             print(f"  ! no known-good copy of {target.name}; left alone")
-            unverified.append(target.name)
             continue
         if source.read_text() == target.read_text():
             continue

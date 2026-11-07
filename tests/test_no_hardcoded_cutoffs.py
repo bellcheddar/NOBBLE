@@ -532,6 +532,10 @@ INTEGER_ALLOWED = {
         "the same truncation in the refusal message. The refusal itself "
         "fires on `if outside`, so this changes how much is printed and "
         "never whether the correction is refused",
+    "tools/rerun_pair.py:len(unverified) > 3":
+        "the same truncation again, in the dry run's prediction of that "
+        "refusal. The prediction fires on `if unverified`, so this changes "
+        "how many job ids are listed and never the exit code",
     "tools/preflight.py:len(arms) > 1":
         "structural: whether a pair has more than one arm to compare. One "
         "is the smallest number that can disagree with another, not a "

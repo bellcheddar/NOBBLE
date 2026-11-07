@@ -78,6 +78,14 @@ def _apply(module, campaign: Path, monkeypatch) -> int:
     return module.main()
 
 
+def _dry(module, campaign: Path, monkeypatch) -> int:
+    """The same call without --apply, which must only ever report."""
+    monkeypatch.setattr(sys, "argv",
+                        ["rerun_pair.py", "benchXX_GENE_E3",
+                         "--campaign", str(campaign)])
+    return module.main()
+
+
 def test_a_relative_campaign_path_still_finds_the_reference(tmp_path, monkeypatch):
     """The defect, in the spelling the chain actually uses."""
     module = _module()
@@ -265,3 +273,104 @@ def test_the_live_correction_has_exactly_one_reference():
         f"will refuse when the chain reaches it: {unresolved[:3]}"
     )
     assert len(pair) == 15, f"{len(pair)} jobs for the pair, expected 15"
+
+
+def test_the_rehearsal_names_the_cached_outputs_it_would_remove(
+        tmp_path, monkeypatch, capsys):
+    """The step whose absence was F219 has to appear in the rehearsal.
+
+    The first dry run reported the state rows and the YAMLs and stopped,
+    so reading it gave no sign that anything was cached, which is the
+    confidence that was misplaced on 6 November.
+    """
+    module = _module()
+    target, job = _tree(tmp_path)
+    cached = target / "outputs" / job
+    (cached / "processed" / "structures").mkdir(parents=True)
+    monkeypatch.setattr(module, "ROOT", tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    assert _dry(module, target, monkeypatch) == 0
+    printed = capsys.readouterr().out
+    assert "1 cached output directory/ies would be removed" in printed, printed
+    assert cached.exists(), "the rehearsal removed it"
+
+
+def test_the_rehearsal_predicts_the_refusal_rather_than_a_correction(
+        tmp_path, monkeypatch, capsys):
+    """With no reference, --apply exits 2 and corrects nothing (F146).
+
+    The dry run used to print "1 YAML(s) would be regenerated" and exit 0 in
+    exactly that case, so the rehearsal and the run disagreed about whether
+    the operation was possible at all.
+    """
+    module = _module()
+    target, _ = _tree(tmp_path, reference_campaigns=0)
+    monkeypatch.setattr(module, "ROOT", tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    assert _dry(module, target, monkeypatch) == 2
+    captured = capsys.readouterr()
+    assert "WOULD REFUSE" in captured.err, captured.err
+    assert "would be regenerated" not in captured.out, captured.out
+
+    # And the prediction is the truth: the same tree, applied.
+    monkeypatch.setattr(module, "ROOT", tmp_path)
+    assert _apply(module, target, monkeypatch) == 2
+
+
+def test_the_rehearsal_changes_nothing_on_disk(tmp_path, monkeypatch):
+    module = _module()
+    target, job = _tree(tmp_path)
+    cached = target / "outputs" / job
+    cached.mkdir(parents=True)
+    before = {
+        path.relative_to(target): path.read_text()
+        for path in sorted(target.rglob("*")) if path.is_file()
+    }
+    monkeypatch.setattr(module, "ROOT", tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    assert _dry(module, target, monkeypatch) == 0
+    after = {
+        path.relative_to(target): path.read_text()
+        for path in sorted(target.rglob("*")) if path.is_file()
+    }
+    assert before == after
+    assert cached.exists()
+
+
+def test_the_rehearsal_counts_the_rows_the_rewrite_drops(tmp_path, monkeypatch,
+                                                         capsys):
+    """Counted and dropped by one predicate, so they cannot disagree."""
+    module = _module()
+    target, job = _tree(tmp_path)
+    # A second state row for the same job, as a retry leaves.
+    with (target / "state.jsonl").open("a") as handle:
+        handle.write(json.dumps({"job_id": job, "status": "done"}) + "\n")
+    monkeypatch.setattr(module, "ROOT", tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    _dry(module, target, monkeypatch)
+    printed = capsys.readouterr().out
+    assert "2 row(s) would be dropped from state.jsonl" in printed, printed
+
+    predicted = module._would_drop(target / "state.jsonl", "benchXX_GENE_E3")
+    assert module._rewrite_without(target / "state.jsonl",
+                                   "benchXX_GENE_E3") == predicted
+
+
+def test_an_unrunnable_featurisation_check_is_not_read_as_clean(
+        tmp_path, monkeypatch, capsys):
+    """A comparison that could not run is unknown, not fine (F216)."""
+    module = _module()
+    target, _ = _tree(tmp_path)
+    monkeypatch.setattr(module, "ROOT", tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(module, "_folded_disagreements",
+                        lambda campaign, pair_id: None)
+
+    assert _dry(module, target, monkeypatch) == 0
+    printed = capsys.readouterr().out
+    assert "cannot say what was folded" in printed, printed
+    assert "no stale featurisation left to clear" not in printed, printed
