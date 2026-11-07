@@ -11687,3 +11687,40 @@ chemistry to exercise it would be a test of a fixture. Recorded because the
 next person to audit the licensing guarantee will find a passing check, a
 zero count and two skipped tests, and that combination reads as verified when
 it is vacuous.
+
+## F247. Spec 2.1's licensing constraint, verified on every surface that could redistribute
+
+F246 established that the published bundle carries no chemistry. That covers
+one surface. Spec 2.1 says "PROTAC-DB stays internal-use-only and is never
+redistributed", and the repository is public, so there are four surfaces and
+the publish path is the only one the atlas build checks.
+
+All four, checked:
+
+```
+the published bundle     no `smiles` in any file of deploy/atlas (F246)
+the working tree         campaigns/ is .gitignore line 15; 0 tracked files
+                         under it; the dBET57 SMILES is not in HEAD
+git history              `git log -S` on that SMILES across --all: never
+                         committed, so a push has nothing to carry
+test fixtures            one tracked file names PROTAC-DB,
+                         tests/test_protacdb_verification_verifies.py, and
+                         its only chemistry literal is
+                         `CC(=O)Nc1ccc(cc1)S(=O)(=O)N`, which is
+                         4-acetamidobenzenesulfonamide: a synthetic fixture,
+                         not a PROTAC and not PROTAC-DB content
+```
+
+The history surface is the one worth having checked rather than assumed,
+because it cannot be corrected afterwards. PROGRESS already records the
+companion case: `origin/main` still carries the absolute project paths F128
+removed, "which a push does not clear from history". Had the dBET57 SMILES
+ever been committed it would be public permanently, gitignore or not, and the
+only remedy would be rewriting a published history.
+
+So the chemistry lives in exactly one place, a gitignored campaign YAML, read
+by Boltz and nothing else, which is what internal-use-only means.
+
+No change. Recorded with the method because this is the project's strictest
+constraint, the checks are cheap, and the next audit should be able to repeat
+them in a minute rather than reason about them from the spec.
