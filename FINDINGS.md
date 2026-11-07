@@ -11982,3 +11982,54 @@ itself as the noise floor, so the generator moved it to glycine instead. A
 large lift at 8 or 9, both glycine or alanine, would be about backbone
 flexibility rather than a lost side chain, and should not be read as an
 interface result.
+
+## F253. Tier B's readout, registered before its 32.8 hours are spent
+
+Tier B is 1,540 jobs over 154 pairs, 77 positives and their 77
+composition-matched scrambles, eleven ligandable-unproven ligases against the
+seven proven glue-degron pairs, priced at 32.8 hours. It is the largest
+remaining spend and PROGRESS already states the expectation: every pair is
+expected to fail, and a uniform absence of hits is informative because it says
+the chemotypes that work on CRBN and VHL do not transfer.
+
+What is not fixed is **which number answers that**, and fixing it after the
+data is how a 32.8-hour arm becomes a fishing expedition. So, before it runs:
+
+**The readout is bridge formation, not Delta-ipTM.** Delta-ipTM's matched
+control is a null, AUC 0.4583 and 0.4147 on the collapse-robust statistic
+(F231), so a Tier B ranking by Delta-ipTM ranks by a statistic already shown
+not to separate glue from matched control on this very screen. Bridge
+formation is the alternative F9 established: the fraction of ternary seeds in
+which the glue buries surface against both chains, correlating with pose
+recovery at r = -0.871, needing no crystal, which is exactly Tier B's
+situation since none of these receptors has a deposited structure. It is
+computed per pair already as `bridge_formation_rate` with
+`bridging_seeds_with_bridge` over `bridging_seeds_total` and a
+`bridge_reject_reasons` breakdown.
+
+**What counts as a hit, declared now.** A receptor-glue pair where the
+positive bridges in at least 8 of 10 seeds and its own scramble bridges in at
+most 2 of 10. Paired against its own scramble rather than against the arm,
+because the scramble controls composition and the arm does not.
+
+**What counts as the expected result.** Positives and scrambles
+indistinguishable, which on 77 pairs means no pair clearing the line above.
+That is the outcome to report plainly as a negative, and the claim it supports
+is narrow: these chemotypes do not transfer to these eleven ligases under this
+protocol, which is not the same as these ligases having no glue.
+
+**The multiplicity, stated before it bites.** Seventy-seven positives is
+seventy-seven chances for noise to clear any line, and with ten seeds each the
+bridge rate is coarse. One pair clearing it is one in seventy-seven and should
+be reported as a hypothesis with that denominator attached, not as a hit. Two
+or more on the same receptor across different glues would be more interesting
+than two on the same glue across different receptors, because the receptor is
+what Tier B varies.
+
+**What would refute the readout choice itself**, as opposed to the
+expectation: Delta-ipTM separating positives from scrambles on this arm while
+bridging does not. That would say the null is specific to the Sievers screen
+rather than to the statistic, and it is worth knowing which.
+
+My prediction: no pair clears the line, and bridging on the positives looks
+like bridging on the scrambles.
