@@ -15031,3 +15031,42 @@ The restart confirmed F302's fix, which is the one good thing to come out of
 it: the correction stage now prints "nothing to correct: inputs match and no
 cache disagrees" and "nothing to correct: the YAMLs are already what the code
 emits", clears nothing and re-runs nothing.
+
+## F309. The build published seven crystals and three are on disk
+
+`deploy/atlas/ATLAS.json` records `files.crystals: 7`, so the 23:28 build
+copied all seven deposited assemblies the benchmark page names.
+`deploy/atlas/crystals/` holds three: 5HXB, 5T35 and 6BNB, written at 23:28.
+The directory's own mtime is 23:38, ten minutes later, so something changed
+it after the build finished. 5FQD, 6H0F, 6Q0W and 6TD3 are gone, and
+`/crystal/<id>.cif` can only 404 for those four pairs, which is the pose
+page's crystal overlay for bench04 to bench07.
+
+Caught by `test_the_bundle_carries_every_assembly_the_atlas_references`,
+which exists because F196 found the overlay dead in production.
+
+**What removed them is not established, and I am not going to guess twice in
+one day.** Nothing in the project deletes a published crystal: the build
+clears `OUT` and rewrites it, and `tools/clean_sync_conflicts.py` cannot
+touch these names, because its pattern wants " <digits>." immediately before
+the final extension and these end `.cif.gz`. The honest summary is that the
+build wrote seven, four are absent, and the only process known to mutate
+this directory behind the build is the one F173 and F186 recorded.
+
+If that is the same mechanism, it is worse than F173 described: additions
+were the known symptom and these are removals.
+
+### The guard that is missing
+
+Both of today's new checks look for files that should not be there: the
+build's own `unexpected` scan (F303) and the deploy script's conflict
+refusal. Neither looks for files that should be there and are not. The suite
+does, and the suite does not run between a rebuild and an rsync, which is
+F304's lesson for the third time.
+
+Deferred rather than written now. `tools/run_chain.sh` is executing and
+F308 is two hours old: editing `deploy/deploy.sh` is safe because bash has
+not opened it yet, and editing `deploy/build_atlas.py` would change
+behaviour inside the refresh currently running. The chain is about to
+rebuild the atlas anyway, which republishes all seven, and whether they
+survive that is the measurement worth having before adding a guard.

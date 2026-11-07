@@ -337,8 +337,10 @@
     <table class="ntable">
       <thead><tr>
         <th scope="col">Pair</th><th scope="col">Deposition</th>
-        <th scope="col">Glue</th><th scope="col">Receptor</th>
-        <th scope="col">Substrate</th><th scope="col">Total dSASA</th>
+        <th scope="col">Glue</th>
+        <th scope="col">Receptor, A&sup2;</th>
+        <th scope="col">Substrate, A&sup2;</th>
+        <th scope="col">Total dSASA, A&sup2;</th>
         <th scope="col">Percentile</th>
       </tr></thead>
       <tbody>
@@ -350,7 +352,7 @@
               <td class="mono">{{ row.glue_ccd }}</td>
               <td class="mono">{{ row.dsasa_receptor|round(1) }}</td>
               <td class="mono">{{ row.dsasa_peptide|round(1) }}</td>
-              <td class="mono">{{ row.dsasa_total|round(1) }} A&sup2;</td>
+              <td class="mono">{{ row.dsasa_total|round(1) }}</td>
               <td class="mono">{{ row.bridge_percentile }}</td>
             {% elif not row.measurable %}
               <td colspan="5"><span class="flag flag--pending">not measurable</span>
@@ -376,8 +378,10 @@
       <table class="ntable">
         <thead><tr>
           <th scope="col">Pair</th><th scope="col">Substrate as</th>
-          <th scope="col">Seeds</th><th scope="col">Receptor</th>
-          <th scope="col">Substrate</th><th scope="col">Total</th>
+          <th scope="col">Seeds</th>
+          <th scope="col">Receptor, A&sup2;</th>
+          <th scope="col">Substrate, A&sup2;</th>
+          <th scope="col">Total, A&sup2;</th>
           <th scope="col">Total / crystal</th>
         </tr></thead>
         <tbody>
