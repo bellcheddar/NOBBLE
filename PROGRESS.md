@@ -1,6 +1,6 @@
 # NOBBLE progress
 
-Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T10:08:46Z.
+Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T10:34:03Z.
 
 ## Gate G6 answered: the headline is a negative result, and publication is held
 
@@ -217,12 +217,12 @@ Three claims recorded before their stages finish, scored mechanically by
 `tools/check_registered.py` and summarised by `bash tools/status.sh`. The
 scorer exits non-zero only when one is wrong.
 
-| Finding | Claim | Needs | Verdict today |
+| Finding | Claim | Needs, and what writes it | Verdict today |
 |---|---|---|---|
 | F251 | *withdrawn*: tier 2 is ternary-only, so Delta-ipTM has no binary term there and assembling one across tiers is the bias D-NOB-032 forbids | nothing | withdrawn, replaced by F254 |
-| F254 | refinement does not change bridge formation (noise), which needs only the ternary structure | `scores_tier2.jsonl` | not yet testable |
-| F252 | the design scan's most sensitive position falls in {5, 6, 7}, which carry four or more CRBN contacts | the scan's `scan_profile.json` | not yet testable |
-| F253 | no Tier B pair bridges in 8 of 10 seeds while its own scramble bridges in 2 or fewer | Tier B's `scores.jsonl` | not yet testable |
+| F254 | refinement does not change bridge formation (noise), which needs only the ternary structure | `scores_tier2.jsonl`, written by `tools/tier2.sh` after the runner. The bench06 failures do not stop it: no `set -e`, the runner's code is carried to the end (F195) | not yet testable |
+| F252 | the design scan's most sensitive position falls in {5, 6, 7}, which carry four or more CRBN contacts | the scan's `scan_profile.json`, written by `tools/run_design.sh` after scoring, which it skips only if scoring itself fails (F194) | not yet testable |
+| F253 | no Tier B pair reaches a bridge rate of 0.8 while its own scramble stays at 0.2 or below | Tier B's `scores.jsonl`, scored by `tools/run_chain.sh` stage 4b. `bridge_formation_rate` needs no crystal: all 120 Sievers pairs carry one | not yet testable |
 
 Outstanding: `tools/run_chain.sh` calls `check_prediction.py` for F13's two
 and does not call this one, because the chain was executing when it was
