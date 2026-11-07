@@ -56,8 +56,13 @@ def test_it_reports_whether_any_input_is_stale():
     """Why the atlas build refuses, stated before it refuses."""
     out = _provenance()
     assert "stale inputs" in out, out
+    # Three legitimate answers, and "unknown" is one of them: the
+    # featurisation comparison reads structures off disk and can fail, and a
+    # failure that printed as "nothing to refuse" would be the F216 mistake
+    # pointed at the operator.
     assert ("the atlas build refuses" in out
-            or "nothing to refuse" in out), out
+            or "nothing to refuse" in out
+            or "whether the build refuses is unknown" in out), out
 
 
 def test_it_reports_both_design_targets():
@@ -141,3 +146,44 @@ def test_the_recomputed_cost_count_reaches_the_report():
         "provenance computes the atlas drift and drops the recomputed count"
     )
     assert "recomputed from new timings" in source
+
+
+def test_it_does_not_promise_a_clean_build_while_the_build_would_refuse():
+    """Two lines of one report disagreed about whether the build refuses.
+
+    `stale inputs none; the atlas build has nothing to refuse` sat two lines
+    above `the rebuild refused: ... the cached featurisation does not match
+    the YAML`. The line was computed from `stale_inputs` alone, which
+    compares the YAML against the queue row, while the build also compares
+    the cached featurisation against the YAML (F219). Once the fifteen
+    bench02 YAMLs were corrected the first went clean and the second did
+    not, so the report asserted the opposite of its own next paragraph.
+
+    Checked against the featurisation rather than against a fixed string, so
+    it keeps working once the correction has run and the answer flips.
+    """
+    import importlib.util
+
+    out = _provenance()
+
+    spec = importlib.util.spec_from_file_location(
+        "stale_featurisation", ROOT / "tools" / "stale_featurisation.py")
+    featurisation = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(featurisation)
+
+    sys.path.insert(0, str(ROOT))
+    from nobble.execute.campaign import latest
+
+    campaign = latest("campaign") or latest("benchmark")
+    if campaign is None:
+        pytest.skip("no campaign assembled")
+
+    folded = featurisation.disagreements(campaign)
+    if folded:
+        assert "nothing to refuse" not in out, (
+            f"{len(folded)} job(s) were folded from a superseded input, so "
+            "the build refuses, and the report says it has nothing to "
+            f"refuse:\n{out}")
+        assert "folded from a superseded input" in out, out
+    else:
+        assert "folded from a superseded input" not in out, out

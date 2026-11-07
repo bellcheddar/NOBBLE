@@ -33,13 +33,45 @@ else:
 
     print(f"   model         {software.provenance_line(meta.get('software'))}")
 
+    # Both of the build's input checks, because this line claims to say
+    # whether the build will refuse and there are two ways it can.
+    #
+    # `stale_inputs` compares the YAML against the queue row. The build also
+    # compares the cached featurisation against the YAML (F219), and those
+    # find different things: once the fifteen bench02 YAMLs were corrected,
+    # the first went clean while the second still disagreed on every one of
+    # them. This line read "none; the atlas build has nothing to refuse" two
+    # lines above the build's own refusal, in the same report, which is F218
+    # again: a guarantee printed about a check that was not the one being
+    # claimed.
     stale = inputs.stale_inputs(campaign)
+    try:
+        sys.path.insert(0, "tools")
+        import stale_featurisation as featurisation
+
+        folded = featurisation.disagreements(campaign)
+    except Exception:                               # noqa: BLE001
+        # Unknown, not clean. A failed comparison read as agreement is the
+        # F216 mistake, and this file would make it in the direction that
+        # tells the operator everything is fine.
+        folded = None
+
     if stale:
         pairs = sorted({r["pair_id"] for r in stale if r.get("pair_id")})
         print(f"   stale inputs  {len(stale)} job(s) across {pairs}: the atlas "
               "build refuses while this holds")
+    elif folded:
+        pairs = sorted({row["job_id"].split("__")[0] for row in folded})
+        print(f"   stale inputs  none against the queue, but {len(folded)} "
+              f"job(s) across {pairs} were folded from a superseded input: "
+              "the atlas build refuses on that (F219)")
+    elif folded is None:
+        print("   stale inputs  none against the queue; what was actually "
+              "folded could not be checked, so whether the build refuses is "
+              "unknown rather than no")
     else:
-        print("   stale inputs  none; the atlas build has nothing to refuse")
+        print("   stale inputs  none, and nothing was folded from a "
+              "superseded input; the atlas build has nothing to refuse")
 
     superseded = inputs.superseded_substrates(campaign)
     if superseded:
