@@ -106,8 +106,12 @@ def test_the_deploy_refuses_rather_than_defaulting():
 
 def test_the_shapes_catch_a_planted_example(tmp_path):
     """The patterns are checked against text, so they can silently narrow."""
+    # Assembled rather than written out. A planted example spelled in full
+    # is a tracked file matching a credential shape, so the first version of
+    # this file failed its own sweep: the private-key marker in the dict
+    # below was the match.
     planted = {
-        "private key block": "-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n",
+        "private key block": "-----BEGIN OPENSSH PRIVATE " + "KEY-----\nabc\n",
         "github token": "token = ghp_" + "a" * 36,
         "aws access key id": "AKIA" + "A" * 16,
         "credential-shaped assignment": 'api_key = "' + "x" * 24 + '"',

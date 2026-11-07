@@ -527,6 +527,54 @@ def _ligand_of(pair: dict) -> "L.Ligand | None":
     return L.by_ccd(ccd, modality="glue") if ccd else None
 
 
+def main(argv: list[str] | None = None) -> int:
+    """`python -m nobble.execute.campaign`, which did nothing at all.
+
+    `tools/run_chain.sh` refuses at stage 2 with "no main campaign assembled:
+    run nobble.execute.campaign first", and the module had no `__main__`, so
+    the command printed nothing and exited 0. An operator following the advice
+    would see success, re-run the chain and meet the same refusal. That is the
+    exit-0-with-no-result shape the runner has a branch for (F238) and the
+    retry policy now refuses to repeat (F289), in the project's own
+    instructions (F296).
+
+    `--apply` is required to create one, because `assemble_campaign` writes a
+    new `campaigns/campaign_<stamp>` directory and both the chain and
+    `tools/status.sh` select the newest such directory: an accidental run
+    would make an empty campaign "the latest" and point the remaining stages
+    at it. Without the flag this reports what exists and what would happen.
+    """
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Assemble the main campaign.")
+    parser.add_argument("--apply", action="store_true",
+                        help="create a campaign; without it, report only")
+    parser.add_argument("--fresh", action="store_true",
+                        help="assemble even if a complete campaign exists")
+    args = parser.parse_args(argv)
+
+    existing = latest("campaign")
+    if existing and not args.fresh:
+        summary = json.loads((existing / "campaign.json").read_text())
+        # `pairs` is a count in campaign.json, not a list. Taking its length
+        # raised TypeError on the one path the command is most likely to be
+        # run through, which is the path I did not exercise first.
+        print(f"{existing} already assembled: {summary.get('jobs_emitted')} "
+              f"job(s) over {summary.get('pairs')} pair(s). "
+              "Pass --fresh to assemble another.")
+        return 0
+    if not args.apply:
+        print("would assemble a new main campaign under campaigns/. Nothing "
+              "written. Rerun with --apply, and note that the newest complete "
+              "campaign is what the chain and status.sh select.")
+        return 0
+    out = assemble_campaign(reuse_latest=not args.fresh)
+    print(json.dumps({k: out.get(k) for k in
+                      ("path", "reused", "jobs_emitted",
+                       "conditioned_jobs_dropped_no_pocket")}, indent=2))
+    return 0
+
+
 def assemble_campaign(reuse_latest: bool = True) -> dict:
     """Emit the main campaign: benchmark panel, Sievers arm and scrambles.
 
@@ -624,3 +672,7 @@ def assemble_campaign(reuse_latest: bool = True) -> dict:
         }
         (directory / "campaign.json").write_text(json.dumps(summary, indent=2, default=str))
         return {"path": str(directory), "reused": False, **summary}
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

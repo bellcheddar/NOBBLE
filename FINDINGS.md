@@ -14158,3 +14158,55 @@ The lesson I actually take is narrower than "read the findings". It is that a
 sweep is worth less than the test it should have left behind, and F128
 produced both a sweep and a test but only for the half that had failed. The
 half that was clean got a sentence.
+
+## F296
+
+The command the chain tells you to run did nothing and said so with exit 0.
+
+Applying F295's lesson, I turned F250's function sweep into a test rather than
+running it a third time. It failed on `assemble_campaign`: nothing in code,
+scripts, README or CLAUDE.md names the function that builds the main campaign,
+the central artefact of the project.
+
+`tools/run_chain.sh` stage 2 does not assemble. It refuses:
+
+```
+no main campaign assembled: run nobble.execute.campaign first
+```
+
+And `nobble/execute/campaign.py` had no `__main__` block, so `python -m
+nobble.execute.campaign` printed nothing and exited 0. An operator following
+the instruction would see success, re-run the chain, and meet the same
+refusal. That is the exit-0-with-no-result shape the runner has a branch for
+(F238) and the retry policy now refuses to repeat (F289), sitting in the
+project's own advice.
+
+The module has an entry point now, and writing needs `--apply`:
+`assemble_campaign` creates a new `campaigns/campaign_<stamp>` directory, and
+both the chain and `status.sh` select the newest complete one, so an
+accidental run would make an empty campaign "the latest" and point the
+remaining stages at it. That is the hazard F265's comment named when it
+explained why regeneration could not simply call the assembler. Without the
+flag the command reports what exists; with `--fresh` and no `--apply` it says
+what it would do and writes nothing, which is verified by a test counting the
+campaign directories either side.
+
+Three mistakes of mine in two hundred lines, all the same kind.
+
+The guard that appends the entry point was `if '__main__' not in t`, and my
+own new docstring mentions `__main__`, so it never appended. The module
+reported success and did nothing, which is the defect I was fixing. It now
+matches the pattern at the start of a line rather than the bare word.
+
+The default path then raised `TypeError`: `campaign.json`'s `pairs` is a
+count and I took its length. It is the path the command is most likely to be
+run through, and the one I exercised last.
+
+And the credential test from F295 failed its own sweep, because its planted
+private-key example was a tracked file containing a private-key marker. The
+examples are assembled from parts now, so the pattern is still exercised and
+the file no longer matches it.
+
+That is the fifth text-matching slip today, after F260, F263, F286 and F287. In
+four of the five the pattern matched something I had not looked at; in this one
+it matched something I had just written.
