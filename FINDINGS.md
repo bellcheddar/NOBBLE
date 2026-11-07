@@ -13851,3 +13851,48 @@ sentence is about which directory is read.
 Five places from one habit. The phrase was always shorthand, and shorthand is
 fine until the two things it elides come apart, which they did the moment
 publication was held.
+
+## F289
+
+A clean exit with no result is not retried, on the project's own reasoning
+about timeouts.
+
+The runner retries once. F100 made the budget per job rather than per attempt,
+and its comment gives the reason a timeout is not retried: re-running an
+identical command against an identical input "is the one retry guaranteed to
+end the same way, because nothing about it changed".
+
+That argument applies verbatim to a job which exits 0 and writes no confidence
+JSON, and the branch was retrying anyway. An exit code of 0 is Boltz saying it
+finished: there is no transient fault for a second attempt to get past. A
+crash is a different case, may well be transient, and still gets its one
+retry.
+
+The measurement, from the only pair that reaches this branch:
+
+```
+bench06 refinements   6 jobs   12 attempts   0 successes
+durations             9,440 to 9,602 s, every one inside 1.7 per cent of 9,513
+```
+
+Each job spent the second half of its budget reproducing the first half's
+outcome. On the ten queued that is about thirteen hours of the twenty-six they
+cost, and the ten were already known waste: D-NOB-082 let them run because
+nothing written to disk reaches a runner that read its queue once, and killing
+it would strand the Sievers refinements F253 and F254 depend on.
+
+So this changes nothing about the run in flight. The module is loaded, as F268
+records, and the remaining four bench06 jobs will each take their two
+attempts. It changes the cost of the next run, and of any pair that reaches
+this branch later.
+
+What would argue the other way is a transient instance: one job of this class
+that failed once and succeeded on its retry. Twelve attempts on one pair is
+the whole of the evidence, and it is one pair, so the finding states that
+rather than claiming a general law. If a second pair ever reaches this branch
+and its retry succeeds, this is the decision to revisit.
+
+Mutation-checked by putting the retry back, which the new test catches. The
+first version of that test built the job dict by hand, left out `seed`, and
+failed in the command builder before reaching the branch at all, so it now
+uses the shape `test_unused_affordances.py` already had for this.

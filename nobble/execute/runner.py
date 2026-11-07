@@ -430,7 +430,22 @@ def run_job(job: dict, campaign: Path, settings: dict) -> JobOutcome:
                 said = (stderr or stdout or "").strip().splitlines()
                 tail = " | ".join(said[-3:])[:300] if said else "and said nothing"
                 detail = f"exit 0 but {reason}: {tail}"
-                continue
+                # Not retried, for F100's reason about timeouts: re-running an
+                # identical command against an identical input is the one
+                # retry guaranteed to end the same way, because nothing about
+                # it changed. An exit code of 0 is Boltz saying it finished,
+                # so this is not a transient fault that a second attempt
+                # might get past; a crash is, and the branch below still
+                # retries one.
+                #
+                # Measured on the only pair that reaches this: bench06's
+                # 1,223-token refinements, six jobs at two attempts each,
+                # twelve attempts and no success, with every duration inside
+                # 1.7 per cent of 9,513s. The retry spends the second half of
+                # each job's budget to reproduce the first half's outcome,
+                # about thirteen hours of the twenty-six those ten jobs cost
+                # (F289).
+                break
             return JobOutcome(
                 job_id=job_id, status="done", seconds=seconds, tokens=job["tokens"],
                 output_dir=str(output_dir), confidence=confidence, affinity=affinity,
