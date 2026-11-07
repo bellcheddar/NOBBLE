@@ -13027,3 +13027,46 @@ orderings rather than presence, and an unreachable statement still has an
 index, so they are weaker than a parse and stronger than a grep. Recorded
 rather than rewritten: the mutation that would defeat them is a reordering,
 which is not the mutation anyone makes by accident.
+
+## F273
+
+Nothing in the suite noticed when the atlas build stopped refusing.
+
+F272's sweep moved on from today's changes to the guard that matters most.
+`deploy/build_atlas.py` refuses to publish when the cached featurisation
+disagrees with the YAML, which is F219's guard and the reason the atlas has
+not built for two days. Replacing `if folded:` with `if False:` is caught by
+nothing.
+
+The danger was already documented. `tools/mutate.py`'s docstring records a
+hand-rolled loop that removed this exact refusal, after which "the test that
+then ran rebuilt the published atlas from a campaign with 54 of 2360 jobs
+scored". So the mutation had happened, the consequence was known, and no test
+had been written for it.
+
+Two things made it invisible. The surviving tests assert that the builder
+*refuses*, by running it, and with any one refusal removed the next one
+refuses instead: today the F266 check I added this morning would refuse in
+F219's place, so a test of "does it refuse" passes for the wrong reason.
+Meanwhile the tests that name F219 assert on the message text, which
+`if False:` leaves exactly where it was.
+
+`tests/test_the_publish_refusals_are_reachable.py` names each refusal by the
+expression it tests and asserts, from the parse tree, that the branch exists
+and returns a non-zero code. Named individually rather than counted, because a
+count passes when one refusal is deleted and another duplicated. It also holds
+two properties the originals did not state: that at least two branches refuse
+on the check being *unable to run* rather than on the campaign being wrong,
+which is F216 and F218's shared mistake, and that every refusal sits before
+`shutil.rmtree(OUT)`, since a refusal after the output directory is cleared
+would leave no atlas at all, which is worse than either outcome the refusal
+chooses between.
+
+Four mutations now caught: each of the three conditions replaced by a
+constant, and F219's refusal returning 0 instead of 1.
+
+The general lesson is about guards in series. Three refusals in a row give the
+comfortable impression of depth, and they do give depth against the campaign
+being wrong. Against a mistake in the guards themselves they are the opposite:
+each one masks the absence of the others, and the test that proves the gate
+works proves only that something in it does.
