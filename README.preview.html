@@ -345,6 +345,16 @@ what it says.</p>
   within 3 A at a median of 2.494 A, against none and 17.54 A for the 15-mers.
   So the recovery failure belongs to an input representation rather than to
   the method, and the atlas is built from the campaign where it fails.</li>
+<li><strong>The primary signal is right against crystals, on the same arm.</strong> Spec
+  4.1's score is a bridge geometry, and it had only ever been checked against
+  its own output. Run on the seven deposited ternaries instead, it finds the
+  bridge in six of six that model their glue; the seventh, 6BNB, is titled as
+  a PROTAC complex and contains no PROTAC, so it cannot be asked. With the
+  substrate supplied as its folded domain the measured buried area lands
+  within 5 per cent of the deposited area on all six. With a 15-mer the glue
+  still sits correctly in the E3 pocket and the substrate side collapses, so
+  CDK12's bridge rate of zero is the representation rather than a blind
+  filter. <code>tools/bridge_on_crystals.py --against-predictions</code>.</li>
 <li><strong>Neither result is prospective.</strong> All seven benchmark depositions predate
   the model's 2021-09-30 training cutoff, so the time-split layer reports no
   blind set at all. The failure is therefore not explained by novelty, which
