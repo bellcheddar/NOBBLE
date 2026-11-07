@@ -10376,3 +10376,54 @@ opposite direction.
 
 **Unchanged:** F132 is still Marc's to run, since the ssh is not mine. What
 changed is that reading it is no longer the only check on it.
+
+## F224. The bundle on disk is one no current guard would produce
+
+`deploy/atlas` holds the 158-pair bundle, 30 `bench02_BRD4_VHL` structures
+among them, written at 2026-11-06T23:01:38Z by the chain's refresh stage. The
+two guards that would now stop it landed after that:
+
+```
+23:01:38Z  the bundle was written
+23:38:48Z  F218's provenance allow-list on published SMILES
+00:27:48Z  the featurisation comparison the build refuses on (F219)
+```
+
+So the local bundle was built by code that had neither check, from a campaign
+whose bench02 poses hold the hydroxyproline, and its build log says
+`verified: no PROTAC-DB chemistry in the published bundle`, which is the
+unconditional sentence F218 replaced. Nothing is wrong with the bundle that
+was not already wrong with the campaign; the point is that it is on disk, it
+looks like output, and a rebuild of it refuses.
+
+**What keeps it off the site, checked rather than assumed.** Both gates were
+run:
+
+```
+tools/publication_hold.py   exit 2   held by D-NOB-076
+tools/atlas_drift.py        exit 1   the rebuild refused (F219)
+```
+
+`deploy/deploy.sh` asks the hold first, before it opens a connection, and asks
+the drift gate at line 159, which is before the atlas rsync at line 170 and
+not after it. Either one alone would stop the deploy. That ordering is the
+thing worth having verified, because the code rsync does run first and a
+reader skimming the script could reasonably think the atlas goes with it.
+
+**Also checked:** both watchdogs are alive, one armed by `run_chain.sh` over
+the whole queue and one by `tools/tier2.sh` over tier 2, each a `sleep 600`
+parented to its own script, with no verdict in four and a half hours. An
+armed watchdog that is not running is the same class of claim as a verified
+build that was not verified, and `pgrep` for the module name finds nothing
+either way, because between polls there is no Python process to find.
+
+**A timezone slip, for the third time this session.** I read the two commit
+times with `git log --date=format-local` and a literal `Z` in the format
+string, which prints local time wearing a UTC label, and concluded the fixes
+landed two hours before the chain's correction stage rather than two hours
+after. The order mattered: it is the difference between "the chain ran the
+corrected code and the correction still did not take", which would be a new
+defect, and "the chain ran the old code", which is F219 behaving exactly as
+recorded. `%ct` and an explicit conversion settle it. The rule that keeps
+being relearned is that a timestamp should carry its own offset, not a letter
+I appended.

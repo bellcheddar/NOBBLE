@@ -94,3 +94,37 @@ def test_the_fingerprint_sources_are_all_rsynced():
             else:
                 assert not relative.startswith(bare + "/"), \
                     f"{relative} is hashed and excluded by {pattern}"
+
+
+def test_the_drift_gate_is_asked_before_the_atlas_is_sent():
+    """The order is what makes the gate a gate.
+
+    `deploy.sh` rsyncs the application code first, excluding
+    `deploy/atlas/`, and sends the atlas in a second rsync further down.
+    Between them it asks `tools/atlas_drift.py` whether the published bundle
+    is what the current code builds, and exits 1 if not. A reader skimming
+    the script sees an rsync above the gate and could reasonably conclude
+    the bundle has already gone; it has not, and this pins that.
+
+    It matters now rather than in principle: `deploy/atlas` holds a bundle
+    built before the featurisation guard existed, so the rebuild refuses and
+    `atlas_drift.py` exits 1 (F224). The gate is the thing standing between
+    that bundle and the site, alongside the publication hold.
+    """
+    gate = DEPLOY.index("tools/atlas_drift.py")
+    atlas_rsync = DEPLOY.index("deploy/atlas/ \"$DROPLET_SSH:")
+    assert gate < atlas_rsync, (
+        "the atlas is sent before the drift gate is asked, so a bundle the "
+        "current code would refuse to build can still reach the site")
+
+    # And the code rsync above it does not carry the atlas with it.
+    code_rsync = DEPLOY.index("==> sync application code")
+    assert code_rsync < gate
+    assert "--exclude 'deploy/atlas/'" in DEPLOY[code_rsync:gate]
+
+
+def test_the_hold_is_asked_before_anything_opens_a_connection():
+    """A held atlas should not reach the droplet at all, not even to look."""
+    hold = DEPLOY.index("tools/publication_hold.py")
+    for outbound in ("rsync -rlpt", "==> sync application code"):
+        assert hold < DEPLOY.index(outbound), outbound

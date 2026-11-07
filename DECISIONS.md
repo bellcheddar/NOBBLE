@@ -2506,3 +2506,15 @@ rule that D-NOB-077 and `tools/wait_for_gpu.sh` exist to enforce.
 `bash tools/run_queue.sh --campaign campaigns/campaign_20261104T004632Z`,
 then `tools/stale_featurisation.py` to confirm it took, which is the check
 that did not exist the first time.
+
+**And then `bash tools/refresh.sh campaigns/campaign_20261104T004632Z`**,
+which is the step these instructions were missing. The re-run writes poses and
+nothing else: the fifteen jobs' score rows were dropped by the correction, the
+validation layers were computed over the old poses, and `deploy/atlas` holds a
+bundle written at 23:01:38Z on 6 November that includes thirty bench02
+structures folded with the hydroxyproline (F224). `refresh.sh` is the chain's
+own stage 2 entry point and does all three in order, so the sequence is one
+command rather than three remembered ones. Stopping after the featurisation
+check leaves a campaign whose poses are corrected and whose published figures
+are not, which is a worse state than the one being fixed, because every guard
+reads as satisfied.
