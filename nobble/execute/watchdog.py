@@ -209,6 +209,76 @@ def stall_report(campaign: Path, tier: int = 1, now: float | None = None,
     # the middle one. `finite` rather than truthiness, because a NaN is truthy
     # (F130).
     typical_rate = rates[len(rates) // 2] if rates else None
+
+    # And the same rate banded by job size, because one rate is not a
+    # property of the model.
+    #
+    # The comment above says the per-token yardstick means "a large job is
+    # not called overdue for being large". A flat per-token rate does not
+    # deliver that: seconds per token rises with size, so dividing by tokens
+    # removes the linear part and leaves the rest. Measured on this
+    # campaign's tier 2, the jobs at 400 tokens or more run at 2.953 s/token
+    # against 2.237 for the rest, so a 1,223-token job is "expected" at
+    # 2,736s and called overdue at 8,208s while a legitimate attempt takes
+    # over 5,000s and its retry pushes the total past the line (F233).
+    #
+    # This is F45 and F225 a third time, and `thresholds.toml` already says
+    # it in words beside `token_bands`, which `projected_hours` already uses.
+    # Same bands, same config, so there is one definition of a job size in
+    # the project rather than two.
+    bands = [float(edge) for edge
+             in paths.thresholds()["throughput"]["token_bands"]]
+
+    def _band_of(token_count: float) -> int:
+        for index, edge in enumerate(bands):
+            if token_count < edge:
+                return index
+        return len(bands)
+
+    banded: dict[int, list[float]] = {}
+    for row in records.values():
+        if row.get("status") not in TERMINAL:
+            continue
+        if not (finite(row.get("seconds")) and finite(row.get("tokens"))
+                and row["seconds"] > 0 and row["tokens"] > 0):
+            continue
+        banded.setdefault(_band_of(float(row["tokens"])), []).append(
+            float(row["seconds"]) / float(row["tokens"]))
+    band_rate = {index: sorted(values)[len(values) // 2]
+                 for index, values in banded.items()}
+
+    # For tier 2 there is a better yardstick than any rate: the same job's
+    # own tier-1 time, times the refinement factor this campaign measured.
+    #
+    # A tier-2 job is the same input at different settings, so its tier-1
+    # time is a measurement of that exact molecule rather than of jobs its
+    # size. On the job this was found with, bench06 at 1,223 tokens: tier 1
+    # took 902s, the measured factor is 4.614, so the expectation is 4,162s
+    # against an attempt that actually ran about 5,040s. The flat median said
+    # 2,736s, which at the configured multiple put the overdue line at 8,208s
+    # and would have flagged the job while its retry was still inside its
+    # budget. The scaled line is 12,486s and does not (F233, F235).
+    tier1_seconds: dict[str, float] = {}
+    refinement_factor = None
+    tier2_suffix = ""
+    if tier == 2:
+        from nobble.execute import budget as budget_module
+
+        tier1_results = campaign / "results.jsonl"
+        if tier1_results.exists():
+            for row in paths.read_jsonl(tier1_results, tolerate_torn=True):
+                if (row.get("status") in TERMINAL
+                        and finite(row.get("seconds")) and row["seconds"] > 0):
+                    tier1_seconds[row["job_id"]] = float(row["seconds"])
+        refinement_factor = budget_module.measured_scaling(campaign)["factor"]
+        # From budget, where the suffix is defined, rather than guessed here.
+        # The first version of this looked for it on `runner` behind a
+        # hasattr guard, which is always false, so the lookup below would
+        # have used the tier-2 job id against tier-1 records, found nothing,
+        # and silently fallen back to the rate it was replacing: the
+        # correction would have reported itself as working and changed
+        # nothing, which is F218's shape and F232's fourth instance.
+        tier2_suffix = budget_module.TIER2_SUFFIX
     multiple = float(paths.thresholds()["watchdog"]["overdue_multiple"])
     timeouts = _timeouts_by_job(queue)
     default_bound = hard_bound_seconds(tier)
@@ -237,11 +307,34 @@ def stall_report(campaign: Path, tier: int = 1, now: float | None = None,
                 tier, timeouts.get(job_id))):
             entry = dict(entry, bound_seconds=round(job_bound, 1))
             report["stalled"].append(entry)
-        elif typical_rate is not None and tokens.get(job_id):
-            expected = typical_rate * tokens[job_id]
+        elif tokens.get(job_id):
+            # The job's own band where this campaign has finished something
+            # that size, and the campaign-wide median where it has not. Which
+            # one was used is recorded, because a rate borrowed from a
+            # different size is the thing being corrected here and a reader
+            # comparing an overdue verdict against the clock needs to know
+            # the yardstick was not measured at that size (F74).
+            band = _band_of(float(tokens[job_id]))
+            own_tier1 = (tier1_seconds.get(job_id.removesuffix(tier2_suffix))
+                         if tier2_suffix else None)
+            if refinement_factor and own_tier1:
+                expected = own_tier1 * refinement_factor
+                basis = (f"this job's own tier-1 time {own_tier1:.0f}s times "
+                         f"the measured refinement factor {refinement_factor}")
+            else:
+                rate = band_rate.get(band)
+                basis = f"median of this campaign's finished band-{band} jobs"
+                if rate is None:
+                    rate, basis = typical_rate, (
+                        f"campaign-wide median: no finished job in band "
+                        f"{band}, so no rate measured at this size")
+                if rate is None:
+                    continue
+                expected = rate * tokens[job_id]
             if elapsed > multiple * expected:
                 report["overdue"].append(
-                    dict(entry, expected_seconds=round(expected, 1))
+                    dict(entry, expected_seconds=round(expected, 1),
+                         rate_basis=basis)
                 )
     return report
 

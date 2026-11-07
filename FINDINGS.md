@@ -11000,3 +11000,46 @@ actually relying on, never depended on this bound, and the live job sits at
 about 5,800 seconds against 39,720 either way. But I was reading a detector
 whose headline verdict was calibrated to a runner that changed five findings
 ago.
+
+## F235. The overdue yardstick divided by tokens and called that size-corrected
+
+`stall_report`'s comment says the yardstick is "the campaign's own completed
+work, per token, so a large job is not called overdue for being large".
+Dividing by tokens removes the linear part of the cost and leaves the rest,
+and the rest is not small: on this campaign's tier 2, jobs of 400 tokens or
+more run at 2.953 s/token against 2.237 for the others.
+
+So a 1,223-token job was "expected" at 2,736 seconds and overdue at three
+times that, 8,208. bench06's first attempt ran about 5,040 seconds
+legitimately before crashing, and with its retry the job passes 8,208 while
+doing exactly what it should. The verdict was about to be wrong on the only
+job in the campaign that has ever needed a retry.
+
+This is F45 and F225 for the third time, and `thresholds.toml` already states
+it in words beside `token_bands`, which `projected_hours` already uses.
+
+**Two fixes, in order of preference.**
+
+The rate is now banded by the job's own token band, same bands and same
+config, so there is one definition of a job size in the project rather than
+two. Where a band has no finished job the campaign-wide median is used and
+the entry records `rate_basis` saying no rate was measured at this size,
+because a yardstick borrowed from another size is the thing being corrected.
+
+Better than any rate, for tier 2: the job's own tier-1 time times the
+refinement factor this campaign measured. A tier-2 job is the same input at
+different settings, so its tier-1 time measures that molecule rather than
+jobs its size. For bench06 that is 902 seconds times 4.614, giving 4,162
+against an attempt that really ran about 5,040. The flat median was 46 per
+cent under; this is 21 per cent under, and it moves the overdue line from
+8,208 to 12,486, which the retried job does not cross.
+
+**A near miss while fixing it.** The first version looked up `TIER2_SUFFIX`
+on `runner` behind a `hasattr` guard. It lives on `budget`, so the guard was
+always false, the lookup would have compared tier-2 job ids against tier-1
+records, found nothing, and fallen back silently to the rate it was
+replacing. The correction would have reported itself as working and changed
+nothing, which is F218's shape, and it is the fifth time this session that a
+convenient shortcut hid its own subject. Caught by printing the resolved
+yardstick for the live job rather than trusting that the branch was taken,
+which is the F232 rule applied to my own fix.

@@ -18,6 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from nobble import paths  # noqa: E402
 from nobble.execute import runner, watchdog  # noqa: E402
 
 TOKENS = 1287
@@ -172,3 +173,98 @@ def test_one_pathological_job_does_not_blunt_the_yardstick(tmp_path):
     assert [job["job_id"] for job in report["overdue"]] == ["live1"], (
         "the outlier raised the threshold and hid a genuinely overdue job"
     )
+
+
+def _tier2_campaign(tmp_path: Path, elapsed: float, now: float,
+                    *, small_tokens: int = 150, big_tokens: int = 1223,
+                    tier1_seconds: float = 902.0) -> Path:
+    """A tier-2 queue whose running job is far larger than anything finished.
+
+    Which is the real shape: of 149 finished tier-2 jobs the largest was 454
+    tokens and the running one is 1,223 (F233).
+    """
+    from nobble.execute import budget
+
+    campaign = tmp_path / "campaign_t2"
+    campaign.mkdir()
+    big = f"pairBig__ternary__unconstrained__seed1{budget.TIER2_SUFFIX}"
+    small = f"pairSmall__ternary__unconstrained__seed1{budget.TIER2_SUFFIX}"
+    (campaign / "queue_tier2.jsonl").write_text(
+        json.dumps({"job_id": small, "tokens": small_tokens, "pair_id": "pairSmall"}) + "\n"
+        + json.dumps({"job_id": big, "tokens": big_tokens, "pair_id": "pairBig"}) + "\n"
+    )
+    # A finished small refinement, giving both a rate and a factor.
+    (campaign / "state_tier2.jsonl").write_text(
+        json.dumps({"job_id": small, "status": "done",
+                    "seconds": small_tokens * 2.237, "tokens": small_tokens}) + "\n"
+        + json.dumps({"job_id": big, "status": "running",
+                      "started_at": now - elapsed}) + "\n"
+    )
+    (campaign / "results_tier2.jsonl").write_text(
+        json.dumps({"job_id": small, "status": "done",
+                    "seconds": small_tokens * 2.237}) + "\n")
+    # Tier-1 times for both, so the factor is measurable and the big job has
+    # a time of its own.
+    (campaign / "results.jsonl").write_text(
+        json.dumps({"job_id": small.removesuffix(budget.TIER2_SUFFIX),
+                    "status": "done", "seconds": small_tokens * 2.237 / 4.614}) + "\n"
+        + json.dumps({"job_id": big.removesuffix(budget.TIER2_SUFFIX),
+                      "status": "done", "seconds": tier1_seconds}) + "\n")
+    return campaign, big
+
+
+def test_a_large_refinement_is_priced_from_its_own_tier_one_time(tmp_path):
+    """A tier-2 job is the same input at different settings.
+
+    So its tier-1 time measures that exact molecule, where a per-token rate
+    measures other jobs of other sizes. On the job this was found with, tier 1
+    took 902s and the measured factor 4.614 gives 4,162s, against an attempt
+    that really ran about 5,040s; the flat median said 2,736s.
+    """
+    now = 1_793_772_308.0
+    campaign, big = _tier2_campaign(tmp_path, elapsed=6_600.0, now=now)
+    report = watchdog.stall_report(campaign, tier=2, now=now)
+
+    assert [job["job_id"] for job in report["running"]] == [big]
+    assert report["overdue"] == [], report["overdue"]
+    assert report["stalled"] == []
+
+
+def test_the_flat_median_would_have_flagged_it(tmp_path):
+    """The premise. If both yardsticks agreed, this would change nothing.
+
+    At 2.237 s/token a 1,223-token job is expected at 2,736s and overdue at
+    three times that, 8,208s. The job below is past that line and inside the
+    scaled one, so the two verdicts differ and the scaled one is the one that
+    matches what the job really takes.
+    """
+    now = 1_793_772_308.0
+    campaign, _ = _tier2_campaign(tmp_path, elapsed=9_000.0, now=now)
+    multiple = float(paths.thresholds()["watchdog"]["overdue_multiple"])
+    flat_line = multiple * 2.237 * 1223
+    assert 9_000.0 > flat_line, flat_line
+
+    report = watchdog.stall_report(campaign, tier=2, now=now)
+    assert report["overdue"] == [], (
+        "the flat per-token rate is still deciding the verdict")
+
+
+def test_a_refinement_with_no_tier_one_time_says_what_it_fell_back_to(tmp_path):
+    """Unknown yardstick, stated. A rate borrowed from a different size is
+    the thing being corrected, so a reader checking an overdue verdict
+    against the clock has to be told."""
+    now = 1_793_772_308.0
+    # Past the overdue line for the fallback rate (8,208s) and inside the
+    # stall bound (22,320s), because stalled is asked first and would never
+    # reach the branch under test.
+    campaign, big = _tier2_campaign(tmp_path, elapsed=10_000.0, now=now)
+    # Remove the big job's tier-1 row, leaving the small one so a factor
+    # is still measurable.
+    rows = [line for line in (campaign / "results.jsonl").read_text().splitlines()
+            if "pairBig" not in line]
+    (campaign / "results.jsonl").write_text("\n".join(rows) + "\n")
+
+    report = watchdog.stall_report(campaign, tier=2, now=now)
+    assert report["overdue"], report
+    basis = report["overdue"][0]["rate_basis"]
+    assert "no rate measured at this size" in basis, basis
