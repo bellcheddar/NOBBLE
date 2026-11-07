@@ -107,6 +107,24 @@ except Exception as e:
 "
 fi
 
+# The registered predictions, scored before the atlas rather than after.
+#
+# tools/run_chain.sh calls tools/check_prediction.py as its last stage, which
+# scores F13's two. The five registered since (F251, F252, F253, F254, F268)
+# had no caller in the chain at all, and the reason was mechanical: bash reads
+# a script incrementally, so run_chain.sh could not be edited while it was
+# executing. refresh.sh can, because the chain invokes it as a separate
+# process at stage 5, and that is the same moment in the run.
+#
+# Before the atlas block, because that block exits 1 when the build refuses
+# and it refuses today on F219 and F266. A verdict placed after it would not
+# print in exactly the runs where the refusal is expected.
+#
+# `|| true`: a prediction nobody can score yet is the normal state and must
+# not fail a refresh.
+echo "--- registered predictions"
+"$SCI" tools/check_registered.py --brief 2>&1 | sed 's/^/  /' || true
+
 # Publishing is opt-out, because scoring a secondary campaign to look at
 # it should not change what the public site serves. Running
 # `refresh.sh campaigns/corrected_...` to inspect a half-finished run

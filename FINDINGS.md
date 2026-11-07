@@ -12946,3 +12946,40 @@ The lesson is the one about denominators in a different coat. "Published"
 named two different things, a directory that is built and a host that is
 served, and I checked the one that was easy to read. The instrument for the
 second is a request to the site, which took one command and settles it.
+
+## F271
+
+My own guard checked 8 of 11 embedded Python blocks and claimed to check all
+of them.
+
+F260 added `tests/test_embedded_python_compiles.py` after a mis-indented
+heredoc removed the status page's gates section: `bash -n` validates the shell
+and treats embedded Python as opaque, so the file compiles every Python block
+in every script under `tools/` and `deploy/`, in both the `<<'PY'` heredoc
+form and the `python -c` form.
+
+Its `-c` pattern required the interpreter to be a literal path, `bin/python
+-c "`, because that is how `run_chain.sh` writes it. `refresh.sh` writes
+`"$SCI" -c "` and `deploy/check_beacon.sh` writes its own variable, so three
+blocks across two scripts were never compiled while the docstring said every
+script was covered.
+
+Found by using the guard rather than by reading it. Wiring the registered
+predictions into `refresh.sh` put me in that file, I noticed it calls Python
+through a variable, and the count came out 8 across 4 scripts where the
+scripts hold 11 across 6.
+
+The pattern now accepts either an interpreter path or a shell variable, and
+the test asserts three separate counts: three blocks in `status.sh`, three in
+`run_chain.sh`, two in `refresh.sh` for the variable form specifically, and a
+total of at least eleven across everything. A total matters because a pattern
+that narrows shows up as a smaller number rather than as silence, which is the
+failure this one had.
+
+All eleven compile.
+
+The shape is F258's and F259's again, one level up. A denominator makes a
+count checkable: "8 blocks found" says nothing on its own, and "8 of 11" says
+the thing immediately. The guard I wrote to catch unexercised code was itself
+unexercised in two files, and the fix is the same one I had just applied twice
+to other people's measurements.

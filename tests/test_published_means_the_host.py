@@ -94,6 +94,12 @@ def test_the_documents_describe_the_site_and_not_the_build():
             "the site serves the benchmark panel and PROGRESS no longer "
             "says so")
     else:
+        # Deliberately unreached while the hold stands, and
+        # tools/vacuous_tests.py reports it as such: the site serves the
+        # benchmark bundle, so this branch is the one that fires the first
+        # time a deploy changes that and the documents have not kept up.
+        # Said here because an untaken branch nobody has accounted for is
+        # the thing that report exists to surface.
         assert "benchmark bundle" not in readme.split(
             "## 📉 The main campaign")[-1], (
             f"the site now serves {served} and the README still says it "

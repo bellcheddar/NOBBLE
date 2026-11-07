@@ -25,7 +25,14 @@ HEREDOC = re.compile(r"<<-?'(PY|PYTHON)'\n(.*?)\n\s*\1\n", re.S)
 # Those matter more than the heredocs, not less: each chain stage runs behind
 # `|| true`, so a syntax error there fails the stage and the chain carries on
 # to the next one without the stage having done anything.
-DASH_C = re.compile(r'bin/python"? -c "\n(.*?)\n"', re.S)
+# The interpreter may be a literal path or a shell variable: run_chain.sh
+# writes `"$SENV/bin/python" -c "`, refresh.sh writes `"$SCI" -c "`, and the
+# first version of this pattern required the literal, so it checked 8 blocks
+# across 4 scripts and quietly skipped 3 across 2 while the docstring claimed
+# every script. Found by using the guard rather than by reading it (F271).
+DASH_C = re.compile(
+    r'(?:[\w./$"{}-]*python[\w./"]*|"?\$\{?[A-Za-z_][A-Za-z0-9_]*\}?"?)'
+    r' -c "\n(.*?)\n"', re.S)
 # A shell interpolation inside the Python is a value the shell substitutes
 # before python sees it, almost always a path in a string literal. Replaced
 # with a placeholder so the block parses as the shell will present it, rather
@@ -49,6 +56,9 @@ def _blocks(path: Path) -> list[tuple[int, str]]:
     for match in DASH_C.finditer(source):
         line = source[:match.start()].count("\n") + 1
         block = INTERPOLATION.sub("SHELL_VALUE", match.group(1))
+        # A `-c` body that is a single shell word is not Python at all, which
+        # is what `bash -c "..."` looks like. None exist today; the guard
+        # against a future one is that it has to compile as Python.
         # A `-c` block is a double-quoted shell string, so an escaped quote
         # inside it reaches python unescaped.
         out.append((line, block.replace('\\"', '"')))
@@ -87,6 +97,17 @@ def test_the_scan_finds_the_blocks_it_is_supposed_to_check():
     assert len(chain) >= 3, (
         f"found {len(chain)} embedded block(s) in run_chain.sh, so the "
         "`python -c` pattern has stopped matching")
+    # And the variable-interpreter form, which the first pattern missed.
+    refresh = _blocks(ROOT / "tools" / "refresh.sh")
+    assert len(refresh) >= 2, (
+        f"found {len(refresh)} embedded block(s) in refresh.sh, which calls "
+        'python as "$SCI" rather than by path: the pattern has narrowed again')
+    # Counted across everything, so a script that stops matching shows up as
+    # a smaller total rather than as silence.
+    total = sum(len(_blocks(path)) for path in _scripts())
+    assert total >= 11, (
+        f"{total} embedded block(s) across tools/ and deploy/, which is fewer "
+        "than were there when this was written: a pattern has narrowed")
 
 
 def test_a_mis_indented_block_is_caught():
