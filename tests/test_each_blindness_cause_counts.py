@@ -139,11 +139,34 @@ def test_blind_is_the_sum_of_its_three_causes(tmp_path):
                                  + seen["missing_yaml"]), (case, seen)
 
 
-def test_the_examples_name_the_blind_jobs(tmp_path):
+@pytest.mark.parametrize("case", ["missing_yaml", "no_cache",
+                                  "unreadable_cache"])
+def test_the_examples_name_the_blind_jobs(tmp_path, case):
     """A count without names cannot be acted on.
 
     The builder prints these, and an operator with "3 blind" and no job ids
     has to go and find them.
+
+    Parametrised over all three causes, because `blind` is the sum of the
+    three *counts* while `blind_examples` comes from a separate list that each
+    branch appends to. Dropping one append therefore changes only the
+    examples, and this test covered the `no_cache` branch alone, so removing
+    the append on the missing-YAML branch was caught by nothing: a job whose
+    YAML is gone would have been counted and not named (F277).
     """
-    seen = _campaign(tmp_path, "no_cache")
-    assert seen["blind_examples"] == ["j1"], seen
+    seen = _campaign(tmp_path, case)
+    assert seen["blind_examples"] == ["j1"], (case, seen)
+
+
+def test_every_blind_job_is_named(tmp_path):
+    """The identity between the count and the list, which is the real rule.
+
+    Asserted rather than left implicit, because the two are built separately:
+    a count that exceeds the names is a job the operator cannot find, and
+    names that exceed the count is a job counted as comparable while being
+    reported as blind.
+    """
+    for case in ("missing_yaml", "no_cache", "unreadable_cache", "no_output",
+                 "checked"):
+        seen = _campaign(tmp_path, case)
+        assert len(seen["blind_examples"]) == min(seen["blind"], 5), (case, seen)

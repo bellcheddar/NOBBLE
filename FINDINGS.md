@@ -13213,3 +13213,46 @@ times over. This test asserted a *set* of refusals and got the set wrong, so
 it was six tests short while reading as complete. Enumerating what exists,
 and asserting the count, is the same fix as the denominator: `_all_refusing
 _branches` returns nine, and a test that names five of them says so.
+
+## F277
+
+The blind count and the blind names are built separately, and only one of them
+was tested.
+
+`tools/stale_featurisation.coverage` reports `blind` as the sum of three
+counts and `blind_examples` from a separate list that each branch appends to.
+`deploy/build_atlas` refuses when `blind` is non-zero, because a job it could
+not compare might have been folded from a superseded input and nobody can say
+which.
+
+Fifth gate with the shape of F273 to F276, and this one has an extra wrinkle.
+Dropping a branch's `blind.append` does not change `blind` at all, because
+`blind` comes from the counts: it changes only the names. So the mutation that
+removes the append on the missing-YAML branch leaves the builder refusing with
+the right number and the wrong list, and a job whose YAML is gone would be
+counted and never named. The operator reads "3 blind" and cannot find the
+third.
+
+Each cause now has a fixture asserting its own count and `blind`, the examples
+test is parametrised over all three causes rather than testing `no_cache`
+alone, and the identity between the two is asserted directly: the number of
+names is the blind count, capped at the five the function keeps. A job that
+has not run is held to be neither blind nor checked, which is the state that
+keeps the builder from refusing every campaign still in flight.
+
+Five mutations caught, including the two appends, verified three runs each.
+
+**A methodological note, because it bears on today's other sweeps.** One
+verdict in this sequence flipped: a mutation reported caught on one run and
+not caught on the next, with nothing changed in between. Six further runs all
+said not caught, which is the correct answer, so the single "caught" was the
+anomaly and I could not reproduce it. The cause is not established.
+
+A mutation harness whose verdict can flip is a measuring instrument with
+noise, and "not caught" is the verdict that prompts work while "caught" is the
+one that ends it. So the dangerous direction is a false "caught", which is
+what I saw. F272 to F276 were each decided on a single run. The three whose
+"not caught" verdicts drove real fixes are safe either way, because the fix
+stands on the gap being real and I confirmed each by watching the new test
+fail. The "caught" verdicts that ended enquiry are the ones a flip would have
+hidden, and those are now repeated three times where they matter.
