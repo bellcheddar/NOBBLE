@@ -179,3 +179,37 @@ def test_rerun_pair_removes_the_cached_output():
         "the cached output is not removed between dropping the rows and "
         "advising the re-run"
     )
+
+
+def test_the_runner_clears_a_job_output_before_running_it():
+    """The fix at the point where it is knowable (F219).
+
+    tools/rerun_pair.py was the path that exposed the cache, not the only one
+    that reaches it: anything that edits a YAML and re-runs the job inherits
+    the old featurisation. The runner is the one place that knows it is about
+    to run this job against this YAML.
+    """
+    source = (ROOT / "nobble" / "execute" / "runner.py").read_text()
+    assert "shutil.rmtree(output_dir)" in source, (
+        "the runner reuses a job's output directory, so Boltz reuses its "
+        "cached featurisation"
+    )
+    clear = source.index("shutil.rmtree(output_dir)")
+    run = source.index("status, returncode, stdout, stderr = _run_boltz(")
+    assert clear < run, "the output is cleared after Boltz has already run"
+    # Once per job, not once per attempt: a retry runs the same command
+    # against the same YAML and must not pay to featurise it again.
+    loop = source.index("while attempts <= RETRIES:")
+    assert clear < loop, "the output is cleared inside the retry loop"
+
+
+def test_clearing_is_not_an_alternative_to_the_check():
+    """Both, deliberately.
+
+    The runner clearing its own output fixes every future run. It does
+    nothing for a campaign already on disk whose poses were folded from an
+    input since replaced, which is the state F219 found, so the build still
+    has to refuse on the comparison.
+    """
+    build = (ROOT / "deploy" / "build_atlas.py").read_text()
+    assert "featurisation_check.disagreements(campaign)" in build

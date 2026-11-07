@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -306,6 +307,25 @@ def run_job(job: dict, campaign: Path, settings: dict) -> JobOutcome:
     """Run one Boltz inference, with one retry on failure."""
     job_id = job["job_id"]
     output_dir = campaign / "outputs" / job_id
+    # Cleared, not reused. Boltz writes its featurised input to
+    # `boltz_results_<job>/processed/` under here and reads it back if it is
+    # present, so a job whose YAML changed since its last attempt folds the
+    # old input while reporting a successful run: 163 s of inference each,
+    # fresh structures, and ipTM bit-identical to the run the correction was
+    # meant to replace (F219).
+    #
+    # Done once per job rather than once per attempt. A retry re-runs the
+    # same command against the same YAML, so reusing what the failed attempt
+    # featurised is correct there, and re-featurising on every attempt would
+    # spend the budget this job has left on work that is already done.
+    #
+    # The runner only reaches here for a job it is about to run: completed
+    # ones are skipped by job id before this, so nothing being kept is
+    # discarded. That is also why this belongs here rather than only in
+    # tools/rerun_pair.py, which was the path that happened to expose it: any
+    # route that edits a YAML and re-runs the job hits the same cache.
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     command = [
