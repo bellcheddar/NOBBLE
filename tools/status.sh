@@ -155,8 +155,13 @@ if camps:
                  f"{spent['failed_jobs']} failed attempt(s)"
                  if spent['failed_hours'] else ""))
         raise SystemExit(0)
+    # The point estimate beside the range. With the factors banded (F257)
+    # the range is each band's own observed minimum and maximum, so it is
+    # narrow and the midpoint is the number to plan with; printing only the
+    # ends left the reader to guess which end to believe.
     print(f"   G1 refine    {'OPEN' if report['gate_g1_open'] else 'closed'}  "
-          f"{t2['hours_low']} to {t2['hours_high']} h for {t2['jobs']} job(s) "
+          f"{t2['hours_mid']} h ({t2['hours_low']} to {t2['hours_high']}) "
+          f"for {t2['jobs']} job(s) "
           f"over {len(ranked)} pair(s), {report['hours_remaining']} h left, "
           f"judged on {report['judged_on']}")
     print(f"                a decile-sized slice of {len(every)} pair(s), "
