@@ -71,3 +71,48 @@ def test_an_older_atlas_without_the_field_still_works(tmp_path):
         assert status["outstanding"] == []
     finally:
         data.configure()
+
+
+def test_the_published_campaign_is_not_called_finished_over_its_own_stage(tmp_path):
+    """An outstanding entry for this campaign is a later stage of it.
+
+    build_atlas read `queue.jsonl` only and skipped the campaign it was
+    publishing, so the main campaign's 76 unrun refinements were invisible
+    twice over and the header asserted "published campaign finished" about a
+    campaign that was mid-stage (F256).
+    """
+    data.configure(str(_atlas(tmp_path, [
+        {"campaign": tmp_path.name, "tier": 2, "jobs_done": 149,
+         "jobs_total": 225, "published": True},
+        {"campaign": "tier_b_y", "tier": 1, "jobs_done": 0,
+         "jobs_total": 1540, "published": False},
+    ])))
+    try:
+        status = data.site_status()
+        assert status["health"] == "complete"
+        assert "tier-2" in status["note"], status["note"]
+        assert "149 of 225" in status["note"], status["note"]
+        assert not status["note"].startswith("published campaign finished"), (
+            status["note"])
+        assert "1 other campaign was queued" in status["note"], (
+            status["note"])
+    finally:
+        data.configure()
+
+
+def test_an_atlas_without_the_published_key_reads_as_other_campaigns(tmp_path):
+    """Backward compatibility, in the direction that cannot mislead.
+
+    An atlas built before the scan recorded `published` has entries with
+    neither key. Treating those as this campaign's own stages would invent a
+    tier number; treating them as other campaigns is what they were.
+    """
+    data.configure(str(_atlas(tmp_path, [
+        {"campaign": "design_z", "jobs_done": 0, "jobs_total": 240},
+    ])))
+    try:
+        status = data.site_status()
+        assert status["health"] == "complete"
+        assert "1 more" in status["note"], status["note"]
+    finally:
+        data.configure()

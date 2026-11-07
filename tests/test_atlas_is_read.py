@@ -24,11 +24,57 @@ ROOT = Path(__file__).resolve().parents[1]
 BUILDER = ROOT / "deploy" / "build_atlas.py"
 APP = ROOT / "nobble" / "app"
 
-# Written for the app to serve, but read by name in the atlas's own tooling
-# rather than by the app: the queue and the state file drive the campaign
-# ledger's progress figures through `campaign_state`, which reads them via
-# `queue()` and the state helper rather than by these literals.
-NOT_SERVED_BY_NAME = {"state.jsonl"}
+# Named in the builder but not published by it: read there for the builder's
+# own bookkeeping. The queue and the state file drive the campaign ledger's
+# progress figures through `campaign_state`, which reads them via `queue()`
+# and the state helper rather than by these literals; the tier-2 siblings are
+# read by the outstanding-campaign scan, which counts both tiers of every
+# campaign so the header cannot call a mid-stage campaign finished (F256).
+#
+# The regex below is deliberately broad, because the builder also publishes
+# whole directories by suffix and a file that arrives that way is named
+# nowhere. That breadth is what makes this list necessary, and
+# `test_the_exceptions_are_not_published_by_name` is what stops the list
+# becoming a way to retire a published file from the check.
+NOT_SERVED_BY_NAME = {"state.jsonl", "queue_tier2.jsonl",
+                      "state_tier2.jsonl"}
+
+
+def _published_by_name() -> set[str]:
+    """The names the builder copies into the atlas in so many words.
+
+    Found by parsing rather than by searching the text: the tuple is the
+    statement of what gets published, and a regex over the whole file is the
+    thing this is checking against.
+    """
+    import ast
+
+    names: set[str] = set()
+    for node in ast.walk(ast.parse(BUILDER.read_text())):
+        if not isinstance(node, ast.Tuple):
+            continue
+        items = [item.value for item in node.elts
+                 if isinstance(item, ast.Constant)
+                 and isinstance(item.value, str)]
+        if "scores.jsonl" in items:
+            names |= set(items)
+    assert names, "the builder's publish tuple has moved"
+    return names
+
+
+def test_the_exceptions_are_not_published_by_name():
+    """An exception must mean "not published", never "published and unread".
+
+    Otherwise the list is a way to retire a file from the check that F137
+    exists to perform, and the next `scores_tier2.jsonl` is one line of
+    maintenance away from being invisible again.
+    """
+    published = _published_by_name()
+    overlap = sorted(NOT_SERVED_BY_NAME & published)
+    assert not overlap, (
+        f"{overlap} are excepted from the reader check and published into "
+        "the atlas by name, which is the combination the check exists to "
+        "catch")
 
 
 def _published_names() -> set[str]:

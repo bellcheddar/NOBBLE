@@ -178,8 +178,27 @@ def site_status() -> dict:
     # COMPLETE while three campaigns are still to run, and a visitor
     # reasonably concludes the science is finished.
     outstanding = atlas.get("outstanding") or []
-    if health == "complete" and outstanding:
-        note = (f"published campaign finished; {len(outstanding)} more "
+    # Split, because "finished" is a claim about this campaign and the list
+    # may contain this campaign. Its tier 1 is what the slice was built from,
+    # so an entry for it here is a later stage of the same campaign still to
+    # run, and saying "finished" over the top of that is the thing the
+    # outstanding list exists to prevent. An atlas built before the scan
+    # recorded `published` has neither key, and those entries read as other
+    # campaigns, which is what they were.
+    own = [row for row in outstanding if row.get("published")]
+    others = [row for row in outstanding if not row.get("published")]
+    if health == "complete" and own:
+        stage = own[0]
+        note = (f"published campaign's jobs finished; its tier-"
+                f"{stage.get('tier', 2)} stage was "
+                f"{stage['jobs_done']} of {stage['jobs_total']} when this "
+                f"slice was built")
+        if others:
+            note += (f", and {len(others)} other "
+                     f"{'campaign was' if len(others) == 1 else 'campaigns were'}"
+                     " queued")
+    elif health == "complete" and others:
+        note = (f"published campaign finished; {len(others)} more "
                 f"queued when this slice was built")
 
     return {

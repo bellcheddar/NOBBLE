@@ -325,24 +325,48 @@ def main() -> int:
     # the note on the panel says so.
     outstanding = []
     for other in sorted(paths.CAMPAIGNS.glob("*")):
-        if not other.is_dir() or other.name == campaign.name:
+        if not other.is_dir():
             continue
-        queue = other / "queue.jsonl"
-        if not queue.exists():
-            continue
-        total = sum(1 for line in queue.read_text().splitlines() if line.strip())
-        state = other / "state.jsonl"
-        done = 0
-        if state.exists():
-            import json as _json
-            done = len({
-                _json.loads(line)["job_id"]
-                for line in state.read_text().splitlines()
-                if line.strip() and _json.loads(line).get("status") == "done"
-            })
-        if done < total:
-            outstanding.append({"campaign": other.name, "jobs_done": done,
-                                "jobs_total": total})
+        # Both tiers, and the published campaign along with the rest.
+        #
+        # This read `queue.jsonl` only, and skipped the campaign being
+        # published. Those two omissions met in the worst place: the main
+        # campaign's tier 1 was complete and 76 of its 225 refinements were
+        # still to run, and because it was the campaign being published it
+        # was skipped, so the header asserted "published campaign finished"
+        # about the one campaign that was mid-stage. Liveness is per tier is
+        # F216's finding, made in the watchdog, then missed in tools/status.sh
+        # (F237) and again here, which is the published surface and so the
+        # only one a visitor reads.
+        #
+        # The published campaign is reported for its unfinished tiers alone.
+        # Its tier 1 is what the slice is built from, so a slice built before
+        # that finished is a different problem, and `jobs_done` against
+        # `jobs_total` in the header already says so.
+        for tier, (queue_name, state_name) in enumerate(
+                (("queue.jsonl", "state.jsonl"),
+                 ("queue_tier2.jsonl", "state_tier2.jsonl")), start=1):
+            queue = other / queue_name
+            if not queue.exists():
+                continue
+            total = sum(1 for line in queue.read_text().splitlines()
+                        if line.strip())
+            state = other / state_name
+            done = 0
+            if state.exists():
+                import json as _json
+                done = len({
+                    _json.loads(line)["job_id"]
+                    for line in state.read_text().splitlines()
+                    if line.strip()
+                    and _json.loads(line).get("status") == "done"
+                })
+            if done < total:
+                outstanding.append({
+                    "campaign": other.name, "tier": tier,
+                    "jobs_done": done, "jobs_total": total,
+                    "published": other.name == campaign.name,
+                })
     summary["outstanding"] = outstanding
 
     # Flat JSON documents.

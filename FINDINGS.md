@@ -12159,3 +12159,40 @@ The honest shape is to exclude `done` rather than to enumerate the failures,
 and a test keeps arbitrary reason text in its fixture so an equality test
 cannot pass it. This is F232's pattern again: the aggregate hid its own
 subject, and the subject here was the cost of the failures.
+
+## F256
+
+The published site could not see that the published campaign was mid-stage.
+
+`build_atlas`'s outstanding-campaign scan exists for one reason, stated in its
+own comment: the droplet cannot see the Studio's queues, so without it the
+header reads COMPLETE while campaigns are still to run and a visitor concludes
+the science is finished. It had two omissions that met in the worst place.
+
+It read `queue.jsonl` and `state.jsonl` only, so no campaign's refinement
+queue was ever counted. And it skipped the campaign being published, with
+`other.name == campaign.name`. The main campaign's tier 1 is complete and 76
+of its 225 refinements are still to run, so it was invisible on both counts at
+once, and `data.site_status` asserted "published campaign finished" about the
+one campaign that was mid-stage.
+
+That liveness is per tier is F216's finding, made in the watchdog. It was then
+missed in `tools/status.sh`, which asked tier 1 only and showed a five-hour
+tier-2 job as an empty heading (F237). This is the third place, and the only
+one of the three that a visitor reads.
+
+The scan now covers both tiers of every campaign including the published one,
+and records `tier` and `published` per entry. On the campaigns as they stand
+it goes from two entries to four: it gains the published campaign's own
+refinement at 149 of 225, and a ten-job tier-2 queue on the benchmark campaign
+that was assembled and never run.
+
+`site_status` splits the list, because "finished" is a claim about this
+campaign and the list may now contain this campaign. Entries from an atlas
+built before this carry neither key and read as other campaigns, which is what
+they were.
+
+The benchmark campaign's ten unrun refinements are a weaker kind of
+outstanding: nothing in the chain will run them, and the panel will carry them
+until the queue is removed. The claim the panel makes is that the work was
+assembled and has not run, and that is true of all four.
