@@ -13070,3 +13070,51 @@ comfortable impression of depth, and they do give depth against the campaign
 being wrong. Against a mistake in the guards themselves they are the opposite:
 each one masks the absence of the others, and the test that proves the gate
 works proves only that something in it does.
+
+## F274
+
+Preflight's seven checks were masked by each other, and none was individually
+tested.
+
+F273's lesson was about guards in series: three refusals in the atlas build
+gave an impression of depth, and against a mistake in the guards themselves
+each masked the absence of the others. `tools/preflight.py` is the same shape
+and worse. Every check appends to one `errors` list and the report is
+`ok: not errors`, so with any single check removed the others still fail
+whatever campaign is in front of it.
+
+Mutated one at a time, with each condition replaced by a constant:
+
+```
+peptide chain carrying an MSA        NOT CAUGHT
+receptor chain with no cached MSA    NOT CAUGHT
+an a3m named but absent on disk      NOT CAUGHT
+an a3m for the wrong chain (F40)     NOT CAUGHT
+duplicate chain ids                  NOT CAUGHT
+no peptide chain at all              NOT CAUGHT
+zinc in one arm only                 NOT CAUGHT
+```
+
+Two of the seven have their message text asserted in a test elsewhere, and
+both were still not caught, because the assertion is about the policy rather
+than about this gate enforcing it.
+
+This is the gate that would have caught F262 before a minute of GPU was
+spent: it refuses a ternary job whose declared ligand its YAML lacks, which
+is the check I added this morning and the only one of the eight with a fixture
+of its own.
+
+`tests/test_each_preflight_check_fires.py` gives each one a fixture that
+breaks exactly one thing, and asserts that check's own message rather than
+`ok is False`, which is the assertion that let all seven hide. The first test
+in the file asserts the base case is clean, because without it a fixture
+erroring for an unrelated reason would satisfy every assertion below it. The
+zinc check gets a second case with zinc in both arms, so it cannot pass by
+meaning "zinc is bad".
+
+Seven of seven caught now.
+
+The thing worth carrying forward: `ok is False` is a weak assertion against
+any gate that collects reasons, and it reads as a strong one. A gate with N
+checks needs N tests that name their own reason, or it has one test N times
+over.
