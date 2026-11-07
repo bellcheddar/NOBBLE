@@ -1,6 +1,6 @@
 # NOBBLE progress
 
-Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T14:04:38Z.
+Rewritten after every phase and at least every 30 minutes during long compute. Last rewritten 2026-11-07T15:06:12Z.
 
 ## Gate G6 answered: the headline is a negative result, and publication is held
 
@@ -44,21 +44,18 @@ atlas and publishes the whole-domain contrast. Safe to run twice: it reads
 the difference between idempotent and an hour of GPU arriving back where it
 started (F267).
 
-**What the live site shows, and does not.** `deploy/atlas/validation.json`
-is this campaign's, so nobble.mdeller.com already carries pose recovery at 0
-of 65 within 3 A, median 17.535 A. Its `comparison.json` predates the
-recovery curves, so the whole-domain contrast is absent and the table in
-`benchmark.html` stays hidden behind its guard. The data is on disk in
-`corrected_20261103T214331Z`; the atlas rebuild that would carry it across
-refuses on bench02's stale featurisation (F219), and copying a file into
-`deploy/atlas` by hand would defeat the point of the refusal. So the site
-holds the harsher number alone until the F47 correction runs and the atlas
-rebuilds. The same slice also previews ZN565 as the design target on a
-Delta-ipTM of +0.889 that is one collapsed binary seed: by the median it is
-0.09 against IKZF1's 0.14, the code excludes it, and the scan on disk
-already uses IKZF1. The bundle was built at 2026-11-06T23:01Z and both
-fixes landed this morning, so the site is thirteen hours and two commits
-behind (F261).
+**What the live site shows, and does not.** The live site serves the earlier
+benchmark bundle: `/api/state` reports `benchmark_20261103T192126Z`, 100 of
+100 jobs, 7 pairs, and `/api/pairs` returns seven rows, bench01 to bench07.
+The main campaign's slice is built in `deploy/atlas/` and has never been
+deployed, because `tools/publication_hold.py` refuses as the first pre-flight
+step of the deploy. That slice lacks the recovery curves, so the whole-domain
+contrast would not render if it were deployed today, and its design panel
+still previews ZN565 on a Delta-ipTM of +0.889 that is one collapsed binary
+seed. Both clear when the F47 correction runs and the atlas rebuilds. An
+earlier version of this paragraph said the live site carries the main
+campaign's failing curve; it does not, and F261's correction records how I
+came to say so.
 
 **The matched-control ROC is a null**: AUC 0.4583, 95 per cent CI 0.3316 to
 0.5842, over 24 positives and 96 matched negatives from the Sievers screen,

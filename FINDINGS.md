@@ -12897,3 +12897,49 @@ times would have moved it.
 A test holds both directions, because the symmetrical mistake is to "fix" the
 projection to match the watchdog: a projection that ignored failed time is
 F255's defect arriving by a different route.
+
+### F261, corrected: the site does not publish the failing curve, and the hold is why
+
+F261 said the published site carries the main campaign's pose recovery at 0 of
+65 within 3 A without the whole-domain contrast beside it. **That is wrong.**
+I asked the live site and it serves the benchmark panel:
+
+```
+https://nobble.mdeller.com/api/state
+  {"campaign_id":"benchmark_20261103T192126Z","jobs_done":100,
+   "jobs_total":100,"pairs_scored":7,"pairs_total":7}
+/api/pairs  7 rows, bench01 to bench07, no sv_ or scr_ pair
+```
+
+What I had examined was `deploy/atlas/`, which is the locally built slice:
+`campaign_20261104T004632Z`, 158 pairs, 2,360 jobs, 2,496 structures. It has
+never been deployed. I treated the build directory as the published site
+because the code calls it the published slice, and deploying is a separate
+rsync that `tools/publication_hold.py` has been refusing as the first
+pre-flight step of `deploy/deploy.sh`.
+
+So the hold is doing exactly what D-NOB-076 asks of it, and the README and
+PROGRESS were right where I contradicted them: "the site serves the earlier
+benchmark bundle until that is decided". I corrected PROGRESS away from the
+truth and have put it back.
+
+What survives of F261, and it is the part with the tests:
+
+* The local bundle's `comparison.json` has neither recovery curve, so the
+  contrast table in `benchmark.html` stays behind its guard. That matters when
+  the bundle is deployed rather than now.
+* `design.json` in that bundle still previews ZN565 on a Delta-ipTM of +0.889
+  that is one collapsed binary seed. Again local, not live.
+* The test gap is real and unaffected: the route walk renders against the
+  bundle, where both guards are false, so the contrast table and the ROC
+  coverage line appeared in no test. Both branches are now rendered.
+
+The live site is staler than either: its own outstanding list reports the main
+campaign at 753 of 2,360 jobs, from a build made while that campaign was a
+third of the way through, and it publishes the benchmark panel's own failing
+recovery at a median of 17.14 A over seven pairs.
+
+The lesson is the one about denominators in a different coat. "Published"
+named two different things, a directory that is built and a host that is
+served, and I checked the one that was easy to read. The instrument for the
+second is a request to the site, which took one command and settles it.
