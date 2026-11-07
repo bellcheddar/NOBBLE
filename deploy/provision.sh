@@ -95,7 +95,36 @@ UNIT
 systemctl daemon-reload
 
 echo "==> nginx vhost"
-cat > "/etc/nginx/sites-available/nobble" <<VHOST
+# Refusing to overwrite a vhost certbot has edited.
+#
+# This writes the file from scratch, and certbot adds its TLS lines into that
+# same file in place. So re-running provision on a live host replaces an
+# HTTPS vhost with the HTTP-only one below, `nginx -t` passes because that is
+# valid configuration, nginx reloads, and the site loses TLS. Nothing here
+# checked: it was `cat >` straight over the top.
+#
+# The risk was already written down, in `deploy/enable_gzip.sh`'s header,
+# which exists as a separate script for exactly this reason. Knowing it in a
+# comment in another file is not a guard.
+#
+# Overridable so the first provision of a fresh host still works, and so the
+# splice can be exercised against a fixture.
+VHOST_PATH="${NOBBLE_VHOST_PATH:-/etc/nginx/sites-available/nobble}"
+if [ -f "$VHOST_PATH" ]; then
+  STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+  cp -p "$VHOST_PATH" "$VHOST_PATH.bak.$STAMP"
+  echo "    backed up the existing vhost to $VHOST_PATH.bak.$STAMP"
+  if grep -q 'ssl_certificate' "$VHOST_PATH" \
+      && [ "${NOBBLE_PROVISION_FORCE:-0}" != "1" ]; then
+    echo "provision: $VHOST_PATH already carries TLS lines, which certbot" >&2
+    echo "    wrote into it. Rewriting it would serve this site over HTTP" >&2
+    echo "    only. Refusing. To change the vhost on a live host, edit it in" >&2
+    echo "    place the way deploy/enable_gzip.sh does, or re-run with" >&2
+    echo "    NOBBLE_PROVISION_FORCE=1 and then deploy/certbot.sh." >&2
+    exit 1
+  fi
+fi
+cat > "$VHOST_PATH" <<VHOST
 # nginx site for NOBBLE (${PUBLIC_DOMAIN}).
 server {
     server_name ${PUBLIC_DOMAIN};
@@ -157,7 +186,7 @@ server {
     listen 80;
 }
 VHOST
-ln -sfn /etc/nginx/sites-available/nobble /etc/nginx/sites-enabled/nobble
+ln -sfn "$VHOST_PATH" /etc/nginx/sites-enabled/nobble
 
 echo "==> validate nginx before reloading (22 other sites run here)"
 nginx -t
