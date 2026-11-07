@@ -149,6 +149,36 @@ one is supported and one turned out wrong (`FINDINGS.md`, F18;
 `tools/check_prediction.py` scores them mechanically rather than by a reading
 after the fact).
 
+## 📉 The main campaign, and why it is not published
+
+The full campaign has since finished: 158 pairs, 2,360 jobs, scored, with both
+computable validation layers computed. By the same principle as above, here is
+what it says.
+
+- **The matched-control ROC is a null.** AUC 0.4583 over 24 degraded and 96
+  matched non-degraded zinc fingers from the same screen, which the code reads
+  as "not distinguishable from chance at 95 per cent confidence". It holds at
+  0.4147 on the companion statistic a collapsed seed cannot inflate, so it is
+  not an artefact of one bad draw.
+- **Pose recovery fails on this campaign**, which submits each substrate as a
+  15-mer: 0 of 65 poses within 3 A, median 17.54 A, and tier-2 refinement
+  sharpens the poses without recovering them. A Delta-ipTM that cannot
+  separate glue from matched control is indistinguishable from a Delta-ipTM
+  computed over poses in the wrong place, so the null above cannot be read on
+  its own.
+- **The same measurement passes on the whole-domain campaign**: 35 of 65 poses
+  within 3 A at a median of 2.494 A, against none and 17.54 A for the 15-mers.
+  So the recovery failure belongs to an input representation rather than to
+  the method, and the atlas is built from the campaign where it fails.
+
+**Publication is therefore held** (`DECISIONS.md`, D-NOB-076), and held by the
+scripts rather than by a note: `config/publication_hold.toml` is read by
+`tools/publication_hold.py` as the first pre-flight step of `deploy/deploy.sh`.
+A missing hold file reads as held, and releasing it has to name the
+authorising decision. The site serves the earlier benchmark bundle until that
+is decided. No success radius was invented to make the control pass, and a
+test asserts none appears in `config/thresholds.toml`.
+
 ## 🧪 The design arm
 
 A seventh tab, scoped in [`DESIGN_ARM.md`](DESIGN_ARM.md) and deliberately not
@@ -157,10 +187,12 @@ predicted interface tells you something true; this is the part that proposes
 something new.
 
 It ships **before the score that would rank it is validated**, and that shaped
-it. The matched-control ROC reports `not_computed` until the Sievers arm runs,
-so a tab that ranked invented peptides by the composite would be the failure
-the rest of the project exists to avoid: a ranked list reads as a
-recommendation whatever the caption says.
+it. When this was built the matched-control ROC reported `not_computed`; the
+Sievers arm has since run and the answer is a null, which makes the same
+decision firmer rather than softer. A tab that ranked invented peptides by a
+composite built on a statistic that cannot separate glue from matched control
+would be the failure the rest of the project exists to avoid: a ranked list
+reads as a recommendation whatever the caption says.
 
 | Property | How it works |
 |---|---|
