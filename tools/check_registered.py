@@ -46,12 +46,30 @@ def _rows(path: Path) -> list[dict]:
 
 
 def f251_refinement_discrimination(campaign: Path) -> dict:
-    """Does refining the poses improve Delta-ipTM's separation?"""
+    """Withdrawn: tier 2 has no Delta-ipTM to compare (F251, F254).
+
+    Reported rather than deleted, and reported as withdrawn rather than as
+    pending. Left as "not yet testable" it would have waited for
+    `scores_tier2.jsonl` and then skipped every row for a null delta,
+    reporting a missing measurement as an unfinished stage for as long as
+    anyone looked.
+    """
+    return {"finding": "F251",
+            "claim": "refinement does not improve discrimination (noise)",
+            "falsifier": f"paired AUC moves by more than {F251_MOVE}",
+            "status": "withdrawn",
+            "detail": "tier 2 is ternary-only, so Delta-ipTM has no binary "
+                      "term there, and assembling one across tiers is the "
+                      "bias D-NOB-032 forbids. Replaced by F254"}
+
+
+def f254_refinement_bridging(campaign: Path) -> dict:
+    """Does refining the poses change the bridge formation rate?"""
     from nobble.validate import layers
 
-    verdict = {"finding": "F251",
-               "claim": "refinement does not improve discrimination (noise)",
-               "falsifier": f"paired AUC moves by more than {F251_MOVE}"}
+    verdict = {"finding": "F254",
+               "claim": "refinement does not change bridge formation (noise)",
+               "falsifier": f"the median rate moves by more than {F251_MOVE}"}
     tier2 = _rows(campaign / "scores_tier2.jsonl")
     if not tier2:
         verdict.update(status="not yet testable",
@@ -68,9 +86,11 @@ def f251_refinement_discrimination(campaign: Path) -> dict:
         label = base.get("peptide_label")
         if label not in layers.ROC_LABELS:
             continue
-        if row.get("delta_iptm") is None or base.get("delta_iptm") is None:
+        before = base.get("bridge_formation_rate")
+        after = row.get("bridge_formation_rate")
+        if before is None or after is None:
             continue
-        paired.append((label, base["delta_iptm"], row["delta_iptm"]))
+        paired.append((label, before, after))
 
     # Both classes present, rather than a minimum count. An AUC needs at
     # least one of each and a count would be a cutoff deciding when the
@@ -84,21 +104,20 @@ def f251_refinement_discrimination(campaign: Path) -> dict:
                               "an AUC needs both classes")
         return verdict
 
-    def auc(index: int) -> float:
-        positives = [row[index] for row in paired if row[0] == "degraded"]
-        negatives = [row[index] for row in paired if row[0] == "not_degraded"]
-        return layers._auc(positives, negatives)
+    import statistics
 
-    before, after = auc(1), auc(2)
+    before = statistics.median(row[1] for row in paired)
+    after = statistics.median(row[2] for row in paired)
     move = after - before
     verdict.update(
         status=("WRONG" if abs(move) > F251_MOVE else "supported"),
         pairs=len(paired),
-        tier1_auc=round(before, 4), tier2_auc=round(after, 4),
+        tier1_rate=round(before, 4), tier2_rate=round(after, 4),
         move=round(move, 4),
-        detail=("paired over the same pairs, direction only: these are the "
-                "top decile and not a matched subset, so this is not an "
-                "estimate of the arm's AUC"))
+        detail=("median bridge rate over the refined Sievers pairs, each "
+                "against its own tier-1 rate. A rate over seeds is not pushed "
+                "in a fixed direction by deeper sampling, unlike the minimum "
+                "F251 tried to compare"))
     return verdict
 
 
@@ -197,7 +216,11 @@ def main(argv: list[str] | None = None) -> int:
 
     results = [
         f251_refinement_discrimination(main_campaign) if main_campaign
-        else {"finding": "F251", "status": "not yet testable",
+        else {"finding": "F251", "status": "withdrawn",
+              "claim": "see F254", "detail": "no campaign on disk"},
+        f254_refinement_bridging(main_campaign) if main_campaign
+        else {"finding": "F254", "status": "not yet testable",
+              "claim": "refinement does not change bridge formation",
               "detail": "no campaign on disk"},
         f252_design_scan_position(Path(design[-1]) if design else None),
         f253_tier_b_bridging(Path(tier_b[-1]) if tier_b else None),
@@ -225,7 +248,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"      claim:     {row['claim']}" if "claim" in row else "")
         if "falsifier" in row:
             print(f"      falsifier: {row['falsifier']}")
-        for key in ("pairs", "tier1_auc", "tier2_auc", "move", "position",
+        for key in ("pairs", "tier1_rate", "tier2_rate", "move", "position",
                     "substitution", "lift", "hits", "positives_compared",
                     "unpaired"):
             if key in row:

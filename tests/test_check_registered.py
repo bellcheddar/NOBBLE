@@ -34,13 +34,16 @@ def _sievers(tmp_path, tier2_shift):
     for index in range(4):
         pair = f"sv_pos_{index}"
         tier1.append({"pair_id": pair, "tier": layers.ROC_ARM,
-                      "peptide_label": "degraded", "delta_iptm": 0.05})
-        tier2.append({"pair_id": pair, "delta_iptm": 0.05 + tier2_shift})
+                      "peptide_label": "degraded",
+                      "bridge_formation_rate": 0.5})
+        tier2.append({"pair_id": pair,
+                      "bridge_formation_rate": 0.5 + tier2_shift})
     for index in range(6):
         pair = f"sv_neg_{index}"
         tier1.append({"pair_id": pair, "tier": layers.ROC_ARM,
-                      "peptide_label": "not_degraded", "delta_iptm": 0.10})
-        tier2.append({"pair_id": pair, "delta_iptm": 0.10})
+                      "peptide_label": "not_degraded",
+                      "bridge_formation_rate": 0.5})
+        tier2.append({"pair_id": pair, "bridge_formation_rate": 0.5 + tier2_shift})
     (campaign / "scores.jsonl").write_text(
         "".join(json.dumps(r) + "\n" for r in tier1))
     (campaign / "scores_tier2.jsonl").write_text(
@@ -48,25 +51,50 @@ def _sievers(tmp_path, tier2_shift):
     return campaign
 
 
-def test_f251_is_not_yet_testable_without_tier_two_scores(tmp_path):
+def test_f251_is_withdrawn_rather_than_pending(tmp_path):
+    """Pending would have waited forever for a measurement that cannot exist.
+
+    Tier 2 is ternary-only, so Delta-ipTM has no binary term there. Left as
+    "not yet testable" the scorer would have waited for scores_tier2.jsonl and
+    then skipped every row for a null delta, reporting a missing measurement
+    as an unfinished stage (F251, F254).
+    """
     campaign = tmp_path / "campaign_bare"
     campaign.mkdir()
     (campaign / "scores.jsonl").write_text("")
     verdict = _module().f251_refinement_discrimination(campaign)
+    assert verdict["status"] == "withdrawn", verdict
+    assert "ternary-only" in verdict["detail"], verdict
+    assert "F254" in verdict["detail"], verdict
+
+
+def test_f254_is_not_yet_testable_without_tier_two_scores(tmp_path):
+    campaign = tmp_path / "campaign_bare2"
+    campaign.mkdir()
+    (campaign / "scores.jsonl").write_text("")
+    verdict = _module().f254_refinement_bridging(campaign)
     assert verdict["status"] == "not yet testable", verdict
     assert "scores_tier2" in verdict["detail"], verdict
 
 
-def test_f251_returns_wrong_when_refinement_separates(tmp_path):
-    """Positives overtaking the negatives is the falsifier, not the claim."""
-    verdict = _module().f251_refinement_discrimination(
+def test_f254_returns_wrong_when_refinement_finds_bridges(tmp_path):
+    """A rise beyond the line is the falsifier, not the claim."""
+    verdict = _module().f254_refinement_bridging(
         _sievers(tmp_path, tier2_shift=0.40))
     assert verdict["status"] == "WRONG", verdict
-    assert abs(verdict["move"]) > 0.10, verdict
+    assert verdict["move"] > 0.10, verdict
 
 
-def test_f251_is_supported_when_nothing_moves(tmp_path):
-    verdict = _module().f251_refinement_discrimination(
+def test_f254_returns_wrong_when_refinement_loses_bridges(tmp_path):
+    """A fall is refuting too: it would mean tier 1 overstates the rate."""
+    verdict = _module().f254_refinement_bridging(
+        _sievers(tmp_path, tier2_shift=-0.40))
+    assert verdict["status"] == "WRONG", verdict
+    assert verdict["move"] < -0.10, verdict
+
+
+def test_f254_is_supported_when_nothing_moves(tmp_path):
+    verdict = _module().f254_refinement_bridging(
         _sievers(tmp_path, tier2_shift=0.0))
     assert verdict["status"] == "supported", verdict
     assert verdict["move"] == 0.0, verdict
@@ -151,9 +179,9 @@ def test_the_brief_mode_is_one_line_per_prediction():
         module.main(["--brief"])
     lines = [line for line in buffer.getvalue().splitlines() if line.strip()]
     # One summary line plus one per prediction.
-    assert len(lines) == 4, lines
+    assert len(lines) == 5, lines
     assert all("falsifier" not in line for line in lines), lines
-    for finding in ("F251", "F252", "F253"):
+    for finding in ("F251", "F252", "F253", "F254"):
         assert any(finding in line for line in lines), (finding, lines)
 
 

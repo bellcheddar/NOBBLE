@@ -11866,7 +11866,34 @@ This is F79's shape once more, an affordance nobody exercises, with a twist:
 here the unexercised thing is kept looking exercised by a test that is itself
 correct.
 
-## F251. A registered prediction: does refinement improve discrimination?
+## F251. A registered prediction, withdrawn: tier 2 has no Delta-ipTM to compare
+
+**Superseded by F254, which is my own error. The prediction below asks for a
+quantity this project deliberately does not compute, and I registered it
+without reading D-NOB-032 first. Kept, with the reasoning, because the way it
+was wrong is the point: a falsifier is worthless if the measurement it names
+cannot exist.**
+
+Tier 2 is ternary-only, by decision and by data: `queue_tier2.jsonl` holds 225
+ternary jobs and no binary, `results_tier2.jsonl` holds 149 ternary records
+and no binary, and `metrics.aggregate` hard-filters by sampling tier.
+Delta-ipTM is `iptm_min_ternary - iptm_min_binary`, so at tier 2 the control
+half is absent and the difference is not defined.
+
+Nor may it be assembled from the two tiers. D-NOB-032 is about exactly that:
+both terms are minima over seeds, tier 1 draws one diffusion sample and tier 2
+draws twenty-five, and "drawing more diffusion samples can push a minimum down
+and can never push it up", so a tier-2 ternary minimum against a tier-1 binary
+one falls for the pairs selected as most promising and "would read as the glue
+weakening the interface". That decision also corrected the module's own earlier
+justification for ternary-only, which had argued that refining the control
+would spend budget on it: "for a difference of two minima the control *is* half
+the measurement".
+
+So the question was not pending. It was unanswerable, and F254 asks the one
+that is.
+
+The original entry follows.
 
 Recorded before the numbers exist, which is the only time it can be.
 
@@ -12033,3 +12060,40 @@ rather than to the statistic, and it is worth knowing which.
 
 My prediction: no pair clears the line, and bridging on the positives looks
 like bridging on the scrambles.
+
+## F254. The question tier 2 can answer, registered in F251's place
+
+F251 asked whether refinement improves Delta-ipTM's discrimination. Tier 2 is
+ternary-only, so Delta-ipTM has no control half there and the question has no
+measurement (F251, D-NOB-032). The replacement asks what ternary-only data can
+answer, and it is the better statistic anyway.
+
+**Bridge formation needs only the ternary structure.** It is the fraction of
+ternary seeds in which the glue buries surface against both chains: no binary
+arm, no crystal, and it is what F9 found predicts pose recovery at r = -0.871
+where the construct category did not. All 149 tier-2 records are ternary and
+carry `bridging_seeds_with_bridge` over `bridging_seeds_total`, so the
+comparison is available the moment `tools/tier2.sh` scores the stage.
+
+**Registered.** For the Sievers pairs refined in the decile, paired against
+their own tier-1 bridge rate:
+
+* *Supported* if the median bridge rate over the refined pairs changes by no
+  more than 0.10, in either direction.
+* *Refuted* if it rises by more than 0.10, which would say refinement finds
+  bridges the triage settings missed, and would make refinement worth running
+  on the arm rather than the decile.
+* *Also refuted* if it falls by more than 0.10: deeper sampling losing bridges
+  would mean the tier-1 rate overstates them, which bears on F9's correlation
+  and on Tier B's readout in F253.
+
+Prediction: supported, no material change. Refinement sharpened poses without
+recovering them (F215), the pairs whose site was right were right at tier 1
+(F227), and bridging is a contact test rather than a confidence one, so more
+diffusion samples should not conjure a contact that twenty-five tries at tier 1
+did not find.
+
+**One asymmetry to note before the numbers.** Unlike a minimum, a rate over
+seeds is not pushed in a fixed direction by drawing more samples, which is why
+this comparison is legitimate where F251's was not. Tier 1 and tier 2 both
+report a fraction of their own seeds, and both arms have ten.
