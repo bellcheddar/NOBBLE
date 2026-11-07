@@ -14941,3 +14941,38 @@ relevant kind rather than a demonstration. Every deposition predates the
 nothing here measures a Sievers substrate against a crystal, because none of
 them has one: that is the measurement that would settle it and it does not
 exist.
+
+## F306. Registered: bench06 refines once its sampling fits, so F268 is wrong
+
+F298's diagnosis deserves to be judged rather than asserted, and it is about
+to be tested either way, so it is registered as a prediction in
+`tools/check_registered.py` alongside the five already there.
+
+**Claim:** bench06 refines when its diffusion-sample count is reduced to fit
+the measured budget, so F268 is wrong.
+
+**Falsifier:** every unconstrained bench06 tier-2 attempt at a reduced sample
+count fails with no confidence JSON.
+
+This contradicts a prediction I registered three days ago. F268 claims every
+bench06 refinement fails whatever its conditioning, and it was scored "not
+yet testable: 1 of 5" for good reason: the four unrun jobs are where a
+success would be. F298 then measured that every tier-2 success is at most 454
+tokens and every failure is 1,223, with no overlap, that the same
+1,223-token jobs all complete at tier-1 settings, and that a failed job
+writes no predictions directory at all. If that is the cause, nine samples
+should produce a confidence JSON and F268 falls.
+
+Registering both means one of them is scored against me whichever way the
+refinement goes, which is the point. The evidence for the size story is a
+correlation across 155 jobs with no overlap: strong, and not a mechanism,
+because the process that produced those records discarded its own stderr
+(F238 was committed after it started). If every reduced attempt still fails,
+the story is wrong and needs replacing rather than defending.
+
+Judged on unconstrained jobs only, matching F268, and only on attempts whose
+recorded sample count is below the tier's. Two exclusions that matter, both
+tested: an attempt at the full count failing again says nothing about this
+claim, and a job with no recorded count ran before F298, so reading a missing
+count as a reduced one would score the prediction on the very evidence that
+motivated it.

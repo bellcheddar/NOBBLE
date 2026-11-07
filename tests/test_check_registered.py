@@ -420,3 +420,103 @@ def test_f268_ignores_a_running_job(tmp_path):
     verdict = _module().f268_refinement_size_limit(_bench06(tmp_path, states))
     assert verdict["status"] == "not yet testable", verdict
     assert verdict["unconstrained_attempted"] == 4, verdict
+
+
+# --------------------------------------------------------------------------- #
+# F306: does bench06 refine at a reduced sample count? (F298's claim)
+# --------------------------------------------------------------------------- #
+
+def _bench06_reduced(tmp_path, results):
+    """A bench06 tier-2 campaign whose results carry a sample count.
+
+    `results` maps job id to (status, diffusion_samples). The count lives on
+    the result row and the status on the state row, so the check joins them,
+    and a job with no recorded count ran before F298 and is not an attempt at
+    a reduced count.
+    """
+    campaign = _bench06(tmp_path, {
+        job: [status] for job, (status, _count) in results.items()})
+    _write(campaign / "results_tier2.jsonl",
+           [{"job_id": job, "diffusion_samples": count}
+            for job, (_status, count) in results.items()])
+    return campaign
+
+
+def test_f306_is_not_testable_before_a_reduced_attempt_runs(tmp_path):
+    verdict = _module().f306_reduced_sampling_succeeds(_bench06(tmp_path, {}))
+    assert verdict["status"] == "not yet testable", verdict
+    assert "fewer than 25 samples" in verdict["detail"], verdict
+
+
+def test_f306_ignores_an_attempt_at_the_full_count(tmp_path):
+    """A job that failed again at twenty-five samples says nothing about
+    this claim, and counting it would let the old failures decide a
+    prediction about the new settings."""
+    campaign = _bench06_reduced(tmp_path, {
+        "bench06_RBM39_DCAF15__ternary__unconstrained__seed1__tier2":
+            ("failed: exit 0 but no confidence JSON written", 25),
+    })
+    verdict = _module().f306_reduced_sampling_succeeds(campaign)
+    assert verdict["status"] == "not yet testable", verdict
+
+
+def test_f306_ignores_a_job_with_no_recorded_count(tmp_path):
+    """Every bench06 attempt before F298 has none, and reading a missing
+    count as a reduced one would score the prediction on the evidence that
+    motivated it."""
+    campaign = _bench06_reduced(tmp_path, {
+        "bench06_RBM39_DCAF15__ternary__unconstrained__seed1__tier2":
+            ("failed: exit 0 but no confidence JSON written", None),
+    })
+    verdict = _module().f306_reduced_sampling_succeeds(campaign)
+    assert verdict["status"] == "not yet testable", verdict
+
+
+def test_f306_is_supported_when_a_reduced_attempt_completes(tmp_path):
+    campaign = _bench06_reduced(tmp_path, {
+        "bench06_RBM39_DCAF15__ternary__unconstrained__seed1__tier2":
+            ("done", 9),
+        "bench06_RBM39_DCAF15__ternary__unconstrained__seed2__tier2":
+            ("failed: exit 0 but no confidence JSON written", 9),
+    })
+    verdict = _module().f306_reduced_sampling_succeeds(campaign)
+    assert verdict["status"] == "supported", verdict
+    assert verdict["reduced_attempts"] == 2, verdict
+    assert "F268 is wrong" in verdict["detail"], verdict
+
+
+def test_f306_is_wrong_when_every_reduced_attempt_still_fails(tmp_path):
+    """The outcome that would retire F298's size story rather than defend
+    it, which is why the prediction is registered at all."""
+    campaign = _bench06_reduced(tmp_path, {
+        f"bench06_RBM39_DCAF15__ternary__unconstrained__seed{seed}__tier2":
+            ("failed: exit 0 but no confidence JSON written", 9)
+        for seed in range(1, 6)
+    })
+    verdict = _module().f306_reduced_sampling_succeeds(campaign)
+    assert verdict["status"] == "WRONG", verdict
+    assert verdict["reduced_attempts"] == 5, verdict
+    assert "needs replacing" in verdict["detail"], verdict
+
+
+def test_f306_and_f268_disagree_by_construction():
+    """One predicts the other is wrong. Registered that way deliberately, so
+    whichever way the refinement goes, one of them is scored against me."""
+    module = _module()
+    f268 = module.f268_refinement_size_limit.__doc__ or ""
+    f306 = module.f306_reduced_sampling_succeeds.__doc__ or ""
+    assert "F268" in f306, "F306 does not say which claim it contradicts"
+    assert "size" in f268 or "constraint" in f268
+
+
+def test_f306_appears_in_the_report():
+    """Computed and not reported would make it unfalsifiable in practice."""
+    import ast
+
+    source = (ROOT / "tools" / "check_registered.py").read_text()
+    tree = ast.parse(source)
+    main = next(node for node in ast.walk(tree)
+                if isinstance(node, ast.FunctionDef) and node.name == "main")
+    called = {node.func.id for node in ast.walk(main)
+              if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)}
+    assert "f306_reduced_sampling_succeeds" in called

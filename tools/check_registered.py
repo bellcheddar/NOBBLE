@@ -24,6 +24,10 @@ import json
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from nobble import paths  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
@@ -293,6 +297,87 @@ def f268_refinement_size_limit(campaign: Path) -> dict:
     return verdict
 
 
+def f306_reduced_sampling_succeeds(campaign: Path) -> dict:
+    """Does bench06 refine once its sample count fits the measured budget?
+
+    This is F298's diagnosis in falsifiable form, and it predicts that F268
+    is wrong. F268 claims every bench06 refinement fails whatever its
+    conditioning; F298 measured that every tier-2 success is at most 454
+    tokens and every failure is 1,223, that the same 1,223-token jobs all
+    complete at tier-1 settings, and that a failed job writes no predictions
+    directory at all. If the sample count is the cause, reducing it to nine
+    should produce a confidence JSON.
+
+    Registered because it is the strongest form of the claim and because it
+    is about to be tested either way. If every reduced attempt still fails,
+    the size story is wrong and needs replacing rather than defending: the
+    evidence for it is a correlation across 155 jobs with no overlap, which
+    is strong and is not a mechanism, since the process that produced those
+    records discarded its own stderr.
+
+    Judged on unconstrained jobs only, matching F268, and only on attempts
+    whose recorded sample count is below the tier's: an attempt at the full
+    count failing again says nothing about this.
+    """
+    verdict = {"finding": "F306",
+               "claim": "bench06 refines when its sample count is reduced to "
+                        "fit the measured budget, so F268 is wrong",
+               "falsifier": "every unconstrained bench06 tier-2 attempt at a "
+                            "reduced sample count fails with no confidence "
+                            "JSON"}
+    state = campaign / "state_tier2.jsonl"
+    results = campaign / "results_tier2.jsonl"
+    if not state.exists():
+        verdict.update(status="not yet testable",
+                       detail="no state_tier2.jsonl: refinement has not run")
+        return verdict
+
+    asked = int(paths.tuning()["campaign"]["tier2_diffusion_samples"])
+    # The sample count is recorded on the result, not on the state row, so
+    # the two files are joined on job id. A job with no recorded count ran
+    # before F298 and is not an attempt at a reduced count.
+    samples = {str(row.get("job_id")): row.get("diffusion_samples")
+               for row in _rows(results)} if results.exists() else {}
+
+    reduced: dict[str, list[str]] = {}
+    for row in _rows(state):
+        job_id = str(row.get("job_id") or "")
+        if (not job_id.startswith(F268_PAIR + "__")
+                or "__unconstrained__" not in job_id):
+            continue
+        status = str(row.get("status"))
+        if status == "running":
+            continue
+        count = samples.get(job_id)
+        if count is None or int(count) >= asked:
+            continue
+        reduced.setdefault(job_id, []).append(status)
+
+    if not reduced:
+        verdict.update(
+            status="not yet testable",
+            detail=f"no unconstrained bench06 attempt has run at fewer than "
+                   f"{asked} samples yet")
+        return verdict
+
+    succeeded = sorted(job for job, states in reduced.items()
+                       if "done" in states)
+    if succeeded:
+        verdict.update(
+            status="supported", reduced_attempts=len(reduced),
+            done=succeeded,
+            detail=(f"{len(succeeded)} of {len(reduced)} unconstrained "
+                    "attempt(s) at a reduced sample count completed, so the "
+                    "sample count was the cause and F268 is wrong"))
+        return verdict
+    verdict.update(
+        status="WRONG", reduced_attempts=len(reduced),
+        detail=(f"all {len(reduced)} unconstrained attempt(s) at a reduced "
+                "sample count still failed, so F298's size story does not "
+                "explain the failure and needs replacing"))
+    return verdict
+
+
 def main(argv: list[str] | None = None) -> int:
     import argparse
     import glob
@@ -324,6 +409,10 @@ def main(argv: list[str] | None = None) -> int:
         else {"finding": "F268", "status": "not yet testable",
               "claim": "every bench06 refinement fails, whatever its "
                        "conditioning",
+              "detail": "no campaign on disk"},
+        f306_reduced_sampling_succeeds(main_campaign) if main_campaign
+        else {"finding": "F306", "status": "not yet testable",
+              "claim": "bench06 refines when its sample count is reduced",
               "detail": "no campaign on disk"},
     ]
     scored = [r for r in results if r["status"] in ("supported", "WRONG",
