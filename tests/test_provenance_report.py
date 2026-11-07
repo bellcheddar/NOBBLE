@@ -67,11 +67,11 @@ def test_it_reports_whether_any_input_is_stale():
 
 def test_it_reports_both_design_targets():
     """The pair of values F89 was about: what the ranking chooses and what
-    the site says. Printing one without the other is what let them differ
+    the built bundle says. Printing one without the other is what let them
     for the whole project's life."""
     out = _provenance()
     assert "design target" in out, out
-    assert "ranking says" in out and "site says" in out, out
+    assert "ranking says" in out and "the built bundle says" in out, out
 
 
 def test_the_disagreement_is_marked_when_they_differ(tmp_path):
@@ -93,7 +93,7 @@ def test_the_disagreement_is_marked_when_they_differ(tmp_path):
     # Asserting agreement then tests the publication backlog, not the marker,
     # so the condition is named rather than failed on.
     baseline = _provenance()
-    if "the site and the ranking disagree" in baseline:
+    if "the built bundle and the ranking disagree" in baseline:
         target = next((line.strip() for line in baseline.splitlines()
                        if "design target" in line), "").strip()
         pytest.skip(
@@ -118,7 +118,7 @@ def test_the_disagreement_is_marked_when_they_differ(tmp_path):
     parent["peptide_id"] = "benchmark_not_the_ranked_one"
     design.write_text(json.dumps(payload))
     out = _provenance(env)
-    assert "the site and the ranking disagree" in out, out
+    assert "the built bundle and the ranking disagree" in out, out
 
     # And the marker is gone once the copy agrees again, which is what makes
     # the line above a statement about the disagreement rather than about

@@ -13791,3 +13791,40 @@ And the unused variable: having put it in `delta()`, the fix was to remove it
 there rather than leave it computed and ignored. A route that builds a mapping
 nothing renders is the kind of thing that survives for months because it costs
 nothing visible.
+
+## F288
+
+A fifth place said "site" and meant the build directory, and it was the
+operator's own status line.
+
+F261's correction was that `deploy/atlas` is a build directory and the droplet
+is a host, and that the hold keeps them apart by design. I swept four places
+that had conflated them. This is the fifth, and it is the one most likely to
+be read at three in the morning:
+
+```
+design target ranking says benchmark_888fd2c63e (IKZF1),
+site says sievers_dc66fdefdc   <- the site and the ranking disagree
+```
+
+`tools/provenance.py` reads `atlas_drift.PUBLISHED`, which is
+`deploy/atlas` unless `NOBBLE_ATLAS_PUBLISHED` overrides it. So the line
+compares the current ranking against the *built* bundle, and says "site". The
+live site serves the benchmark panel and has no design preview from this
+campaign at all, so a reader acting on that line would look for a problem on
+the droplet and find nothing to see.
+
+It now reads "the built bundle says", and the disagreement marker with it.
+`status.sh` prints this section, so the correction reaches the place the
+wording mattered.
+
+Three tests pinned the old phrasing and were updated with it, which is the
+right order: the tests were asserting that both numbers are printed together,
+which is the property F154 established and is unchanged. One comment in the
+same file still said a test pointed at a copy "read the live site here", about
+the override that F154 added; it says "the real bundle" now, because that
+sentence is about which directory is read.
+
+Five places from one habit. The phrase was always shorthand, and shorthand is
+fine until the two things it elides come apart, which they did the moment
+publication was held.

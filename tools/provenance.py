@@ -138,7 +138,7 @@ try:
     # `Path("deploy/atlas/design.json")`, sitting a few lines from the drift
     # check that reads the same bundle through its own constant. One thing
     # spelled twice: the override took effect for the drift line and not for
-    # this one, so a test pointed at a copy still read the live site here
+    # this one, so a test pointed at a copy still read the real bundle here
     # (F154).
     import atlas_drift as _drift
 
@@ -147,9 +147,15 @@ try:
         published = ((json.loads(atlas_design.read_text()).get("preview")
                       or {}).get("parent") or {})
     agree = published.get("peptide_id") == chosen["peptide_id"]
-    mark = "" if agree else "   <- the site and the ranking disagree"
+    # "the built bundle", not "the site". `_drift.PUBLISHED` is the local
+    # build directory, and deploying is a separate rsync the hold refuses, so
+    # the two diverge whenever D-NOB-076 stands. Reading this line as a claim
+    # about nobble.mdeller.com is what F261 got wrong, and this is the fifth
+    # place that wording appeared: the other four were corrected with it and
+    # this one is in the output an operator reads at 3am (F288).
+    mark = "" if agree else "   <- the built bundle and the ranking disagree"
     print(f"   design target ranking says {chosen['peptide_id']} "
-          f"({chosen.get('gene')}), site says "
+          f"({chosen.get('gene')}), the built bundle says "
           f"{published.get('peptide_id') or 'nothing published'}{mark}")
 except Exception as problem:                        # noqa: BLE001
     print(f"   design target  not resolved: {type(problem).__name__}")
