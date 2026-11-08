@@ -15442,3 +15442,36 @@ One slip of mine. The first version asked that every key under the config's
 `construct_peptide_residues` and two others, which filter nothing: they set
 how long a peptide window is. A test that cannot tell a filter from a
 construct parameter is not asking about filters.
+
+### F314b. Not skipped: the data was never there
+
+"The filter was skipped" implies a decision. It was not one.
+`tumour_enriched` exists in BINMAN's `ligase` table for all 650 rows and is
+**0 in every one of them**: one distinct value, minimum 0, maximum 0. So
+`tiers.py`'s `enrichment_usable = len(distinct) > 1` is false because the
+column was never populated upstream, not because NOBBLE declined to use it.
+
+Three consequences worth separating.
+
+**The wording matters for the write-up.** "Two filters and a cut" stands.
+"The third filter was skipped" does not, and "the third filter had no data"
+does. A reader asking why gets an upstream answer rather than a judgement
+call.
+
+**The fix is BINMAN's, not this project's.** `tumour_enriched` is BINMAN's
+column on BINMAN's table, and CLAUDE.md's D-NOB-007 says shared code is
+widened in place there and never forked. Populating 650 ligase rows from
+Open Targets is work for that repository, and doing it here would fork the
+atlas to get one filter.
+
+**The code is already ready for it.** `enrichment_usable` is computed from
+the data rather than configured, so the day BINMAN populates the column the
+filter applies on the next freeze with no change here. That is why the
+right action now is to record the gap rather than to work around it.
+
+What I deliberately did not do: fetch the enrichment myself and re-freeze.
+Open Targets is reachable from this session, and the selection is frozen on
+purpose, the 1,540-job queue is assembled against it, and re-freezing would
+discard both and change a scientific selection that no instruction asked me
+to change. The option is recorded; the decision is not mine to take at
+08:40 on a Saturday with 32.8 hours already queued.
