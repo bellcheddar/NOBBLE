@@ -58,6 +58,7 @@ LIBRARY = Path("data/manifests/library.jsonl")
 # hand-computed statistic. Two copies of one exact binomial is F154's
 # shape, and I wrote them an hour apart (F326).
 sign_test = _numeric.sign_test
+rounded_p = _numeric.rounded_p
 
 
 def blocks_of(rows: dict, source: str = "sievers_zf") -> dict[str, list[str]]:
@@ -121,9 +122,13 @@ def within_block(blocks: dict, read) -> dict:
                                   if per_block else None),
         "blocks_above_half": above,
         "blocks_below_half": below,
-        "p_two_sided": (round(value, 5)
-                        if (value := sign_test(above, above + below)) is not None
-                        else None),
+        # `rounded_p`, for the reason in its docstring: `round(p, 5)` is
+        # 0.0 for anything below 1e-5, and the sibling scramble tool stored
+        # exactly that for its strongest result (F350). This arm's smallest
+        # p is 0.0043 today, so the bug has not bitten here; fixed anyway,
+        # because the next block added could take it below the line and the
+        # failure is silent.
+        "p_two_sided": rounded_p(sign_test(above, above + below)),
     }
 
 
@@ -188,7 +193,11 @@ def main(argv=None) -> int:
     print(f"  {'statistic':30s} {'blocks':>6s} {'mean AUC':>9s} "
           f"{'above':>7s} {'p':>8s}")
     for row in out["results"]:
-        p = "-" if row["p_two_sided"] is None else f"{row['p_two_sided']:.5f}"
+        # `.3g` below 1e-5, so a small p is not printed as 0.00000 from a
+        # correct stored value, which is the second half of F350.
+        p = ("-" if row["p_two_sided"] is None
+             else f"{row['p_two_sided']:.5f}" if row["p_two_sided"] >= 1e-5
+             else f"{row['p_two_sided']:.3g}")
         auc = "-" if row["mean_within_block_auc"] is None else \
             f"{row['mean_within_block_auc']:.4f}"
         above = f"{row['blocks_above_half']}/{row['blocks_above_half'] + row['blocks_below_half']}"

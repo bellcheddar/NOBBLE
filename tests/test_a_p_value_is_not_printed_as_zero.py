@@ -91,3 +91,64 @@ def test_the_live_figure_is_not_zero():
         f"which is not a p: {verdict}"
     )
     assert verdict["p_two_sided"] < 1e-5, verdict
+
+
+def test_no_tool_rounds_a_p_value_with_plain_round():
+    """The sweep, because the same line was in two tools (F350b).
+
+    The scramble test's `round(p, 5)` stored 0.0 for its strongest result.
+    `tools/matched_arm_stratified.py` had the identical line, and had not
+    been bitten only because its smallest p is 0.0043. Fixing the one that
+    bit and leaving the sibling is how F304 happened: the cause was known
+    and the second instance was not looked for.
+    """
+    import re
+
+    offenders = []
+    for folder in ("tools", "nobble"):
+        for path in sorted((ROOT / folder).rglob("*.py")):
+            text = path.read_text()
+            for number, line in enumerate(text.splitlines(), 1):
+                if "rounded_p" in line or "def rounded_p" in line:
+                    continue
+                # A `round(...)` on the same line as a p-value name.
+                if re.search(r"\bround\s*\(", line) and re.search(
+                        r"p_two_sided|p_value|\bpvalue\b", line):
+                    offenders.append(f"{path.relative_to(ROOT)}:{number}: "
+                                     f"{line.strip()[:70]}")
+    assert offenders == [], (
+        "these round a p-value with plain `round`, which is 0.0 for "
+        "anything below the given precision:\n" + "\n".join(offenders)
+    )
+
+
+def test_both_tools_that_compute_a_p_use_the_helper():
+    """Named, so removing one is a failure rather than a silent regression."""
+    for name in ("tools/scramble_paired_test.py",
+                 "tools/matched_arm_stratified.py"):
+        source = (ROOT / name).read_text()
+        assert "rounded_p = _numeric.rounded_p" in source, name
+        assert "rounded_p(sign_test(" in source, name
+
+
+def test_both_tables_print_a_small_p_rather_than_zero():
+    """The display half, which the stored fix does not cover."""
+    for name in ("tools/scramble_paired_test.py",
+                 "tools/matched_arm_stratified.py"):
+        source = (ROOT / name).read_text()
+        assert ':.3g' in source, (
+            f"{name} formats every p with fixed decimals, so a correct "
+            "small value still prints as zero"
+        )
+
+
+def test_the_matched_arm_figures_are_unchanged_by_the_fix():
+    """The common case must not move, or every recorded figure changes.
+
+    This arm's smallest p is 0.00434 and its largest 0.54883, all above
+    1e-5, so switching to `rounded_p` must leave the table identical. That
+    is what makes the change safe to apply to a tool it had not yet bitten.
+    """
+    for value in (0.33231, 0.38331, 0.11532, 0.54883, 0.04904, 0.00434,
+                  0.07681):
+        assert rounded_p(value) == round(value, 5) == value, value

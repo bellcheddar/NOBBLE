@@ -1753,3 +1753,13 @@ bad clocks are. -->
   while quoting 8.0e-07 from a separate calculation. `numeric.rounded_p`
   keeps places down to the precision and significant figures below it, and
   the table's `.5f` needed fixing too.
+- `2026-11-08T04:25Z` F350b. Searched for the same line rather than fixing
+  only the instance that bit, which is F304's lesson.
+  `tools/matched_arm_stratified.py` held the identical
+  `"p_two_sided": round(value, 5)`, unbitten only because this arm's
+  smallest p is 0.00434. Fixed with its display; the table is identical
+  today and a test asserts those seven values are unmoved, which is what
+  makes the change safe in a tool the bug had not reached.
+  `test_no_tool_rounds_a_p_value_with_plain_round` refuses a third instance,
+  and both tools that compute a p are named so deleting the helper from one
+  fails rather than silently reverting.

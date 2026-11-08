@@ -18757,3 +18757,26 @@ ones that returned a plausible value cost more: `sign_test(25, 1)` returned
 p = 0.0 beside a 25-to-1 split and I nearly published it, and `scramble_`
 blended the two populations F342 is about and would have hidden the effect
 entirely. `inspect.signature` and one `grep` are the whole remedy.
+
+### F350b. The same line was in the sibling tool, and I looked
+
+`tools/matched_arm_stratified.py` line 124 held the identical
+`"p_two_sided": round(value, 5)`. It had not been bitten because this arm's
+smallest p is 0.00434, comfortably above the 1e-5 where the rounding
+collapses.
+
+Fixed anyway, with its display, and the table is byte-identical today:
+0.33231, 0.38331, 0.11532, 0.54883, 0.04904, 0.00434, 0.07681. That is what
+makes the change safe to apply to a tool the bug had not yet reached, and a
+test asserts those seven values are unmoved so "the common case is
+identical" is checked rather than claimed.
+
+The reason to look at all is F304, which was concluding a cause without
+searching for its other instances. One `grep` over `round(` beside a
+p-value name found the second site in a second, and
+`test_no_tool_rounds_a_p_value_with_plain_round` now refuses a third.
+
+One line of that sweep is worth keeping for the next reader: the two tools
+that compute a p are named in a test, so deleting the helper from one of
+them fails rather than quietly reverting. A sweep that only forbids the bad
+pattern leaves room for a new tool to compute a p and format it its own way.
