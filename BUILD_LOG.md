@@ -1386,3 +1386,28 @@
   the prose was not part of that change. Fixed, and every figure of that
   shape in the code is now read against the config by
   `test_a_config_value_quoted_in_a_docstring_is_the_configured_one`.
+- `2026-11-08T03:50Z` **F334 is WRONG.** The job passed 9,797s still
+  running: 9,801s at the crossing, 1.030 of the six-run mean and 1.032 of
+  its own previous attempt at 25 samples. The reason is the one F335b put on
+  record while the job was at 9,650: the band was plus or minus three per
+  cent taken from six runs whose internal spread is plus or minus 0.9, and
+  within-condition spread is not a tolerance for a between-condition
+  difference. What survives is the part the finding was for: a 64 per cent
+  sample cut bought nothing, F325's linear 3,417s is wrong by a factor of
+  2.9, and `tokens x samples` prices a tier-2 job in units that do not track
+  its cost. What is withdrawn is the sharper claim that samples contribute
+  nothing measurable, which one run cannot separate from conditions.
+- `2026-11-08T03:50Z` The scorer said "not yet testable" about a claim that
+  was already refuted, because it waits for a recorded duration and a
+  running job has none. A running job's duration can only grow, so reading
+  it can falsify and can never support: that asymmetry makes it safe, and
+  both directions are tested. Its sample count comes from
+  `runner.sampling_for` via `settings_from_config` rather than from
+  `budget // tokens` repeated in the scorer, which would be F181.
+- `2026-11-08T03:50Z` Two project tests caught it, both right.
+  `test_the_live_state_is_every_prediction_pending` asserted nothing was
+  refuted, which stopped being true at 02:45; it now asserts the exit code
+  tracks the verdicts rather than pinning a count. And the `_bench06`
+  fixture gave a running row a fixed past `started_at`, which made every
+  running job look hours old and turned F334's empty-case test into a
+  refutation: a fixture detail deciding a verdict. Now `time.time()`.

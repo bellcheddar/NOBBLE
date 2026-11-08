@@ -17492,3 +17492,56 @@ three per cent and `check_registered.py` holds it, and a band adjusted once
 the duration is known is not a prediction. If it fails it fails, and the
 reason above is the reason, offered now while it still costs something to be
 wrong about.
+
+### F334 is WRONG. The band was the wrong variance, as F335b said it would be
+
+The job passed 9,797 seconds still running. F334 claimed it would land
+within three per cent of the six-run mean of 9,512, and it did not.
+
+Recorded at the crossing: 9,801 seconds elapsed, 1.030 of the six-run mean
+and 1.032 of this job's own previous attempt at 25 samples. Boltz still at
+98 per cent of a core, `predictions/` present and holding zero files, which
+is the directory shape the six failures left and is also what a job that
+has not reached its writing stage looks like. That part settles nothing.
+
+**The reason is the one given in advance.** F335b, written while the job was
+at 9,650 and before the outcome, named the wrong-variance error as the
+candidate I thought was right: the band was plus or minus three per cent,
+taken from six runs whose internal spread is plus or minus 0.9, and those
+six ran under conditions similar to each other while this one did not.
+Within-condition spread is not a tolerance for a between-condition
+difference. A band that is tight because six runs agree with each other
+says nothing about where a seventh sits.
+
+So the error is not that I mismeasured the six. It is that I used a precise
+number as if precision about one thing were precision about another, which
+is the same move F257 corrected when one pooled factor priced every job as
+if it were the commonest size.
+
+**What survives, and it is the part the finding was for.** A 64 per cent cut
+in diffusion samples has not shortened the job. It is at 1.03 of its own
+full-sample attempt, so the reduction bought nothing and then some. F325's
+linear-in-samples prediction of 3,417 seconds is wrong by a factor of 2.9.
+`tokens x samples` still prices a tier-2 job in units that do not track its
+cost, and `scaling_bound`'s sample half is still not predictive, which is
+part of why F335 refused to tighten the watchdog on it.
+
+**What is withdrawn** is the sharper claim stacked on top, that the sample
+count contributes nothing measurable. One run cannot separate "samples
+contribute a few per cent" from "samples contribute nothing and conditions
+contributed a few per cent", and I should not have registered a band narrow
+enough to require that separation from a single job.
+
+**What it cost to be wrong, which is the argument for registering it.**
+Nothing, because it was written down with a deadline and a falsifier and
+scored by a tool rather than by me. The alternative version of this
+afternoon is the one where I note that the reduction "did not help much",
+never fix a number to it, and carry the impression forward unexamined. Three
+registered predictions of mine have now been scored and two were wrong
+(F268 pending, F325 wrong at the top, F334 wrong). That ratio is the point
+of the mechanism, not a problem with it.
+
+**Still open and unaffected:** F268 and F306 turn on the confidence JSON and
+not the clock. The empty `predictions/` directory is not evidence either
+way while the process is still running, and PROGRESS's instruction stands:
+read the `detail` field on the state row before guessing at a cause.

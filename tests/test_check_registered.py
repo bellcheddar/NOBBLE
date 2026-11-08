@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import time
 from pathlib import Path
 
 import pytest
@@ -220,9 +221,33 @@ def test_f253_needs_the_scramble_before_it_judges(tmp_path):
     assert verdict["unpaired"] == 1, verdict
 
 
-def test_the_live_state_is_every_prediction_pending():
-    """Today: nothing has run, so nothing is scored and nothing is wrong."""
-    assert _module().main([]) == 0
+def test_the_live_state_exits_non_zero_once_a_prediction_is_wrong():
+    """This asserted every prediction was pending, which was true when it
+    was written and stopped being true at 02:45 on 2026-11-08.
+
+    F334 claimed a reduced-sample job lands within three per cent of the
+    six-run mean of 9,512 seconds. It passed the top of that band still
+    running, which refutes it whatever it does next, and the scorer now
+    says so rather than waiting for a duration to be written.
+
+    So the assertion worth keeping is not "nothing is wrong". It is that
+    the exit code tracks the verdicts: zero while nothing is refuted, one
+    once something is, because that is what a chain or a person reads.
+    Pinning the count instead would make this test a transcript of a
+    particular afternoon.
+    """
+    module = _module()
+    code = module.main([])
+    campaign = sorted(ROOT.glob("campaigns/campaign_*"))
+    if not campaign:
+        assert code == 0
+        return
+    wrong = [predicate(campaign[-1]) for predicate in
+             (module.f268_refinement_size_limit,
+              module.f306_reduced_sampling_succeeds,
+              module.f334_sampling_buys_no_time)]
+    refuted = [row["finding"] for row in wrong if row["status"] == "WRONG"]
+    assert code == (1 if refuted else 0), (code, refuted)
 
 
 def test_the_brief_mode_is_one_line_per_prediction():
@@ -383,7 +408,12 @@ def _bench06(tmp_path, unconstrained_states: dict[str, list[str]],
                 if status not in ("running", "abandoned"):
                     row["seconds"] = default
                 else:
-                    row["started_at"] = 1794095030.729669
+                    # Now, not a fixed instant in the past. A constant here
+                    # made every running row look hours old, which turned
+                    # F334's empty-case test into a refutation: a fixture
+                    # detail deciding a verdict. Tests that want an old job
+                    # set `started_at` themselves.
+                    row["started_at"] = time.time()
                 state.append(row)
     _write(campaign / "queue_tier2.jsonl", queue)
     _write(campaign / "state_tier2.jsonl", state)
@@ -855,3 +885,85 @@ def test_f334_lists_the_six_durations_it_averages():
     six = [9440, 9468, 9492, 9534, 9536, 9602]
     assert round(sum(six) / len(six)) == 9512
     assert _module().F334_BASELINE_SECONDS == 9512.0
+
+
+def test_f334_is_refuted_by_a_running_job_already_past_the_band(tmp_path):
+    """"Undecided" and "decided against me" had the same shape.
+
+    The job passed 9,797 seconds still running, which refutes the claim
+    whatever it does next, and the verdict said "not yet testable" because
+    no `seconds` had been written. A running job's duration can only grow,
+    so reading it can falsify this and can never support it, and that
+    asymmetry is what makes reading it safe rather than a way of grading my
+    own prediction early.
+    """
+    import time
+
+    module = _module()
+    campaign = _bench06(tmp_path, {},
+                        conditioned_states={CONDITIONED: ["running"]},
+                        samples={CONDITIONED: 9})
+    rows = [json.loads(line) for line
+            in (campaign / "state_tier2.jsonl").read_text().splitlines()
+            if line.strip()]
+    for row in rows:
+        if row["job_id"] == CONDITIONED and row["status"] == "running":
+            row["started_at"] = time.time() - 12000.0
+    _write(campaign / "state_tier2.jsonl", rows)
+
+    verdict = module.f334_sampling_buys_no_time(campaign)
+    assert verdict["status"] == "WRONG", verdict
+    assert CONDITIONED in verdict["running_past_the_band"], verdict
+    assert "whatever it does next" in verdict["detail"], verdict
+
+
+def test_f334_is_not_supported_by_a_running_job_inside_the_band(tmp_path):
+    """The other half of the asymmetry, and the one that matters.
+
+    A job an hour into a 2.6-hour run is inside the band trivially, and
+    reporting `supported` on that would score the prediction before the
+    evidence existed. Only a settled duration can support it.
+    """
+    import time
+
+    module = _module()
+    campaign = _bench06(tmp_path, {},
+                        conditioned_states={CONDITIONED: ["running"]},
+                        samples={CONDITIONED: 9})
+    rows = [json.loads(line) for line
+            in (campaign / "state_tier2.jsonl").read_text().splitlines()
+            if line.strip()]
+    for row in rows:
+        if row["job_id"] == CONDITIONED and row["status"] == "running":
+            row["started_at"] = time.time() - 3600.0
+    _write(campaign / "state_tier2.jsonl", rows)
+
+    verdict = module.f334_sampling_buys_no_time(campaign)
+    assert verdict["status"] == "not yet testable", verdict
+
+
+def test_f334_reads_a_running_jobs_sample_count_from_the_runner(tmp_path):
+    """Not from arithmetic repeated in the scorer.
+
+    `results_tier2.jsonl` is written on success, so a running job has no
+    recorded sample count and the scorer has to work out what the runner
+    gave it. Repeating `budget // tokens` here would be a second copy of
+    the number, which is F181: the scorer could then disagree with what the
+    runner actually did and the verdict would be about the copy.
+    """
+    module = _module()
+    source = (ROOT / "tools" / "check_registered.py").read_text()
+    assert "from nobble.execute.runner import sampling_for" in source, (
+        "the scorer no longer asks the runner what it would have done"
+    )
+    assert "//" not in source.split("_reduced_samples")[1].split("def ")[1], (
+        "the scorer appears to compute a sample count itself"
+    )
+    campaign = _bench06(tmp_path, {},
+                        conditioned_states={CONDITIONED: ["running"]})
+    # 1,223 tokens is over the configured budget, so the runner reduces it
+    # and `_reduced_samples` must report the reduced figure rather than 25.
+    from nobble import paths
+    asked = int(paths.tuning()["campaign"]["tier2_diffusion_samples"])
+    got = module._reduced_samples(campaign, CONDITIONED)
+    assert got is not None and got < asked, (got, asked)

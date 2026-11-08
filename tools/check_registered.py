@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -466,6 +467,30 @@ F334_BASELINE_SECONDS = 9512.0
 F334_BAND = 0.03
 
 
+def _reduced_samples(campaign: Path, job_id: str) -> int | None:
+    """The samples the runner would give this queued job, or None.
+
+    Imported rather than reimplemented. `runner.sampling_for` is the
+    decision and `runner.settings_from_config` is the shape it expects, and
+    a second copy of `budget // tokens` here would be one number serving
+    two meanings, which is F181. The import is cheap: the runner's
+    module-level imports are the standard library, so this costs no torch.
+    """
+    try:
+        from nobble.execute.runner import sampling_for, settings_from_config
+    except Exception:                                   # noqa: BLE001
+        return None
+    for row in _rows(campaign / "queue_tier2.jsonl"):
+        if str(row.get("job_id")) != job_id:
+            continue
+        try:
+            samples, _note = sampling_for(row, settings_from_config(tier=2))
+        except Exception:                               # noqa: BLE001
+            return None
+        return int(samples)
+    return None
+
+
 def f334_sampling_buys_no_time(campaign: Path) -> dict:
     """Does cutting the diffusion samples from 25 to nine shorten the job?
 
@@ -500,6 +525,42 @@ def f334_sampling_buys_no_time(campaign: Path) -> dict:
     low = F334_BASELINE_SECONDS * (1.0 - F334_BAND)
     high = F334_BASELINE_SECONDS * (1.0 + F334_BAND)
 
+    # A running job can only exceed a bound, never fall back below one it
+    # has already passed, so its elapsed time can falsify this and can
+    # never support it. That asymmetry is what makes reading it safe, and
+    # reading it is what stops the scorer saying "not yet testable" about a
+    # duration that is already decided: on 2026-11-08 the job passed 9,797
+    # seconds still running, which is this claim refuted, and the verdict
+    # said undecided because no `seconds` had been written yet. "Undecided"
+    # and "decided against me" had the same shape, which is F321 to F324 in
+    # the one place where the thing being scored is a prediction of mine.
+    #
+    # `started_at` is wall clock and `seconds` is the runner's monotonic
+    # measure. They start a few milliseconds apart: `started_at` is written
+    # immediately before `run_job`, which clears the output directory and
+    # then takes its own clock. Checked rather than assumed, because the
+    # whole comparison rests on it.
+    running_over: dict[str, float] = {}
+    for row in _rows(state):
+        job_id = str(row.get("job_id") or "")
+        if (str(row.get("status")) != "running"
+                or not job_id.startswith(F268_PAIR + "__")):
+            continue
+        began = row.get("started_at")
+        count = samples.get(job_id)
+        if count is None:
+            # A running job has no results row: `results_tier2.jsonl` is
+            # written on success. Its sample count comes from the runner's
+            # own decision function against the queue row, rather than from
+            # arithmetic repeated here, so the scorer cannot disagree with
+            # what the runner actually did.
+            count = _reduced_samples(campaign, job_id)
+        if began is None or count is None or int(count) >= asked:
+            continue
+        elapsed = time.time() - float(began)
+        if elapsed > high:
+            running_over[job_id] = elapsed
+
     measured: dict[str, float] = {}
     for row in _rows(state):
         job_id = str(row.get("job_id") or "")
@@ -519,6 +580,15 @@ def f334_sampling_buys_no_time(campaign: Path) -> dict:
         measured[job_id] = float(seconds)
 
     if not measured:
+        if running_over:
+            job, elapsed = sorted(running_over.items())[0]
+            verdict.update(
+                status="WRONG", running_past_the_band={job: round(elapsed)},
+                detail=(f"{job} is still running at {elapsed:.0f}s, past the "
+                        f"{high:.0f}s top of the band, so the claim is "
+                        "refuted whatever it does next: a running job can "
+                        "only go further past a bound"))
+            return verdict
         verdict.update(
             status="not yet testable",
             detail=(f"no bench06 attempt at fewer than {asked} samples has a "
@@ -527,6 +597,7 @@ def f334_sampling_buys_no_time(campaign: Path) -> dict:
 
     outside = {job: seconds for job, seconds in measured.items()
                if not low <= seconds <= high}
+    outside.update(running_over)
     verdict["reduced_durations"] = {job: round(seconds, 1)
                                     for job, seconds in sorted(measured.items())}
     verdict["band_seconds"] = [round(low, 1), round(high, 1)]
