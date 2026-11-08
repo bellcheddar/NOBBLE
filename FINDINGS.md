@@ -15214,3 +15214,71 @@ The strict assertion stays where it is load-bearing.
 copy that gets committed is published, and that is both F173's failure and
 mine. Cleanliness at publish time is enforced by `deploy/deploy.sh`, which
 clears the provable copies and refuses on anything left.
+
+## F312. The composite loses a tenth of its AUC out of sample, and had no out-of-sample figure
+
+`weights.fit` reports its objective as in-sample and caveats it correctly on
+the fit itself. It then says, in a comment: "The matched-control ROC is the
+held-out measurement; this is not a second opinion on it."
+
+**That is true of `delta_iptm` and false of the composite.** `_label` is
+deliberately not scoped to one arm, and its own docstring says why: spec 4.8
+fits the weights "on the benchmark panel and the Sievers matched set". Spec
+5.3 scopes the ROC to the Sievers split. So the pairs the ROC evaluates are
+inside the fit's training data. A raw statistic is held out from a fit it
+took no part in; a fitted composite is not. The project had an in-sample
+figure, a correct caveat saying it was in-sample, and nothing to compare it
+with.
+
+`tools/composite_crossval.py` computes the comparison. Stratified
+deterministic folds, each refitted through `weights.fit_rows`, the same grid
+search the campaign runs, scoring only the pairs that fold did not see.
+
+| folds | in sample | out of sample | optimism |
+|---|---|---|---|
+| 5 | 0.6988 | 0.5836 | 0.1152 |
+| 10 | 0.6988 | 0.6012 | 0.0976 |
+| 31 (leave one out) | 0.6988 | 0.6096 | 0.0892 |
+
+So the out-of-sample estimate is 0.58 to 0.61 against 0.70 in sample, and
+about a tenth of the in-sample figure is optimism from fitting five weights
+on 31 positives.
+
+### The comparison that matters, and it is not flattering
+
+A single component carries no optimism. The AUC of one feature is rank-based
+and has no fitted parameters, so its figure is already an out-of-sample
+estimate. That makes this comparison fair:
+
+```
+composite, out of sample          0.58 to 0.61
+convergence_score      alone      0.5889
+lysine_reach           alone      0.5855
+bridge_percentile      alone      0.5580
+plip_fingerprint_match alone      0.5401
+delta_iptm             alone      0.5196
+```
+
+**Once optimism is removed, the composite is indistinguishable from its best
+single component.** Five weights fitted on 31 positives buy nothing over
+taking `convergence_score` on its own. The in-sample 0.70 is the whole of the
+apparent gain.
+
+### What this does not establish
+
+31 positives, and the per-fold AUCs run from 0.0 to 0.84. The pooled figure
+is a point estimate with very wide uncertainty and no interval is quoted,
+because computing one properly over a nested resampling of a grid search is
+not something to bolt on at the end.
+
+The pooled figure estimates the **procedure**, not the shipped weights: each
+held-out score comes from a different fold's fit. Quoting it as the
+performance of the published weighting would be a new version of the error
+it was written to expose.
+
+And one slip of mine in the tests for it, the fourth text-matching failure
+today. The assertion looked for "not a confidence interval" in the tool's
+raw text and failed because the phrase is split across a line break. A prose
+check that respects the author's line wrapping is asserting the wrapping. It
+normalises whitespace now, which is what every prose assertion should have
+been doing.

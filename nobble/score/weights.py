@@ -165,11 +165,22 @@ def _label(row: dict) -> str | None:
 
 
 def fit(campaign: Path) -> FitResult:
+    """Fit the composite on a campaign's scores."""
     scores_path = campaign / "scores.jsonl"
     if not scores_path.exists():
         return FitResult(status="not_fitted: no scores")
 
-    rows = paths.read_jsonl(scores_path, tolerate_torn=True)
+    return fit_rows(paths.read_jsonl(scores_path, tolerate_torn=True))
+
+
+def fit_rows(rows: list[dict]) -> FitResult:
+    """The fit itself, on rows rather than on a campaign.
+
+    Split out so a fold of a cross-validation can refit on a subset through
+    the same code the campaign uses. Two spellings of the grid search would
+    mean the cross-validated figure describes a fit the campaign never
+    performs, which is worse than having no figure (F312).
+    """
     labelled = [(row, _label(row)) for row in rows if _label(row)]
     positives = [row for row, side in labelled if side == "positive"]
     negatives = [row for row, side in labelled if side == "negative"]
