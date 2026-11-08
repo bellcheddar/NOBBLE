@@ -292,3 +292,50 @@ def test_the_live_comparison_is_even_and_says_so():
         "the paired split is no longer 8 to 8, so F351's conclusion that "
         "the composite neither beats nor loses to its best component needs "
         "re-reading against the new blocks", paired)
+
+
+def test_the_about_page_says_the_composite_does_not_beat_its_component():
+    """What the fitting bought, where the weights are explained (F351c).
+
+    The panel said "Fitted on N labelled pairs, never by hand", which is
+    true and implies the fitting bought discrimination. It bought 0.1152 of
+    optimism (F312) and, paired over the matched blocks, no advantage over
+    a component with nothing fitted to produce it (F351).
+
+    The sentence carries the 8-to-8 split rather than the two means,
+    because the means sit in the table above it and read as the composite
+    losing, which is the conclusion the pairing refutes.
+    """
+    import re
+
+    from jinja2 import Environment
+
+    page = (ROOT / "nobble" / "app" / "templates" / "about.html").read_text()
+    marker = "{% set paired = (matched_blocks or {}).get('composite_against_best') %}"
+    assert marker in page, (
+        "the About page no longer states what the fitting bought, so the "
+        "weights panel implies it bought discrimination"
+    )
+    start = page.index(marker)
+    end = page.index("{% endif %}", start) + len("{% endif %}")
+    template = Environment().from_string(page[start:end])
+
+    shown = " ".join(template.render(matched_blocks={
+        "composite_against_best": {
+            "component": "convergence_score", "component_higher": 8,
+            "composite_higher": 8, "tied": 8, "blocks_compared": 24,
+            "p_two_sided": 1.0}}).split())
+    assert "does not beat its best single component" in shown
+    assert "8 to 8 with 8 tied" in shown, (
+        "the sentence no longer carries the split, so a reader is left with "
+        "the two means in the table above and the wrong conclusion"
+    )
+    # The means must not be in this sentence: they are in the table and
+    # repeating them here is what invites the comparison the pairing refutes.
+    assert "0.6146" not in shown and "0.651" not in shown, shown
+    words = len(re.sub(r"<[^>]+>", " ", shown).split())
+    assert words <= 40, (words, shown)
+
+    assert template.render(matched_blocks={}).strip() == ""
+    assert template.render(
+        matched_blocks={"composite_against_best": None}).strip() == ""

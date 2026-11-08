@@ -1877,3 +1877,15 @@ bad clocks are. -->
   "is this read" is the clean-looking answer over nothing this session has
   been removing, so the table above was produced by asking about seven named
   keys instead, which is narrower and true.
+- `2026-11-08T04:37Z` F351c. The About page's weights panel said "Fitted on N
+  labelled pairs, never by hand", which implies the fitting bought
+  discrimination. One 29-word sentence now says what it bought: "Against
+  convergence_score, which has no fit behind it, the composite is 8 to 8 with
+  8 tied over 24 matched blocks: it does not beat its best single component",
+  rendered from `about.json`'s own figure. It carries the split and
+  deliberately not the means, because 0.6146 against 0.6510 sits in the table
+  above and reads as the composite losing, which is what the pairing refutes;
+  a test asserts the means are absent from that sentence. The campaign
+  catalogue's default sort by composite is left alone: a default sort is not
+  a claim, every component is a column beside it, and changing it would be a
+  presentation decision rather than a correction.

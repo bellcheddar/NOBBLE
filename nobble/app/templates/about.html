@@ -201,6 +201,22 @@
     {% for caveat in weight_fit.caveats %}
       <p class="panel__hint" style="color:var(--warn)">{{ caveat }}</p>
     {% endfor %}
+    {# What the fitting bought, measured against the best component that had
+       nothing fitted to produce it (F351). The table above puts the two
+       means side by side, 0.6146 against 0.6510, which reads as the
+       composite losing; paired over the same blocks it is even. Both
+       readings are wrong without the other, so the sentence carries the
+       split rather than the means. Rendered from about.json's own figure. #}
+    {% set paired = (matched_blocks or {}).get('composite_against_best') %}
+    {% if paired and paired.get('p_two_sided') is not none %}
+    <p class="panel__hint">
+      Against {{ paired.component }}, which has no fit behind it, the
+      composite is
+      {{ paired.component_higher }} to {{ paired.composite_higher }} with
+      {{ paired.tied }} tied over {{ paired.blocks_compared }} matched
+      blocks: it does not beat its best single component.
+    </p>
+    {% endif %}
   {% else %}
     <p class="panel__hint">
       <strong>Not fitted.</strong> {{ weight_fit.status if weight_fit else 'No campaign.' }}

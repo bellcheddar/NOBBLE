@@ -19021,3 +19021,29 @@ A test pins the 8-to-8 split specifically, with an instruction to re-read
 F351 rather than relax the assertion if the arm grows. The split is the
 evidence for the conclusion, so a change to it is a change to the
 conclusion.
+
+### F351c. What the fitting bought, on the page where the weights are explained
+
+The About page's weights panel said "Fitted on N labelled pairs, never by
+hand". True, and it implies the fitting bought discrimination. It bought
+0.1152 of optimism that needed cross-validation to expose (F312) and, paired
+over the matched blocks, no advantage over a component with nothing fitted to
+produce it (F351).
+
+One sentence, 29 words, rendered from `about.json`'s own figure:
+
+> Against convergence_score, which has no fit behind it, the composite is 8
+> to 8 with 8 tied over 24 matched blocks: it does not beat its best single
+> component.
+
+**It carries the split and deliberately not the means.** 0.6146 against
+0.6510 sits in the table immediately above, and those two numbers read as
+the composite losing, which is the conclusion the pairing refutes. Repeating
+them in the sentence that corrects them would invite the comparison again. A
+test asserts the means are absent from this sentence for that reason, which
+is an unusual thing to assert and the right thing here.
+
+The campaign catalogue still sorts by the composite, and that is left alone.
+A default sort is not a claim, every component is a column beside it, and
+changing the default would be a presentation decision rather than a
+correction.
