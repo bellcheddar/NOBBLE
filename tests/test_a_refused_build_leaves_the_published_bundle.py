@@ -360,6 +360,15 @@ def _campaign_with_nothing_scored(tmp_path):
         else:
             shutil.copy2(entry, campaign / entry.name)
     (campaign / "scores.jsonl").write_text("")
+    # The copy's queue still names the original's YAML by absolute path, so
+    # without this the copy is isolated for what this fixture writes and not
+    # isolated for anything that follows a queue row (F339). Safe here only
+    # because a build reads those files, and "safe because the consumer
+    # happens to be read-only" is not a property to rely on.
+    from nobble.validate import inputs
+
+    moved = inputs.relocate_queue_paths(campaign)
+    assert moved["relocated"] or moved["already_inside"], moved
     return campaign
 
 

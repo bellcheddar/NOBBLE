@@ -1451,3 +1451,34 @@
 - `2026-11-08T04:05Z` Corrected myself: I said the design stage has no
   preflight. The chain's stage does not call `preflight.py`; `run_design.sh`
   does. The gap was that nothing checked the parent.
+- `2026-11-08T04:20Z` **F339. I wrote into the live Tier B campaign.** A
+  script of mine copied the campaign to a tempdir to tamper with one YAML,
+  guarded with `if not y.is_absolute(): y = dst / y`, and the queue stores
+  absolute paths, so the write went to the real file. Found within two
+  minutes by an existing preflight check: "cached MSA is not this chain's
+  alignment: queries 207 residues, the chain has 209", my inserted `X `
+  having lengthened the sequence. Repaired and verified: 207 again,
+  `stale_inputs` and the regenerated scan both zero over 1,540 rows,
+  preflight `ok: true`, no other file carries the edit. Same class as F326
+  nine hours earlier: a verification of mine writing to live data because
+  the path it built was not the path it meant.
+- `2026-11-08T04:20Z` The generalisable half: a tempdir copy of a campaign
+  is not isolated, because queue rows name their YAML absolutely.
+  `inputs.relocate_queue_paths` rewrites a copy's queues to point inside it
+  (1,540 of 1,540 relocated, original untouched), reports counts so "all
+  already inside" differs from "no rows", and refuses to rewrite a row whose
+  file is absent from the copy rather than inventing a path. The F327d
+  fixture now uses it: it was safe only because a build reads those YAMLs.
+- `2026-11-08T04:20Z` Preflight now runs both input-provenance checks before
+  the compute instead of leaving them to the atlas build at the end: a Tier B
+  campaign with either problem would run 1,540 jobs over 33 hours and be
+  refused afterwards. F327's reasoning across stages. Measured first and the
+  answer was negative, so it is a guard rather than an incident. Also
+  corrected my own claim that `stale_inputs` compares a YAML against what
+  the code would emit: it compares modifications against the queue row, and
+  `_regenerated_scan` is the one that compares against the code.
+- `2026-11-08T04:20Z` And a bug in that guard, live for one run: a dict
+  literal evaluates in order, so `"ok": not errors` was computed before
+  `_stale_check` appended to `errors`. Preflight reported `ok: true` over a
+  stale YAML it had just found. The guard added to catch a pass-over-nothing
+  was itself one.

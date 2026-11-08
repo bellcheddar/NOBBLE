@@ -167,3 +167,139 @@ def test_the_design_campaign_on_disk_is_the_case_this_is_about():
     if "parent_provenance" in meta:
         # Assembled after this change, so it must say something real.
         assert meta["parent_provenance"], meta
+
+
+# F339. A copied campaign's queue still names the original's YAML.
+
+def test_a_copied_campaign_can_be_made_to_point_at_itself(tmp_path):
+    """The property that made writing into the live campaign possible.
+
+    A queue row names its YAML by absolute path, so a copy of a campaign
+    directory is isolated for anything writing to paths derived from the
+    copy's root and not isolated at all for anything following a queue row.
+    I wrote into the live Tier B campaign from a script whose whole purpose
+    was to tamper with a throwaway copy, because the guard it used was
+    `if not y.is_absolute()` and the paths were absolute.
+    """
+    import json
+    import shutil
+
+    from nobble.validate import inputs
+
+    source = sorted(ROOT.glob("campaigns/*"))
+    source = [d for d in source if (d / "queue.jsonl").exists()
+              and (d / "yaml").is_dir()]
+    if not source:
+        pytest.skip("no campaign with a queue on this checkout")
+    source = source[0]
+
+    copy = tmp_path / source.name
+    copy.mkdir()
+    for entry in sorted(source.iterdir()):
+        if entry.name == "outputs":
+            (copy / "outputs").symlink_to(entry)
+        elif entry.is_dir():
+            shutil.copytree(entry, copy / entry.name)
+        else:
+            shutil.copy2(entry, copy / entry.name)
+
+    first = json.loads((copy / "queue.jsonl").read_text().splitlines()[0])
+    assert str(source.resolve()) in first["yaml"], (
+        "the copy's queue does not name the original, so the hazard this "
+        "guards against has changed shape and the guard should change with it"
+    )
+
+    moved = inputs.relocate_queue_paths(copy)
+    assert moved["rows"] > 0, moved
+    assert moved["relocated"] == moved["rows"], moved
+    assert moved["missing_in_the_copy"] == 0, moved
+
+    after = json.loads((copy / "queue.jsonl").read_text().splitlines()[0])
+    assert str(copy.resolve()) in after["yaml"], after
+    assert Path(after["yaml"]).is_file(), after
+
+    # And the original is not touched by relocating a copy.
+    again = json.loads((source / "queue.jsonl").read_text().splitlines()[0])
+    assert again["yaml"] == first["yaml"], (
+        "relocating a copy rewrote the original, which is the defect "
+        "rather than the fix"
+    )
+
+
+def test_relocating_reports_counts_rather_than_silence(tmp_path):
+    """"Every row already pointed inside" and "there were no rows" are the
+    same silence otherwise, which is the F321 to F324 shape."""
+    from nobble.validate import inputs
+
+    empty = tmp_path / "campaign_empty"
+    (empty / "yaml").mkdir(parents=True)
+    (empty / "queue.jsonl").write_text("")
+    report = inputs.relocate_queue_paths(empty)
+    assert report["rows"] == 0, report
+    assert report["relocated"] == 0 and report["already_inside"] == 0, report
+
+
+def test_a_row_whose_file_is_absent_from_the_copy_is_counted(tmp_path):
+    """Not rewritten to a path that is not there."""
+    import json
+
+    from nobble.validate import inputs
+
+    campaign = tmp_path / "campaign_partial"
+    (campaign / "yaml").mkdir(parents=True)
+    (campaign / "queue.jsonl").write_text(json.dumps({
+        "job_id": "j1", "yaml": "/elsewhere/yaml/j1.yaml"}) + "\n")
+    report = inputs.relocate_queue_paths(campaign)
+    assert report["missing_in_the_copy"] == 1, report
+    assert report["relocated"] == 0, report
+    row = json.loads((campaign / "queue.jsonl").read_text().splitlines()[0])
+    assert row["yaml"] == "/elsewhere/yaml/j1.yaml", (
+        "a row with no file in the copy was rewritten to a path that does "
+        "not exist, which trades a wrong file for a missing one"
+    )
+
+
+def test_the_preflight_asks_both_provenance_questions_before_the_jobs():
+    """F339's other half: the checks existed and ran after the compute.
+
+    `deploy/build_atlas.py` refuses on stale inputs and on a YAML the
+    current code would not write, correctly, as the chain's last stage. A
+    Tier B campaign with either problem runs 1,540 jobs over about 33 hours
+    and the refusal arrives after all of it. This is F327's reasoning
+    across stages rather than within one script.
+
+    Measured before it was written and the answer was negative: all five
+    campaigns on disk were clean, so this is a guard and not an incident.
+    """
+    source = (ROOT / "tools" / "preflight.py").read_text()
+    assert "inputs.stale_inputs(campaign)" in source
+    assert "inputs._regenerated_scan(campaign)" in source, (
+        "preflight no longer asks whether the YAML is what the code would "
+        "write, which is the link a changed form breaks"
+    )
+    assert "stale_rows_checked" in source, (
+        "the clean answer no longer says how many rows produced it, so it "
+        "cannot be told from a clean answer over nothing"
+    )
+
+
+def test_the_preflight_verdict_is_computed_after_those_checks():
+    """The bug this had for one run.
+
+    A dict literal evaluates its values in order, so with the check spread
+    in after `"ok": not errors` the verdict was computed from the errors as
+    they stood before it ran: a stale YAML appended an error and preflight
+    still reported `ok: true`. A guard reporting a pass over the problem it
+    had just found, inside the guard added to catch exactly that.
+    """
+    source = (ROOT / "tools" / "preflight.py").read_text()
+    assert "stale = _stale_check(campaign, errors)" in source, (
+        "the check is no longer run before the result is assembled"
+    )
+    body = source[source.index("def preflight(campaign: Path) -> dict:"):]
+    call = body.index("_stale_check(campaign, errors)")
+    verdict = body.index('"ok": not errors,')
+    assert call < verdict, (
+        "the verdict is computed before the input checks have appended "
+        "their errors, so it reports a pass over them"
+    )

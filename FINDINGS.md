@@ -17717,3 +17717,77 @@ chain's stage does not call `tools/preflight.py`, and `run_design.sh` does,
 with its own comment explaining that a cofactor asymmetry "completes
 perfectly well and reports the missing ion as an effect of something else".
 The gap was never the preflight. It was that nothing checked the parent.
+
+## F339. I wrote into the live Tier B campaign while testing a guard for it
+
+Repaired and verified before this was written. The sequence and the cached
+MSA agree again at 207 residues, `stale_inputs` and the regenerated scan
+both return zero over 1,540 rows, and preflight is `ok: true` with no
+errors. No other file in `campaigns/` carries the edit.
+
+### What happened
+
+I had added an input-provenance check to `tools/preflight.py` and wanted to
+see it fire rather than assume it would. So I copied the Tier B campaign to
+a temporary directory, tampered with one YAML, and ran preflight on the
+copy:
+
+```python
+y = Path(rows[0]['yaml'])
+if not y.is_absolute():
+    y = dst / y
+y.write_text(y.read_text().replace('sequence:', 'sequence: X', 1))
+```
+
+The queue stores **absolute** paths. So `is_absolute()` was true, the branch
+that redirects into the copy was skipped, and the write went to
+`campaigns/tier_b_20261105T202811Z/yaml/tb_pos_ASB8_BRD4_759__binary__unconstrained__seed1.yaml`.
+I had written the guard for relative paths and the data was the other kind.
+
+### How it was found, which is the one good part
+
+The preflight I was testing reported `ok: false` with an error I had not
+written: "cached MSA is not this chain's alignment: ...a3m queries 207
+residues, the chain has 209". My inserted `X ` had made the sequence two
+characters longer, and an existing check compared the chain against its
+cached alignment and said so.
+
+Two runs apart, the same command on the same directory gave `ok: true` and
+then `ok: false`. That is what prompted the question, and the answer was in
+my own script rather than in the campaign.
+
+### A tempdir copy of a campaign is not isolated
+
+This is the part worth generalising, because it is a property of the data
+and not of my mistake. A campaign's queue rows name their YAML by absolute
+path. Copy the directory and the copy's queue still points at the
+original's files. So a copy is isolated for anything that writes to paths it
+derives from the copy's own root, and not isolated at all for anything that
+follows a queue row.
+
+The refusal fixture added for F327d is in the second category and is safe
+only because a build reads those YAMLs rather than writing to them. "Safe
+because the consumer happens to be read-only" is not a property to rely on,
+so `relocate_queue_paths` now rewrites a copy's queues to point inside the
+copy, and the fixture uses it.
+
+### The same shape as F326, nine hours apart
+
+F326 was a test of mine that pointed `--limit 1` at the live campaign and
+truncated its scores from 158 rows to one, and it passed *because of* the
+damage. This is the same class: a verification of mine writing to live data
+because the path it constructed was not the path it meant.
+
+The difference is what caught it. F326 was found by noticing a row count
+later; this was found within two minutes by a guard the project already had,
+firing on a quantity I was not looking at. The project's checks are now
+dense enough that damage announces itself, which is the argument for
+writing them even when the thing they would catch feels unlikely.
+
+### What I will not claim
+
+That running it on a copy was careful. The copy was the right instinct and
+the implementation defeated it, and a `--dry-run` or a read-only tamper
+would have been safer still. The project's rule is that a campaign is
+expensive, and 1,540 jobs of Tier B inputs were one assertion away from a
+mutation nobody asked for.

@@ -74,6 +74,104 @@ def _msa_query_mismatch(msa_path: str, sequence: str) -> str | None:
     return None
 
 
+def _stale_check(campaign: Path, errors: list) -> dict:
+    """Are these inputs the ones the code would write (F339)?
+
+    Both checks already existed and both ran in the wrong place relative to
+    their cost. `deploy/build_atlas.py` refuses on each of them, correctly,
+    as the last stage of the chain: a Tier B campaign whose YAML the
+    assembler would no longer produce runs its 1,540 jobs over about 33
+    hours and the refusal arrives after all of it. The chain's own comment
+    says the arm "depends on the form and the library and both can change
+    between runs", and `assemble_tier_b` reuses a complete campaign by
+    default, so the reuse that comment warns about is the default path.
+
+    This is F327's reasoning across stages rather than within one script: a
+    refusal that can be decided from the inputs belongs before the work.
+    Measured first, and the answer was negative, which is why this is a
+    guard and not an incident: all five campaigns on disk were clean when it
+    was written.
+
+    Two checks, because they are two links of the three in the provenance
+    chain `_regenerated_scan`'s docstring sets out:
+
+    - `stale_inputs` compares a YAML against the queue row describing it,
+      which in practice means the modifications each says it wants. Narrower
+      than it sounds, and I wrote this function's first docstring claiming it
+      compared the YAML against what the code would emit, which is the next
+      check along and not this one. Found by tampering with a YAML and
+      watching a different check catch it.
+    - `_regenerated_scan` compares the YAML against the code that emits it,
+      which is the link F262 broke and the one a changed form would break.
+      Called directly, as `deploy/build_atlas.py` does: it needs rows and
+      status from one pass, a public accessor kept for symmetry was removed
+      as an unused affordance in F291, and two direct callers do not need
+      one. About two seconds for a 2,360-job campaign.
+
+    `rows_checked` is reported beside the result because `stale_inputs`
+    returns `[]` both for a campaign whose every YAML agrees and for one
+    where nothing was examined. `tools/stale_featurisation.py` counting
+    `blind` apart from `checked` is what this looks like done right, and
+    CLAUDE.md says so.
+    """
+    try:
+        from nobble.validate import inputs
+
+        queues = inputs.queues(campaign)
+        rows = 0
+        for queue in queues:
+            rows += sum(1 for line in queue.read_text().splitlines()
+                        if line.strip())
+        stale = inputs.stale_inputs(campaign)
+        regenerated, regenerated_status = inputs._regenerated_scan(campaign)
+    except Exception as problem:                        # noqa: BLE001
+        # Not silence. A check that could not run is not a check that
+        # passed, and these gate 33 hours.
+        errors.append({
+            "job": campaign.name,
+            "problem": f"the input-provenance checks could not run "
+                       f"({type(problem).__name__}: {problem}), so whether "
+                       "these YAMLs are the ones the code would write is "
+                       "unknown rather than fine",
+        })
+        return {"stale_inputs": None, "regenerated_disagreements": None,
+                "regenerated_status": "could not run",
+                "stale_rows_checked": 0, "stale_queues": 0}
+
+    for item in stale[:20]:
+        errors.append({
+            "job": item.get("job_id") or campaign.name,
+            "problem": f"YAML disagrees with its queue row: "
+                       f"{item.get('reason') or item}",
+        })
+    for item in regenerated[:20]:
+        errors.append({
+            "job": item.get("job_id") or campaign.name,
+            "problem": f"YAML is not what the current code would write: "
+                       f"{item.get('problem') or item}",
+        })
+    # "unavailable" means the comparison could not be made, which the atlas
+    # build also refuses on rather than reading as agreement.
+    if str(regenerated_status).startswith("unavailable"):
+        errors.append({
+            "job": campaign.name,
+            "problem": f"{regenerated_status}, so whether the inputs on disk "
+                       "are the ones the code would write is unknown rather "
+                       "than fine",
+        })
+    if queues and not rows:
+        errors.append({
+            "job": campaign.name,
+            "problem": f"{len(queues)} queue(s) hold no rows, so the input "
+                       "checks examined nothing and their clean answer means "
+                       "only that",
+        })
+    return {"stale_inputs": len(stale),
+            "regenerated_disagreements": len(regenerated),
+            "regenerated_status": regenerated_status,
+            "stale_rows_checked": rows, "stale_queues": len(queues)}
+
+
 def preflight(campaign: Path) -> dict:
     import yaml
 
@@ -295,6 +393,9 @@ def preflight(campaign: Path) -> dict:
             "basis": projection.get("basis"),
         }
 
+    # Before the result is assembled, because it appends to `errors` and
+    # `ok` is read off that list.
+    stale = _stale_check(campaign, errors)
     return {
         "campaign": campaign.name,
         "jobs": len(jobs),
@@ -305,7 +406,15 @@ def preflight(campaign: Path) -> dict:
             1 for item in errors
             if "has no ligand chain" in item.get("problem", "")),
         "cost": cost,
+        **stale,
         "errors": errors,
+        # Last, and after `_stale_check` has had its say. A dict literal
+        # evaluates its values in order, so with the check spread in after
+        # this line `ok` was computed from the errors as they stood before
+        # it ran: a stale YAML appended an error and the verdict still read
+        # `ok: true`. A guard that reports a pass over the problem it just
+        # found is the whole shape this session has been clearing out, and
+        # it was in the guard added to catch it.
         "ok": not errors,
     }
 

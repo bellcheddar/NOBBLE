@@ -82,6 +82,68 @@ def queues(campaign: Path) -> list[Path]:
     return sorted(Path(campaign).glob(QUEUE_GLOB))
 
 
+def relocate_queue_paths(campaign: Path) -> dict:
+    """Point a copied campaign's queues at the copy's own YAML files (F339).
+
+    A queue row names its YAML by absolute path, so copying a campaign
+    directory does not copy that reference: the copy's queue still names the
+    original's files. A copy is therefore isolated for anything writing to
+    paths it derives from the copy's root, and not isolated at all for
+    anything following a queue row.
+
+    I found that out by writing into the live Tier B campaign from a script
+    whose whole purpose was to tamper with a throwaway copy. The guard said
+    `if not y.is_absolute(): y = copy / y`, and the paths were absolute.
+
+    So this makes the copy mean what it looks like. A row whose YAML lives
+    under this campaign already is left alone; one pointing elsewhere is
+    repointed at the file of the same name under this campaign's `yaml/`;
+    one with no such file is counted in `missing` rather than rewritten to a
+    path that is not there.
+
+    Returns counts rather than nothing, because "every row already pointed
+    inside" and "there were no rows" are the same silence otherwise.
+    """
+    campaign = Path(campaign).resolve()
+    yaml_dir = campaign / "yaml"
+    moved = inside = missing = rows = 0
+    for queue in queues(campaign):
+        out = []
+        changed = False
+        for line in queue.read_text().splitlines():
+            if not line.strip():
+                continue
+            rows += 1
+            row = json.loads(line)
+            named = str(row.get("yaml") or "")
+            if not named:
+                out.append(line)
+                continue
+            path = Path(named)
+            if path.is_absolute() and campaign in path.parents:
+                inside += 1
+                out.append(line)
+                continue
+            if not path.is_absolute():
+                inside += 1
+                out.append(line)
+                continue
+            candidate = yaml_dir / path.name
+            if not candidate.is_file():
+                missing += 1
+                out.append(line)
+                continue
+            row["yaml"] = str(candidate)
+            moved += 1
+            changed = True
+            out.append(json.dumps(row))
+        if changed:
+            queue.write_text("\n".join(out) + "\n")
+    return {"rows": rows, "relocated": moved, "already_inside": inside,
+            "missing_in_the_copy": missing,
+            "queues": len(queues(campaign))}
+
+
 def stale_inputs(campaign: Path) -> list[dict]:
     """Jobs whose YAML disagrees with the queue row describing them.
 
