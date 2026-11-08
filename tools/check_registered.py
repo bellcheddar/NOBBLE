@@ -98,16 +98,27 @@ def f254_refinement_bridging(campaign: Path) -> dict:
             continue
         paired.append((label, before, after))
 
-    # Both classes present, rather than a minimum count. An AUC needs at
-    # least one of each and a count would be a cutoff deciding when the
-    # prediction becomes scoreable, which is the sort of number that belongs
-    # in config or nowhere.
+    # Both classes present, rather than a minimum count. A count would be a
+    # cutoff deciding when the prediction becomes scoreable, which is the
+    # sort of number that belongs in config or nowhere.
+    #
+    # The message here named the delta rather than the bridge rate, and the
+    # comment said an AUC needs one of each (F347). Neither is what this
+    # gate reads. It
+    # compares `bridge_formation_rate` between tiers and takes a median, and
+    # `delta_iptm` is structurally absent at tier 2 because only ternary
+    # jobs are refined, so a reader of that message had to go and find out
+    # whether the prediction could resolve at all. It can: 12 of the 23
+    # pairs queued for refinement are Sievers pairs and both labels are
+    # present, 4 degraded and 8 not. A gate that names the wrong quantity
+    # costs the next reader the same hour.
     labels = {row[0] for row in paired}
     if labels != set(layers.ROC_LABELS):
         verdict.update(status="not yet testable",
-                       detail=f"{len(paired)} refined Sievers pair(s) carry "
-                              f"both tiers' delta, covering {sorted(labels)}: "
-                              "an AUC needs both classes")
+                       detail=f"{len(paired)} refined Sievers pair(s) carry a "
+                              f"bridge formation rate at both tiers, covering "
+                              f"{sorted(labels)}: this needs both classes. "
+                              f"{len(tier2)} pair(s) are scored at tier 2")
         return verdict
 
     import statistics

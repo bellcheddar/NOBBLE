@@ -18404,3 +18404,66 @@ falls between the two words. The same trap as the "writes nothing"
 assertion earlier in this project, where the words were present and a
 newline sat between them. Changed to a phrase that is on one line, and that
 is the only reliable form for a check against wrapped prose.
+
+## F347. F254 can resolve, and its own message said otherwise
+
+Checking whether the 45 hours of tier-2 compute now running will be read at
+the end, rather than assuming it.
+
+`scores_tier2.jsonl` holds **one** scored pair against 150 results over 17
+pairs, which looked like 150 jobs of compute with no reader. It is not:
+`tools/tier2.sh` scores tier 2 after the runner finishes, at line 138, and
+the one scored pair is simply where a previous run was interrupted. The
+plumbing is sound.
+
+### The alarming reading, and why it was wrong
+
+That one scored row has `seeds_binary: 0`, `iptm_min_binary: None` and
+therefore `delta_iptm: None`. Tier 2 refines only the ternary jobs, so a
+tier-2 pair has no refined binary arm and **`delta_iptm` cannot exist at
+tier 2 at all**, by construction rather than by accident.
+
+F254's not-yet-testable message read "0 refined Sievers pair(s) carry both
+tiers' delta". Taken at face value that is a prediction gated on a quantity
+which can never appear: permanently untestable, and the same defect class as
+F333, where a predicate asked a narrower question than its claim.
+
+It is not that. The predicate reads `bridge_formation_rate`, which tier 2
+does produce: 0.9 for the one scored pair. The gate is right for the claim,
+which is that refinement does not change the bridge rate. Only the message
+named the wrong quantity, and the comment above it compounded this by
+calling the gate an AUC, which it also is not: it compares medians.
+
+### So it will resolve, and here is the evidence
+
+Of the 23 distinct pairs in the tier-2 queue:
+
+| | count |
+|---|---|
+| Sievers, degraded | 4 |
+| Sievers, not_degraded | 8 |
+| benchmark | 7 |
+| scramble | 4 |
+
+Both labels are present among the 12 Sievers pairs queued for refinement, so
+the "needs both classes" gate opens once the stage is scored. F254 is
+waiting on scoring, not on data that will never arrive.
+
+### What was fixed
+
+The message now reads "N refined Sievers pair(s) carry a bridge formation
+rate at both tiers, covering [...]: this needs both classes. M pair(s) are
+scored at tier 2". The last clause is the number that distinguishes "waiting
+on the scorer" from "waiting on the data", which is the question I had to go
+and answer by hand.
+
+A gate that names the wrong quantity costs the next reader the same hour it
+cost me, and the hour is the cheap part: the expensive outcome is concluding
+that a registered prediction is dead when it is merely unrun.
+
+### And the test forbade a phrase my own comment contained
+
+`assert "both tiers' delta" not in window` failed, because the comment I had
+just written to explain the old message quoted it verbatim. Reworded the
+comment rather than weakening the test, since the regression guard is the
+part worth keeping.

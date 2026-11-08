@@ -1662,3 +1662,17 @@ bad clocks are. -->
   runner would give a job *today*, then excluding four pre-reduction
   failures that the chain will re-run. Both visible the moment it ran, which
   is the argument for writing the scorer before the evidence.
+- `2026-11-08T03:50Z` F347. Checked that the 45 hours of tier-2 compute will
+  be read rather than assuming it. `scores_tier2.jsonl` holds one scored
+  pair against 150 results over 17 pairs, which looked like compute with no
+  reader; `tier2.sh` line 138 scores tier 2 after the runner, so the one row
+  is just where a previous run was interrupted. But that row has
+  `seeds_binary: 0` and so `delta_iptm: None`, because tier 2 refines only
+  ternary jobs, and F254's message read "0 refined Sievers pair(s) carry
+  both tiers' delta": a prediction apparently gated on a quantity that
+  cannot exist. It is not, the predicate reads `bridge_formation_rate`, and
+  the message was simply wrong. Corrected, and it now also prints how many
+  pairs are scored at tier 2, which is what distinguishes waiting on the
+  scorer from waiting on data that will never arrive. F254 will resolve: of
+  23 queued pairs, 12 are Sievers with both labels present, 4 degraded and 8
+  not.

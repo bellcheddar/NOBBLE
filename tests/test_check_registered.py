@@ -1160,3 +1160,59 @@ def test_f346_band_is_five_times_the_worst_completing_spread():
         "the band no longer explains which population it was measured on, "
         "which is the distinction F334 got wrong"
     )
+
+
+def test_f254_names_the_quantity_it_actually_gates_on():
+    """Its message said "both tiers' delta" and it reads bridge rate (F347).
+
+    `delta_iptm` is structurally absent at tier 2, because only ternary
+    jobs are refined so there is no refined binary arm and
+    `iptm_min_binary` is None. A message naming it as the gate therefore
+    reads as "this prediction can never resolve", and checking that it can
+    cost an hour: 12 of the 23 pairs queued for refinement are Sievers
+    pairs with both labels present, 4 degraded and 8 not, and `tier2.sh`
+    scores tier 2 after the runner.
+    """
+    source = (ROOT / "tools" / "check_registered.py").read_text()
+    window = source[source.index("def f254_refinement_bridging"):]
+    window = window[:window.index("\ndef ", 10)]
+    assert "bridge formation rate at both tiers" in window, (
+        "F254's not-yet-testable message no longer names the quantity it "
+        "reads, so a reader cannot tell whether it can resolve"
+    )
+    assert "both tiers' delta" not in window, (
+        "the message is back to naming delta_iptm, which tier 2 does not "
+        "have"
+    )
+    assert "pair(s) are scored at tier 2" in window, (
+        "the message no longer says how many tier-2 pairs are scored, "
+        "which is the number that decides whether this is waiting on "
+        "scoring or on the data"
+    )
+
+
+def test_a_tier_two_row_has_no_delta_and_that_is_by_construction():
+    """The fact behind F347, asserted so it stays true or gets noticed.
+
+    Tier 2 refines only the ternary jobs, so a tier-2 pair has no binary
+    arm. Any predicate gating on a tier-2 `delta_iptm` would wait for ever.
+    """
+    import json as _json
+
+    campaign = sorted(ROOT.glob("campaigns/campaign_*"))
+    if not campaign:
+        pytest.skip("no campaign on this checkout")
+    scores = campaign[-1] / "scores_tier2.jsonl"
+    if not scores.exists():
+        pytest.skip("tier 2 has not been scored on this checkout")
+    rows = [_json.loads(line) for line in scores.read_text().splitlines()
+            if line.strip()]
+    if not rows:
+        pytest.skip("no tier-2 pair is scored")
+    for row in rows:
+        assert row.get("seeds_binary") in (0, None), (
+            "a tier-2 pair has a binary arm, so refinement now covers the "
+            "binary jobs too and F347's reasoning needs re-reading", row)
+        assert row.get("delta_iptm") is None, (
+            "a tier-2 pair carries a delta_iptm, which it cannot without a "
+            "refined binary arm: check what produced it", row)
