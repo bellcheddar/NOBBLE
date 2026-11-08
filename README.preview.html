@@ -348,6 +348,16 @@ what it says.</p>
   as "not distinguishable from chance at 95 per cent confidence". It holds at
   0.4147 on the companion statistic a collapsed seed cannot inflate, so it is
   not an artefact of one bad draw.</li>
+<li><strong>Analysed as the matched design it is, the null gets stronger.</strong> That arm
+  pairs every positive with the four non-degraded zinc fingers closest to it in
+  length and composition, each inheriting its positive's drug, and the ROC
+  above pools all of them into one curve. Taken within blocks instead, where
+  each positive is ranked against its own four controls, Delta-ipTM comes out
+  at 0.4271, below chance, and nothing not fitted on these pairs reaches
+  significance over 24 blocks. The composite reaches 0.6146 held out against
+  0.7083 in sample, which is the optimism again. The better-powered analysis
+  was available, the matching was being discarded, and using it properly made
+  the result worse rather than better. <code>tools/matched_arm_stratified.py</code>.</li>
 <li><strong>Pose recovery fails on this campaign</strong>, which submits each substrate as a
   15-mer: 0 of 65 poses within 3 A, median 17.54 A, and tier-2 refinement
   sharpens the poses without recovering them. A Delta-ipTM that cannot

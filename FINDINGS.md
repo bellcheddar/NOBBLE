@@ -15838,3 +15838,28 @@ within matched blocks nothing unfitted is significant and Delta-ipTM is below
 chance; against its own scramble Delta-ipTM wins and the primary signal
 loses. Three analyses, no rescue, and a reader can see all three without
 leaving the page.
+
+### F318c. The README, third document, same obligation
+
+The campaign section reported the pooled ROC as the null and nothing about
+the arm's matching. It now carries the stratified result beside it:
+Delta-ipTM at 0.4271 within blocks, below chance; nothing unfitted reaching
+significance over 24 blocks; the composite at 0.6146 held out against 0.7083
+in sample.
+
+And the sentence that is the point of recording any of it: the
+better-powered analysis was available, the matching was being discarded, and
+using it properly made the result worse rather than better.
+
+That is the third document today to get the same treatment, after the app
+page and the earlier README edits, and the rule each time was the same. If a
+measurement exists and a published document would read differently with it,
+the document gets it, whichever way the measurement points. Four of today's
+findings exist because I applied that rule to something I had written hours
+earlier.
+
+**I am going to stop adding analyses here.** The two paired designs are
+measured, both are on the page and in the README, F318 states the synthesis
+and its caveats, and nothing further can be learned from this campaign's
+scores without new compute. Another statistic put to the same 24 blocks would
+add a test to a family that already fails to survive its own correction.
