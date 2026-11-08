@@ -18522,6 +18522,22 @@ and nothing read it, and its conclusion was that "a file with no reader in
 the app is compute whose only product is a file on a droplet". Tier B does
 not even reach the droplet.
 
+### It is the only arm with no reader, which is what makes it a gap
+
+If the project published no arms, this would be consistency rather than an
+omission. Counted in `deploy/build_atlas.py`:
+
+| arm | mentions | published as |
+|---|---|---|
+| campaign | 63 | results, scores, structures |
+| benchmark | 15 | `benchmark.json` |
+| design | 9 | `design.json` |
+| corrected | 5 | `comparison.json` |
+| **tier_b** | **0** | nothing |
+
+Every assembled arm reaches the bundle except this one, and the test asserts
+that set so a change to it sends the reader back here rather than passing.
+
 ### Why I have not fixed it
 
 How Tier B publishes is open item 3 in BUILD_SPEC.md: a ranked list, or an

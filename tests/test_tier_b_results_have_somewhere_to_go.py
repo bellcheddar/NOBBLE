@@ -149,3 +149,51 @@ def test_the_arms_internal_control_is_what_makes_publishing_meaningful():
     )
     assert len(positives) == len(scrambles) == 77, (
         len(positives), len(scrambles))
+
+
+def test_tier_b_is_the_only_arm_with_no_reader_in_the_builder():
+    """Which is what makes F348 a gap rather than a policy.
+
+    If the project published no arms, Tier B's absence would be
+    consistency. Measured on `deploy/build_atlas.py`, it is the exception:
+
+        benchmark   15 mentions, published as benchmark.json
+        corrected    5 mentions, published as comparison.json
+        design       9 mentions, published as design.json
+        campaign    63 mentions, published as results, scores, structures
+        tier_b       0 mentions
+
+    Every assembled arm reaches the bundle except this one.
+    """
+    counts = {arm: BUILDER.count(arm)
+              for arm in ("benchmark", "corrected", "design", "campaign",
+                          "tier_b")}
+    silent = sorted(arm for arm, n in counts.items() if n == 0)
+    assert silent == ["tier_b"], (
+        "the set of arms with no reader in the builder has changed, so "
+        f"re-read F348 against it: {counts}"
+    )
+    # And each of the others publishes a named document, so "mentions" is
+    # not mistaken for "handles".
+    for document in ("benchmark.json", "comparison.json", "design.json"):
+        assert f'(OUT / "{document}")' in BUILDER, document
+
+
+def test_each_arm_that_is_published_is_also_assembled_somewhere():
+    """The converse, so this file does not only argue one direction.
+
+    A builder reading an arm nothing assembles would be the mirror defect:
+    a publish path for compute that never happens.
+    """
+    assemblers = ""
+    for name in ("nobble/execute/campaign.py", "nobble/design/assemble.py"):
+        assemblers += (ROOT / name).read_text()
+    for arm, expected in (("benchmark", "benchmark"),
+                          ("design", "design"),
+                          ("tier_b", "tier_b")):
+        assert f'fresh_campaign("{expected}")' in assemblers or \
+               f"latest(\"{expected}\")" in assemblers or \
+               f"'{expected}'" in assemblers, (
+            f"{arm} is referenced by the builder or this test and nothing "
+            "assembles it"
+        )
