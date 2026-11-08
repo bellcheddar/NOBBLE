@@ -16773,3 +16773,51 @@ refusals.
 Three instances found by failure, two by looking. That ratio is the argument
 for naming a pattern the moment it repeats rather than after it has cost
 something three times.
+
+## F328. F325's window is falsified at the top, and the reduction buys much less than I said
+
+F325 predicted the job would finish between 85 and 110 minutes. It is at
+**111** and running, so the range is wrong at the upper end. Recorded as it
+happens, which is the only thing that makes the earlier entry a prediction
+rather than a description.
+
+It is now at **1.95 times** the linear-in-samples figure of 57 minutes. What
+the eventual duration implies for the fixed cost, and for the ten bench06
+refinements:
+
+| finishes at | fixed part | share of the full run | per sample | ten jobs |
+|---|---|---|---|---|
+| 115 min | 90.7 min | 57.3% | 162.0s | 19.2 h |
+| 125 min | 106.3 min | 67.2% | 124.5s | 20.8 h |
+| 140 min | 129.8 min | 82.0% | 68.2s | 23.3 h |
+| 158 min | 157.9 min | 99.8% | 0.8s | 26.3 h |
+
+**The trunk dominates and the sample count barely matters to duration.** Ten
+recycling steps with potentials is most of the cost; twenty-five diffusion
+samples against nine is a minor term. The last row is the degenerate case
+where samples cost nothing at all, which the data has not excluded.
+
+### What I have said three times and should now stop saying
+
+The ten bench06 refinements have been priced at about ten hours in PROGRESS
+on the sample ratio, corrected to about fifteen on F325, and are **nineteen
+to twenty-six** on this. The honest number is that **I do not know it**, and
+every figure I have given has been an extrapolation from one unfinished job.
+F325 at least said so; the ten-hour figure did not.
+
+So PROGRESS gets the range and the reason, not a point estimate, and the
+statement to make until the job resolves is that the saving in time is
+unmeasured and may be nil.
+
+### What this does not touch
+
+F298's budget stands unchanged. Its evidence is a total split at 454 and
+1,223 tokens with no overlap, which is about whether a job **completes**.
+Duration is a different quantity and I have conflated them twice today, in
+F325's framing and in the PROGRESS figure before it. If the reduction buys no
+time at all and still turns a job that wrote nothing into one that writes a
+structure, it has done the only thing it was for.
+
+And the G1 gate is still safe, for the reason F298b gave: `scaling_bound`
+prices at the full sample count, which a reduced job cannot exceed whatever
+the fixed share turns out to be.
