@@ -112,3 +112,50 @@ def test_the_build_computes_it_in_its_own_guard():
     assert '"matched_blocks": matched_blocks' in source
     position = source.index("import matched_arm_stratified")
     assert "except Exception as problem" in source[position:position + 900]
+
+
+# --------------------------------------------------------------------------- #
+# And in the hold's pre-flight (F318d)
+# --------------------------------------------------------------------------- #
+
+def test_the_publication_hold_prints_the_discrimination():
+    """Whoever releases the hold is deciding whether the score separates
+    anything. The hold printed the recovery curve live, on the stated
+    principle that a hold quoting the day it was written goes stale, and
+    said nothing about discrimination."""
+    import ast
+
+    source = (ROOT / "tools" / "publication_hold.py").read_text()
+    tree = ast.parse(source)
+    called = {node.func.id for node in ast.walk(tree)
+              if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)}
+    assert "discrimination" in called, (
+        "publication_hold no longer prints the discrimination, so a release "
+        "decision sees the pose curve without whether the score separates "
+        "anything"
+    )
+
+
+def test_the_hold_reads_the_numbers_rather_than_quoting_them():
+    """The file's own rule. A figure copied into the hold goes stale the next
+    time the campaign is scored, which is the mistake it was written to
+    avoid."""
+    source = (ROOT / "tools" / "publication_hold.py").read_text()
+    position = source.index("def discrimination")
+    body = source[position:position + 3400]
+    assert "matched_arm_stratified.report" in body
+    assert "scramble_paired_test.report" in body
+    for literal in ("0.6146", "0.4271", "0.02945"):
+        assert literal not in body, (
+            f"{literal} is hard-coded in the hold, so it will go stale")
+
+
+def test_the_hold_includes_the_question_delta_iptm_passes():
+    """Printing only the two it fails would be the mirror of the fault
+    F316b fixed on the About page: true in every sentence and misleading as
+    a whole."""
+    source = (ROOT / "tools" / "publication_hold.py").read_text()
+    position = source.index("def discrimination")
+    body = source[position:position + 3400]
+    assert "against its own scramble" in body
+    assert "easier question" in body

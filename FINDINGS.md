@@ -15863,3 +15863,36 @@ measured, both are on the page and in the README, F318 states the synthesis
 and its caveats, and nothing further can be learned from this campaign's
 scores without new compute. Another statistic put to the same 24 blocks would
 add a test to a family that already fails to survive its own correction.
+
+### F318d. And in the hold, which is where a release is decided
+
+`tools/publication_hold.py` prints the pose-recovery curve live rather than
+quoting the day the hold was written, on its own stated reasoning: "A hold
+that quotes numbers from the day it was written goes stale silently, and the
+point of re-reading it on every deploy attempt is that the person releasing
+it sees what is true now."
+
+It said nothing about discrimination. The hold's recorded reason is that pose
+recovery fails its positive control, and whoever releases it is also deciding
+whether the score separates anything, which is the other half of what a
+release claims.
+
+Three rows now, read rather than quoted:
+
+```
+composite, held out, within the matched arm's own blocks: AUC 0.6146 over 24 block(s), p 0.07681
+Delta-ipTM in the same blocks: 0.4271  <- below chance
+Delta-ipTM against its own scramble: 22 to 9, p 0.02945. Telling a motif from
+its shuffle is the easier question and it passes that one
+```
+
+The third row is there on purpose. Printing only the two Delta-ipTM fails
+would be the mirror of the fault F316b fixed on the About page: true in every
+sentence and misleading as a whole. A test asserts it is present, and another
+asserts no figure is hard-coded, because a number copied into the hold goes
+stale the next time the campaign is scored.
+
+That makes four places today where the same rule was applied: the About page,
+the README twice, and the hold. Each time the question was whether a document
+would read differently with a measurement in it, and each time the answer was
+yes and the measurement was unflattering.

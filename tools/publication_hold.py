@@ -229,6 +229,78 @@ def detector_control() -> list[str]:
     return lines
 
 
+def discrimination(campaign: Path | None) -> list[str]:
+    """What the two paired designs say, for the person releasing the hold.
+
+    The hold's recorded reason is that pose recovery fails its positive
+    control, and this file already prints that curve live rather than quoting
+    the day it was written. The same argument applies to discrimination,
+    which is the other half of what a release claims: by the time anyone
+    reads this, the question will be whether the score separates anything,
+    and the answer moved twice on 2026-11-08.
+
+    Three rows, because three is what fits beside everything else here and
+    because they are the ones that decide a release:
+
+      * the composite held out, which is what it does on a pair it was not
+        fitted on (F312);
+      * Delta-ipTM within the matched arm's own blocks, which is the
+        best-controlled question the data can answer (F317);
+      * Delta-ipTM against its own scramble, which is the easier question it
+        passes (F316), included so the first two are not read as the whole
+        picture.
+
+    Absent tools or an unscored campaign print as absent. Nothing here
+    recomputes a number this project computes elsewhere.
+    """
+    if campaign is None or not (campaign / "scores.jsonl").exists():
+        return ["    discrimination: no scored campaign to read"]
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    lines: list[str] = []
+    try:
+        from nobble import paths as _paths
+
+        import matched_arm_stratified
+        import scramble_paired_test
+
+        rows = _paths.read_jsonl(campaign / "scores.jsonl", tolerate_torn=True)
+        blocks = matched_arm_stratified.report(rows)
+        scrambles = scramble_paired_test.report({
+            row["pair_id"]: row for row in rows if row.get("pair_id")})
+    except Exception as problem:                        # noqa: BLE001
+        return [f"    discrimination: not computed "
+                f"({type(problem).__name__}: {problem})"]
+
+    def row_of(report_, name, key="statistic"):
+        for entry in report_.get("results") or []:
+            if entry.get(key) == name:
+                return entry
+        return None
+
+    held = row_of(blocks, "composite, held out")
+    if held and held.get("mean_within_block_auc") is not None:
+        lines.append(
+            f"    composite, held out, within the matched arm's own blocks: "
+            f"AUC {held['mean_within_block_auc']} over {held['blocks']} "
+            f"block(s), p {held['p_two_sided']}")
+    delta = row_of(blocks, "delta_iptm")
+    if delta and delta.get("mean_within_block_auc") is not None:
+        lines.append(
+            f"    Delta-ipTM in the same blocks: "
+            f"{delta['mean_within_block_auc']}"
+            + ("  <- below chance" if delta["mean_within_block_auc"] < 0.5
+               else ""))
+    against = row_of(scrambles, "delta_iptm")
+    if against and against.get("p_two_sided") is not None:
+        lines.append(
+            f"    Delta-ipTM against its own scramble: "
+            f"{against['parent_higher']} to {against['scramble_higher']}, "
+            f"p {against['p_two_sided']}. Telling a motif from its shuffle "
+            "is the easier question and it passes that one")
+    return lines or ["    discrimination: nothing comparable in this campaign"]
+
+
 def describe(summary: dict | None, confounded: set[str] | None = None) -> list[str]:
     """The curve as lines, or one line saying there is no curve to read."""
     if summary is None:
@@ -298,6 +370,7 @@ def main() -> int:
                      confounded_pairs(validation.parent if validation else None))
     lines += representation_contrast()
     lines += detector_control()
+    lines += discrimination(validation.parent if validation else None)
 
     if not hold.get("held"):
         released = str(hold.get("released_by") or "").strip()
