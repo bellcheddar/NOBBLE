@@ -1459,3 +1459,45 @@ while `campaigns/` is gitignored. Every atlas rebuild therefore makes a large
 commit; the one that found F303 took over ten minutes in `git add`. That
 looks deliberate, since the deployed bundle is then versioned and
 reproducible, so it is recorded rather than changed.
+
+## Current state, 2026-11-08T08:45Z
+
+`bash tools/status.sh` is the state; this is the narrative. For what is true
+now, run that.
+
+**On the GPU.** Tier 2, job 1 of 100, `bench06` conditioned seed 1 at nine
+diffusion samples instead of twenty-five (F298). Thirty-four minutes in
+against the 158 minutes the same job took at full sampling, where it wrote
+nothing. All ten bench06 refinements are in this run. F306 is registered
+against F268 and resolves on the first of them: one of the two is scored
+against me whichever way it goes.
+
+**Queued behind it.** 99 more tier-2 jobs; then the design scan, 240 jobs and
+4.4 hours; then Tier B, 1,540 jobs and 32.8 hours. Both of the latter have
+never run and both were verified today rather than assumed (F313, F314):
+preflight clean on each, the design scan's parent still the pair the ranking
+picks, and Tier B's selection unaffected by today's corrections because it
+comes from BINMAN's atlas. F252, F253 and F254 become testable as those
+finish.
+
+**Decided and recorded, not done.** Populating BINMAN's `tumour_enriched`
+column, which is 0 for all 650 ligases, so Tier B's third membership filter
+had no data (F314b). It is BINMAN's column and re-freezing would discard an
+assembled 1,540-job queue, so the option is in FINDINGS and the decision is
+not taken.
+
+**Waiting on Marc.** `bash deploy/enable_gzip.sh` on the droplet (F132). And
+two things from today that are his call: whether to excise 706 orphan blobs
+from remote history with a force push, which I did not do (F303), and
+whether the composite is worth keeping now that it measures 0.58 to 0.61 out
+of sample against 0.5889 for its best single component (F312).
+
+**The day's headline, for a reader starting here.** Spec 4.1's primary signal
+now has a positive control: the bridge filter finds six of six measurable
+deposited bridges and, with the substrate supplied as its folded domain,
+reproduces the deposited buried area within 5 per cent on all six (F297).
+The 15-mer representation is adequate where the deposited interface is 215 to
+330 square angstroms and not where it is 528 or more, which is measured and
+which cuts against discounting the matched-control null rather than for it
+(F305). And the composite's apparent advantage over its components is
+optimism (F312).
