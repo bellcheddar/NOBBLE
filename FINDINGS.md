@@ -16162,3 +16162,45 @@ report success with no result. This was three guards, written deliberately,
 citing the findings that motivated them, protecting nothing. A guard that
 cannot fire is worse than no guard, because the comment above it tells the
 next reader the case is covered.
+
+## F323. The preflight said ok over zero jobs, and the chain gates 52 hours on it
+
+The third instance of the day's shape, found by asking the same question of
+every caller that reads an exit code.
+
+`tools/preflight.py` reported `jobs: 0, pairs: 0, ok: true` and exited 0 for
+a campaign whose queue is empty. Every check in it iterates the jobs, so with
+none there are no errors and `ok: not errors` came out true. `run_chain.sh`
+gates stage 2 on that flag and prints "preflight failed: refusing to start a
+52-hour run on it" when it is false, so a campaign whose assembler emitted
+nothing would read as one that had passed every check.
+
+An empty queue is now a refusal with its own status, kept distinct from a
+missing one because the remedies differ: assemble the campaign, against find
+out why its assembler emitted no jobs. The three campaigns on disk still
+pass, which is the half of the change worth checking.
+
+### What the three have in common
+
+F321: the design scan wrote no profile and exited 0. F322: three guards read
+a scorer exit code that was always 0. F323: a gate passed on nothing.
+
+All three are the same sentence with different nouns. **A step that examined
+nothing reported the same thing as a step that examined everything and found
+it clean.** The project has a name for it already, in F152's words, which is
+why `tools/stale_featurisation.py` counts `blind` apart from `checked` and
+why F293's denominator rule exists. Each of the three was written by someone
+who knew that rule, including me for one of them.
+
+What let all three through is that the clean answer and the empty answer have
+the same shape at the boundary: a zero exit, an absent error list, a missing
+file. The fix in each case was to make the empty answer a different shape,
+and that is cheaper than remembering the rule.
+
+### The one place I have not looked
+
+`deploy/build_atlas.py` returns 0 after building, with three refusals above
+it. Whether it can build an empty bundle and report success is the same
+question and I have not asked it. Recorded rather than answered, because the
+suite is mid-run on the changes I have already made and adding a fourth
+before the third is verified is how F300 and F303 happened.

@@ -83,6 +83,23 @@ def preflight(campaign: Path) -> dict:
                 "errors": [{"job": campaign.name, "problem": "no queue.jsonl"}]}
 
     jobs = paths.read_jsonl(queue_path)
+    # An empty queue is a refusal, not a clean bill of health (F323).
+    #
+    # Every check below iterates the jobs, so with none of them there are no
+    # errors and `ok: not errors` came out true: `jobs: 0, pairs: 0, ok:
+    # true`. The chain gates a 52-hour run on exactly that flag and prints
+    # "refusing to start a 52-hour run on it" when it is false, so a
+    # campaign whose queue failed to assemble read as one that had passed
+    # every check. A verdict over nothing is not a pass, which is the rule
+    # F152 and F293 are both about, here on the project's most consequential
+    # gate.
+    if not jobs:
+        return {"status": f"empty queue at {queue_path}", "ok": False,
+                "jobs": 0,
+                "errors": [{"job": campaign.name,
+                            "problem": "queue.jsonl holds no jobs, so every "
+                                       "check below would pass by examining "
+                                       "nothing"}]}
     cap = int(paths.thresholds()["manifest"]["token_cap_tier1"])
     # Constructs that declared themselves over the cap are not violations:
     # DCAF15_DDB1_DDA1 is 1,223 tokens by construction. Mirror the manifest's

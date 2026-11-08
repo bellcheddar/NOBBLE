@@ -102,3 +102,64 @@ def test_no_campaign_at_all_is_a_different_code():
     tail = source.split("def main")[1]
     assert "return 2" in tail
     assert "return 3" in tail
+
+
+# --------------------------------------------------------------------------- #
+# The same question of the preflight (F323)
+# --------------------------------------------------------------------------- #
+
+def test_an_empty_queue_is_a_preflight_refusal(tmp_path):
+    """`jobs: 0, pairs: 0, ok: true` was the answer, and the chain gates a
+    52-hour run on that flag. Every check iterates the jobs, so with none
+    there are no errors and `ok: not errors` came out true: a campaign whose
+    queue failed to assemble read as one that had passed every check."""
+    campaign = tmp_path / "campaign_empty"
+    campaign.mkdir()
+    (campaign / "queue.jsonl").write_text("")
+    done = subprocess.run(
+        [str(SCI), str(ROOT / "tools" / "preflight.py"), str(campaign)],
+        capture_output=True, text=True, cwd=ROOT,
+        env={"PYTHONPATH": str(ROOT), "KMP_DUPLICATE_LIB_OK": "TRUE",
+             "PATH": "/usr/bin:/bin"})
+    assert done.returncode != 0, done.stdout
+    payload = json.loads(done.stdout)
+    assert payload["ok"] is False
+    assert payload["jobs"] == 0
+    assert "examining nothing" in json.dumps(payload["errors"])
+
+
+def test_a_missing_queue_and_an_empty_one_are_told_apart(tmp_path):
+    """Different remedies: assemble the campaign, against find out why its
+    assembler emitted no jobs."""
+    missing = tmp_path / "no_queue"
+    missing.mkdir()
+    empty = tmp_path / "empty_queue"
+    empty.mkdir()
+    (empty / "queue.jsonl").write_text("")
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    import preflight as P
+
+    assert "no queue" in P.preflight(missing)["status"]
+    assert "empty queue" in P.preflight(empty)["status"]
+
+
+def test_the_real_campaigns_still_pass():
+    """The change must not refuse a campaign that is fine, and three are on
+    disk to check it against."""
+    import pytest
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    import preflight as P
+
+    checked = 0
+    for name in ("campaign_", "design_", "tier_b_"):
+        found = sorted((ROOT / "campaigns").glob(f"{name}*"))
+        if not found or not (found[-1] / "queue.jsonl").exists():
+            continue
+        report = P.preflight(found[-1])
+        assert report["ok"] is True, (found[-1].name, report.get("errors", [])[:2])
+        assert report["jobs"] > 0
+        checked += 1
+    if not checked:
+        pytest.skip("no campaign with a queue on this checkout")
