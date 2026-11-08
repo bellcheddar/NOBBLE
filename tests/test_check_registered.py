@@ -967,3 +967,60 @@ def test_f334_reads_a_running_jobs_sample_count_from_the_runner(tmp_path):
     asked = int(paths.tuning()["campaign"]["tier2_diffusion_samples"])
     got = module._reduced_samples(campaign, CONDITIONED)
     assert got is not None and got < asked, (got, asked)
+
+
+def test_f334_counts_a_job_once_however_many_times_it_was_rerun(tmp_path):
+    """`state_tier2.jsonl` is append-only (F345).
+
+    A job that ran, failed and was re-run keeps its old `running` row for
+    ever. Scanning every row that ever said running made the six failures
+    from two days earlier read as still in flight, with `started_at` two
+    days old, so all six counted as past the band and the verdict said
+    "7 reduced attempt(s)" where there was one. The conclusion was right on
+    the one real attempt, which is why it needed catching: a wrong count
+    beside a right verdict is a number nobody re-reads.
+    """
+    module = _module()
+    campaign = _bench06(tmp_path, {},
+                        conditioned_states={CONDITIONED: [FAILED, "done"]},
+                        samples={CONDITIONED: 9})
+    rows = [json.loads(line) for line
+            in (campaign / "state_tier2.jsonl").read_text().splitlines()
+            if line.strip()]
+    # The history a re-run leaves: running, failed, running, done.
+    history = [
+        {"job_id": CONDITIONED, "status": "running",
+         "started_at": time.time() - 200000.0},
+        {"job_id": CONDITIONED, "status": FAILED, "seconds": 9492.0},
+        {"job_id": CONDITIONED, "status": "running",
+         "started_at": time.time() - 190000.0},
+        {"job_id": CONDITIONED, "status": "done", "seconds": 9500.0},
+    ]
+    _write(campaign / "state_tier2.jsonl",
+           [row for row in rows if row["job_id"] != CONDITIONED] + history)
+
+    verdict = module.f334_sampling_buys_no_time(campaign)
+    # 9,500s is inside the band, and the two stale `running` rows must not
+    # be read as two jobs running for two days.
+    assert verdict["status"] == "supported", verdict
+    assert list(verdict["reduced_durations"]) == [CONDITIONED], verdict
+    assert "running_past_the_band" not in verdict, verdict
+
+
+def test_f334_still_sees_a_job_that_is_genuinely_running_now(tmp_path):
+    """The fix must not lose the thing F334's running check was added for."""
+    module = _module()
+    campaign = _bench06(tmp_path, {},
+                        conditioned_states={CONDITIONED: ["running"]},
+                        samples={CONDITIONED: 9})
+    rows = [json.loads(line) for line
+            in (campaign / "state_tier2.jsonl").read_text().splitlines()
+            if line.strip()]
+    for row in rows:
+        if row["job_id"] == CONDITIONED and row["status"] == "running":
+            row["started_at"] = time.time() - 12000.0
+    _write(campaign / "state_tier2.jsonl", rows)
+
+    verdict = module.f334_sampling_buys_no_time(campaign)
+    assert verdict["status"] == "WRONG", verdict
+    assert CONDITIONED in verdict["running_past_the_band"], verdict

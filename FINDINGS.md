@@ -18195,3 +18195,123 @@ session, and the first where the wrong answer was a plausible-looking
 number rather than an exception: p = 0.0 beside a 25-to-1 split reads as a
 very strong result, and I would have published it. `inspect.signature` is
 one line.
+
+## F345. bench06 refines at nine samples. F306 supported, F268 and F334 wrong
+
+The job resolved at 13,440.12 seconds with `status: done`. It wrote a
+confidence JSON: `confidence_score` 0.578, `ptm` 0.620, `iptm` 0.551,
+`ligand_iptm` 0.612, nine diffusion samples, one attempt, and an empty
+`detail` because there was nothing to explain.
+
+| prediction | verdict |
+|---|---|
+| F306: bench06 refines once its sample count fits the budget | **supported** |
+| F268: every bench06 refinement fails, whatever its conditioning | **WRONG** |
+| F334: the sample cut does not change the duration | **WRONG** |
+
+So F298's diagnosis was right. The 1,223-token size was not the cause and
+the pocket constraint was not the cause: this job carries both and
+completed. What was left was the sample count, and reducing it from 25 to
+nine was enough.
+
+### F333 decided this four hours before the evidence arrived
+
+Both scorers filtered on `__unconstrained__`, and the job was the
+conditioned one. Without the widening, F268 would have reported "not yet
+testable: 1 of 5 unconstrained refinement(s) attempted" over the result that
+refutes it, and F306 would have reported "no bench06 attempt has run at
+fewer than 25 samples yet" over the attempt that supports it. The evidence
+would have been in the campaign and absent from the record.
+
+The widening went in the falsifying direction only for F268, so the claim
+could get easier to refute and never easier to affirm. It then got refuted.
+
+### F336's first reading was right, and it explains F334's failure
+
+The six previous failures stopped at 9,512 seconds with a coefficient of
+variation of 0.61 per cent across five seeds and both conditionings: one
+deterministic point, hit six times. This job passed it and kept working to
+13,440.
+
+So the reduced job did not take less time. It took **41 per cent more**,
+because it got further. F334 compared a job that completes against six that
+stop early, and those are not the same measurement: the band was built on
+the wrong population, which is a worse error than the wrong variance F335b
+named and the one I should have seen, since F336 had already established
+that the six stop at a fixed point.
+
+Both of my duration predictions were wrong in the same way. F325 predicted
+3,417 seconds from a linear-in-samples model; the answer is 13,440, a factor
+of 3.9 out. F334 predicted 9,512 plus or minus three per cent; out by 41 per
+cent. The thing neither accounted for is that a job which fails early and a
+job which finishes are not comparable on the clock at all.
+
+### What follows for the queue
+
+Nine more bench06 refinements are queued and job 2 is running. Re-priced
+from the per-token-band medians with the real figure in them: **99 jobs
+remaining, 44.9 hours**, of which the nine bench06 jobs are 33.6. Against
+98.52 hours spent and a 240-hour cap that is 143.4, so G1 stays closed with
+room.
+
+The first number I wrote here was "about 48.7", which was arithmetic in my
+head rather than a reading. It is 44.9. The habit this session has been
+correcting is exactly that one, and it does not stop being worth correcting
+because the error is small.
+
+`tier2_token_sample_budget` is vindicated as a *filter* and remains wrong as
+a *price*: the product of tokens and samples decided correctly that this job
+needed fewer samples, and still says nothing about how long it takes.
+
+### A defect of mine, found on the verdict it produced
+
+F334's detail first read "7 reduced attempt(s) finished outside 9227 to
+9797s". There was one. `state_tier2.jsonl` is append-only, so the six
+failures' `running` rows are still in it with `started_at` from two days
+ago, and the running-job check I added in F334 scanned every row that ever
+said running rather than the last record for each job. Six stale rows read
+as six jobs running for two days, all past the band.
+
+The same shape as F330, which was this very file reading an append-only
+file without asking which record was current, and the second time tonight.
+Fixed by taking the last record per job, with tests for both directions.
+
+The conclusion was unaffected, since the one real attempt is outside the
+band on its own, and that is exactly why it needed catching: a wrong count
+beside a right verdict is a number nobody goes back to read.
+
+### F345b. F343's condition has gone, and the band it was about now reads 14.900
+
+With job 1 complete the 800-1600 token band has a successful refinement, so
+`measured_scaling(include_failed=False)` reports a factor for it at last.
+The trend across bands:
+
+| band | factor |
+|---|---|
+| 0-200 | 4.596 |
+| 200-400 | 6.107 |
+| 400-800 | 8.076 |
+| **800-1600** | **14.900** |
+
+The pooled figure the watchdog borrowed was 4.614. For this band it was
+**3.2 times too low**, which is why a healthy job read as overdue at three
+times it. F343 argued that from the trend; this is the measurement.
+
+`tests/test_the_watchdog_declines_an_unmeasured_size.py` now skips with the
+message written into it for this case: "the 800-1600 band now has a
+completed refinement, so the expectation is measurable and F343's condition
+has gone". A test that retires itself when the world changes, rather than
+passing on a different situation, which is what the skip was for.
+
+One consequence worth stating. With the real factor the expectation for a
+1,223-token job is 902 times 14.9, or 13,440 seconds, and the overdue line
+at three times that is 40,319. bench06's own per-job budget is 39,000, so
+the budget now fires first and the watchdog's finer judgement is inert for
+this size. That is the correct outcome rather than a gap: F343 said
+declining the finer judgement costs a margin that was never doing the work,
+and now that the margin is measurable it turns out to sit outside the bound
+that was doing it.
+
+The 13,440 figure is circular for job 1, since the factor was derived from
+it. It is predictive for jobs 2 to 10, which are the same pair at other
+seeds, and the first of them is running.

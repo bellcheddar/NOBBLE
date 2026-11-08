@@ -540,9 +540,26 @@ def f334_sampling_buys_no_time(campaign: Path) -> dict:
     # immediately before `run_job`, which clears the output directory and
     # then takes its own clock. Checked rather than assumed, because the
     # whole comparison rests on it.
-    running_over: dict[str, float] = {}
+    # The *last* record for each job, not every row that ever said running
+    # (F345). `state_tier2.jsonl` is append-only, so a job that ran, failed
+    # and was re-run keeps its old `running` row for ever. Scanning every
+    # such row made the six 2026-11-06 failures read as still running with
+    # `started_at` from two days ago, so all six counted as past the band
+    # and the verdict said "7 reduced attempt(s)" where there was one.
+    #
+    # The conclusion was unaffected, because the one real attempt is
+    # outside the band on its own, which is exactly why this needed
+    # catching: a wrong count beside a right verdict is the kind of number
+    # nobody re-reads. Same shape as F330, which was this file reading an
+    # append-only file without asking which record was current.
+    latest: dict[str, dict] = {}
     for row in _rows(state):
         job_id = str(row.get("job_id") or "")
+        if job_id:
+            latest[job_id] = row
+
+    running_over: dict[str, float] = {}
+    for job_id, row in latest.items():
         if (str(row.get("status")) != "running"
                 or not job_id.startswith(F268_PAIR + "__")):
             continue
