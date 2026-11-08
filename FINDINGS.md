@@ -18467,3 +18467,43 @@ that a registered prediction is dead when it is merely unrun.
 just written to explain the old message quoted it verbatim. Reworded the
 comment rather than weakening the test, since the regression guard is the
 part worth keeping.
+
+### F347b. The same question asked of every pending prediction
+
+F347 came from asking whether 45 hours of tier-2 compute would be read.
+Three predictions wait on compute, so the question was worth asking of all
+three rather than only the one that raised it.
+
+**F252**, waiting on `scan_profile.json` in the design campaign.
+`tools/run_design.sh` writes it at line 145, refuses at line 134 when there
+is no lift to profile rather than writing an empty one, and carries F321's
+check that a scan cannot report success with no profile written. Wired.
+
+**F253**, waiting on `scores.jsonl` in the Tier B campaign. Its gate pairs
+each `tb_pos_` against the `tb_neg_` of the same name. Measured on the queue:
+154 pairs, 77 positives, 77 scrambles, **zero positives without a matching
+scramble**, and 770 jobs of each role. Tier B scoring is wired in
+`tools/run_chain.sh` and checked there rather than ignored, so F253 can
+resolve for all 77.
+
+**F254**, waiting on tier-2 scoring, which is F347 above: 12 Sievers pairs
+with both labels, and `tier2.sh` scores after the runner.
+
+So every pending prediction is waiting on a stage that runs and an artefact
+something writes. That is worth knowing before 80 hours of compute rather
+than after.
+
+### The guard, which is cheaper than the hour it would have saved
+
+`test_every_pending_prediction_waits_on_something_a_writer_produces` reads
+each pending verdict's own message, extracts every `*.json` and `*.jsonl`
+name in it, and refuses if any is not written anywhere in `nobble/`,
+`tools/` or `deploy/`. A prediction gated on a file nothing produces is dead
+and says "not yet testable", which is the shape F347 wore for an hour.
+
+It deliberately does not assert that it checked something. A board with
+nothing pending is the legitimate end state, and will be the state when the
+chain finishes, so requiring a non-zero count would turn success into a
+failure. The count is printed instead, which is the same distinction the
+rest of this project draws by refusing a clean answer over nothing: here the
+empty case really is clean, and saying so beats asserting it is not.

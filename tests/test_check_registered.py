@@ -1216,3 +1216,65 @@ def test_a_tier_two_row_has_no_delta_and_that_is_by_construction():
         assert row.get("delta_iptm") is None, (
             "a tier-2 pair carries a delta_iptm, which it cannot without a "
             "refined binary arm: check what produced it", row)
+
+
+def test_every_pending_prediction_waits_on_something_a_writer_produces():
+    """A prediction waiting on an artefact nothing writes is dead (F347b).
+
+    F254's message named `delta_iptm`, which tier 2 cannot produce, and the
+    prediction read as permanently untestable until the gate was traced by
+    hand. The general form of that mistake is a pending verdict naming a
+    file no part of the project writes, and it is mechanical to refuse.
+
+    Checked by name, because the names are the interface: `scan_profile.json`
+    comes from `tools/run_design.sh`, `scores.jsonl` and
+    `scores_tier2.jsonl` from `nobble/score/run.py`, and each has a writer
+    in the tree. A pending message mentioning some other `*.json` or
+    `*.jsonl` fails this until a writer exists or the message stops naming
+    it.
+    """
+    import re
+
+    module = _module()
+    campaign = sorted(ROOT.glob("campaigns/campaign_*"))
+    design = sorted(ROOT.glob("campaigns/design_*"))
+    tier_b = sorted(ROOT.glob("campaigns/tier_b_*"))
+
+    verdicts = []
+    if campaign:
+        for predicate in (module.f254_refinement_bridging,
+                          module.f268_refinement_size_limit,
+                          module.f306_reduced_sampling_succeeds,
+                          module.f334_sampling_buys_no_time,
+                          module.f346_the_rest_of_bench06_refines):
+            verdicts.append(predicate(campaign[-1]))
+    if design:
+        verdicts.append(module.f252_design_scan_position(design[-1]))
+    if tier_b:
+        verdicts.append(module.f253_tier_b_bridging(tier_b[-1]))
+    if not verdicts:
+        pytest.skip("no campaign on this checkout")
+
+    # Everything in the tree that could write a file, as text.
+    writers = ""
+    for folder in ("nobble", "tools", "deploy"):
+        for path in sorted((ROOT / folder).rglob("*")):
+            if path.suffix in (".py", ".sh") and path.is_file():
+                writers += path.read_text()
+
+    named = re.compile(r"\b([a-z_][a-z0-9_]*\.jsonl?|[a-z_][a-z0-9_]*\.json)\b")
+    orphans, checked = [], 0
+    for verdict in verdicts:
+        if verdict.get("status") != "not yet testable":
+            continue
+        for artefact in set(named.findall(str(verdict.get("detail", "")))):
+            checked += 1
+            if artefact not in writers:
+                orphans.append(f"{verdict['finding']} waits on {artefact}, "
+                               "which nothing in nobble/, tools/ or deploy/ "
+                               "writes")
+    assert orphans == [], "\n".join(orphans)
+    # Not an assertion that something was checked: a board with nothing
+    # pending is a legitimate state and will be the state at the end. The
+    # count is reported so a reader can tell the two apart.
+    print(f"\n{checked} artefact name(s) in pending verdicts, all with writers")

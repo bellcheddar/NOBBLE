@@ -1676,3 +1676,16 @@ bad clocks are. -->
   scorer from waiting on data that will never arrive. F254 will resolve: of
   23 queued pairs, 12 are Sievers with both labels present, 4 degraded and 8
   not.
+- `2026-11-08T03:55Z` F347b. Asked F347's question of all three pending
+  predictions rather than only the one that raised it. F252: `run_design.sh`
+  writes `scan_profile.json` at line 145, refuses when there is no lift
+  rather than writing an empty one, and carries F321's success-without-a-
+  profile check. F253: the Tier B queue has 154 pairs, 77 `tb_pos_`, 77
+  `tb_neg_`, zero positives without a matching scramble, and scoring is
+  wired and checked in `run_chain.sh`. F254: 12 Sievers pairs with both
+  labels, scored by `tier2.sh` after the runner. All three resolvable, which
+  is worth knowing before 80 hours of compute rather than after. Guarded by
+  a test that reads each pending verdict's own message, extracts the file
+  names in it and refuses any that nothing in the tree writes; it reports
+  rather than asserts a non-zero count, because a board with nothing pending
+  is the legitimate end state.
