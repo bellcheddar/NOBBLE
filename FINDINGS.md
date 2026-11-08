@@ -15346,3 +15346,49 @@ With the caveat that governs both: thirty-one positives, per-fold values from
 Worth saying plainly, because the alternative was available and tempting:
 "weights fitted rather than hand-set" is the kind of line that survives into
 a paper, and the measurement says it should not.
+
+## F313. The design scan is ready, and nothing checked that it still is
+
+The scan has never run and is next after tier 2: 240 jobs, 16 pairs, about
+four and a half hours. Verified rather than assumed, while the GPU is busy
+with something else.
+
+`tools/preflight.py campaigns/design_20261104T094939Z` is clean. 240 jobs
+priced at 4.4 hours across four measured token bands, 160 ternary and 80
+binary chain layouts, no ternary job declaring a ligand its YAML lacks, no
+asymmetric cofactor, no errors. That is the F262 and F263 class of defect
+checked on a campaign nobody had pointed the preflight at.
+
+**The gap was staleness, not correctness.** The scan was assembled on 4
+November and its parent was chosen from the scores as they stood then.
+bench02 and scr_bench03 were re-scored on the 7th. Nothing asked whether the
+queued parent is still the pair the ranking picks, and the two can part
+company without anyone touching the selector. `tools/provenance.py` prints
+the ranking against the published bundle, which is a different pair of
+things: the bundle is what the site shows, and this is what the queue will
+run.
+
+It does still agree: `benchmark_888fd2c63e`, IKZF1's `PFQCNQCGASFTQKG`, both
+in `campaign.json` and from `report._default_parent` on today's scores. A
+test asserts it now, and also that the queue actually contains a job for the
+recorded parent, because design lift subtracts the parent's delta-ipTM from a
+variant's and a queue with no parent job has nothing to subtract.
+
+### A coincidence worth recording, in its favour
+
+F305 measured which substrates a 15-mer can represent: those burying 215 to
+330 square angstroms in the crystal are reproduced at 0.87 to 0.93, and those
+burying 528 or more at 0.26 to 0.29. The design scan's parent is bench04's
+peptide, the IKZF1 ZF2 degron, which is the best-represented of the six at
+228.3 deposited and 0.928 reproduced.
+
+So the alanine scan's lift is measured on the one parent whose interface the
+representation reproduces. That was not the reason it was chosen: it was
+picked by measured delta-ipTM, before F305 existed. Recorded as a
+coincidence that happens to support the arm rather than as a design decision,
+because calling it the latter afterwards is how a lucky choice becomes a
+claimed one.
+
+One slip, caught immediately and costing nothing: the first version compared
+`campaign.json`'s `parent_sequence` with the ranking's `peptide_sequence`,
+which is spelled `sequence` there, so it compared a sequence with None.

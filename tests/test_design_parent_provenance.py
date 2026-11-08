@@ -242,3 +242,81 @@ def test_every_candidate_flagged_still_chooses_and_says_so():
     because = chosen.get("chosen_because") or ""
     assert "every scored candidate" in because, because
     assert "unreliable" in because, because
+
+
+# --------------------------------------------------------------------------- #
+# Is the queued scan still aimed at the pair the ranking picks? (F313)
+# --------------------------------------------------------------------------- #
+
+def test_the_assembled_design_scan_targets_the_current_choice():
+    """A scan assembled days before it runs can be aimed at a stale target.
+
+    The tests above cover the selection logic and the order the atlas build
+    does things in. None of them asks whether the design campaign already on
+    disk still agrees with the ranking, and the two can part company without
+    anyone touching the selector: `design_20261104T094939Z` was assembled on
+    4 November, bench02 and scr_bench03 were re-scored on the 7th, and the
+    scan is 240 jobs and about four and a half hours of GPU aimed at whatever
+    `campaign.json` recorded as its parent.
+
+    `tools/provenance.py` prints the comparison between the ranking and the
+    published bundle, which is a different pair of things: the bundle is what
+    the site shows and this is what the queue will run.
+    """
+    import json
+
+    design = latest("design")
+    if design is None or not (design / "campaign.json").exists():
+        pytest.skip("no design campaign assembled")
+
+    scored = _scored_campaign()
+    data.configure(str(scored))
+    chosen = report._default_parent(report.candidate_parents())
+
+    recorded = json.loads((design / "campaign.json").read_text())
+    assert recorded.get("parent") == chosen["peptide_id"], (
+        f"{design.name} is queued against {recorded.get('parent')} and the "
+        f"ranking now picks {chosen['peptide_id']} ({chosen.get('gene')}): "
+        "re-assemble the scan before spending the GPU on it, or the lift is "
+        "measured on a peptide the scores no longer rank first"
+    )
+    if recorded.get("parent_sequence"):
+        # `sequence`, not `peptide_sequence`: the ranking's dict and the
+        # campaign's record spell it differently, and asking for the wrong
+        # one compares a sequence with None and passes nothing.
+        assert recorded["parent_sequence"] == chosen.get("sequence"), (
+            "the queued parent id matches and its sequence does not, so one "
+            "of the two records is stale"
+        )
+
+
+def test_the_queued_parent_is_re_run_rather_than_reused():
+    """The note the design campaign records about itself, checked.
+
+    Design lift subtracts the parent's delta-ipTM from a variant's, so the
+    two have to be measured under identical settings. Reusing an earlier
+    campaign's parent would subtract numbers from different runs, which is
+    the comparability argument tier 2 makes about sample counts (D-NOB-038).
+    """
+    import json
+
+    design = latest("design")
+    if design is None or not (design / "campaign.json").exists():
+        pytest.skip("no design campaign assembled")
+    recorded = json.loads((design / "campaign.json").read_text())
+
+    note = str(recorded.get("note") or "")
+    assert "re-run here rather than reused" in note, note
+
+    queue = design / "queue.jsonl"
+    if not queue.exists():
+        pytest.skip("no queue to check")
+    from nobble import paths
+
+    rows = paths.read_jsonl(queue, tolerate_torn=True)
+    parent_jobs = [row for row in rows
+                   if str(row.get("peptide_id")) == recorded.get("parent")]
+    assert parent_jobs, (
+        f"{recorded.get('parent')} is the recorded parent and the queue runs "
+        "no job for it, so the lift has nothing to subtract"
+    )
