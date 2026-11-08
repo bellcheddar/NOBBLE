@@ -17276,3 +17276,85 @@ selection. And the instruction in PROGRESS not to re-run at a lower sample
 count before reading the `detail` field: a third guess at the cause costs
 2.6 hours and the evidence is now free.
 
+## F334. Cutting the diffusion samples by 64 per cent has bought no time at all
+
+Written before the job resolves, because this is true either way and the
+numbers are already in.
+
+Six bench06 tier-2 attempts have a recorded duration. All are 1,223 tokens
+at 25 diffusion samples, 10 recycling steps and potentials on:
+
+| seconds | arm |
+|---|---|
+| 9,440 | conditioned |
+| 9,468 | conditioned |
+| 9,492 | conditioned |
+| 9,534 | unconstrained |
+| 9,536 | conditioned |
+| 9,602 | conditioned |
+
+Mean 9,512, span 162 seconds, which is 1.7 per cent across the whole set
+and plus or minus 0.9 per cent about the mean. Six runs that agree to one
+per cent: the duration of this job shape is effectively deterministic, and
+the conditioning does not move it either.
+
+The attempt running now is the same job id, the same receptor, glue, seeds,
+recycling steps and potentials, with **nine** samples instead of 25. It is
+at 9,037 seconds and running, which is 0.952 of its own previous attempt.
+
+**So a 64 per cent cut in diffusion samples has produced no measurable
+reduction in wall clock.** F325 predicted 3,417 seconds from a linear model
+and F328 falsified the window at the top. This is the stronger statement and
+it does not need the job to finish: the reduction has already failed to buy
+the time it was applied to buy, and it will cross the fastest of the six in
+about seven minutes.
+
+### Registered, with a deadline
+
+**Claim:** the job finishes between 9,227 and 9,797 seconds, which is the
+six-run mean plus or minus three per cent. The sample count contributes
+nothing measurable to the duration.
+
+**Falsifier:** it finishes outside that band. The lower bound is nearly
+spent already, so the content is the upper one: if it runs materially past
+9,800 seconds, something other than the sample count differs between this
+attempt and the six, and I do not know what.
+
+### The confound, bounded rather than waved at
+
+F331b named this: the job's window overlapped work I ran. Measured, this
+time. Since it started I ran one 8m13s test sweep that held about one core
+with three full atlas builds inside it, roughly two minutes of targeted
+tests, and three 27-second house-style runs. Call it twelve minutes of one
+core on a 24-core machine whose load average sat between 3.9 and 5.3 while
+Boltz held 95 to 100 per cent of one core and the GPU.
+
+The six-run band is what makes this safe to say. A baseline that reproduces
+to 0.9 per cent cannot be reconciled with a 400-second-and-climbing
+overshoot by a few minutes of one spare core. If the confound were doing
+the work, the six would not agree with each other that closely either,
+since they ran across different days and different loads.
+
+Memory bandwidth remains the part I have no instrument for, and it remains
+the honest caveat rather than the explanation.
+
+### What follows, and what does not
+
+**F331 gets its answer and it is not the one it expected.**
+`config/tuning.toml` carries `tier2_token_sample_budget = 11350` and
+`runner.sampling_for` reduces samples until `tokens x samples` fits it. On
+this evidence that product does not predict duration, so a budget denominated
+in it prices jobs in units that do not track their cost. The reduction is
+still justified on a different ground, which is the one D-NOB-083 actually
+rested on: it makes F268 answerable. It is not justified as a saving.
+
+**It says nothing yet about whether the job succeeds.** F268 and F306 turn on
+the confidence JSON, not the clock, and the duration being unchanged is
+neutral between them. If anything it weakens the mechanism F298 proposed,
+because a sample count that does not change the time is a poor candidate for
+the thing that was exhausting something.
+
+**The watchdog is not at risk.** The per-job budget is 39,000 seconds,
+four times the measured duration, which is why F329 withdrew F320's
+proposal to tighten it.
+

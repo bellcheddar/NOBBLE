@@ -1341,3 +1341,24 @@
   with the distinct conclusions kept apart: a conditioned success means
   neither size nor constraint was the cause, because that job carries both.
   Second hole in the same two predicates after F330, three hours apart.
+- `2026-11-08T03:20Z` F334, registered before the job resolves. Six bench06
+  tier-2 attempts have a recorded duration, all 1,223 tokens at 25 samples:
+  9,440 to 9,602s, mean 9,512, plus or minus 0.9 per cent across six runs on
+  different days. The attempt running now is the same job at **nine**
+  samples and is at 9,037s, which is 0.952 of its own previous attempt. A 64
+  per cent cut in samples has bought no measurable time. Claim: it lands
+  within 3 per cent of 9,512s. Falsifier: outside 9,227 to 9,797s. The
+  content is the upper bound; the lower one is nearly spent.
+  `tier2_token_sample_budget` therefore prices a tier-2 job in units that do
+  not track its cost, which answers F331 and not in its favour. The
+  reduction is still justified on D-NOB-083's actual ground, that it makes
+  F268 answerable, and not as a saving.
+- `2026-11-08T03:20Z` The confound is bounded rather than waved at: since
+  the job started I ran one 8m13s sweep holding about one core, two minutes
+  of targeted tests and three 27s runs, on a 24-core machine at load 3.9 to
+  5.3. A baseline reproducing to 0.9 per cent across different days cannot
+  be reconciled with a 400-second overshoot by that.
+- `2026-11-08T03:20Z` `_bench06` in the scorer tests gave every state row a
+  `seconds`, including `running` ones, which real rows never carry. Caught
+  by F334's empty-case test reporting `supported` over a job still in
+  flight. Fixture fixed, not the predicate.

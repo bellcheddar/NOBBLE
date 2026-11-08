@@ -370,12 +370,21 @@ def _bench06(tmp_path, unconstrained_states: dict[str, list[str]],
             f"{pair}__ternary__conditioned__seed{seed}__tier2":
                 ["failed: exit 0 but no confidence JSON written"]
             for seed in range(1, 6)}
-    for job, states in conditioned_states.items():
-        for status in states:
-            state.append({"job_id": job, "status": status, "seconds": 9492.0})
-    for job, states in unconstrained_states.items():
-        for status in states:
-            state.append({"job_id": job, "status": status, "seconds": 9400.0})
+    # A `running` or `abandoned` row carries no `seconds` in the real
+    # files: the runner writes the duration when the job settles, and an
+    # abandoned job never does. The fixture gave every row one, which made
+    # a running job look like a measured one and would have hidden a
+    # predicate reading a duration off a job still in flight.
+    for source, default in ((conditioned_states, 9492.0),
+                            (unconstrained_states, 9400.0)):
+        for job, states in source.items():
+            for status in states:
+                row = {"job_id": job, "status": status}
+                if status not in ("running", "abandoned"):
+                    row["seconds"] = default
+                else:
+                    row["started_at"] = 1794095030.729669
+                state.append(row)
     _write(campaign / "queue_tier2.jsonl", queue)
     _write(campaign / "state_tier2.jsonl", state)
     if samples:
@@ -729,3 +738,120 @@ def test_the_two_falsifiers_both_say_either_conditioning():
                       module.f306_reduced_sampling_succeeds):
         verdict = predicate(live[-1])
         assert "either conditioning" in verdict["falsifier"], verdict
+
+
+# F334. The clock rather than the confidence JSON: a 64 per cent cut in
+# diffusion samples against six full-sample attempts that agree to 0.9 per
+# cent. Scoreable whether the job succeeds or fails, which is what makes it
+# worth registering separately from F268 and F306.
+
+def test_f334_is_supported_when_the_reduced_job_lands_in_the_band(tmp_path):
+    module = _module()
+    inside = module.F334_BASELINE_SECONDS
+    campaign = _bench06(
+        tmp_path, {},
+        conditioned_states={CONDITIONED: [FAILED]},
+        samples={CONDITIONED: 9})
+    # The fixture writes 9492.0 for a conditioned row, which is inside the
+    # band by construction. Asserted rather than assumed.
+    verdict = module.f334_sampling_buys_no_time(campaign)
+    assert verdict["status"] == "supported", verdict
+    low, high = verdict["band_seconds"]
+    assert low < 9492.0 < high, (low, high, inside)
+    assert "F331" in verdict["detail"], verdict
+
+
+def test_f334_is_wrong_when_the_reduced_job_runs_long(tmp_path):
+    """The content of the claim is the upper bound.
+
+    The lower one was nearly spent when F334 was written, since the job was
+    already at 9,037 seconds against a fastest-ever of 9,440.
+    """
+    module = _module()
+    campaign = _bench06(tmp_path, {},
+                        conditioned_states={CONDITIONED: [FAILED]},
+                        samples={CONDITIONED: 9})
+    rows = [json.loads(line) for line
+            in (campaign / "state_tier2.jsonl").read_text().splitlines()
+            if line.strip()]
+    for row in rows:
+        if row["job_id"] == CONDITIONED:
+            row["seconds"] = 14000.0
+    _write(campaign / "state_tier2.jsonl", rows)
+    verdict = module.f334_sampling_buys_no_time(campaign)
+    assert verdict["status"] == "WRONG", verdict
+    assert verdict["outside_band"] == [CONDITIONED], verdict
+    assert "something else" in verdict["detail"], verdict
+
+
+def test_f334_is_scoreable_on_a_failure_as_well_as_a_success(tmp_path):
+    """This is about the clock, not the confidence JSON.
+
+    F268 and F306 both turn on whether a confidence JSON was written, so a
+    failed job tells them one thing and a successful one the opposite. A
+    duration is a duration either way, and the fixture above uses a failed
+    row deliberately. Here is the other half.
+    """
+    module = _module()
+    campaign = _bench06(tmp_path, {},
+                        conditioned_states={CONDITIONED: ["done"]},
+                        samples={CONDITIONED: 9})
+    verdict = module.f334_sampling_buys_no_time(campaign)
+    assert verdict["status"] == "supported", verdict
+
+
+def test_f334_ignores_an_attempt_at_the_full_sample_count(tmp_path):
+    """The six are the baseline, not the measurement.
+
+    Scoring them against their own mean would report `supported` on the
+    evidence the claim was built from, which is the shape of a prediction
+    that cannot fail.
+    """
+    module = _module()
+    verdict = module.f334_sampling_buys_no_time(
+        _bench06(tmp_path, {},
+                 conditioned_states={CONDITIONED: [FAILED]},
+                 samples={CONDITIONED: 25}))
+    assert verdict["status"] == "not yet testable", verdict
+    assert "recorded duration" in verdict["detail"], verdict
+
+
+def test_f334_says_so_when_no_reduced_attempt_has_a_duration(tmp_path):
+    """The empty answer, given its own shape.
+
+    A reduced attempt that is still running has no `seconds`, and so does
+    one that was abandoned. Reporting `supported` over zero measurements
+    would be the F321 to F324 pattern inside a predicate whose whole job is
+    to report a measurement.
+    """
+    module = _module()
+    verdict = module.f334_sampling_buys_no_time(
+        _bench06(tmp_path, {},
+                 conditioned_states={CONDITIONED: ["running"]},
+                 samples={CONDITIONED: 9}))
+    assert verdict["status"] == "not yet testable", verdict
+    assert "reduced_durations" not in verdict, verdict
+
+
+def test_f334_is_in_the_registry():
+    """A prediction that is not in the print-out is one I grade myself."""
+    source = (ROOT / "tools" / "check_registered.py").read_text()
+    assert "f334_sampling_buys_no_time(main_campaign)" in source, (
+        "F334 has a predicate and is not assembled into the verdicts, so "
+        "nothing scores it"
+    )
+
+
+def test_f334_lists_the_six_durations_it_averages():
+    """The mean is a number in the source and the six are how it is checked.
+
+    `9512.0` with nothing beside it is a figure a reader has to trust. The
+    six are listed in the comment above it, and 9,512 is their mean to the
+    nearest second.
+    """
+    source = (ROOT / "tools" / "check_registered.py").read_text()
+    for duration in ("9,440", "9,468", "9,492", "9,534", "9,536", "9,602"):
+        assert duration in source, duration
+    six = [9440, 9468, 9492, 9534, 9536, 9602]
+    assert round(sum(six) / len(six)) == 9512
+    assert _module().F334_BASELINE_SECONDS == 9512.0

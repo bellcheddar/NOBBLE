@@ -452,6 +452,101 @@ def f306_reduced_sampling_succeeds(campaign: Path) -> dict:
     return verdict
 
 
+# F334's registered baseline. Six bench06 tier-2 attempts had a recorded
+# duration when this was written, all 1,223 tokens at 25 diffusion samples,
+# 10 recycling steps and potentials on: 9,440, 9,468, 9,492, 9,534, 9,536 and
+# 9,602 seconds. Mean 9,512, span 162, which is plus or minus 0.9 per cent
+# about the mean across six runs on different days.
+#
+# Written here rather than in config for the reason this module's docstring
+# gives: a prediction's numbers are part of the prediction, and a band in
+# `thresholds.toml` is a band that can be widened once the duration is known.
+# The six are listed so the mean can be checked rather than taken.
+F334_BASELINE_SECONDS = 9512.0
+F334_BAND = 0.03
+
+
+def f334_sampling_buys_no_time(campaign: Path) -> dict:
+    """Does cutting the diffusion samples from 25 to nine shorten the job?
+
+    F298 reduced the sample count to make a 1,223-token job fit a budget
+    denominated in `tokens x samples`. F325 predicted the reduced job would
+    take 9/25 of the full-sample time. F328 falsified the top of that window
+    from the job while it ran. This is the end of that line: the claim is
+    that the sample count contributes nothing measurable at all, so the
+    reduced job lands in the same band as the six full-sample attempts.
+
+    The content is the upper bound. If it runs materially past 9,800
+    seconds then something other than the sample count differs between this
+    attempt and the six, and F334 says plainly that I do not know what.
+    """
+    verdict = {"finding": "F334",
+               "claim": "cutting the diffusion samples from 25 to nine does "
+                        "not shorten the job: it lands within 3 per cent of "
+                        "the six-run full-sample mean of 9,512s",
+               "falsifier": "a reduced-sample bench06 attempt finishes "
+                            "outside 9,227 to 9,797 seconds"}
+    state = campaign / "state_tier2.jsonl"
+    results = campaign / "results_tier2.jsonl"
+    if not state.exists():
+        verdict.update(status="not yet testable",
+                       detail="no state_tier2.jsonl: refinement has not run")
+        return verdict
+
+    asked = int(paths.tuning()["campaign"]["tier2_diffusion_samples"])
+    samples = {str(row.get("job_id")): row.get("diffusion_samples")
+               for row in _rows(results)} if results.exists() else {}
+
+    low = F334_BASELINE_SECONDS * (1.0 - F334_BAND)
+    high = F334_BASELINE_SECONDS * (1.0 + F334_BAND)
+
+    measured: dict[str, float] = {}
+    for row in _rows(state):
+        job_id = str(row.get("job_id") or "")
+        if not job_id.startswith(F268_PAIR + "__"):
+            continue
+        # A duration is a duration whether the job succeeded or failed:
+        # this is about the clock, not the confidence JSON, which is what
+        # makes it scoreable either way. `running` and `abandoned` carry no
+        # `seconds` and so cannot contribute, which is the F330 exclusion
+        # arriving for free rather than by a rule.
+        seconds = row.get("seconds")
+        if seconds is None:
+            continue
+        count = samples.get(job_id)
+        if count is None or int(count) >= asked:
+            continue
+        measured[job_id] = float(seconds)
+
+    if not measured:
+        verdict.update(
+            status="not yet testable",
+            detail=(f"no bench06 attempt at fewer than {asked} samples has a "
+                    "recorded duration yet"))
+        return verdict
+
+    outside = {job: seconds for job, seconds in measured.items()
+               if not low <= seconds <= high}
+    verdict["reduced_durations"] = {job: round(seconds, 1)
+                                    for job, seconds in sorted(measured.items())}
+    verdict["band_seconds"] = [round(low, 1), round(high, 1)]
+    if outside:
+        verdict.update(
+            status="WRONG", outside_band=sorted(outside),
+            detail=(f"{len(outside)} reduced attempt(s) finished outside "
+                    f"{low:.0f} to {high:.0f}s, so the sample count is not "
+                    "neutral to the duration after all and something else "
+                    "differs between this attempt and the six"))
+        return verdict
+    verdict.update(
+        status="supported", reduced_attempts=len(measured),
+        detail=(f"{len(measured)} reduced attempt(s) landed inside "
+                f"{low:.0f} to {high:.0f}s, so a 64 per cent cut in samples "
+                "bought no measurable time and `tokens x samples` prices a "
+                "tier-2 job in units that do not track its cost: see F331"))
+    return verdict
+
+
 def main(argv: list[str] | None = None) -> int:
     import argparse
     import glob
@@ -487,6 +582,11 @@ def main(argv: list[str] | None = None) -> int:
         f306_reduced_sampling_succeeds(main_campaign) if main_campaign
         else {"finding": "F306", "status": "not yet testable",
               "claim": "bench06 refines when its sample count is reduced",
+              "detail": "no campaign on disk"},
+        f334_sampling_buys_no_time(main_campaign) if main_campaign
+        else {"finding": "F334", "status": "not yet testable",
+              "claim": "cutting the diffusion samples does not shorten the "
+                       "job",
               "detail": "no campaign on disk"},
     ]
     scored = [r for r in results if r["status"] in ("supported", "WRONG",
