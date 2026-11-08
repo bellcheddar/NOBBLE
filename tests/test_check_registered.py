@@ -342,12 +342,20 @@ def test_the_f253_denominator_comes_from_the_queue(tmp_path):
     assert verdict["status"] == "supported", verdict
 
 
-def _bench06(tmp_path, unconstrained_states: dict[str, list[str]]) -> Path:
+def _bench06(tmp_path, unconstrained_states: dict[str, list[str]],
+             conditioned_states: dict[str, list[str]] | None = None,
+             samples: dict[str, int] | None = None) -> Path:
     """A campaign whose bench06 refinements are in a given state.
 
     Five unconstrained jobs are queued either way, because the denominator
     comes from the queue (F258) and "none succeeded" over nothing attempted
     is not a result.
+
+    `conditioned_states` overrides the five conditioned failures, which are
+    what the arm had done when this fixture was written and are not what it
+    must always have done: F333 needed a conditioned success and the
+    fixture could not express one. `samples` writes `results_tier2.jsonl`,
+    which is where F306 reads the recorded sample count.
     """
     campaign = tmp_path / "campaign_f268"
     campaign.mkdir()
@@ -357,16 +365,23 @@ def _bench06(tmp_path, unconstrained_states: dict[str, list[str]]) -> Path:
         for seed in range(1, 6):
             job = f"{pair}__ternary__{conditioning}__seed{seed}__tier2"
             queue.append({"job_id": job, "pair_id": pair, "tokens": 1223})
-    for seed in range(1, 6):
-        job = f"{pair}__ternary__conditioned__seed{seed}__tier2"
-        state.append({"job_id": job,
-                      "status": "failed: exit 0 but no confidence JSON "
-                                "written", "seconds": 9492.0})
+    if conditioned_states is None:
+        conditioned_states = {
+            f"{pair}__ternary__conditioned__seed{seed}__tier2":
+                ["failed: exit 0 but no confidence JSON written"]
+            for seed in range(1, 6)}
+    for job, states in conditioned_states.items():
+        for status in states:
+            state.append({"job_id": job, "status": status, "seconds": 9492.0})
     for job, states in unconstrained_states.items():
         for status in states:
             state.append({"job_id": job, "status": status, "seconds": 9400.0})
     _write(campaign / "queue_tier2.jsonl", queue)
     _write(campaign / "state_tier2.jsonl", state)
+    if samples:
+        _write(campaign / "results_tier2.jsonl",
+               [{"job_id": job, "diffusion_samples": count}
+                for job, count in samples.items()])
     return campaign
 
 
@@ -612,3 +627,105 @@ def test_both_predictions_share_one_exclusion_list():
     source = (ROOT / "tools" / "check_registered.py").read_text()
     assert source.count('= ("running", "abandoned")') == 1
     assert source.count("NOT_AN_OUTCOME") >= 3
+
+
+# F333. Both predicates scored the unconstrained arm only, and F268's claim
+# is "whatever its conditioning". The job in flight when this was noticed
+# was the conditioned one, so a success would have been reported as "not
+# yet testable" by both.
+
+CONDITIONED = "bench06_RBM39_DCAF15__ternary__conditioned__seed1__tier2"
+FAILED = "failed: exit 0 but no confidence JSON written"
+
+
+def test_f268_is_wrong_when_a_conditioned_job_completes(tmp_path):
+    """The hole, and the conclusion it licenses.
+
+    Not the same conclusion as an unconstrained success. That one would
+    mean the pocket constraint was the cause. This job carries the
+    constraint *and* the 1,223 tokens and finished anyway, so neither is,
+    and what is left is the sample count.
+    """
+    conditioned = {CONDITIONED: ["done"]}
+    for seed in range(2, 6):
+        conditioned[
+            f"bench06_RBM39_DCAF15__ternary__conditioned__seed{seed}__tier2"
+        ] = [FAILED]
+    verdict = _module().f268_refinement_size_limit(
+        _bench06(tmp_path, {}, conditioned_states=conditioned))
+    assert verdict["status"] == "WRONG", verdict
+    assert verdict["conditioned_done"] == [CONDITIONED], verdict
+    assert "sample count" in verdict["detail"], verdict
+    assert "F306" in verdict["detail"], verdict
+
+
+def test_f268_still_needs_the_queue_before_it_is_supported(tmp_path):
+    """The widening goes one way only.
+
+    A claim of mine must not become easier to affirm because I edited its
+    scorer while its deciding job was running. The bar for `supported` is
+    still the five queued unconstrained jobs, so a campaign where every
+    conditioned job failed and no unconstrained job has run is still not
+    testable rather than supported.
+    """
+    verdict = _module().f268_refinement_size_limit(_bench06(tmp_path, {}))
+    assert verdict["status"] == "not yet testable", verdict
+    assert verdict["conditioned_attempted"] == 5, verdict
+
+
+def test_f306_counts_a_reduced_conditioned_attempt(tmp_path):
+    """The same widening, and here it is symmetric.
+
+    F306 reports `supported` on the first success and `WRONG` on the first
+    failure, so admitting the conditioned arm admits evidence in both
+    directions equally. Both directions are asserted, in this test and the
+    next.
+    """
+    verdict = _module().f306_reduced_sampling_succeeds(
+        _bench06(tmp_path, {},
+                 conditioned_states={CONDITIONED: ["done"]},
+                 samples={CONDITIONED: 9}))
+    assert verdict["status"] == "supported", verdict
+    assert verdict["done"] == [CONDITIONED], verdict
+
+
+def test_f306_is_wrong_on_a_reduced_conditioned_failure(tmp_path):
+    verdict = _module().f306_reduced_sampling_succeeds(
+        _bench06(tmp_path, {},
+                 conditioned_states={CONDITIONED: [FAILED]},
+                 samples={CONDITIONED: 9}))
+    assert verdict["status"] == "WRONG", verdict
+    assert "needs replacing" in verdict["detail"], verdict
+
+
+def test_f306_ignores_a_conditioned_attempt_at_the_full_count(tmp_path):
+    """The exclusion that was already there, still there after the widening.
+
+    An attempt at 25 samples failing again says nothing about whether nine
+    would have worked, and the five conditioned failures already recorded
+    are all at the full count.
+    """
+    verdict = _module().f306_reduced_sampling_succeeds(
+        _bench06(tmp_path, {},
+                 conditioned_states={CONDITIONED: [FAILED]},
+                 samples={CONDITIONED: 25}))
+    assert verdict["status"] == "not yet testable", verdict
+    assert "either conditioning" in verdict["detail"], verdict
+
+
+def test_the_two_falsifiers_both_say_either_conditioning():
+    """The text is what a reader checks the verdict against.
+
+    A scorer widened without its falsifier text is a prediction whose
+    stated bar and actual bar differ, which is the defect F333 is.
+    """
+    module = _module()
+    campaign = ROOT / "campaigns"
+    live = sorted(campaign.glob("campaign_*"))
+    if not live:
+        import pytest
+        pytest.skip("no campaign on this checkout")
+    for predicate in (module.f268_refinement_size_limit,
+                      module.f306_reduced_sampling_succeeds):
+        verdict = predicate(live[-1])
+        assert "either conditioning" in verdict["falsifier"], verdict

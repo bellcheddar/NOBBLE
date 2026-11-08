@@ -1530,6 +1530,19 @@ all wanted and none had.
 follow. F268 was registered on 5 November and it was a reasonable claim on
 the evidence then, which is the point of registering it.
 
+That sentence was written before the scorers could deliver it. This job is
+the *conditioned* arm, and both predicates filtered on `__unconstrained__`,
+so a success would have been reported "not yet testable" by both: the plan
+above was right and the code was not, until F333 widened them. If the job
+succeeds, read the verdict and check that it says `WRONG` with
+`conditioned_done` naming this job. If it still says "not yet testable"
+over a `done` record, the widening did not take and F333 is unfinished.
+
+The conclusion differs from the unconstrained one and the verdict says so.
+An unconstrained success would mean the pocket constraint was the cause.
+This job carries the constraint and the 1,223 tokens and would have finished
+anyway, so neither is, and what remains is the sample count.
+
 **If it fails again.** F306 goes to `WRONG` and F298's size story needs
 replacing rather than defending, which F306's own docstring says. The
 evidence for the size story was a correlation across 155 jobs with no

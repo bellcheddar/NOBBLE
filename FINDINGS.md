@@ -17210,3 +17210,69 @@ searching FINDINGS; the cause of the copies is recorded in F173 and F186 and
 is not in question here. What is new is that one of the three places that
 clears them was a no-op.
 
+## F333. Both scorers would have discarded the result of the job they are waiting for
+
+The job in flight is `bench06_RBM39_DCAF15__ternary__conditioned__seed1__tier2`.
+Conditioned. Both registered predicates filtered on
+`"__unconstrained__" in job_id`, so if it writes a confidence JSON they
+report "not yet testable" over the evidence that settles them.
+
+F268's registered claim is **"every bench06 refinement fails, whatever its
+conditioning"**. Its falsifier was "an unconstrained bench06 tier-2 job
+writes a confidence JSON". A conditioned success contradicts the claim and
+not the falsifier. The claim is the registration; the predicate was a
+narrower implementation of it, and the narrowing was never stated.
+
+F306 inherited it on purpose. Its docstring says "Judged on unconstrained
+jobs only, matching F268", which is a reasonable thing to write when the
+thing being matched is assumed to match its own claim.
+
+### Found by reading the job id, three hours after writing F330 about the same function
+
+F330 was a hole in the same two predicates: an abandoned job counted as an
+attempt. This is a second hole in the same place, and the two have the same
+shape, which is a predicate that answers a narrower question than the claim
+it is scoring. F330's version admitted evidence that had not arrived; this
+one excludes evidence that is about to.
+
+### The widening, and the direction it was allowed to go
+
+Changing a scorer while its deciding job runs is the thing registration
+exists to prevent, so the direction matters more than the change.
+
+**F268 gains a falsifying branch only.** A conditioned success now reports
+`WRONG`. The bar for `supported` is untouched and is still the five queued
+unconstrained jobs that F258 registered. So the edit can only make my own
+claim easier to refute and never easier to affirm, which is asserted by
+`test_f268_still_needs_the_queue_before_it_is_supported`.
+
+**F306 is widened symmetrically.** It reports `supported` on the first
+success and `WRONG` on the first failure, so admitting the conditioned arm
+admits evidence in both directions equally. Both directions are tested.
+
+**The conclusions stay distinct.** An unconstrained success would mean the
+pocket constraint was the cause rather than the size. A conditioned success
+means neither was: that job carries the constraint and the 1,223 tokens and
+finished anyway, which leaves the sample count, which is F306. The verdict
+says so rather than reusing the unconstrained wording.
+
+### What was also wrong, and smaller
+
+The falsifier strings are what a reader checks a verdict against, and
+widening a scorer without them leaves a prediction whose stated bar and
+actual bar differ. Both now read "at either conditioning", asserted against
+the live campaign.
+
+And `_bench06` in the test file hardcoded five conditioned failures, which
+is what the arm had done when it was written and not what it must always
+have done. It could not express the case this finding is about. Now a
+parameter, defaulting to the old behaviour.
+
+### What this does not change
+
+The running job's duration, which is still the measurement F325 and F328
+predicted against and the figure F331 would use to price the next tier-2
+selection. And the instruction in PROGRESS not to re-run at a lower sample
+count before reading the `detail` field: a third guess at the cause costs
+2.6 hours and the evidence is now free.
+

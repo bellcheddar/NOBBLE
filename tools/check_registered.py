@@ -249,8 +249,8 @@ def f268_refinement_size_limit(campaign: Path) -> dict:
     verdict = {"finding": "F268",
                "claim": "every bench06 refinement fails, whatever its "
                         "conditioning",
-               "falsifier": "an unconstrained bench06 tier-2 job writes a "
-                            "confidence JSON"}
+               "falsifier": "a bench06 tier-2 job writes a confidence "
+                            "JSON, at either conditioning"}
     state = campaign / "state_tier2.jsonl"
     if not state.exists():
         verdict.update(status="not yet testable",
@@ -301,6 +301,33 @@ def f268_refinement_size_limit(campaign: Path) -> dict:
                     "1,223-token size, and the pair is refinable without "
                     "conditioning"))
         return verdict
+    # The claim is "whatever its conditioning", and this scored only the
+    # unconstrained arm (F333). A conditioned success contradicts the claim
+    # as registered, and the job in flight when this was noticed was the
+    # conditioned one, so the scorer would have reported "not yet testable"
+    # over the evidence that settles it.
+    #
+    # Added in the falsifying direction only. The bar for "supported" below
+    # is still the five queued unconstrained jobs, which is what F258
+    # registered, so this change can only ever make my own claim easier to
+    # refute and never easier to affirm.
+    #
+    # The conclusion a conditioned success licenses is not the one above.
+    # An unconstrained success would mean the constraint was the cause. A
+    # conditioned success means neither size nor constraint was, because
+    # this job carries both: it leaves the sample count, which is F306.
+    conditioned_done = sorted(job for job, states in conditioned.items()
+                              if "done" in states)
+    if conditioned_done:
+        verdict.update(
+            status="WRONG", conditioned_done=conditioned_done,
+            unconstrained_attempted=len(unconstrained),
+            detail=("a conditioned refinement completed, and the claim is "
+                    "that every bench06 refinement fails whatever its "
+                    "conditioning. This job carries both the 1,223-token "
+                    "size and the pocket constraint, so neither is the "
+                    "cause and what remains is the sample count: see F306"))
+        return verdict
     # The denominator is the queue, as F258 established: five unconstrained
     # jobs are queued, and "none succeeded" over nothing is not a result.
     queued = len({row["job_id"] for row in _rows(campaign / "queue_tier2.jsonl")
@@ -344,16 +371,24 @@ def f306_reduced_sampling_succeeds(campaign: Path) -> dict:
     is strong and is not a mechanism, since the process that produced those
     records discarded its own stderr.
 
-    Judged on unconstrained jobs only, matching F268, and only on attempts
-    whose recorded sample count is below the tier's: an attempt at the full
-    count failing again says nothing about this.
+    Judged on attempts at either conditioning, and only on those whose
+    recorded sample count is below the tier's: an attempt at the full count
+    failing again says nothing about this.
+
+    It was unconstrained-only, "matching F268", and F268 was itself scoring
+    a narrower thing than it claimed (F333). The claim here is about
+    bench06, which is a pair rather than an arm, and the arms differ in
+    their constraint and not in their token count, which is what this is
+    about. The widening is symmetric: this reports `supported` on the first
+    success and `WRONG` on the first failure, so admitting the conditioned
+    arm admits evidence in both directions equally.
     """
     verdict = {"finding": "F306",
                "claim": "bench06 refines when its sample count is reduced to "
                         "fit the measured budget, so F268 is wrong",
-               "falsifier": "every unconstrained bench06 tier-2 attempt at a "
-                            "reduced sample count fails with no confidence "
-                            "JSON"}
+               "falsifier": "every bench06 tier-2 attempt at a reduced "
+                            "sample count fails with no confidence JSON, at "
+                            "either conditioning"}
     state = campaign / "state_tier2.jsonl"
     results = campaign / "results_tier2.jsonl"
     if not state.exists():
@@ -372,8 +407,7 @@ def f306_reduced_sampling_succeeds(campaign: Path) -> dict:
     abandoned: list[str] = []
     for row in _rows(state):
         job_id = str(row.get("job_id") or "")
-        if (not job_id.startswith(F268_PAIR + "__")
-                or "__unconstrained__" not in job_id):
+        if not job_id.startswith(F268_PAIR + "__"):
             continue
         status = str(row.get("status"))
         # The same exclusion F330 made for F268, here for the same reason
@@ -396,8 +430,8 @@ def f306_reduced_sampling_succeeds(campaign: Path) -> dict:
     if not reduced:
         verdict.update(
             status="not yet testable",
-            detail=f"no unconstrained bench06 attempt has run at fewer than "
-                   f"{asked} samples yet")
+            detail=f"no bench06 attempt has run at fewer than "
+                   f"{asked} samples yet, at either conditioning")
         return verdict
 
     succeeded = sorted(job for job, states in reduced.items()
@@ -406,15 +440,15 @@ def f306_reduced_sampling_succeeds(campaign: Path) -> dict:
         verdict.update(
             status="supported", reduced_attempts=len(reduced),
             done=succeeded,
-            detail=(f"{len(succeeded)} of {len(reduced)} unconstrained "
-                    "attempt(s) at a reduced sample count completed, so the "
-                    "sample count was the cause and F268 is wrong"))
+            detail=(f"{len(succeeded)} of {len(reduced)} attempt(s) at a "
+                    "reduced sample count completed, so the sample count "
+                    "was the cause and F268 is wrong"))
         return verdict
     verdict.update(
         status="WRONG", reduced_attempts=len(reduced),
-        detail=(f"all {len(reduced)} unconstrained attempt(s) at a reduced "
-                "sample count still failed, so F298's size story does not "
-                "explain the failure and needs replacing"))
+        detail=(f"all {len(reduced)} attempt(s) at a reduced sample count "
+                "still failed, so F298's size story does not explain the "
+                "failure and needs replacing"))
     return verdict
 
 

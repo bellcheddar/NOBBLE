@@ -1331,3 +1331,13 @@
 - `2026-11-08T02:50Z` Sweep green: 276 passed, 11 skipped over the atlas,
   deploy, bundle, cutoff, licensing, redaction, conflict and tool tests.
   Re-ran the eight files touched after it started: 121 passed, 2 skipped.
+- `2026-11-08T03:05Z` F333. The job in flight is the *conditioned* bench06
+  refinement, and both registered predicates filtered on
+  `__unconstrained__`, so a success would have been reported "not yet
+  testable" by both. F268's registered claim is "whatever its
+  conditioning"; the predicate was a narrower implementation of it that was
+  never stated, and F306 inherited the narrowing on purpose. Widened before
+  the result, F268 in the falsifying direction only, F306 symmetrically,
+  with the distinct conclusions kept apart: a conditioned success means
+  neither size nor constraint was the cause, because that job carries both.
+  Second hole in the same two predicates after F330, three hours apart.
