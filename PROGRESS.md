@@ -1501,3 +1501,32 @@ The 15-mer representation is adequate where the deposited interface is 215 to
 which cuts against discounting the matched-control null rather than for it
 (F305). And the composite's apparent advantage over its components is
 optimism (F312).
+
+## What to do when job 1 of 100 resolves
+
+It is `bench06_RBM39_DCAF15__ternary__conditioned__seed1__tier2`, 1,223
+tokens at nine diffusion samples instead of twenty-five (F298), and F306 is
+registered against F268 so one of them is scored against me either way.
+
+**Verified before the fact:** `nobble/execute/runner.py` last changed at
+16:44 and the runner started at 18:44, so the running process has F238's
+tail-keeping, F289's no-retry-on-a-clean-exit and F298's reduction. A failure
+now carries Boltz's stderr tail, which is the evidence F238, F289 and F298
+all wanted and none had.
+
+**If it writes a confidence JSON.** F306 goes to `supported` and F268 to
+`WRONG`: the sample count was the cause. Nine more bench06 refinements
+follow. F268 was registered on 5 November and it was a reasonable claim on
+the evidence then, which is the point of registering it.
+
+**If it fails again.** F306 goes to `WRONG` and F298's size story needs
+replacing rather than defending, which F306's own docstring says. The
+evidence for the size story was a correlation across 155 jobs with no
+overlap, which is strong and is not a mechanism. The new thing to read is the
+`detail` field on the state row, which will hold up to three lines of what
+Boltz said. Do not re-run it at a lower sample count before reading that: a
+third guess at the cause costs 2.6 hours and the evidence is now free.
+
+**Either way, drop nothing from the queue.** The nine remaining bench06 jobs
+are the rest of the measurement, and F268 needs five unconstrained attempts
+before `check_registered.py` will call it.
