@@ -1554,6 +1554,13 @@ than forked, and re-freezing would discard an assembled 1,540-job queue.
 
 **Marc's, on the droplet: `bash deploy/enable_gzip.sh` (F132).** Unchanged.
 
+Checked while writing this: the live site still serves
+`benchmark_20261103T192126Z`, 7 pairs and 100 jobs, so nothing from today
+reached the droplet and the hold held. The day's two publication surfaces
+came out differently, which is why F261's distinction between a build
+directory and a host is load-bearing: 706 orphan blobs reached the git
+remote and were reversed forward, and nothing reached the host.
+
 And two of today's that are decisions rather than tasks: whether to excise
 706 orphan blobs from remote history with a force push, which I did not do
 (F303), and whether the composite earns its place now that it measures 0.58
