@@ -17018,3 +17018,32 @@ selection rather than guessed at now.
 What I set out to check is answered: nothing will stop this job before
 10.83 hours, the watchdog will print at 3.5 and act on nothing, and the stage
 is not at risk.
+
+### F331b. The duration comparison is confounded by load I created, and probably not by much
+
+F325 and F328 compare the running job against 9,492s measured for the same
+job at full sampling. Those two measurements were not taken under the same
+conditions. Over the job's two hours I ran two full test suites, 24 and 19
+minutes, a re-score with PLIP at about 20 minutes, and a couple of dozen
+targeted test runs, all on this machine. Some of the elapsed time I have
+been reasoning about is load I put there.
+
+Measured rather than worried about. The machine has **24 cores**, total CPU
+in use is **179 per cent**, and Boltz is **94.6 per cent of one core**. A
+process using about one core on a 24-core machine is not being starved by
+pytest, and nothing I ran touched the GPU: every tool and test today was
+CPU-only, so MPS had the device to itself throughout.
+
+So the confound is real in principle and small on the evidence. What I cannot
+rule out is memory-bandwidth contention, which a core count does not measure
+and which MPS work is sensitive to, and I have no instrument for it here.
+
+The reason to write this down rather than let it pass: F325's 1.95 times and
+F328's table are in PROGRESS and in two findings, and a reader comparing them
+with a later clean measurement should know the conditions differed. If the
+reduced job's final duration is used to price the next tier-2 selection
+(F331), it will have been measured under some load and the full-sample 9,492s
+under unknown load, and neither is a controlled figure.
+
+The clean comparison is available for free: the nine bench06 jobs behind this
+one will run while nothing else does, and `measured_scaling` will pool them.
