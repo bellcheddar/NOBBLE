@@ -16936,3 +16936,27 @@ all.
 
 Found by reading a status line that had changed by one, which is the only
 reason I looked.
+
+### F330b. The same hole in F306, scoring the other way
+
+F306 collected attempts with `if status == "running": continue`, the line
+F330 had just replaced in F268. So an abandoned reduced attempt would have
+counted as a failure.
+
+**The consequence runs the other way, which is the useful part.** In F268 the
+hole scored *for* me: a killed job counted among the failures that make
+"every bench06 refinement fails" supported. In F306 it scores *against* me: a
+killed reduced attempt counted among the failures that make "bench06 refines
+once its sampling fits" wrong. One defect, two predictions, opposite
+directions, which is as clear as evidence gets that neither direction was
+reasoned about. I wrote F306 hours before F330 and gave it two exclusions
+against evidence arriving early and none against evidence that never arrived.
+
+`NOT_AN_OUTCOME` is now a module constant used by both, rather than two
+copies of a tuple that would drift, and a test asserts there is one of it.
+Both verdicts carry `abandoned_not_counted`.
+
+One thing the tests pin that matters more than the exclusion: a job that
+genuinely failed at a reduced sample count still scores F306 WRONG. The
+exclusion must not swallow the falsifier, or the prediction becomes
+unfalsifiable by the mechanism meant to make it fair.

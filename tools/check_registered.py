@@ -234,6 +234,15 @@ def f253_tier_b_bridging(campaign: Path | None) -> dict:
 
 F268_PAIR = "bench06_RBM39_DCAF15"
 
+# Statuses that are not an outcome, so not an attempt (F330).
+#
+# `running` has not finished. `abandoned` is what the runner writes when it
+# closes out a job a previous runner left behind, which is what happens to
+# whatever was on the GPU when a chain is killed: an attempt that did not
+# happen. Both belong outside any count of what refinement does, and both
+# predictions here count attempts.
+NOT_AN_OUTCOME = ("running", "abandoned")
+
 
 def f268_refinement_size_limit(campaign: Path) -> dict:
     """Does bench06's refinement fail because of its size or its constraint?"""
@@ -263,8 +272,6 @@ def f268_refinement_size_limit(campaign: Path) -> dict:
     # a count needs the total it is out of, and an unmeasurable outcome
     # belongs outside it. The job stays in the queue and will run, so the
     # count becomes right by itself.
-    NOT_AN_OUTCOME = ("running", "abandoned")
-
     attempts: dict[str, list[str]] = {}
     not_attempted: dict[str, list[str]] = {}
     for row in _rows(state):
@@ -362,19 +369,30 @@ def f306_reduced_sampling_succeeds(campaign: Path) -> dict:
                for row in _rows(results)} if results.exists() else {}
 
     reduced: dict[str, list[str]] = {}
+    abandoned: list[str] = []
     for row in _rows(state):
         job_id = str(row.get("job_id") or "")
         if (not job_id.startswith(F268_PAIR + "__")
                 or "__unconstrained__" not in job_id):
             continue
         status = str(row.get("status"))
-        if status == "running":
+        # The same exclusion F330 made for F268, here for the same reason
+        # and with the opposite consequence. An abandoned reduced attempt
+        # counted as a failure would score *this* prediction WRONG on a job
+        # that was killed rather than one that failed, so the hole scores
+        # against me where F268's scored for me. I wrote this function
+        # hours before F330 and gave it two exclusions against evidence
+        # arriving early, and none against evidence that never arrived.
+        if status in NOT_AN_OUTCOME:
+            if status != "running":
+                abandoned.append(job_id)
             continue
         count = samples.get(job_id)
         if count is None or int(count) >= asked:
             continue
         reduced.setdefault(job_id, []).append(status)
 
+    verdict["abandoned_not_counted"] = sorted(abandoned)
     if not reduced:
         verdict.update(
             status="not yet testable",

@@ -572,3 +572,43 @@ def test_the_excluded_jobs_are_named_rather_than_silently_dropped():
     body = ast.unparse(function)
     assert "abandoned_not_counted" in body
     assert "NOT_AN_OUTCOME" in body
+
+
+def test_f306_does_not_count_an_abandoned_reduced_attempt(tmp_path):
+    """F330's exclusion, here with the opposite consequence (F330b).
+
+    An abandoned reduced attempt counted as a failure would score F306
+    WRONG on a job that was killed rather than one that failed. The same
+    hole scored *for* me in F268 and would score *against* me here, which is
+    the clearest evidence that neither direction was reasoned about.
+    """
+    campaign = _bench06_reduced(tmp_path, {
+        "bench06_RBM39_DCAF15__ternary__unconstrained__seed1__tier2":
+            ("abandoned", 9),
+    })
+    verdict = _module().f306_reduced_sampling_succeeds(campaign)
+    assert verdict["status"] == "not yet testable", verdict
+    assert verdict["abandoned_not_counted"] == [
+        "bench06_RBM39_DCAF15__ternary__unconstrained__seed1__tier2"], verdict
+
+
+def test_f306_still_scores_a_real_reduced_failure(tmp_path):
+    """The exclusion must not swallow the falsifier: a job that genuinely
+    failed at a reduced count is exactly what makes F306 wrong."""
+    campaign = _bench06_reduced(tmp_path, {
+        f"bench06_RBM39_DCAF15__ternary__unconstrained__seed{seed}__tier2":
+            ("failed: exit 0 but no confidence JSON written", 9)
+        for seed in range(1, 4)
+    })
+    verdict = _module().f306_reduced_sampling_succeeds(campaign)
+    assert verdict["status"] == "WRONG", verdict
+    assert verdict["reduced_attempts"] == 3, verdict
+
+
+def test_both_predictions_share_one_exclusion_list():
+    """Two copies would drift, and the two holes were identical."""
+    module = _module()
+    assert module.NOT_AN_OUTCOME == ("running", "abandoned")
+    source = (ROOT / "tools" / "check_registered.py").read_text()
+    assert source.count('= ("running", "abandoned")') == 1
+    assert source.count("NOT_AN_OUTCOME") >= 3
