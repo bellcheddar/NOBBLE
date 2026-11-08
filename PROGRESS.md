@@ -1460,7 +1460,14 @@ commit; the one that found F303 took over ten minutes in `git add`. That
 looks deliberate, since the deployed bundle is then versioned and
 reproducible, so it is recorded rather than changed.
 
-## Current state, 2026-11-08T08:45Z
+## Current state, 2026-11-08T00:18Z
+
+The heading said 08:45Z, which had not happened yet when this was
+read back at 03:03Z. The job it describes as thirty-four minutes in
+started at 23:43:50Z, so 00:18Z is the time. Corrected rather than
+left, because the timestamps in this file are how a successor orders
+events and one in the future puts a later snapshot before an earlier
+one.
 
 `bash tools/status.sh` is the state; this is the narrative. For what is true
 now, run that.
@@ -1630,3 +1637,63 @@ And two of today's that are decisions rather than tasks: whether to excise
 (F303), and whether the composite earns its place now that it measures 0.58
 to 0.61 out of sample against 0.5889 for its best single component (F312)
 and 0.6146 held out within the matched arm's own blocks (F317).
+
+## Current state, 2026-11-08T03:05Z
+
+`bash tools/status.sh` is the state; this is the narrative.
+
+**On the GPU.** Tier 2, job 1 of 100, `bench06` conditioned seed 1 at nine
+diffusion samples instead of twenty-five. Three hours nineteen minutes
+elapsed, 95 per cent of one core, 28,000 seconds of its 39,000-second budget
+unspent. `predictions/` exists and holds nothing, which is both the six
+failures' signature and what a job that has not reached its writing stage
+looks like, so it settles nothing.
+
+**The cost question is answered and the answer refuted my own prediction.**
+The six previous bench06 tier-2 attempts agree to a coefficient of variation
+of 0.61 per cent, mean 9,512 seconds, across five seeds and both
+conditionings: one deterministic stopping point hit six times, not six flaky
+runs (F336). This attempt is past all of them and still going. A 64 per cent
+cut in diffusion samples has bought nothing, which is what F334 was for, and
+F334's own band of plus or minus three per cent was refuted because I took it
+from the six runs' internal spread and used it as a tolerance for a run under
+different conditions: the wrong variance, named in F335b before the outcome
+and confirmed by it.
+
+**The stage is priced from measurement.** 100 tier-2 jobs remain and cost
+37.8 hours at the per-token-band medians, with the ten 1,223-token jobs being
+10 per cent of the jobs and 70 per cent of the cost. 94.78 hours spent plus
+37.8 is 132.6 against `max_compute_hours` of 240, so **G1 stays closed**,
+matching the figure D-NOB-083 recorded.
+
+**Registered predictions: 7 recorded, 1 testable, 1 wrong.** F334 is WRONG.
+F251 is withdrawn. F252, F253 and F254 wait on the design scan and Tier B.
+F268 and F306 both now score the conditioned arm, which they did not before
+F333: the job in flight is the conditioned one and both would have reported
+"not yet testable" over the result that settles them.
+
+**Hardening done tonight, in the order the defects were found.** The atlas
+build stages and swaps so a refusal leaves the published bundle standing
+(F327d). The conflict cleaner had never cleared a file from inside the build,
+because `find(OUT.parent)` looked for six directories that do not exist
+(F332). Both registered scorers were widened to match their own claims
+(F333). The sampling caveat is published rather than printed into a step log
+(F337). The design scan records why its parent was chosen and refuses a
+parent the ranking would not pick (F338). Preflight asks both
+input-provenance questions before the compute instead of leaving them to the
+atlas build at the end (F339). Tier B, the one arm whose comment names form
+drift as a hazard, is no longer the one arm excluded from the check for it,
+and regenerating it reproduced all 1,540 YAMLs byte for byte (F340).
+
+**One thing I broke and repaired.** F339: a script of mine meant to tamper
+with a throwaway copy wrote into the live Tier B campaign, because its guard
+read `if not y.is_absolute()` and queue rows store absolute paths. Found
+within two minutes by an existing preflight check noticing the sequence had
+grown by two residues. Repaired and verified: 207 again, both provenance
+checks clean over 1,540 rows, preflight `ok`. `relocate_queue_paths` now
+makes a copied campaign mean what it looks like.
+
+**What to do when job 1 resolves** is unchanged and is in its own section
+above. The short version: read the `detail` field before guessing at a cause,
+check that F268's verdict says `WRONG` with `conditioned_done` naming this
+job if it succeeded, and drop nothing from the queue either way.
