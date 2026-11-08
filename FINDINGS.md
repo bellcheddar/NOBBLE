@@ -17435,3 +17435,60 @@ finding that a 64 per cent sample cut buys no time means the sample half of
 is partly wrong. It is still loose, which is all a stall margin needs to be,
 and tightening it on that reasoning is exactly what F329 refused.
 
+
+### F335b. The candidates for F334 being wrong, written down before it is decided
+
+F334 says the job lands within three per cent of 9,512 seconds and that if
+it runs materially past 9,797 then something other than the sample count
+differs between this attempt and the six, and that I do not know what. It
+is at 9,650 and showing no sign of stopping, so the list is worth having
+now rather than assembled afterwards from whatever is to hand.
+
+**Eliminated by reading, not by waiting.**
+
+*Re-featurisation.* Boltz writes its featurised input under the output
+directory and reads it back if present, and `run_job` clears that directory
+once per job precisely so a changed YAML cannot be folded against a stale
+cache (F219). Every attempt therefore re-featurises, including all six, so
+the cost is in both sides of the comparison and cancels. I had this as the
+strongest candidate until I read the comment.
+
+*A blocked stderr pipe.* F238 made the runner keep Boltz's output, and a
+parent that holds a pipe without draining it stops the child once 64 KB has
+accumulated, which would be a real and invisible slowdown. `_run_boltz`
+uses `process.communicate`, which drains both streams concurrently. Not
+this either.
+
+**Bounded, not eliminated.** The CPU load I added: one 8m13s sweep holding
+about one core, two minutes of targeted tests, three 27-second runs, on 24
+cores at load 3.9 to 5.3 while Boltz held 95 to 100 per cent of one core and
+the GPU.
+
+**The candidate I think is actually right, and it is a mistake in F334 rather
+than in the run.** The band is plus or minus three per cent, and I took that
+from the internal spread of the six, which is plus or minus 0.9 per cent.
+But those six ran under conditions similar to each other, and this one ran
+under different ones. Using the within-condition spread as a tolerance for a
+between-condition difference is the wrong variance: it is tight because the
+six agree with each other, which says nothing about how far a seventh run
+under other conditions may sit.
+
+If that is what happened, the finding that survives is the one F334 was
+actually about, which does not depend on the band at all: **a 64 per cent
+cut in diffusion samples did not shorten the job appreciably.** 9,650
+seconds against a six-run mean of 9,512 is not a saving whichever side of
+three per cent it lands. F325's linear prediction of 3,417 seconds is wrong
+by a factor of nearly three either way, and `tokens x samples` still prices
+a tier-2 job in units that do not track its cost.
+
+What would be falsified is the sharper claim I added on top, that the sample
+count contributes *nothing measurable*. A job finishing at, say, 9,900
+seconds would be consistent with samples contributing a few per cent and the
+rest being conditions, and I would have no way to separate those two with
+one run.
+
+**What I will not do.** Widen the band after the fact. It is registered at
+three per cent and `check_registered.py` holds it, and a band adjusted once
+the duration is known is not a prediction. If it fails it fails, and the
+reason above is the reason, offered now while it still costs something to be
+wrong about.
