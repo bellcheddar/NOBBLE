@@ -43,8 +43,28 @@ def _module():
 
 def _campaign(tmp_path: Path, sequences=None, rows=None,
               msa_query: str | None = None) -> dict:
-    """A one-pair campaign that preflights clean, unless broken on purpose."""
-    campaign = tmp_path / "campaign_checks"
+    """A one-pair campaign that preflights clean, unless broken on purpose.
+
+    Not named `campaign_*`, and the name is load-bearing (F340).
+    `inputs._regenerated_scan` reproduces a named assembler's output and
+    compares against it, and preflight now runs that before the compute
+    rather than leaving it to the atlas build at the end. This fixture is a
+    synthetic two-job campaign, so the current manifest emits no such job
+    and the scan said so, correctly: two disagreements, and the base case
+    stopped being clean.
+
+    The scan is right and the old name was the misnomer. A fixture is not
+    any assembler's output, which is the `not_applicable` case the module
+    reserves for "there is no comparison to make", as distinct from "the
+    comparison failed". Renaming it says what it is rather than exempting it
+    from a question it genuinely cannot answer.
+
+    Do not rename this back to a prefix that has a regenerator. The base
+    case would fail, and making it pass by loosening the provenance check
+    would be mutating a refusal to keep a fixture, which is what
+    `deploy/build_atlas.py`'s own comment warns about.
+    """
+    campaign = tmp_path / "preflight_checks"
     (campaign / "yaml").mkdir(parents=True, exist_ok=True)
     msa = campaign / "receptor.a3m"
     msa.write_text(f">query\n{msa_query or RECEPTOR}\n")
@@ -89,7 +109,7 @@ def test_the_base_case_is_clean(tmp_path):
 def test_a_peptide_chain_with_an_msa_is_flagged(tmp_path):
     """Spec 1.3: the peptide gets no alignment."""
     def sequences(complex_type):
-        msa = tmp_path / "campaign_checks" / "receptor.a3m"
+        msa = tmp_path / "preflight_checks" / "receptor.a3m"
         return [{"protein": {"id": "A", "sequence": RECEPTOR, "msa": str(msa)}},
                 {"protein": {"id": "P", "sequence": PEPTIDE, "msa": str(msa)}}]
 
@@ -132,7 +152,7 @@ def test_an_msa_for_the_wrong_chain_is_flagged(tmp_path):
 
 def test_duplicate_chain_ids_are_flagged(tmp_path):
     def sequences(complex_type):
-        msa = tmp_path / "campaign_checks" / "receptor.a3m"
+        msa = tmp_path / "preflight_checks" / "receptor.a3m"
         return [{"protein": {"id": "A", "sequence": RECEPTOR, "msa": str(msa)}},
                 {"protein": {"id": "A", "sequence": RECEPTOR, "msa": str(msa)}},
                 {"protein": {"id": "P", "sequence": PEPTIDE, "msa": "empty"}}]
@@ -143,7 +163,7 @@ def test_duplicate_chain_ids_are_flagged(tmp_path):
 
 def test_a_missing_peptide_chain_is_flagged(tmp_path):
     def sequences(complex_type):
-        msa = tmp_path / "campaign_checks" / "receptor.a3m"
+        msa = tmp_path / "preflight_checks" / "receptor.a3m"
         return [{"protein": {"id": "A", "sequence": RECEPTOR, "msa": str(msa)}}]
 
     report = _campaign(tmp_path, sequences=sequences)
@@ -153,7 +173,7 @@ def test_a_missing_peptide_chain_is_flagged(tmp_path):
 def test_zinc_in_one_arm_only_is_flagged(tmp_path):
     """Delta-ipTM would report the cofactor rather than the glue."""
     def sequences(complex_type):
-        msa = tmp_path / "campaign_checks" / "receptor.a3m"
+        msa = tmp_path / "preflight_checks" / "receptor.a3m"
         out = [{"protein": {"id": "A", "sequence": RECEPTOR, "msa": str(msa)}},
                {"protein": {"id": "P", "sequence": PEPTIDE, "msa": "empty"}}]
         if complex_type == "ternary":
@@ -168,7 +188,7 @@ def test_zinc_in_one_arm_only_is_flagged(tmp_path):
 def test_zinc_in_both_arms_is_not_flagged(tmp_path):
     """The symmetric case, so the check above is not merely 'zinc is bad'."""
     def sequences(complex_type):
-        msa = tmp_path / "campaign_checks" / "receptor.a3m"
+        msa = tmp_path / "preflight_checks" / "receptor.a3m"
         out = [{"protein": {"id": "A", "sequence": RECEPTOR, "msa": str(msa)}},
                {"protein": {"id": "P", "sequence": PEPTIDE, "msa": "empty"}},
                {"ligand": {"id": "Z", "ccd": "ZN"}}]

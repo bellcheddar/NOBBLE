@@ -1504,3 +1504,17 @@
   the failure was the project catching me: `test_every_cited_finding_number_exists`
   found F340 cited in three files and not yet written in FINDINGS.md.
   Written; green.
+- `2026-11-08T04:45Z` Two tests failed on the F340 change, both correctly.
+  The preflight fixture was named `campaign_checks`, so the new provenance
+  check regenerated it against the real manifest and found its two invented
+  jobs: the base case that makes fifteen other fixtures meaningful (F274)
+  stopped being clean. The scan was right and the name was the misnomer, so
+  the fixture is now `preflight_checks`, which is the `not_applicable` case
+  the module reserves for "there is no comparison to make". Its docstring
+  says not to rename it back, because making the base case pass by loosening
+  the provenance check would be mutating a refusal to keep a fixture. My
+  rename script's own assertion caught that five MSA paths still held the
+  old name. The other failure asserted Tier B is out of scope, which it no
+  longer is; narrowed to the three arms that still are, with the test's
+  reasoning kept because it is why a Tier B regenerator was written rather
+  than the campaign one widened. 165 passed, 6 skipped after both.
