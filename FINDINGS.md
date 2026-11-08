@@ -16711,3 +16711,39 @@ So it goes with F320 and the `--limit` remedy on the between-stages list,
 with the staging approach named so the next session does not have to derive
 it. Recording the trade is the part that could not wait: three of the five
 post-rmtree refusals are mine, and nothing said they destroyed the bundle.
+
+### F327b. Clear before refusing, and the third `nodes[0]` of the day
+
+The tail risk F327 exposes is specific: the unexpected-files check fires
+after `shutil.rmtree(OUT)`, so a set of restored copies arriving inside the
+build's own window would refuse the build, leave no bundle, and meet the same
+copies on the next attempt. Measured arrival was about twenty minutes after
+a rebuild with nothing writing in between (F310b), so the window is probably
+clear, and "probably" is not a property.
+
+So the build now takes the two steps `deploy/deploy.sh` already takes: clear
+the conflict-shaped names that have a plain sibling, recompute the list, and
+refuse on what is left. One pattern in two places, cited in each. Four
+things the tests hold it to: it only unlinks under `OUT`, because a build
+must not delete outside the directory it owns; the list is recomputed after
+clearing, since refusing on a stale list would name files that are gone; an
+unmatched name still refuses, which is the case the guard exists for; and a
+cleaner that cannot be imported or throws leaves the refusal standing rather
+than letting the build continue.
+
+**And the third `nodes[0]` of the day.**
+`test_the_check_refuses_rather_than_warns` asserted that the first
+`if extra:` branch returns 1. Adding a clearing branch above the refusal made
+`refusals[0]` the clearing one, which returns nothing. The same thing
+happened this morning with `if absent:` and again with the design scan's
+`if report.get('lifts')`.
+
+The pattern is worth naming exactly, because it is not carelessness.
+**`nodes[0]` in an AST test encodes "there is only one of these", and that is
+an assumption about the code rather than about the property being tested.**
+Every one of the three tests meant "some branch on this condition refuses",
+and all three were written as "the first branch on this condition refuses"
+because at the time there was only one. All three fixed the same way, by
+searching every branch. It cost minutes each time, which is the argument for
+AST tests over text matching rather than against: the failure was loud and
+local.

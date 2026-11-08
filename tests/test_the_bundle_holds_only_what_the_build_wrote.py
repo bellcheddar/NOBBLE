@@ -37,17 +37,22 @@ def test_the_build_records_what_it_writes():
 def test_the_check_refuses_rather_than_warns():
     """A warning in a forty-hour log is not a gate. The build must return
     non-zero, which is what deploy.sh and refresh.sh key on."""
+    # Across every `if extra:` branch, not the first. F327 added a clearing
+    # branch above the refusal, and `refusals[0]` then found the clearing
+    # one, which returns nothing. Third time today an AST test keyed on
+    # `nodes[0]`: that index encodes "there is only one of these", which the
+    # code can falsify at any time.
     tree = ast.parse(SOURCE)
-    refusals = [node for node in ast.walk(tree)
+    branches = [node for node in ast.walk(tree)
                 if isinstance(node, ast.If)
                 and isinstance(node.test, ast.Name)
                 and node.test.id == "extra"]
-    assert refusals, "no `if extra:` branch in the build"
-    returns = [node for node in ast.walk(refusals[0])
+    assert branches, "no `if extra:` branch in the build"
+    returns = [node for branch in branches for node in ast.walk(branch)
                if isinstance(node, ast.Return)]
-    assert returns, "the refusal does not return"
+    assert returns, "no `if extra:` branch returns"
     assert any(isinstance(node.value, ast.Constant) and node.value.value == 1
-               for node in returns), "the refusal does not return non-zero"
+               for node in returns), "no `if extra:` branch returns non-zero"
 
 
 def test_both_directories_are_scanned():
@@ -342,3 +347,64 @@ def test_the_live_bundle_has_pairs_to_publish():
         pytest.skip("no published bundle on this checkout")
     summary = json.loads(atlas.read_text())
     assert (summary.get("files") or {}).get("scores.jsonl", 0) > 0, summary
+
+
+# --------------------------------------------------------------------------- #
+# Clear the provable copies before refusing (F327)
+# --------------------------------------------------------------------------- #
+
+def test_the_build_clears_restored_copies_before_refusing():
+    """`shutil.rmtree(OUT)` has already run by the time this check fires, so
+    a refusal here leaves no bundle, and a rebuild would meet the same
+    copies again. The copies arrive on their own: 336 twenty minutes after
+    the 2026-11-07 rebuild with nothing writing in between."""
+    assert "clean_sync_conflicts" in SOURCE
+    position = SOURCE.index("extra = unexpected[")
+    window = SOURCE[position:position + 2400]
+    assert "clean_sync_conflicts.find" in window
+    assert "path.unlink()" in window
+
+
+def test_it_only_unlinks_inside_the_bundle():
+    """The cleaner is pointed at `OUT.parent` so it can see the whole
+    `deploy/` tree, and only paths under `OUT` are removed: a build must not
+    delete anything outside the directory it owns."""
+    position = SOURCE.index("clean_sync_conflicts.find")
+    window = SOURCE[position:position + 400]
+    assert "if OUT in path.parents" in window
+
+
+def test_the_refusal_is_re_evaluated_after_clearing():
+    """Clearing and then refusing on the stale list would refuse on files
+    that are gone, which is worse than not clearing at all."""
+    position = SOURCE.index("clean_sync_conflicts.find")
+    window = SOURCE[position:position + 1400]
+    assert "unexpected = {" in window
+    assert "extra = unexpected[" in window
+
+
+def test_an_unmatched_name_still_refuses():
+    """The case the guard exists for. The cleaner leaves a conflict-shaped
+    name with no plain sibling alone, so it survives into the recomputed
+    list and refuses."""
+    tree = ast.parse(SOURCE)
+    branches = [node for node in ast.walk(tree)
+                if isinstance(node, ast.If)
+                and isinstance(node.test, ast.Name)
+                and node.test.id == "extra"]
+    assert len(branches) >= 2, (
+        "there should be a clearing branch and a refusing branch on `extra`"
+    )
+    returns = [node for branch in branches for node in ast.walk(branch)
+               if isinstance(node, ast.Return)]
+    assert any(isinstance(node.value, ast.Constant) and node.value.value == 1
+               for node in returns)
+
+
+def test_a_failed_clear_does_not_swallow_the_refusal():
+    """If the cleaner cannot be imported or throws, the refusal must still
+    stand on what is on disk rather than the build continuing."""
+    position = SOURCE.index("clean_sync_conflicts.find")
+    window = SOURCE[position - 400:position + 1200]
+    assert "except Exception as problem" in window
+    assert "the refusal" in window

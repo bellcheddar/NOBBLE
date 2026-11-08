@@ -820,6 +820,47 @@ def main() -> int:
         if (OUT / "crystals").exists() else [],
     }
     extra = unexpected["structures"] + unexpected["crystals"]
+    # Clear the provable copies first, then refuse on anything left (F327).
+    #
+    # The names that turn up here are iCloud's restored copies of files this
+    # build replaced (F173, F310), and they arrive on their own: 336 of them
+    # twenty minutes after the 2026-11-07 rebuild, with nothing writing to
+    # the directory in between. A set that arrives inside the build's own
+    # window would refuse the build, and `shutil.rmtree(OUT)` has already
+    # run by here, so the refusal would leave no bundle and a rebuild would
+    # meet the same copies again.
+    #
+    # So the same two steps `deploy/deploy.sh` takes before publishing: the
+    # cleaner removes a conflict-shaped name that has a plain sibling, which
+    # is exactly what the refusal below would tell an operator to do by
+    # hand, and anything without a sibling is still left alone and still
+    # refuses. One pattern in both places, cited in each.
+    if extra:
+        sys.path.insert(0, str(ROOT / "tools"))
+        try:
+            import clean_sync_conflicts
+
+            removable, _unmatched = clean_sync_conflicts.find(OUT.parent)
+            for path in removable:
+                if OUT in path.parents:
+                    path.unlink()
+            if removable:
+                print(f"  cleared {len(removable)} restored copy(ies) that "
+                      "arrived while this build ran")
+        except Exception as problem:                    # noqa: BLE001
+            print(f"  could not clear restored copies "
+                  f"({type(problem).__name__}: {problem}), so the refusal "
+                  "below stands on what is there", file=sys.stderr)
+        unexpected = {
+            "structures": sorted(path.name for path
+                                 in (OUT / "structures").iterdir()
+                                 if path.name not in intended_structures),
+            "crystals": sorted(path.name for path
+                               in (OUT / "crystals").iterdir()
+                               if path.name not in intended_crystals)
+            if (OUT / "crystals").exists() else [],
+        }
+        extra = unexpected["structures"] + unexpected["crystals"]
     if extra:
         print(f"REFUSING: {len(extra)} file(s) in the bundle that this build "
               f"did not write, first {extra[:3]}. The bundle is what gets "
