@@ -16541,3 +16541,52 @@ This is F218's shape pointed at my own prose: a guarantee stated in a
 docstring, with nothing behind it, about the one property a reader checks
 before pointing a tool at real data. I wrote four such guarantees today and
 verified none of them until a fifth tool's missing guarantee cost me an hour.
+
+## F326e. The destructive agent was a test of mine, and it passed because of the damage
+
+F326 blamed a manual verification command. That was wrong, and the truth is
+worse.
+
+`test_a_scored_campaign_still_exits_zero`, which I wrote to check that
+F322's change does not make every refresh fail, did this:
+
+```python
+campaign = latest("campaign") or latest("benchmark")
+subprocess.run([..., "--campaign", str(campaign), "--limit", "1", ...])
+```
+
+It pointed `--limit 1` at **the live campaign**. Every run replaced 158
+scored pairs with one. I ran that file five or six times over an hour.
+
+**And then it passed because of the damage.** With 158 rows held, F326c's new
+refusal fires and the test fails on a non-zero exit, which is what I saw and
+"fixed" by looking elsewhere. With 1 row held, `held > limit` is false, the
+refusal does not fire, the scorer scores one pair and exits 0, and the test
+is green. So the test was satisfied by the state it had itself created, and
+would have gone on being green for as long as nobody restored the file.
+
+That is the worst shape in this project's catalogue: a check whose verdict
+depends on the damage it does. F272 found a gate test that walked through its
+own mutation; this is that with the test doing the mutating.
+
+### What is fixed
+
+The test scores a `tmp_path` copy carrying one pair's `results.jsonl`, and
+asserts afterwards that the live campaign's scores still exist. And a second
+test asserts the property rather than relying on me to remember it: every
+scorer call in that file must take a `--campaign` bound to the copy, because
+one that names `latest(...)` directly is how this happened.
+
+### What this says about the earlier account
+
+F326 said "I pointed a writing command with a truncating flag at the live
+campaign to read an exit code". I did do that, once, deliberately, and it was
+careless. But the 157 rows went because a *test* did it repeatedly and
+silently, which I did not establish before writing the finding: I found a
+plausible cause in my own shell history and stopped looking. The timestamp
+should have told me, since the file was rewritten at 20:00 and my manual
+command was earlier.
+
+The recovery is unaffected and still running. `results.jsonl` is intact at
+2,360 rows, which is the only reason any of this is a delay rather than a
+loss.

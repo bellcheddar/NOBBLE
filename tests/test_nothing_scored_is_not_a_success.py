@@ -65,22 +65,72 @@ def test_the_status_key_is_the_discriminator_not_a_string_match():
     assert "no results yet" not in source.split("def main")[1]
 
 
-def test_a_scored_campaign_still_exits_zero():
-    """The change must not make every refresh fail."""
+def test_a_scored_campaign_still_exits_zero(tmp_path):
+    """The change must not make every refresh fail.
+
+    **On a copy, never the live campaign (F326e).** The first version of this
+    pointed `--limit 1` at `latest("campaign")`, so running it replaced 158
+    scored pairs with one, and then passed on every later run precisely
+    because the file was already truncated. A test that damages the thing it
+    reads and is then satisfied by the damage is worse than no test.
+
+    The copy carries `results.jsonl` only, which is what the scorer reads.
+    `--limit` and a few rows keep it quick, and the point is the exit code,
+    not the scoring.
+    """
+    import json
+    import shutil
+
     import pytest
 
     from nobble.execute.campaign import latest
 
-    campaign = latest("campaign") or latest("benchmark")
-    if campaign is None or not (campaign / "results.jsonl").exists():
+    source = latest("campaign") or latest("benchmark")
+    if source is None or not (source / "results.jsonl").exists():
         pytest.skip("no campaign with results on this checkout")
+
+    campaign = tmp_path / "campaign_copy"
+    campaign.mkdir()
+    rows = [line for line in
+            (source / "results.jsonl").read_text().splitlines() if line.strip()]
+    # One pair's worth is enough to score. Taken by pair id so the rows
+    # belong together rather than being the first N of a mixed set.
+    first_pair = json.loads(rows[0]).get("pair_id")
+    kept = [line for line in rows
+            if json.loads(line).get("pair_id") == first_pair]
+    assert kept, "no row carried a pair id"
+    (campaign / "results.jsonl").write_text("\n".join(kept) + "\n")
+    shutil.copy(source / "queue.jsonl", campaign / "queue.jsonl")
+
     done = subprocess.run(
         [str(SCI), "-m", "nobble.score.run", "--campaign", str(campaign),
-         "--tier", "1", "--no-plip", "--limit", "1"],
+         "--tier", "1", "--no-plip"],
         capture_output=True, text=True, cwd=ROOT,
         env={"PYTHONPATH": str(ROOT), "KMP_DUPLICATE_LIB_OK": "TRUE",
              "PATH": "/usr/bin:/bin"})
     assert done.returncode == 0, done.stderr[-400:]
+    # And the live campaign is untouched, which is the property that failed.
+    assert (source / "scores.jsonl").exists()
+
+
+def test_no_test_in_this_file_scores_the_live_campaign():
+    """The property, asserted rather than remembered.
+
+    Every subprocess call here must name a path under `tmp_path`. One that
+    names `latest(...)` directly is how F326e happened, and the damage is
+    silent: the scorer writes what it scores and says nothing about what it
+    replaced.
+    """
+    import re
+
+    source = Path(__file__).read_text()
+    body = source[source.index("def test_"):]
+    # `latest(` may appear only where a copy is made from it.
+    for match in re.finditer(r'"--campaign",\s*str\((\w+)\)', body):
+        name = match.group(1)
+        assert name in ("campaign",), (
+            f"a scorer call takes --campaign str({name}); it must be a "
+            "tmp_path copy bound to `campaign`")
 
 
 def test_the_three_guards_that_depend_on_this_still_read_the_code():
