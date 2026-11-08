@@ -16590,3 +16590,35 @@ command was earlier.
 The recovery is unaffected and still running. `results.jsonl` is intact at
 2,360 rows, which is the only reason any of this is a delay rather than a
 loss.
+
+### F326f. The prediction held, and the sweep found only my own test
+
+**The re-score restored 158 rows**, `pairs_scored: 158`, the fit back to
+`fitted` and its cross-validation to `computed`. The three guards and the
+analyses read a whole campaign again.
+
+**F326b's prediction held.** Three of the four suite failures pass; the
+fourth, `test_atlas_drift::test_the_check_passes_while_only_costs_move`,
+skips with "no recomputed values to distinguish from drift", which is its own
+documented precondition and not a failure. None was an independent defect, so
+the attribution was right and the alternative — that something else was also
+broken — is ruled out rather than assumed.
+
+**The generalisation came back negative.** Thirteen test files invoke a
+writing tool as a subprocess, and I checked the ones that write at all:
+`test_torn_line_tolerance` reads the live results and writes only to
+`tmp_path`; `test_incomplete_campaigns` builds fixture directories;
+`test_design_parent_provenance` has no write calls. **Mine was the only test
+in the project that wrote to a live campaign.** The other authors were
+disciplined about it and I was the exception, which is the opposite of the
+conclusion I would have drawn from my own afternoon.
+
+That negative result is worth as much as a defect would have been. It says
+the project does not have a culture of careless tests that I happened to join
+— it says I introduced one, and the fix is local rather than systemic.
+
+So no project-wide guard is written. `test_no_test_in_this_file_scores_the_
+live_campaign` covers the file where it happened, which is where the next
+version of this mistake would most likely go, and a sweep over every test's
+write targets would be the lens problem F293 warned about on the strength of
+one instance that was mine.
