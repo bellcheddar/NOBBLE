@@ -18879,3 +18879,57 @@ including `composite, in sample`, whose rate is highest by construction, and
 reported the arm adequately powered. Both times the rule was defensible in
 the abstract and wrong against this data, and both times the fix was to say
 which rule and why in the comment beside it.
+
+## F351. The composite neither beats nor loses to its best single component, and I nearly wrote that it lost
+
+F312 measured the composite's optimism on the pooled ROC: 0.6988 in sample
+against 0.5836 cross-validated, and 0.5889 for its best single component.
+Whether it earns its place is on Marc's list.
+
+The matched arm gives a second reading of the same question, and the table
+looks like an answer:
+
+| | mean within-block AUC |
+|---|---|
+| convergence_score, unfitted | 0.6510 |
+| composite, held out | 0.6146 |
+
+So the composite is 0.036 below a single component that had nothing fitted
+to produce it. I had written that it is worse.
+
+### The paired test says they are tied
+
+Both figures are means over the same 24 blocks, so the blocks can be paired
+rather than the means compared. Done that way:
+
+**convergence higher in 8 blocks, composite higher in 8, tied 8. p = 1.0.**
+
+Exactly even. The 0.036 gap between the means is not a difference these
+blocks support, and the honest statement is that the two are
+indistinguishable here.
+
+### Which is the error F317 exists to prevent, committed against F317's own arm
+
+F317 is the finding that the matched arm was being analysed as a pooled
+curve when it is a matched design, and that using the matching properly
+changed the answer. Comparing two mean AUCs over the same blocks without
+pairing them is the same mistake one level in: the information that these
+are the *same* 24 blocks was sitting there and I was about to average over
+it.
+
+### What it means for the decision, stated both ways
+
+It does not underperform its best component. It also does not outperform it,
+while costing a grid-search fit, carrying 0.1152 of optimism that needed
+cross-validation to expose (F312), and requiring a caveat on every page that
+shows it.
+
+So the case for the composite is not that it is worse. It is that it matches
+an unfitted single component and needs all of that machinery to do so, and
+that `convergence_score` has a mechanism (F342) and a measured confound
+(F344) while the composite's weights have neither.
+
+Both are underpowered (F349), so neither figure is significant on its own
+and the tie is not evidence of equivalence either: 24 blocks cannot
+distinguish 0.615 from 0.651, and p = 1.0 here means the blocks split
+evenly rather than that the two statistics are the same.

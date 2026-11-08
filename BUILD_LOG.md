@@ -1823,3 +1823,16 @@ bad clocks are. -->
   mechanism (F342) and a measured confound (F344). All four places say 48
   against 20, with a test asserting the scorer's figures appear in the README
   and that the chosen statistic is still `convergence_score`.
+- `2026-11-08T04:20Z` F351. The matched arm gives a second reading on whether
+  the composite earns its place: held out it is 0.6146 against
+  `convergence_score`'s 0.6510, so it sits 0.036 below an unfitted single
+  component and I had written that it is worse. Paired block by block
+  instead, since both are means over the same 24 blocks: convergence higher
+  in 8, composite higher in 8, tied 8, p = 1.0. Exactly even, so the gap
+  between the means is not a difference the blocks support. Comparing two
+  mean AUCs over the same blocks without pairing them is the error F317
+  exists to prevent, committed against F317's own arm. The decision-relevant
+  statement is that the composite matches an unfitted component while
+  costing a fit, 0.1152 of optimism (F312) and a caveat on every page, and
+  that `convergence_score` has a mechanism and a measured confound while the
+  weights have neither.
