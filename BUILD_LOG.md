@@ -1386,7 +1386,7 @@
   the prose was not part of that change. Fixed, and every figure of that
   shape in the code is now read against the config by
   `test_a_config_value_quoted_in_a_docstring_is_the_configured_one`.
-- `2026-11-08T03:50Z` **F334 is WRONG.** The job passed 9,797s still
+- `2026-11-08T02:30Z` **F334 is WRONG.** The job passed 9,797s still
   running: 9,801s at the crossing, 1.030 of the six-run mean and 1.032 of
   its own previous attempt at 25 samples. The reason is the one F335b put on
   record while the job was at 9,650: the band was plus or minus three per
@@ -1397,21 +1397,21 @@
   2.9, and `tokens x samples` prices a tier-2 job in units that do not track
   its cost. What is withdrawn is the sharper claim that samples contribute
   nothing measurable, which one run cannot separate from conditions.
-- `2026-11-08T03:50Z` The scorer said "not yet testable" about a claim that
+- `2026-11-08T02:30Z` The scorer said "not yet testable" about a claim that
   was already refuted, because it waits for a recorded duration and a
   running job has none. A running job's duration can only grow, so reading
   it can falsify and can never support: that asymmetry makes it safe, and
   both directions are tested. Its sample count comes from
   `runner.sampling_for` via `settings_from_config` rather than from
   `budget // tokens` repeated in the scorer, which would be F181.
-- `2026-11-08T03:50Z` Two project tests caught it, both right.
+- `2026-11-08T02:30Z` Two project tests caught it, both right.
   `test_the_live_state_is_every_prediction_pending` asserted nothing was
   refuted, which stopped being true at 02:45; it now asserts the exit code
   tracks the verdicts rather than pinning a count. And the `_bench06`
   fixture gave a running row a fixed past `started_at`, which made every
   running job look hours old and turned F334's empty-case test into a
   refutation: a fixture detail deciding a verdict. Now `time.time()`.
-- `2026-11-08T03:55Z` F336. The six bench06 tier-2 failures have a
+- `2026-11-08T02:32Z` F336. The six bench06 tier-2 failures have a
   coefficient of variation of 0.61 per cent across five seeds and both
   conditionings: mean 9,512.1s, sd 57.7. A different seed is a different
   diffusion trajectory, so a failure depending on the trajectory, or on
@@ -1423,7 +1423,7 @@
   less work before any point after the trunk, the stopping point should have
   arrived earlier and did not arrive at all. No new prediction registered:
   F306 already claims this and F268 already denies it.
-- `2026-11-08T04:05Z` F337. The sampling caveat was computed, tested by five
+- `2026-11-08T02:45Z` F337. The sampling caveat was computed, tested by five
   tests, returned in the scoring summary, redirected into a step log by
   `refresh.sh`, and never referenced by `build_atlas.py` at all. Now written
   to `sampling{suffix}.json`, published into `about.json` for both tiers
@@ -1432,7 +1432,7 @@
   refinement panel: `nobble/sampling.py` already withholds every quantity a
   sample count would bias, so the figures there are safe and a warning would
   imply otherwise. I nearly wrote one before reading that module.
-- `2026-11-08T04:05Z` F338. `report.build` picks a design parent by ranking
+- `2026-11-08T02:45Z` F338. `report.build` picks a design parent by ranking
   or by a fallback that says "has not been ranked against anything", and
   both wrote the same `campaign.json`, because only the parent was recorded.
   The chain queues this stage last precisely to get a ranked parent and
@@ -1441,17 +1441,17 @@
   answer happens to agree: right parent, no provenance. Assembler now
   records the reason; `run_design.sh` checks the parent against today's
   ranking before spending 240 jobs.
-- `2026-11-08T04:05Z` That check refused the correct parent in its first
+- `2026-11-08T02:45Z` That check refused the correct parent in its first
   version. `report.build` ranks against whatever `nobble.app.data` is
   configured to, which is global state, and unconfigured it preferred a
   different peptide. Found by running it both ways; testing only the parent
   I expected to pass would have put it in the chain and blocked the design
   stage for a reason of my own making. The ranking target is now an
   argument.
-- `2026-11-08T04:05Z` Corrected myself: I said the design stage has no
+- `2026-11-08T02:45Z` Corrected myself: I said the design stage has no
   preflight. The chain's stage does not call `preflight.py`; `run_design.sh`
   does. The gap was that nothing checked the parent.
-- `2026-11-08T04:20Z` **F339. I wrote into the live Tier B campaign.** A
+- `2026-11-08T02:52Z` **F339. I wrote into the live Tier B campaign.** A
   script of mine copied the campaign to a tempdir to tamper with one YAML,
   guarded with `if not y.is_absolute(): y = dst / y`, and the queue stores
   absolute paths, so the write went to the real file. Found within two
@@ -1462,14 +1462,14 @@
   preflight `ok: true`, no other file carries the edit. Same class as F326
   nine hours earlier: a verification of mine writing to live data because
   the path it built was not the path it meant.
-- `2026-11-08T04:20Z` The generalisable half: a tempdir copy of a campaign
+- `2026-11-08T02:52Z` The generalisable half: a tempdir copy of a campaign
   is not isolated, because queue rows name their YAML absolutely.
   `inputs.relocate_queue_paths` rewrites a copy's queues to point inside it
   (1,540 of 1,540 relocated, original untouched), reports counts so "all
   already inside" differs from "no rows", and refuses to rewrite a row whose
   file is absent from the copy rather than inventing a path. The F327d
   fixture now uses it: it was safe only because a build reads those YAMLs.
-- `2026-11-08T04:20Z` Preflight now runs both input-provenance checks before
+- `2026-11-08T02:52Z` Preflight now runs both input-provenance checks before
   the compute instead of leaving them to the atlas build at the end: a Tier B
   campaign with either problem would run 1,540 jobs over 33 hours and be
   refused afterwards. F327's reasoning across stages. Measured first and the
@@ -1477,12 +1477,12 @@
   corrected my own claim that `stale_inputs` compares a YAML against what
   the code would emit: it compares modifications against the queue row, and
   `_regenerated_scan` is the one that compares against the code.
-- `2026-11-08T04:20Z` And a bug in that guard, live for one run: a dict
+- `2026-11-08T02:52Z` And a bug in that guard, live for one run: a dict
   literal evaluates in order, so `"ok": not errors` was computed before
   `_stale_check` appended to `errors`. Preflight reported `ok: true` over a
   stale YAML it had just found. The guard added to catch a pass-over-nothing
   was itself one.
-- `2026-11-08T04:35Z` F340. Followed F339's stated limitation instead of
+- `2026-11-08T02:58Z` F340. Followed F339's stated limitation instead of
   leaving it stated. `_regenerated_scan` compares a campaign's YAML against
   the code that emits it and applied only to `campaign_*`, so Tier B, whose
   own chain comment warns that it "depends on the form and the library and
@@ -1492,7 +1492,7 @@
   `(job, yaml text, queue extras)` and both `assemble_tier_b` and the new
   `regenerate_tier_b` consume it (D-NOB-007), because a second copy of that
   loop could agree with itself and be wrong, which is what F262 was.
-- `2026-11-08T04:35Z` The refactor is proven against real data:
+- `2026-11-08T02:58Z` The refactor is proven against real data:
   `regenerate_tier_b()` reproduced **all 1,540 YAMLs byte for byte**, zero
   missing, zero extra, zero differences. So Tier B's form has not drifted,
   measured rather than assumed, and the scan now reports "clean: all 1540
@@ -1500,11 +1500,11 @@
   did not apply. Pulling a loop out of an assembler the chain runs in 37
   hours is worth doing only with that comparison available, and 1,540 cases
   of it were already on disk.
-- `2026-11-08T04:35Z` Full suite: 1,903 passed, 34 skipped, one failure, and
+- `2026-11-08T02:58Z` Full suite: 1,903 passed, 34 skipped, one failure, and
   the failure was the project catching me: `test_every_cited_finding_number_exists`
   found F340 cited in three files and not yet written in FINDINGS.md.
   Written; green.
-- `2026-11-08T04:45Z` Two tests failed on the F340 change, both correctly.
+- `2026-11-08T03:03Z` Two tests failed on the F340 change, both correctly.
   The preflight fixture was named `campaign_checks`, so the new provenance
   check regenerated it against the real manifest and found its two invented
   jobs: the base case that makes fifteen other fixtures meaningful (F274)
@@ -1518,7 +1518,7 @@
   longer is; narrowed to the three arms that still are, with the test's
   reasoning kept because it is why a Tier B regenerator was written rather
   than the campaign one widened. 165 passed, 6 skipped after both.
-- `2026-11-08T05:00Z` F341. F340 named the design assembler as the remaining
+- `2026-11-08T03:12Z` F341. F340 named the design assembler as the remaining
   provenance gap and declined it, because "a regenerator written without a
   campaign to verify it against would be a guess". The reason was wrong on
   its own terms: `design_20261104T094939Z` is on disk with 240 jobs and its
@@ -1529,18 +1529,18 @@
   them, against 2,360 yesterday, with the two arms holding 1,780 jobs and
   thirty-seven hours of compute no longer reported as questions that do not
   apply.
-- `2026-11-08T05:00Z` It regenerates from the parent the scan records, not
+- `2026-11-08T03:12Z` It regenerates from the parent the scan records, not
   today's ranked choice: the latter is F338's question and
   `run_design.sh` asks it, and regenerating from a different parent would
   report every job as a disagreement. An absent parent is `unavailable`
   rather than `clean`. `benchmark_*` and `corrected_*` stay out of scope
   deliberately, being complete campaigns the chain does not run again.
-- `2026-11-08T05:00Z` Two of my own tests had to be narrowed, one of them
+- `2026-11-08T03:12Z` Two of my own tests had to be narrowed, one of them
   twice within the hour, because they enumerate what is *not* covered.
   That is the cost of asserting a scope rather than a property, and worth
   paying: the alternative is a check whose silence about an arm nobody
   notices, which is the whole of F340.
-- `2026-11-08T05:20Z` F342. `convergence_score` was recorded in F318 as the
+- `2026-11-08T03:21Z` F342. `convergence_score` was recorded in F318 as the
   only statistic on the right side of both paired tests with nothing
   explaining why. It has a mechanism and the evidence was already on disk: it
   is measured in `ternary_unconstrained`, so no pocket imposes agreement
@@ -1554,14 +1554,14 @@
   `bench02_BRD4_VHL`, a PROTAC, where the mechanism has nothing to say,
   which is an observation and not a result at n=2 real PROTAC pairs. Not
   explained: 22 of 125 real glues are floored, including bench01.
-- `2026-11-08T05:20Z` I nearly got F342 wrong by guessing a prefix. The first
+- `2026-11-08T03:21Z` I nearly got F342 wrong by guessing a prefix. The first
   split labelled scrambles by `pair_id` starting `scramble_`; it is `scr_`,
   so every scramble counted as a real sequence and the glue row read n=154
   with 29.9 per cent floored, blending the two populations the comparison is
   about and hiding the whole effect. Caught because the scramble row came
   back empty. Fifth guessed name of the session, and the only one whose cost
   would have been a published number rather than a failed test.
-- `2026-11-08T05:20Z` F343. The tier-2 watchdog reported the running job
+- `2026-11-08T03:21Z` F343. The tier-2 watchdog reported the running job
   overdue at "210.1 min against 69.4 min expected" while it worked at 98 per
   cent of a core. The expectation is the job's own tier-1 time times a
   refinement factor pooled over successes, and 129 of 149 refinements are
@@ -1572,8 +1572,41 @@
   asserting it, since letting the failures back in is the tempting repair and
   the one thing that must not happen. Third appearance of this hazard after
   F320/F329 and F331/F335, and the first that had shipped.
-- `2026-11-08T05:20Z` And the fix nearly carried the defect: with the
+- `2026-11-08T03:21Z` And the fix nearly carried the defect: with the
   expectation declined the report said "1 running, none overdue", identical
   to a job judged and found fine. Now "1 unjudgeable: ... no completed
   tier-2 job of its size. Bounded by the hard budget only". 113 watchdog and
   budget tests pass.
+
+<!-- TIMESTAMP AUDIT 2026-11-08T03:30Z. Entries above this line carry clocks
+that were written by incrementing the previous entry rather than by reading
+`date -u`, and 33 of them name times that had not happened. Measured against
+the commits they were pushed with: F300 is logged at 2026-11-08T01:10Z and
+was committed at 2026-11-07T22:28Z, F313 is logged at 08:05Z and was
+committed at 2026-11-08T00:11Z. The drift grows through the run.
+
+They are not corrected, and that is a decision rather than neglect. The only
+mechanical anchor available is the commit that mentions each finding, and
+tried as a dry run it moved 53 entries and took the log from 2 places where
+time runs backwards to 9, or 288 entries and 44 places if applied to every
+anchorable line. The log's value is ordering, the ordering is right, and
+replacing one wrong number with another that also breaks the sequence is
+worse than leaving it and saying so. Fifty-three fabricated times would read
+as measurements.
+
+The twenty entries of my own below 02:30Z are corrected, because for those
+the anchor is my own commits rather than a guess: 02:30, 02:32, 02:45, 02:52,
+02:58, 03:03, 03:12 and 03:21Z.
+
+`test_no_logged_timestamp_is_in_the_future` enforces the rule from this
+marker onward. The marker is here, in the log, rather than as a list of
+exemptions in the test, so a reader of the log meets the caveat where the
+bad clocks are. -->
+
+- `2026-11-08T03:30Z` Timestamp audit, above. I corrected a future-dated
+  heading in PROGRESS at 03:05Z and then wrote twenty BUILD_LOG entries
+  stamped up to two hours ahead, by incrementing instead of measuring: the
+  same defect in another file within the hour. Mine are re-anchored on my
+  own commits. The previous session's 33 are left wrong and documented,
+  because the only mechanical anchor degraded the ordering from 2 backwards
+  steps to 9, and the ordering is the part that was still true.

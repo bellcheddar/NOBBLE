@@ -199,3 +199,78 @@ def test_a_config_value_quoted_in_a_docstring_is_the_configured_one():
         "these quote a config value that the config does not hold:\n"
         + "\n".join(offenders)
     )
+
+
+def test_no_logged_timestamp_is_in_the_future():
+    """A log's whole value is ordering, and I broke it twice in one night.
+
+    PROGRESS carried a "Current state" heading of 2026-11-08T08:45Z for a
+    snapshot taken at 00:18Z, which put a later section before an earlier
+    one. I corrected that and then wrote twenty BUILD_LOG entries stamped
+    03:55Z to 05:20Z while the clock read 03:21Z, by incrementing the
+    previous entry instead of reading `date -u`: the same defect, in
+    another file, within the hour.
+
+    Both were re-anchored on the git commit each entry was pushed with,
+    because a commit time is measured rather than remembered.
+
+    Mechanical, so it is checked rather than remembered. A tolerance of
+    fifteen minutes absorbs a log line written in the minute before a
+    clock-skewed run and still catches a guess, which was out by two hours.
+    """
+    import datetime as dt
+    import re
+
+    pattern = re.compile(r"\b(20\d\d-\d\d-\d\d)T(\d\d):(\d\d)(?::\d\d)?Z")
+    now = dt.datetime.now(dt.timezone.utc)
+    allowed = now + dt.timedelta(minutes=15)
+
+    # Enforced from the audit marker onward. BUILD_LOG holds 33 entries
+    # from an earlier run whose clocks were written by increment and name
+    # times that had not happened, and they are deliberately not corrected:
+    # the only mechanical anchor is the commit mentioning each finding, and
+    # a dry run of that moved the log from 2 places where time runs
+    # backwards to 9, or 44 if applied to every anchorable line. The
+    # ordering is the part that was still true, so 53 fabricated times
+    # would have been the worse trade.
+    #
+    # The marker is a line in BUILD_LOG.md rather than a list of exemptions
+    # here, so a reader of the log meets the caveat where the bad clocks
+    # are, and a new entry is always after it.
+    marker = "TIMESTAMP AUDIT"
+    offenders, seen = [], 0
+    for name in ("BUILD_LOG.md", "PROGRESS.md", "FINDINGS.md",
+                 "DECISIONS.md"):
+        path = ROOT / name
+        if not path.exists():
+            continue
+        body = path.read_text()
+        if marker in body:
+            body = body[body.index(marker):]
+        for number, line in enumerate(body.splitlines(), 1):
+            for date, hour, minute in pattern.findall(line):
+                try:
+                    stamp = dt.datetime.fromisoformat(
+                        f"{date}T{hour}:{minute}:00+00:00")
+                except ValueError:
+                    continue
+                seen += 1
+                if stamp > allowed:
+                    offenders.append(
+                        f"{name}:{number} says {date}T{hour}:{minute}Z, "
+                        f"and it is {now:%Y-%m-%dT%H:%MZ}")
+    assert seen >= 10, (
+        f"only {seen} timestamp(s) found across the logs, so this examined "
+        "almost nothing. If the format has changed, change this with it. "
+        "A clean answer over nothing is the shape this project spent a "
+        "night removing"
+    )
+    assert (ROOT / "BUILD_LOG.md").read_text().count(marker) == 1, (
+        "the timestamp audit marker is missing or duplicated, and this "
+        "check is scoped to it: without exactly one marker it either "
+        "examines the known-bad block or examines nothing"
+    )
+    assert offenders == [], (
+        "these logged times have not happened yet, so the ordering they "
+        "imply is wrong:\n" + "\n".join(offenders[:10])
+    )
