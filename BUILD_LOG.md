@@ -1889,3 +1889,24 @@ bad clocks are. -->
   catalogue's default sort by composite is left alone: a default sort is not
   a claim, every component is a column beside it, and changing it would be a
   presentation decision rather than a correction.
+- `2026-11-08T04:42Z` F352. Checked the "Waiting on Marc" table against the
+  thing it describes, which nothing had done. F132 asked for
+  `deploy/enable_gzip.sh` on the droplet; production now serves
+  `molstar.js` at 5,227,830 raw against 1,511,615 gzipped (3.46x),
+  `depot.css` 3.49x, and a published `.cif` at 84,837 against 24,707 (3.43x)
+  with `content-type: chemical/x-mmcif`, which is the specific type that row
+  calls the largest it can compress. Both halves satisfied, and the raw
+  `molstar.js` byte count is identical to the one the row recorded as
+  uncompressed, so the file is unchanged and the compression is new. The
+  table is down to one item, F348's Tier B presentation decision, and that
+  is a judgement rather than a task. Six curl calls. A list of things
+  waiting on someone else is the easiest record to leave stale, because
+  nothing fails when an item on it is done.
+- `2026-11-08T04:42Z` The row's own estimate was right: it predicted mmCIF
+  compresses 3.5 times and the measured ratio is 3.43 on a real structure,
+  3.46 on `molstar.js`. Worth recording because this session has mostly
+  recorded the opposite.
+- `2026-11-08T04:42Z` Also confirmed the live site answers 200 on all six
+  pages, and that its About page does not yet carry tonight's new lines,
+  which is correct: the published bundle predates them and publication is
+  held, so no redeploy has happened.

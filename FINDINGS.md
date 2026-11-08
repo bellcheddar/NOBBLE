@@ -19047,3 +19047,49 @@ The campaign catalogue still sorts by the composite, and that is left alone.
 A default sort is not a claim, every component is a column beside it, and
 changing the default would be a presentation decision rather than a
 correction.
+
+## F352. F132 is done, measured against production, and the table still asked for it
+
+The "Waiting on Marc" table carried F132 as the one open item: "static assets
+and structures uncompressed", remedied by `bash deploy/enable_gzip.sh` on the
+droplet, with a measurement showing `molstar.js` serving 5,227,830 bytes and
+no `content-encoding` when gzip was offered.
+
+It serves compressed now. Measured against `nobble.mdeller.com`:
+
+| URL | raw | gzip | ratio |
+|---|---|---|---|
+| `static/vendor/molstar/molstar.js` | 5,227,830 | 1,511,615 | 3.46x |
+| `static/css/depot.css` | 34,465 | 9,871 | 3.49x |
+| a published `.cif` structure | 84,837 | 24,707 | 3.43x |
+
+The structure carries `content-type: chemical/x-mmcif` and
+`content-encoding: gzip`, which is the specific thing that row said the
+script adds and calls "the largest type it can compress". `js/nobble.js`
+compresses too. So both halves of the row, the static assets and the
+structures, are satisfied.
+
+The raw figure for `molstar.js` is 5,227,830 bytes, which is exactly what
+the row recorded as uncompressed. So the file has not changed and the
+compression is new: the row's measurement was right and its remedy has been
+applied since.
+
+### Why this is worth a finding rather than a quiet edit
+
+A list of things waiting on someone else is the easiest kind of record to
+leave stale, because nothing fails when an item on it is done. Nobody is
+blocked, no test goes red, and the next reader simply does the work again or
+asks again. This project has three such lists and F352 is the first time one
+has been checked against the thing it describes.
+
+The check is six `curl` calls and it has removed the only open item on that
+table other than the Tier B presentation decision F348 added tonight. The
+table now has one item, and it is a judgement rather than a task.
+
+### The predicted saving, against the delivered one
+
+The row predicted "mmCIF compresses 3.5 times, so a pose download drops from
+243 KB to 37 and the campaign-scale bundle from 265 MB to 75". The measured
+ratio on a real structure is 3.43, and 3.46 on `molstar.js`. So the estimate
+was right to two significant figures, which is worth recording because this
+session has mostly been recording the opposite.
