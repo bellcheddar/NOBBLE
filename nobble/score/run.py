@@ -447,6 +447,31 @@ def main() -> int:
     summary = score_campaign(Path(campaign), with_plip=not args.no_plip,
                              limit=args.limit, sampling_tier=args.tier)
     print(json.dumps(summary, indent=2))
+
+    # Nothing scored is a non-zero exit, not a successful run of a scorer
+    # that found nothing (F322).
+    #
+    # `score_campaign` carries a `status` only on the paths where it wrote no
+    # scores: no results file, no rows for this tier. The success path has
+    # `pairs_scored` and no status, so the key's presence is the
+    # discriminator rather than a string match.
+    #
+    # This returned 0 regardless, which defeated three guards written for
+    # exactly this case. `tools/tier2.sh` and `tools/run_chain.sh` both wrap
+    # the scorer in `if ! ...` with comments citing F194 and F195 and saying
+    # that "a silent scoring failure would leave 39 hours of inference
+    # unread"; neither could fire, because the silence reported itself as
+    # success. `tools/refresh.sh` gates publication on the same code and
+    # would have published an atlas copying the previous run's
+    # `scores.jsonl`, which is the stale-for-fresh substitution its own
+    # comment warns about.
+    #
+    # 3 rather than 2, which already means "no campaign found": a campaign
+    # that exists and has nothing to score is a different thing from no
+    # campaign.
+    if "status" in summary:
+        print(f"scoring wrote nothing: {summary['status']}", file=sys.stderr)
+        return 3
     return 0
 
 

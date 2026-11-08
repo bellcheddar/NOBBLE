@@ -16114,3 +16114,51 @@ the second tried to add `import sys` that was already there. The file was
 restored from git and redone with no quote characters at all. `bash -n`
 caught both before anything ran, which is the only reason they cost minutes
 rather than a stage.
+
+## F322. Three guards against a silent scoring failure, none of which could fire
+
+F321's shape, one level down, and this one defeats guards that were written
+for it by name.
+
+`tools/tier2.sh` and `tools/run_chain.sh` both wrap the scorer in `if ! ...`.
+The chain's comment says it in as many words:
+
+> Checked, not ignored: the arm's whole output is these scores, and a silent
+> scoring failure would leave 39 hours of inference unread (F194, F195).
+
+`tools/refresh.sh` gates publication on the same exit code, because "a failed
+score left `scores.jsonl` as the previous run's and the atlas copied it".
+
+**All three read an exit code that was always 0.** `score_campaign` returns a
+summary carrying a `status` on the paths where it wrote no scores: no results
+file, or no rows for the tier asked for. `main` printed the summary and
+returned 0 regardless. So the silence the three guards exist to catch
+reported itself as success, and the comments describing the protection were
+accurate about the intent and wrong about the effect.
+
+What that would have cost, concretely. Tier B is 1,540 jobs and 32.8 hours.
+If its scorer found no rows, it printed `{"status": "no results yet"}`,
+exited 0, the chain's `if !` did not fire, and the stage reported success
+with `scores.jsonl` absent. F253's verdict would then read "tier_b has no
+scores.jsonl" indefinitely, which is exactly what it reads now, so the
+failure and the not-yet-run state are indistinguishable from the outside.
+Then `refresh.sh` would publish an atlas copying the previous campaign's
+scores, which is the stale-for-fresh substitution its own comment warns
+about.
+
+`main` now returns 3 when the summary carries a status, and prints the reason
+to stderr. 3 rather than 2, which already means no campaign found: a campaign
+that exists and scored nothing is a different thing from no campaign, and the
+remedies differ.
+
+The discriminator is the presence of the `status` key rather than a match on
+its text. The success path has `pairs_scored` and no status, so presence is
+exact; a string match on "no results" would miss the tier-specific message
+and anything added later, which is F106's one-name-two-spellings in a
+different coat.
+
+**Why this is the more serious of the two.** F321 was a stage that could
+report success with no result. This was three guards, written deliberately,
+citing the findings that motivated them, protecting nothing. A guard that
+cannot fire is worse than no guard, because the comment above it tells the
+next reader the case is covered.
