@@ -270,7 +270,12 @@ def test_the_refusal_is_confined_to_the_limit_branch():
               and isinstance(node.test, ast.Attribute)
               and node.test.attr == "limit"]
     assert guards, "the refusal is not inside an `if args.limit:` branch"
-    returns = [node.value.value for node in ast.walk(guards[0])
+    # Every `if args.limit:` branch, not the first. `guards[0]` encodes
+    # "there is only one of these", which is an assumption about the code
+    # rather than about the property, and it broke three tests today when a
+    # branch was added above the one they meant (F327b).
+    returns = [node.value.value for guard in guards
+               for node in ast.walk(guard)
                if isinstance(node, ast.Return)
                and isinstance(node.value, ast.Constant)]
     assert 4 in returns

@@ -16747,3 +16747,29 @@ because at the time there was only one. All three fixed the same way, by
 searching every branch. It cost minutes each time, which is the argument for
 AST tests over text matching rather than against: the failure was loud and
 local.
+
+### F327c. The other two instances, fixed before they bit
+
+Having named the pattern, the consistent thing is to run it over the suite
+rather than wait for the next one. Two instances left, both written by me
+today and both still passing:
+
+* `test_nothing_scored_is_not_a_success.py` asserting on `guards[0]` for the
+  `if args.limit:` refusal;
+* `test_the_bundle_holds_only_what_the_build_wrote.py` asserting on
+  `branches[0]` for the `published_pairs` refusal.
+
+Both now search every matching branch. `grep -c "ast.walk(\w*\[0\])"` over
+`tests/` returns zero, so the pattern is gone from the suite rather than
+gone from the three places it had already failed.
+
+Worth doing now for a specific reason rather than for tidiness: both guard a
+refusal I added today, both would keep passing while the property they assert
+quietly stopped holding, and the trigger is adding a branch above them, which
+is exactly what F327 says the next change to that file will do. The staging
+rewrite named for between stages inserts code above several of these
+refusals.
+
+Three instances found by failure, two by looking. That ratio is the argument
+for naming a pattern the moment it repeats rather than after it has cost
+something three times.

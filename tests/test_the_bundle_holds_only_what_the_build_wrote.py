@@ -302,7 +302,9 @@ def test_the_build_refuses_a_bundle_with_no_scored_pair():
                 and isinstance(node.test.left, ast.Name)
                 and node.test.left.id == "published_pairs"]
     assert branches, "no `published_pairs` refusal in the build"
-    returns = [node for node in ast.walk(branches[0])
+    # Every `published_pairs` branch, for F327b's reason: `branches[0]`
+    # asserts the code's current shape rather than the property.
+    returns = [node for branch in branches for node in ast.walk(branch)
                if isinstance(node, ast.Return)]
     assert any(isinstance(node.value, ast.Constant) and node.value.value == 1
                for node in returns), "the refusal does not return non-zero"
