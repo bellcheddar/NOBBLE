@@ -1635,3 +1635,30 @@ bad clocks are. -->
   signature of the session and the first whose wrong answer was a
   plausible number rather than an exception: p = 0.0 beside a 25-to-1 split
   reads as a very strong result and I would have published it.
+- `2026-11-08T03:45Z` F345. **bench06 refines at nine diffusion samples.**
+  13,440.12s, status done, confidence_score 0.578, ptm 0.620, iptm 0.551,
+  ligand_iptm 0.612, one attempt, empty detail. F306 supported, F268 WRONG,
+  F334 WRONG. F298's diagnosis holds: the job carries both the 1,223-token
+  size and the pocket constraint and completed, so neither was the cause and
+  the sample count was. F333's widening four hours earlier is what let the
+  scorers see it: both filtered on `__unconstrained__` and this was the
+  conditioned job. Re-priced from measurement: 99 jobs, 44.9 h, of which the
+  nine remaining bench06 are 33.6; 98.52 h spent of 240, so G1 stays closed.
+- `2026-11-08T03:45Z` F345b. The 800-1600 band now reports a factor of
+  14.900 against the pooled 4.614 the watchdog was borrowing, 3.2 times too
+  low, which F343 argued from the trend and this measures. The F343 test
+  skipped itself with the message written into it for this case.
+- `2026-11-08T03:45Z` F334's detail said "7 reduced attempt(s)" where there
+  was one: `state_tier2.jsonl` is append-only and the six failures' old
+  `running` rows carry `started_at` from two days ago. Same shape as F330,
+  same file, second time tonight. Fixed to the last record per job.
+- `2026-11-08T03:45Z` F346 registered before the next nine land: every
+  reduced bench06 refinement completes, each within 12,768 to 14,112s. The
+  band is three times the worst within-size spread among jobs that
+  *complete* (0.33 to 1.66 per cent), which is the reference class F334 got
+  wrong. The predicate reported WRONG twice before it was right, both times
+  on my counting rather than on the data: first treating six 25-sample
+  failures as reduced attempts because `_reduced_samples` says what the
+  runner would give a job *today*, then excluding four pre-reduction
+  failures that the chain will re-run. Both visible the moment it ran, which
+  is the argument for writing the scorer before the evidence.

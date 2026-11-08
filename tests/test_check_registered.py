@@ -1024,3 +1024,139 @@ def test_f334_still_sees_a_job_that_is_genuinely_running_now(tmp_path):
     verdict = module.f334_sampling_buys_no_time(campaign)
     assert verdict["status"] == "WRONG", verdict
     assert CONDITIONED in verdict["running_past_the_band"], verdict
+
+
+# F346. The nine remaining bench06 refinements, registered as a test rather
+# than left to accumulate as confirmation.
+
+def _bench06_f346(tmp_path, latest_by_job: dict) -> Path:
+    """Ten queued bench06 jobs with given last records."""
+    campaign = tmp_path / "campaign_f346"
+    campaign.mkdir()
+    pair = "bench06_RBM39_DCAF15"
+    queue, state = [], []
+    for conditioning in ("conditioned", "unconstrained"):
+        for seed in range(1, 6):
+            job = f"{pair}__ternary__{conditioning}__seed{seed}__tier2"
+            queue.append({"job_id": job, "pair_id": pair, "tokens": 1223,
+                          "tier_setting": 2})
+            for row in latest_by_job.get(job, []):
+                state.append({"job_id": job, **row})
+    _write(campaign / "queue_tier2.jsonl", queue)
+    _write(campaign / "state_tier2.jsonl", state)
+    return campaign
+
+
+SEED1 = "bench06_RBM39_DCAF15__ternary__conditioned__seed1__tier2"
+SEED2 = "bench06_RBM39_DCAF15__ternary__conditioned__seed2__tier2"
+
+
+def test_f346_is_pending_with_one_success_and_nine_unrun(tmp_path):
+    verdict = _module().f346_the_rest_of_bench06_refines(_bench06_f346(
+        tmp_path, {SEED1: [{"status": "done", "seconds": 13440.12,
+                            "diffusion_samples": 9}]}))
+    assert verdict["status"] == "not yet testable", verdict
+    assert verdict["reducible"] == 10, verdict
+    assert verdict["completed"] == 1 and verdict["pending"] == 9, verdict
+
+
+def test_f346_counts_a_pre_reduction_failure_as_pending_not_failed(tmp_path):
+    """The trap, and it reported WRONG before the fix.
+
+    A job whose last record is a failure from before the reduction has not
+    had its reduced attempt: the chain re-runs everything that is not
+    `done`. Those records carry `diffusion_samples: None` because they
+    predate F298, and treating them as reduced attempts reported four
+    failures that never happened at nine samples.
+    """
+    module = _module()
+    old_failure = {"status": "failed: exit 0 but no confidence JSON written",
+                   "seconds": 9492.0}
+    campaign = _bench06_f346(tmp_path, {
+        SEED1: [{"status": "done", "seconds": 13440.12,
+                 "diffusion_samples": 9}],
+        SEED2: [old_failure],
+        "bench06_RBM39_DCAF15__ternary__unconstrained__seed1__tier2":
+            [old_failure],
+    })
+    verdict = module.f346_the_rest_of_bench06_refines(campaign)
+    assert verdict["status"] == "not yet testable", verdict
+    assert verdict["pending"] == 9, verdict
+    assert "failed" not in verdict, verdict
+
+
+def test_f346_is_wrong_on_a_failure_that_did_run_reduced(tmp_path):
+    """The falsifier: a recorded reduced count with no confidence JSON."""
+    module = _module()
+    campaign = _bench06_f346(tmp_path, {
+        SEED1: [{"status": "done", "seconds": 13440.12,
+                 "diffusion_samples": 9}],
+        SEED2: [{"status": "failed: exit 0 but no confidence JSON written",
+                 "seconds": 13000.0, "diffusion_samples": 9}],
+    })
+    verdict = module.f346_the_rest_of_bench06_refines(campaign)
+    assert verdict["status"] == "WRONG", verdict
+    assert verdict["failed"] == [SEED2], verdict
+    assert "does not generalise" in verdict["detail"], verdict
+
+
+def test_f346_is_wrong_on_a_completion_outside_the_band(tmp_path):
+    module = _module()
+    rows = {f"bench06_RBM39_DCAF15__ternary__{c}__seed{s}__tier2":
+            [{"status": "done", "seconds": 13440.0, "diffusion_samples": 9}]
+            for c in ("conditioned", "unconstrained") for s in range(1, 6)}
+    rows[SEED2] = [{"status": "done", "seconds": 17000.0,
+                    "diffusion_samples": 9}]
+    verdict = module.f346_the_rest_of_bench06_refines(
+        _bench06_f346(tmp_path, rows))
+    assert verdict["status"] == "WRONG", verdict
+    assert SEED2 in verdict["outside_band"], verdict
+
+
+def test_f346_is_supported_when_all_ten_complete_in_band(tmp_path):
+    module = _module()
+    rows = {f"bench06_RBM39_DCAF15__ternary__{c}__seed{s}__tier2":
+            [{"status": "done", "seconds": 13440.0 + 50 * s,
+              "diffusion_samples": 9}]
+            for c in ("conditioned", "unconstrained") for s in range(1, 6)}
+    verdict = module.f346_the_rest_of_bench06_refines(
+        _bench06_f346(tmp_path, rows))
+    assert verdict["status"] == "supported", verdict
+    assert "was the mechanism rather than a fluke" in verdict["detail"], verdict
+
+
+def test_f346_ignores_a_job_that_completed_at_the_full_count(tmp_path):
+    """Not this claim's business, and it must not count as a success."""
+    module = _module()
+    verdict = module.f346_the_rest_of_bench06_refines(_bench06_f346(
+        tmp_path, {SEED1: [{"status": "done", "seconds": 9500.0,
+                            "diffusion_samples": 25}]}))
+    assert verdict["reducible"] == 9, verdict
+    assert verdict["completed"] == 0, verdict
+
+
+def test_f346_band_is_five_times_the_worst_completing_spread():
+    """The band's basis, which is what F334 got wrong.
+
+    F334 took its band from six jobs that stopped early and applied it to
+    one that completes. This band comes from the spread among jobs that
+    *complete*, grouped by size, which is the population it is applied to:
+    the coefficient of variation runs 0.33 to 1.66 per cent, so five per
+    cent is five times the worst of them.
+    """
+    module = _module()
+    assert module.F346_BAND == 0.05
+    assert module.F346_REFERENCE_SECONDS == 13440.12
+    source = (ROOT / "tools" / "check_registered.py").read_text()
+    assert "0.33 to 1.66 per cent" in source, (
+        "the band no longer records the spread it is five times, so a "
+        "reader cannot tell whether it was chosen or measured"
+    )
+    # On one line in the source. A phrase check against wrapped prose is
+    # the trap that already caught a "writes nothing" assertion earlier in
+    # this project: the words were there and the line break was between
+    # them.
+    assert "The reference class is the point." in source, (
+        "the band no longer explains which population it was measured on, "
+        "which is the distinction F334 got wrong"
+    )

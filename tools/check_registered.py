@@ -635,6 +635,157 @@ def f334_sampling_buys_no_time(campaign: Path) -> dict:
     return verdict
 
 
+# F346's registered figures. Job 1 of the ten bench06 refinements completed
+# at 13,440.12s with nine diffusion samples. The band is plus or minus five
+# per cent, which is three times the worst within-size spread observed among
+# jobs that *complete*: by token size with n at least five, the coefficient
+# of variation runs 0.33 to 1.66 per cent, worst at 144 tokens, and
+# 5 / 1.66 is 3.0. Deliberately generous, because n is one at this size.
+#
+# This said "five times" first, which is 5 divided by 1 rather than by 1.66.
+# A multiple of a measured spread is itself a number and gets the same
+# treatment as any other: computed, not asserted.
+#
+# The reference class is the point. F334 took its band from six jobs that
+# stopped early and applied it to one that completes, which is the wrong
+# population. These nine are the same pair at other seeds, so a spread
+# measured over same-size completing jobs is the right yardstick for them.
+F346_REFERENCE_SECONDS = 13440.12
+F346_BAND = 0.05
+
+
+def f346_the_rest_of_bench06_refines(campaign: Path) -> dict:
+    """Does the first success generalise to the other nine seeds?
+
+    F306 is supported on one job. That is enough to refute F268, because
+    F268 claimed every refinement fails and one did not, but it is not
+    enough to establish that bench06 refines at nine samples: one success
+    among ten attempts would be a fluke dressed as a mechanism.
+
+    So the nine remaining attempts are registered as a test rather than
+    left to accumulate as confirmation. The claim is that every one of
+    them completes, which is the strong form, and that each lands within
+    five per cent of the first.
+
+    The duration half is secondary and the completion half is what matters.
+    A job that completes in 15,000 seconds still refutes nothing about the
+    mechanism; a job that exits 0 with no confidence JSON refutes all of it.
+    """
+    verdict = {"finding": "F346",
+               "claim": "every remaining bench06 refinement at nine samples "
+                        "completes, each within 5 per cent of the first's "
+                        "13,440s",
+               "falsifier": "any bench06 refinement at a reduced sample "
+                            "count writes no confidence JSON, or lands "
+                            "outside 12,768 to 14,112 seconds"}
+    state = campaign / "state_tier2.jsonl"
+    queue = campaign / "queue_tier2.jsonl"
+    if not state.exists():
+        verdict.update(status="not yet testable",
+                       detail="no state_tier2.jsonl: refinement has not run")
+        return verdict
+
+    asked = int(paths.tuning()["campaign"]["tier2_diffusion_samples"])
+    queued = sorted({str(row.get("job_id")) for row in _rows(queue)
+                     if str(row.get("job_id", "")).startswith(F268_PAIR + "__")})
+
+    # The last record for each job, because the file is append-only and a
+    # re-run leaves its old rows behind (F345).
+    latest: dict[str, dict] = {}
+    for row in _rows(state):
+        job_id = str(row.get("job_id") or "")
+        if job_id:
+            latest[job_id] = row
+
+    # What a job *ran* at, which for a settled job is only ever what its
+    # record says. `_reduced_samples` reports what the runner would give a
+    # job today, which is right for one that has not run and wrong for one
+    # that has: the six 2026-11-06 failures ran at 25 samples and today's
+    # budget would give them nine, so projecting their count reported this
+    # prediction WRONG on four attempts that were never reduced.
+    #
+    # The rule is F306's, stated there and now used here too: a settled job
+    # with no recorded count ran before F298 and is not an attempt at a
+    # reduced count. The six carry `diffusion_samples: None` and the one
+    # success carries 9.
+    # Three cases, and the middle one is the trap. A job whose last record
+    # is a pre-F298 failure has *not* had its reduced attempt: the chain
+    # re-runs everything that is not `done`, so it is pending, not failed at
+    # nine samples. Counting those four as failures reported this prediction
+    # WRONG before its first real attempt had a sibling.
+    reducible, ran_reduced = [], {}
+    for job in queued:
+        row = latest.get(job)
+        if row is not None and str(row.get("status")) == "done":
+            count = row.get("diffusion_samples")
+            if count is None or int(count) >= asked:
+                # Completed at the full count, so not this claim's business.
+                continue
+            reducible.append(job)
+            ran_reduced[job] = row
+            continue
+        # No record, running, abandoned, or a failure that will be re-run.
+        if (_reduced_samples(campaign, job) or asked) < asked:
+            reducible.append(job)
+
+    low = F346_REFERENCE_SECONDS * (1.0 - F346_BAND)
+    high = F346_REFERENCE_SECONDS * (1.0 + F346_BAND)
+
+    done, failed, outside, pending = {}, [], {}, []
+    for job in reducible:
+        row = ran_reduced.get(job)
+        if row is None:
+            # Pending. A failure with no recorded count is pending too: it
+            # ran before the reduction and the chain re-runs it.
+            current = latest.get(job)
+            if (current is not None
+                    and str(current.get("status")) not in NOT_AN_OUTCOME
+                    and str(current.get("status")) != "done"
+                    and current.get("diffusion_samples") is not None
+                    and int(current["diffusion_samples"]) < asked):
+                # A real reduced attempt that failed, which is the falsifier.
+                failed.append(job)
+                continue
+            pending.append(job)
+            continue
+        seconds = row.get("seconds")
+        done[job] = round(float(seconds), 1) if seconds is not None else None
+        if seconds is not None and not low <= float(seconds) <= high:
+            outside[job] = round(float(seconds), 1)
+
+    verdict.update(reducible=len(reducible), completed=len(done),
+                   pending=len(pending), band_seconds=[round(low, 1),
+                                                       round(high, 1)])
+    if failed:
+        verdict.update(
+            status="WRONG", failed=sorted(failed),
+            detail=(f"{len(failed)} of {len(reducible)} reduced attempt(s) "
+                    "wrote no confidence JSON, so the first success does not "
+                    "generalise and F306's support was one job"))
+        return verdict
+    if outside:
+        verdict.update(
+            status="WRONG", outside_band=outside,
+            detail=(f"{len(outside)} completed attempt(s) landed outside "
+                    f"{low:.0f} to {high:.0f}s, so a reduced bench06 "
+                    "refinement does not have one duration: "
+                    f"{sorted(outside.items())[:3]}"))
+        return verdict
+    if pending:
+        verdict.update(
+            status="not yet testable",
+            detail=(f"{len(done)} of {len(reducible)} reduced attempt(s) have "
+                    f"completed and {len(pending)} have not run; the claim is "
+                    "about all of them"))
+        return verdict
+    verdict.update(
+        status="supported",
+        detail=(f"all {len(done)} reduced bench06 refinement(s) completed, "
+                f"each within {low:.0f} to {high:.0f}s, so the first success "
+                "was the mechanism rather than a fluke"))
+    return verdict
+
+
 def main(argv: list[str] | None = None) -> int:
     import argparse
     import glob
@@ -675,6 +826,10 @@ def main(argv: list[str] | None = None) -> int:
         else {"finding": "F334", "status": "not yet testable",
               "claim": "cutting the diffusion samples does not shorten the "
                        "job",
+              "detail": "no campaign on disk"},
+        f346_the_rest_of_bench06_refines(main_campaign) if main_campaign
+        else {"finding": "F346", "status": "not yet testable",
+              "claim": "every remaining bench06 refinement completes",
               "detail": "no campaign on disk"},
     ]
     scored = [r for r in results if r["status"] in ("supported", "WRONG",

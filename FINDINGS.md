@@ -18315,3 +18315,92 @@ that was doing it.
 The 13,440 figure is circular for job 1, since the factor was derived from
 it. It is predictive for jobs 2 to 10, which are the same pair at other
 seeds, and the first of them is running.
+
+## F346. The remaining nine bench06 refinements, registered before they land
+
+F306 is supported on one job. That refutes F268, because F268 claimed every
+refinement fails and one did not, but it does not establish that bench06
+refines at nine samples: one success among ten attempts would be a fluke
+dressed as a mechanism, and nine more are queued.
+
+So they are registered as a test rather than left to accumulate as
+confirmation.
+
+**Claim.** Every bench06 refinement at a reduced sample count completes, and
+each lands within five per cent of the first's 13,440.12 seconds, which is
+12,768 to 14,112.
+
+**Falsifier.** Any of them writes no confidence JSON, or any completion lands
+outside that band.
+
+The completion half is what matters and the duration half is secondary: a
+job completing in 15,000 seconds refutes nothing about the mechanism, and a
+job exiting 0 with no confidence JSON refutes all of it. Both are registered
+because both are cheap to check and the second would otherwise be judged by
+eye afterwards.
+
+### The band's reference class, which is what F334 got wrong
+
+F334 took its band from the six attempts that stopped early and applied it
+to one that completes. Those are different populations and that, not the
+variance, is why it failed.
+
+This band comes from the spread among jobs that **complete**, grouped by
+size, which is the population it is applied to. By token size with n of at
+least five, the coefficient of variation runs:
+
+| tokens | n | cv |
+|---|---|---|
+| 152 | 10 | 0.35 per cent |
+| 357 | 10 | 0.33 per cent |
+| 454 | 10 | 0.55 per cent |
+| 153 | 64 | 0.66 per cent |
+| 143 | 10 | 0.80 per cent |
+| 155 | 20 | 0.82 per cent |
+| 173 | 5 | 1.07 per cent |
+| 144 | 10 | 1.66 per cent |
+
+Five per cent is three times the worst of those, 5 divided by 1.66 being
+3.0, and deliberately generous because n is one at 1,223 tokens. The code
+comment said "five times" first, which is 5 divided by 1: a multiple of a
+measured spread is itself a number and gets the same treatment as any
+other, which is computed rather than asserted. The nine remaining jobs are the same pair
+at other seeds, so a spread measured over same-size completing jobs is the
+right yardstick.
+
+### Two errors in writing the predicate, both caught by its own verdict
+
+It reported **WRONG** twice before it was right, and both times the scorer
+was reporting my mistake rather than a result.
+
+First: "4 of 10 reduced attempt(s) wrote no confidence JSON". Those four ran
+at **25** samples in 2026-11-06 and failed. I had selected reduced attempts
+with `_reduced_samples`, which reports what the runner would give a job
+today, and applied it to jobs that had already run. A settled job's sample
+count is only ever what its record says, which is the rule F306 already
+states and which I had read: "a job with no recorded count ran before F298
+and is not an attempt at a reduced count". The six failures carry
+`diffusion_samples: None` and the success carries 9.
+
+Second, after fixing that: "1 of 6", where ten are queued. Excluding every
+job whose last record is a pre-reduction failure is also wrong, because the
+chain re-runs everything that is not `done`, so those four are **pending**
+reduced attempts rather than excluded ones. Three cases, and the middle one
+was the trap: done at a reduced count is a result, done at the full count is
+not this claim's business, and anything else is pending.
+
+The verdict now reads "1 of 10 reduced attempt(s) have completed and 9 have
+not run; the claim is about all of them", which is the state of the world.
+
+Both errors were visible the moment the predicate ran, which is the argument
+for writing the scorer before the evidence rather than judging afterwards: a
+prediction whose counting is wrong announces itself, and a judgement made by
+eye in a fortnight would not have.
+
+### And a third, in the test
+
+`assert "wrong population" in source` failed on prose where the line break
+falls between the two words. The same trap as the "writes nothing"
+assertion earlier in this project, where the words were present and a
+newline sat between them. Changed to a phrase that is on one line, and that
+is the only reliable form for a check against wrapped prose.
