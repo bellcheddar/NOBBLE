@@ -1466,7 +1466,17 @@ reproducible, so it is recorded rather than changed.
 now, run that.
 
 **On the GPU.** Tier 2, job 1 of 100, `bench06` conditioned seed 1 at nine
-diffusion samples instead of twenty-five (F298). Thirty-four minutes in
+diffusion samples instead of twenty-five (F298).
+
+A correction to what this section said about the cost. The ten bench06
+refinements were priced here on the sample ratio, nine against twenty-five,
+which gave about ten hours. The running job is at 1.45 times a
+linear-in-samples prediction and still going (F325), so the scaling is
+sub-linear in samples and that figure is optimistic; nearer fifteen hours on
+the evidence so far, and the real number is the job's own `seconds` when it
+resolves. The G1 budget gate is unaffected either way: `scaling_bound` prices
+a tier-2 job at the full sample count, which a reduced job cannot exceed, so
+the bound stays a bound (F298b). Thirty-four minutes in
 against the 158 minutes the same job took at full sampling, where it wrote
 nothing. All ten bench06 refinements are in this run. F306 is registered
 against F268 and resolves on the first of them: one of the two is scored
