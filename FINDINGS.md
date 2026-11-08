@@ -16979,3 +16979,42 @@ accident, which is a better answer than "I checked and it is fine".
 So the thread closes: one defect, found by a status line moving by one, in
 both of the two predictions that could have had it, scoring in opposite
 directions, with the other four immune by the shape of what they read.
+
+## F331. Two scaling estimators, and the per-job budget uses the one that ignores the data
+
+Checking what would stop the running job, rather than what would merely
+report on it, turned up an inconsistency the project had already half
+resolved.
+
+The job's per-job budget is **39,000s, 10.83 hours**. It comes from
+`tier2.job_budget`, which multiplies the pair's worst tier-1 duration by
+`tier2.scaling_bound`: the sample ratio of 25, plus the recycle ratio of
+3.33, times the potentials allowance of 1.5, so 42.5 times tier 1. The
+measured full-sample run of the same job took 10.5 times tier 1. **So the
+budget is four times the real duration.**
+
+`budget.scaling_range` answers the same question and answers it better: it
+prefers `measured_scaling(campaign)` and falls back to the ratio only when
+no campaign has run (F257). `job_budget` calls the ratio-only estimator, so
+every tier-2 job's budget ignores a measurement the project already has.
+
+The consequence is one-sided and small but real. A budget four times the
+true duration never kills a job that was on course, which is F100's stated
+intent and the expensive failure it was written to avoid. The cost is that a
+job which genuinely hangs burns 10.8 hours instead of about 4. The watchdog
+reports it at 3.5 hours and does not act, by design, so the budget is the
+only thing that stops it.
+
+**Not changed, and the reason is not caution this time.** The queue rows
+already carry 39,000s, baked in when the selection ran, so editing
+`job_budget` changes nothing for the hundred jobs now queued. It would apply
+to the next tier-2 selection, which is after this run. And there is a better
+version available then than the one I would write now: once this job
+resolves, `measured_scaling` has a real duration in the 800-to-1600 token
+band, so `job_budget` could prefer the measurement exactly as
+`scaling_range` does, with data instead of a ratio. Written down for the next
+selection rather than guessed at now.
+
+What I set out to check is answered: nothing will stop this job before
+10.83 hours, the watchdog will print at 3.5 and act on nothing, and the stage
+is not at risk.
