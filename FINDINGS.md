@@ -16510,3 +16510,34 @@ not the lesson: in every case I was writing a test or a guard *about* a thing
 and inferred its shape from what I was asserting rather than from the thing.
 A guard built on a guessed name fails loudly, which is why all four cost
 minutes. The same guess inside the code it guards would not have.
+
+### F326d. The read-only claims, checked rather than trusted
+
+`--limit` cost 157 scored pairs because a command that reads like an
+inspection writes. Five tools in this project say in their own docstrings
+that they write nothing, and four of them I wrote today, hours before running
+a truncating flag at a live campaign. So the claim is now checked.
+
+All five are clean: no `write_text`, no `open` in a writing mode, no
+`unlink`, `mkdir`, `copy`, `move` or `rmtree`. Parsed rather than grepped, so
+the word in a string or a comment does not count.
+
+Two things that make the test worth more than the sweep it replaces.
+
+It is **calibrated against a tool that does write**:
+`clean_sync_conflicts.py` deletes on purpose, and the detector has to see
+that, or it would find nothing anywhere and the five passes would mean
+nothing. That is F152's rule applied to a detector rather than to data.
+
+And it asks for the **claim rather than the phrasing**. The first version
+looked for the literal "writes nothing" and failed on `findings.py`, which
+says "Nothing is written". Four say it one way, one the other, and
+normalising the prose so a test would pass is the test dictating the code. It
+now asks only that each docstring addresses writing at all, because a tool
+silently added to the list while claiming nothing is the staleness worth
+catching and the wording is not.
+
+This is F218's shape pointed at my own prose: a guarantee stated in a
+docstring, with nothing behind it, about the one property a reader checks
+before pointing a tool at real data. I wrote four such guarantees today and
+verified none of them until a fifth tool's missing guarantee cost me an hour.
