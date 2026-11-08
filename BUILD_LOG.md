@@ -1910,7 +1910,7 @@ bad clocks are. -->
   pages, and that its About page does not yet carry tonight's new lines,
   which is correct: the published bundle predates them and publication is
   held, so no redeploy has happened.
-- `2026-11-08T04:47Z` F352b. Applied F352's check to the second waiting-on
+- `2026-11-08T04:26Z` F352b. Applied F352's check to the second waiting-on
   list. `origin/main`'s tip holds zero files under `deploy/atlas` carrying
   `/Users/dellboy` and zero conflict-copy names, so a clone today is clean;
   791 such paths are reachable only by walking history, across 47 commits.
@@ -1920,3 +1920,13 @@ bad clocks are. -->
   tip-clean and history-only with both figures. The composite row also
   gained its second reading from F351: 8 to 8 with 8 tied over the matched
   arm's own blocks, so it does not beat the component with no fit behind it.
+- `2026-11-08T04:31Z` Wrote the handover for when the chain finishes.
+  PROGRESS had a section for when job 1 resolved, now historical, and
+  nothing for the end of the run: 82 hours of compute would land with no
+  statement of what to read. The new section names, in order, what each
+  stage produces, which prediction turns on it, that the Tier B tripwire
+  failing is the signal rather than a fault, that a refused atlas build now
+  leaves the previous bundle serving and the partial one at
+  `deploy/atlas_staging`, that the deploy will refuse because publication is
+  held, and the three things that would be real problems. No new finding
+  number: it is a handover, not a discovery.

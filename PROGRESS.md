@@ -1548,7 +1548,12 @@ which cuts against discounting the matched-control null rather than for it
 (F305). And the composite's apparent advantage over its components is
 optimism (F312).
 
-## What to do when job 1 of 100 resolves
+## What to do when job 1 of 100 resolves (historical: it resolved)
+
+Kept because it records what was predicted before the answer arrived.
+It resolved at 13,440.12s with a confidence JSON, which refuted F268
+and F334 and supported F306. The live equivalent is the section at the
+end of this file, for when the chain itself finishes.
 
 It is `bench06_RBM39_DCAF15__ternary__conditioned__seed1__tier2`, 1,223
 tokens at nine diffusion samples instead of twenty-five (F298), and F306 is
@@ -1725,3 +1730,67 @@ makes a copied campaign mean what it looks like.
 above. The short version: read the `detail` field before guessing at a cause,
 check that F268's verdict says `WRONG` with `conditioned_done` naming this
 job if it succeeded, and drop nothing from the queue either way.
+
+## What to do when the chain finishes
+
+There is about 82 hours of compute queued behind job 2 and no statement
+anywhere of what to read when it lands. This is that. Everything named here
+was checked on 2026-11-08 rather than assumed, and the finding numbers are
+where the checking is recorded.
+
+**First, one command.** `bash tools/status.sh` is the state and
+`PYTHONPATH=. python tools/check_registered.py` is the board. The scorer
+exits non-zero when a prediction is refuted, so a non-zero exit is
+information and not a fault.
+
+**Tier 2 finishes.** `tools/tier2.sh` scores it after the runner, at its
+line 138, and that is why `scores_tier2.jsonl` holds one pair today rather
+than seventeen (F347). Two predictions turn on it. F254 becomes testable:
+12 of the 23 pairs queued for refinement are Sievers pairs and both labels
+are present, 4 degraded and 8 not, which is the gate it waits on. F346
+scores on the ten bench06 jobs: every one should complete, each within
+12,768 to 14,112 seconds, and any failure or any duration outside that band
+refutes it. Read `diffusion_samples` on the state row before judging a
+failure, because a job that ran at 25 samples is not a reduced attempt
+(F346).
+
+**The design scan runs.** `tools/run_design.sh` now refuses before the 240
+jobs if the scan's parent is not the one the ranking would choose today
+(F338), so a refusal there means re-assemble rather than debug. On success
+it writes `scan_profile.json` and F252 becomes testable.
+
+**Tier B runs.** Preflight now asks both input-provenance questions before
+the 1,540 jobs rather than leaving them to the atlas build at the end
+(F339), so a preflight failure is cheap and a late refusal should not
+happen. F253 becomes testable on its 77 matched positive-and-scramble pairs,
+none unmatched.
+
+**Then `tests/test_tier_b_results_have_somewhere_to_go.py` will fail, and
+that is the signal rather than a fault.** Nothing publishes Tier B: the
+atlas builder has no reader for it and the app has no route. How it should
+publish is BUILD_SPEC.md item 3 and is Marc's (F348). Answer it, then
+publish; do not silence the test.
+
+**The atlas rebuilds.** It stages into `deploy/atlas_staging` and renames
+into place only after the last of its nine checks passes, so a refusal now
+leaves the previous bundle serving and the partial one for reading (F327d).
+If it refuses, read `deploy/atlas_staging`, which the refusal message names.
+The rebuild is also the first to carry the sampling note, the matched-block
+power figure and the composite's paired comparison, so `about.json` should
+gain `sampling`, `matched_blocks.power` and
+`matched_blocks.composite_against_best`.
+
+**The deploy will refuse, and should.** Publication is held (D-NOB-076) and
+`tools/publication_hold.py` is `deploy.sh`'s first pre-flight step. Its
+print-out is now the fullest statement of where the science stands: the
+power limit, the best single component, the composite paired against it, and
+a p of 8.05e-07 rather than 0.0.
+
+**What would be a real problem.** A preflight failure naming a YAML the
+code would not write, which means an input changed under an assembled
+campaign. A tier-2 job completing at the full 25 samples when the budget
+says it should be reduced, which would mean `sampling_for` is not being
+applied. And `check_registered.py` reporting a prediction as "not yet
+testable" after its stage has finished, which would mean the artefact it
+waits on was not written: every pending one was verified to wait on
+something a writer produces (F347b).
