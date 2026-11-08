@@ -1562,7 +1562,11 @@ frozen set of 154 pairs is two filters and a cut. `tiers.py` computes
 with no change here. D-NOB-007 says shared code is widened in BINMAN rather
 than forked, and re-freezing would discard an assembled 1,540-job queue.
 
-**Marc's, on the droplet: `bash deploy/enable_gzip.sh` (F132).** Unchanged.
+**Marc's, on the droplet.** Not restated here: the "Waiting on Marc" table
+above is the one place that list lives, and
+`tests/test_the_handoff_section_is_current.py` asserts its count matches its
+open rows. A second copy of a row is how two lists drift into disagreeing,
+which is what that test was written for (F290).
 
 Checked while writing this: the live site still serves
 `benchmark_20261103T192126Z`, 7 pairs and 100 jobs, so nothing from today
