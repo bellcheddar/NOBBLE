@@ -18102,3 +18102,96 @@ detector that cries wolf on healthy work is one that gets ignored, which is
 the reasoning `tools/clean_sync_conflicts.py` gives for removing rather than
 refusing: "a gate that fires constantly on a known-harmless artefact is a
 gate that gets turned off".
+
+## F344. The 22 floored glue degrons, and a mechanism of mine that the median refutes
+
+F342 left this open in its own words: "22 of 125 real glue degrons are
+floored, including `bench01_GSPT1_CRBN`, which is a glue and sits at 0.0. So
+a real motif does not always produce a converged pose... whether those 22
+share anything is the obvious next question and is not answered here."
+
+They share one thing, strongly.
+
+| | floored | not | rate |
+|---|---|---|---|
+| `seed_collapse_affects_delta` false | 9 | 94 | 8.7 per cent |
+| `seed_collapse_affects_delta` true | 13 | 9 | **59.1 per cent** |
+
+Nothing else came close. Degraded against not-degraded is 13.8 against 18.8
+per cent, so convergence does not separate the Sievers labels by flooring,
+which is a negative result and the hypothesis I expected to carry this.
+Every floored glue is a CRBN pair, but so are 123 of the 125, so that says
+nothing.
+
+### A collapsed seed is a diffusion run that failed outright
+
+`_collapsed_seeds` exists because of GSPT1/CRBN/CC-885, whose five
+conditioned ternary seeds returned ipTM of 0.885, 0.877, 0.806, **0.082**
+and 0.911. Four agree and one run collapsed.
+
+So the mechanism was obvious: `convergence_score` is `1 - mean pairwise
+RMSD / 10 angstroms`, a collapsed pose lands anywhere, and one wild value
+inflates a **mean**. The score would then be floored by an artefact that
+`delta_iptm` already has a flag beside, and `convergence_score` has none.
+
+### The median refutes it
+
+If one outlier were inflating the mean, the median pairwise RMSD would stay
+below the 10 angstrom scale. Measured over the 19 floored pairs carrying a
+collapse, mean against median:
+
+```
+bench01_GSPT1_CRBN        mean 19.16   median 10.16   max 36.82
+scr_sv_pos_E4F1_e7901a    mean 49.71   median 43.29   max 79.51
+scr_sv_pos_ZEP2_7d5047    mean 29.45   median 33.78   max 40.35
+scr_sv_pos_ZN184_d17767   mean 25.16   median 23.49   max 38.55
+scr_sv_pos_ZN479_71dd60   mean 16.64   median 11.42   max 27.62
+scr_sv_pos_ZN501_64eee0   mean 20.41   median 20.00   max 29.91
+```
+
+Every median is at or above the scale, and one is **above its own mean**.
+These poses are genuinely scattered across ten pairwise comparisons, not
+four-agreeing-and-one-wild. `bench01` is the closest to the artefact reading
+at a median of 10.16, which is the scale itself, and even there the score
+would floor on the median too.
+
+So the mean is not the culprit and `convergence_score` is not contaminated
+by the collapse flag's artefact. I had the explanation written before I
+measured the median.
+
+### What the association means instead
+
+Seed collapse and pose scatter are two measurements of the same thing: the
+model has no confident placement for this peptide. A run that collapses to
+ipTM 0.08 and a set of poses that disagree by 20 angstroms are the same
+failure seen through two instruments, and neither causes the other.
+
+That reading is better for the statistic than the artefact reading would
+have been. It also means the two are not independent evidence, which
+matters if they are ever combined.
+
+### One confound worth stating rather than burying
+
+Over the 31 parent/scramble pairs the collapse flag is not balanced: both 1,
+parent only 4, scramble only 6, neither 20. Scrambles collapse slightly more
+often than their parents, which is the direction that flatters the parent in
+the paired test. At 6 against 4 that is noise and not a correction, and the
+result does not depend on it. Measured rather than asserted: dropping every
+pair with a collapse on either side leaves **18 parent, 1 scramble, 1 tied**,
+p = 7.6e-05 against the full set's 25 of 26 decisive at p = 8.0e-07. The
+effect is the same size and the significance is what you would expect from
+losing twelve pairs.
+
+An imbalance in the flattering direction is the kind a reader should be told
+about rather than left to find, which is why it is here with its numbers
+rather than in a sentence saying it was considered.
+
+### A note on getting those two p-values
+
+The first pair I computed were both 0.0, from `sign_test(25, 1)` and
+`sign_test(18, 1)`, because I passed wins and losses to a function whose
+signature is `(wins, trials)`. Sixth guessed name or signature of the
+session, and the first where the wrong answer was a plausible-looking
+number rather than an exception: p = 0.0 beside a 25-to-1 split reads as a
+very strong result, and I would have published it. `inspect.signature` is
+one line.

@@ -1610,3 +1610,28 @@ bad clocks are. -->
   own commits. The previous session's 33 are left wrong and documented,
   because the only mechanical anchor degraded the ordering from 2 backwards
   steps to 9, and the ordering is the part that was still true.
+- `2026-11-08T03:35Z` F344. Followed F342's own open question: what the 22
+  floored real glue degrons share. Answer: `seed_collapse_affects_delta`,
+  59.1 per cent floored against 8.7 per cent without it. Degraded against
+  not-degraded is 13.8 against 18.8 per cent, so convergence does not
+  separate the Sievers labels by flooring, which is the hypothesis I expected
+  to carry it.
+- `2026-11-08T03:35Z` And a mechanism of mine that the data refuted. A
+  collapsed seed is a diffusion run that failed outright, so one wild pose
+  inflating a *mean* pairwise RMSD was the obvious explanation and I had it
+  written before measuring. The medians are 10.16, 43.29, 33.78, 23.49,
+  11.42, 20.00 against a 10-angstrom scale, one of them above its own mean:
+  the poses are genuinely scattered, not four-agreeing-and-one-wild. So
+  collapse and scatter are two instruments on one failure, the model having
+  no confident placement, and `convergence_score` is not contaminated by the
+  collapse artefact.
+- `2026-11-08T03:35Z` One confound stated with its numbers rather than
+  waved at: the collapse flag is 6 scrambles against 4 parents across the 31
+  pairs, which flatters the parent. Dropping every flagged pair leaves 18
+  parent, 1 scramble, 1 tied at p = 7.6e-05, against 25 of 26 decisive at
+  p = 8.0e-07 for the full set.
+- `2026-11-08T03:35Z` Those p-values came out 0.0 twice first, because I
+  passed wins and losses to `sign_test(wins, trials)`. Sixth guessed
+  signature of the session and the first whose wrong answer was a
+  plausible number rather than an exception: p = 0.0 beside a 25-to-1 split
+  reads as a very strong result and I would have published it.
