@@ -163,3 +163,64 @@ def test_the_real_campaigns_still_pass():
         checked += 1
     if not checked:
         pytest.skip("no campaign with a queue on this checkout")
+
+
+# --------------------------------------------------------------------------- #
+# --limit is a truncating flag (F326)
+# --------------------------------------------------------------------------- #
+
+def test_limit_refuses_to_shrink_an_existing_scores_file(tmp_path):
+    """The flag that cost 157 rows. The scorer writes what it scores, so
+    narrowing what it scores narrows the file, and `--limit` reads as a
+    sampling flag."""
+    campaign = tmp_path / "campaign_x"
+    campaign.mkdir()
+    (campaign / "scores.jsonl").write_text(
+        "\n".join(json.dumps({"pair_id": f"p{i}"}) for i in range(5)) + "\n")
+    done = subprocess.run(
+        [str(SCI), "-m", "nobble.score.run", "--campaign", str(campaign),
+         "--tier", "1", "--no-plip", "--limit", "1"],
+        capture_output=True, text=True, cwd=ROOT,
+        env={"PYTHONPATH": str(ROOT), "KMP_DUPLICATE_LIB_OK": "TRUE",
+             "PATH": "/usr/bin:/bin"})
+    assert done.returncode == 4, done.stdout + done.stderr
+    assert "would replace the 5 scored pair(s)" in done.stderr, done.stderr
+    # And it did not write.
+    assert len((campaign / "scores.jsonl").read_text().strip().splitlines()) == 5
+
+
+def test_limit_is_allowed_when_it_cannot_shrink_anything(tmp_path):
+    """A scratch campaign with no scores, or a limit at least as large as
+    what is held, is what the flag is for."""
+    campaign = tmp_path / "campaign_y"
+    campaign.mkdir()
+    (campaign / "queue.jsonl").write_text("")
+    done = subprocess.run(
+        [str(SCI), "-m", "nobble.score.run", "--campaign", str(campaign),
+         "--tier", "1", "--no-plip", "--limit", "1"],
+        capture_output=True, text=True, cwd=ROOT,
+        env={"PYTHONPATH": str(ROOT), "KMP_DUPLICATE_LIB_OK": "TRUE",
+             "PATH": "/usr/bin:/bin"})
+    # Reaches the scorer, which then refuses for F322's reason instead.
+    assert done.returncode == 3, done.stdout + done.stderr
+    assert "wrote nothing" in done.stderr
+
+
+def test_the_refusal_is_confined_to_the_limit_branch():
+    """The chain never passes --limit, so this must not be reachable
+    without it: a change outside that branch would touch a 50-hour run."""
+    import ast
+
+    source = (ROOT / "nobble" / "score" / "run.py").read_text()
+    tree = ast.parse(source)
+    main = next(node for node in ast.walk(tree)
+                if isinstance(node, ast.FunctionDef) and node.name == "main")
+    guards = [node for node in ast.walk(main)
+              if isinstance(node, ast.If)
+              and isinstance(node.test, ast.Attribute)
+              and node.test.attr == "limit"]
+    assert guards, "the refusal is not inside an `if args.limit:` branch"
+    returns = [node.value.value for node in ast.walk(guards[0])
+               if isinstance(node, ast.Return)
+               and isinstance(node.value, ast.Constant)]
+    assert 4 in returns

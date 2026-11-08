@@ -16478,3 +16478,35 @@ scores that have since changed, and nothing checked that the queued parent is
 still the one the ranking picks. I wrote it for a hypothetical staleness. It
 detected actual staleness within nine hours, caused by me, which is a better
 argument for the guard than the one I made when adding it.
+
+### F326c. The remedy, and why I had deferred it for the wrong reason
+
+I recorded F326's fix as "for between stages, with F320". That was
+over-caution borrowed from a situation it does not describe. F320 defers the
+watchdog change because the chain invokes `watchdog.py` every 600 seconds, so
+a mistake in it stops the stage. **The chain never passes `--limit`**, which I
+checked rather than assumed: no `--limit` appears in any script under `tools/`
+or `deploy/`. A change confined to that branch cannot reach a run.
+
+So it is made. `--limit` now refuses when the scores file it would write
+holds more pairs than the limit, naming both counts, and returns 4. Refused
+rather than redirected: writing somewhere else leaves the caller reading a
+file they did not ask for, and the honest answer to "score one pair over a
+campaign that has 158" is that the flag is for a scratch campaign. A test
+asserts the refusal is inside the `if args.limit:` branch, because a change
+outside it would touch a fifty-hour run.
+
+**Two of my own names wrong in one small change.** I wrote
+`tier_files(...)["scores"]`, and `tier_files` returns queue, state and
+results. There is no scores key; `score_campaign` derives the path itself
+from the tier suffix. That is the fourth name I have guessed today, after
+`M.Member` for a dataclass called `Job` and `peptide_sequence` for a field
+called `sequence`. The fix uses the scorer's own two lines, so the refusal
+and the write cannot disagree about which file they mean, which is the
+property that matters more than the name.
+
+The pattern in those four is worth naming precisely, because "look it up" is
+not the lesson: in every case I was writing a test or a guard *about* a thing
+and inferred its shape from what I was asserting rather than from the thing.
+A guard built on a guessed name fails loudly, which is why all four cost
+minutes. The same guess inside the code it guards would not have.

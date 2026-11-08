@@ -444,6 +444,36 @@ def main() -> int:
         print("no campaign found", file=sys.stderr)
         return 2
 
+    # `--limit` is a truncating flag that reads as a sampling one (F326).
+    #
+    # The scorer writes whatever it scored, so narrowing what it scores
+    # narrows the file. On 2026-11-08 `--limit 1` against the live campaign,
+    # run to read an exit code, replaced 158 scored pairs with one. The
+    # results were intact so nothing was unrecoverable, and a re-score cost
+    # ten minutes.
+    #
+    # Refused rather than redirected. Writing somewhere else would leave the
+    # caller reading a file they did not ask for, and the honest answer to
+    # "score one pair over a campaign that has 158" is that the flag is for
+    # a scratch campaign. The chain never passes `--limit`, so this branch
+    # cannot affect a run.
+    if args.limit:
+        # The same spelling `score_campaign` writes, derived the same way.
+        # `tier_files` has queue, state and results and no scores, which I
+        # assumed rather than read: the fourth name I guessed today after
+        # `M.Member`, `peptide_sequence` and this one.
+        suffix = "" if args.tier == 1 else f"_tier{args.tier}"
+        existing = Path(campaign) / f"scores{suffix}.jsonl"
+        if existing.exists():
+            held = len(paths.read_jsonl(existing, tolerate_torn=True))
+            if held > args.limit:
+                print(f"REFUSING: --limit {args.limit} would replace the "
+                      f"{held} scored pair(s) in {existing} with "
+                      f"{args.limit}, because the scorer writes what it "
+                      "scores. Point it at a copy of the campaign, or drop "
+                      "--limit.", file=sys.stderr)
+                return 4
+
     summary = score_campaign(Path(campaign), with_plip=not args.no_plip,
                              limit=args.limit, sampling_tier=args.tier)
     print(json.dumps(summary, indent=2))
