@@ -625,6 +625,31 @@ def main() -> int:
             crystal_control["predictions_status"] = (
                 f"unavailable: {type(problem).__name__}: {problem}")
 
+    # The paired parent-versus-scramble test (F316).
+    #
+    # On the page because the project calls `bridge_percentile` primary and
+    # the paired test puts it on the wrong side, and because Delta-ipTM's
+    # only positive result so far is here. A reader looking at a bridge
+    # percentile should see both that the filter measures a real bridge
+    # accurately (F297) and that it does not separate a degron from its own
+    # shuffle. Those are different questions and the page was answering one.
+    #
+    # Computed here rather than at request time: it needs the scores and the
+    # fit's feature extraction, and the droplet has neither.
+    try:
+        sys.path.insert(0, str(ROOT / "tools"))
+        import scramble_paired_test
+
+        scramble_rows = {row["pair_id"]: row for row in paths.read_jsonl(
+            campaign / "scores.jsonl", tolerate_torn=True)
+            if row.get("pair_id")}
+        paired_scrambles = scramble_paired_test.report(scramble_rows)
+        paired_scrambles["status"] = "measured"
+    except Exception as problem:                        # noqa: BLE001
+        paired_scrambles = {
+            "status": f"unavailable: {type(problem).__name__}: {problem}",
+            "results": []}
+
     about = {
         "sources": binman_store.available(),
         "unavailable": list(binman_store.UNAVAILABLE),
@@ -632,6 +657,7 @@ def main() -> int:
         "construct_budget": constructs.budget_report(),
         "reach_auc": lysine.BINMAN_REACH_AUC,
         "crystal_control": crystal_control,
+        "paired_scrambles": paired_scrambles,
     }
     (OUT / "about.json").write_text(json.dumps(about, indent=2, default=str))
     summary["files"]["about.json"] = len(about["sources"])

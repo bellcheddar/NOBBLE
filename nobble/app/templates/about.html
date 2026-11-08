@@ -418,6 +418,48 @@
   {% endif %}
 </section>
 
+{# Paired, where every other test on this page is not. Placed after the
+   crystal control because the two answer different questions about the same
+   signal: whether the filter measures a bridge correctly, and whether a
+   bridge tells a degron from its shuffle. The page answered the first. #}
+<section class="panel">
+  <h2>Each pair against its own scramble</h2>
+  {% if paired_scrambles and paired_scrambles.get('status') == 'measured'
+        and paired_scrambles.get('results') %}
+    <p class="panel__hint">A scramble shares its parent's receptor, glue,
+      seeds and composition, so this isolates the sequence. Exact sign test;
+      ties are excluded, not split.</p>
+    <table class="ntable">
+      <thead><tr>
+        <th scope="col">Statistic</th>
+        <th scope="col">Parent higher</th>
+        <th scope="col">Scramble higher</th>
+        <th scope="col">Tied</th>
+        <th scope="col">p, two sided</th>
+      </tr></thead>
+      <tbody>
+        {% for row in paired_scrambles.results %}
+          <tr>
+            <td class="mono">{{ row.statistic }}</td>
+            <td class="mono">{{ row.parent_higher }}</td>
+            <td class="mono">{{ row.scramble_higher }}</td>
+            <td class="mono">{{ row.tied }}</td>
+            <td class="mono">{% if row.p_two_sided is not none %}{{ row.p_two_sided }}{% if paired_scrambles.bonferroni_threshold and row.p_two_sided < paired_scrambles.bonferroni_threshold %} *{% endif %}{% else %}no comparison{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="panel__hint">{{ paired_scrambles.statistics_tested }} statistics
+      tested, so the threshold marked * is
+      {{ paired_scrambles.bonferroni_threshold }}. Beating a scramble is
+      necessary and not sufficient: the matched arm above asks the harder
+      question.</p>
+  {% else %}
+    <p class="panel__hint"><span class="flag flag--pending">not computed</span>
+      {{ (paired_scrambles or {}).get('status', 'this bundle was built before the test existed') }}</p>
+  {% endif %}
+</section>
+
 {% if throughput %}
 <section class="panel">
   <h2>The design arm, and what it is not</h2>

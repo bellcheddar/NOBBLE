@@ -245,6 +245,9 @@ def about():
         # from a bundle built before it existed, and the panel then says so
         # rather than rendering an empty table as a clean result.
         crystal_control=precomputed.get("crystal_control"),
+        # The paired parent-versus-scramble test (F316). Absent from a
+        # bundle built before it existed, and the panel says so.
+        paired_scrambles=precomputed.get("paired_scrambles"),
         crystal_counts=data.crystal_control_counts(
             precomputed.get("crystal_control")),
         weight_fit=data.weight_fit(),

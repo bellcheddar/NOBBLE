@@ -15602,3 +15602,38 @@ orderable rather than about being degraded.
 Ties carry two of the six: `plip_fingerprint_match` rests on 15 comparisons
 and `lysine_reach` on 9, which the table shows and a reader skimming p-values
 would miss.
+
+### F316b. On the page, because the page was answering the flattering question
+
+The About page already says the bridge filter finds six of six measurable
+deposited bridges and reproduces the deposited area within 5 per cent
+(F297). It said nothing about the same statistic being higher on the
+scramble in 14 of 23 paired comparisons.
+
+Both are true and they answer different questions: whether the filter
+measures a bridge correctly, and whether a bridge tells a degron from its own
+shuffle. A page that carries the first and not the second is not wrong in any
+sentence and is misleading as a whole.
+
+So the paired test is computed into `about.json` by the build and rendered as
+its own panel, placed straight after the crystal control so the two sit
+together. The panel prints parent-higher and scramble-higher as separate
+columns rather than a p alone, because 0.40487 against `bridge_percentile`
+says nothing about which way it went. The family-wise threshold travels with
+the p-values and only a value below it is starred, and one line says that
+beating a scramble is necessary and not sufficient, since two statistics
+clearing a corrected threshold would otherwise read as validation.
+
+Guarded like the crystal control: its own try/except, a status that carries
+the reason, and a bundle built before the test existed saying so rather than
+rendering an empty table. Tested on all three.
+
+### F315b, first reading of the experiment
+
+The conflict copies have held at 5,073 for twenty-five minutes, which is the
+first stretch in which I have not deleted any. While I was cleaning they went
+336, 586, 991, 1,984, 5,073. A plateau that begins when the deletions stop is
+what F315 predicted if the mechanism was reacting to them, and twenty-five
+minutes is not long enough to call it. Recorded as a reading rather than a
+conclusion, and the next one is worth taking after the chain's final rebuild,
+which is the next event that replaces the bundle wholesale.
