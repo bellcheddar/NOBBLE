@@ -15969,3 +15969,34 @@ description.
 What this changes in practice: nothing is cleaned on a timer, and
 `deploy/deploy.sh` clears the provable copies immediately before a publish,
 which is the one moment the bundle must be clean.
+
+## F320. The reduction loosened the watchdog, and I am not fixing it mid-run
+
+Checked that the tier-2 watchdog would not kill the job I am waiting on. It
+would not: it reports "1 running, none overdue", because the bound for
+bench06 is its tier-1 duration of 902s times the measured refinement factor
+of 4.614 times the configured multiple, which the module's own comment puts
+at 12,486s. The job is at 3,750s.
+
+But the bound is built from full-sample behaviour. The factor comes from
+tier-2 successes, every one of which ran at twenty-five samples and at most
+454 tokens (F298, F270). A job whose sampling F298 reduces finishes sooner,
+so its true expectation is lower and the bound is correspondingly more
+generous: a reduced job that genuinely stalls is flagged at about three and a
+half hours when it should take about one. That is roughly two and a half
+hours of waste before the watchdog notices, once, per stalled reduced job.
+
+The fix is not hard. `runner.sampling_for` already computes the fraction, so
+the expectation could be scaled by it.
+
+**I am not making it now, and the reason is the point.** `watchdog.py` is
+invoked every 600 seconds by the running chain. Each invocation reads the
+file fresh, so a Python edit is safe in the way a shell edit is not (F308),
+but a mistake in it stops the tier-2 stage, and the stage is the thing fifty
+hours of queue depends on. The exposure I would be buying down is at most two
+and a half hours and only on a stall that has not happened; the exposure I
+would be taking on is the run.
+
+Recorded as a known looseness with its remedy, which is what the project does
+with F132 and with the Tier B enrichment column. The moment to make it is
+between stages, not during one.
