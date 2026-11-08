@@ -18826,3 +18826,56 @@ knowing the rule has not changed my behaviour, and the only thing that has
 is a check that fails in a minute. Both of these failed loudly, which is the
 cheap kind. The expensive kind this session were the ones that returned a
 plausible number.
+
+### F350d. Three documents, two numbers, and the wrong one was chosen by a plausible rule
+
+Having put the power figure in the scorer, the publication hold, the About
+page and the README, I checked that they agreed. They did not. The scorer
+said **27 decisive blocks needed against 17 held**; the README said **48
+against 20**.
+
+Both are arithmetically correct, which is the worst kind of disagreement:
+neither looks wrong on its own. They differ because they pick the
+"favourable case" by different rules. `_power` took the highest **rate** and
+landed on `lysine_reach_exposed_fraction` at 13 of 17; the README took
+`convergence_score` at 14 of 20, which has the highest **AUC**.
+
+| statistic | AUC | rate |
+|---|---|---|
+| convergence_score | **0.6510** | 14/20 = 0.700 |
+| lysine_reach_exposed_fraction | 0.6322 | **13/17 = 0.765** |
+| bridge_percentile | 0.5568 | 11/17 = 0.647 |
+| plip_fingerprint_match | 0.5104 | 7/11 = 0.636 |
+| delta_iptm | 0.4271 | 8/21 = 0.381 |
+
+### The rate was the wrong rule, and the project already knew why
+
+`nobble/app/templates/benchmark.html` carries this tooltip, written long
+before tonight: lysine reach is "deliberately unfitted, with Cb-Cb AUC
+between 0.42 and 0.48 on 369 assayed lysines, **at or below chance**".
+
+So selecting by rate picked, as the arm's most favourable statistic, the one
+the project has an independent measurement of 369 lysines saying is nothing.
+Its 13 of 17 over seventeen decisive blocks is most likely noise, and using
+it as the optimistic bound makes the arm look closer to resolvable than it
+is: 27 blocks short by 10 rather than 48 short by 28.
+
+Now selected by AUC, which is a quantity over every block rather than over
+the decisive ones and so less noisy, and which picks the statistic that has
+a mechanism (F342) and a measured confound (F344). All four places now say
+48 against 20, and a test asserts the scorer's two figures appear in the
+README and that the chosen statistic is still `convergence_score`, so a
+change to one of them fails rather than drifting.
+
+### What this cost and what it says
+
+Nothing, because the figure went into four places and I compared them. The
+alternative is the version where it went into one, where there is nothing to
+disagree with and no reason to look.
+
+It is also the second time tonight that a plausible selection rule picked
+the fitted or the noisy row: F350's first power note took the highest rate
+including `composite, in sample`, whose rate is highest by construction, and
+reported the arm adequately powered. Both times the rule was defensible in
+the abstract and wrong against this data, and both times the fix was to say
+which rule and why in the comment beside it.

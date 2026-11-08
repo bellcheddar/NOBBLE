@@ -342,7 +342,8 @@ def _power_note(blocks: dict) -> list[str]:
     if power.get("status"):
         return [f"    power: {power['status']}"]
     return [
-        f"    power: at the best unfitted rate, {power['statistic']}'s "
+        f"    power: at the best unfitted discrimination, "
+        f"{power['statistic']}'s "
         f"{power['blocks_above_half']}/{power['decisive']}, clearing "
         f"{power['threshold']:g} needs about {power['needed_decisive']} "
         f"decisive blocks and the arm has {power['decisive']}. The screen "

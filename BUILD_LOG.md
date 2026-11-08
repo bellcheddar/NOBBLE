@@ -1810,3 +1810,16 @@ bad clocks are. -->
   tests added: every finding the scorer knows must appear in PROGRESS with a
   settled verdict in the scorer's own word, and F268 must not be described
   as answerable.
+- `2026-11-08T04:15Z` F350d. Checked that the four places now stating the
+  power figure agreed, and they did not: the scorer said 27 decisive blocks
+  needed against 17 held, the README said 48 against 20. Both arithmetically
+  right, which is the worst kind of disagreement. `_power` picked the highest
+  *rate* and landed on `lysine_reach_exposed_fraction` at 13/17; the app's
+  own tooltip calls that statistic "at or below chance" on 369 independently
+  assayed lysines, so selecting by rate nominated as the favourable case the
+  one statistic the project has independent evidence is noise, and made the
+  arm look 10 blocks short rather than 28. Now selected by AUC, which is over
+  every block rather than the decisive ones and picks the statistic with a
+  mechanism (F342) and a measured confound (F344). All four places say 48
+  against 20, with a test asserting the scorer's figures appear in the README
+  and that the chosen statistic is still `convergence_score`.

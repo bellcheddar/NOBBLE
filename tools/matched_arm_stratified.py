@@ -159,10 +159,25 @@ def _power(results: list[dict], threshold: float | None) -> dict | None:
             continue
         if str(row.get("statistic", "")).startswith("composite"):
             continue
+        if row.get("mean_within_block_auc") is None:
+            continue
         rows.append((row["blocks_above_half"] / decisive, decisive, row))
     if not rows:
         return None
-    rate, decisive, best = max(rows, key=lambda item: item[0])
+    # By AUC, not by rate (F350d). Chosen by rate this picked
+    # `lysine_reach_exposed_fraction` at 13 of 17, and the app's own tooltip
+    # says that statistic is "at or below chance" on 369 independently
+    # assayed lysines, so its rate over 17 decisive blocks is most likely
+    # noise and using it as the favourable case overstates the arm's
+    # prospects. It also disagreed with the README, which took
+    # `convergence_score`: 27 blocks needed against 48, a factor of 1.8 on
+    # the same claim in two documents.
+    #
+    # An AUC over every block is also a less noisy quantity than a rate over
+    # the decisive ones, and `convergence_score` is the statistic with a
+    # mechanism (F342) and its confound measured (F344).
+    rate, decisive, best = max(
+        rows, key=lambda item: item[2]["mean_within_block_auc"])
     if rate <= 0.5:
         return {"status": "no unfitted statistic is above a half in more "
                           "than half of its blocks, so there is no rate to "

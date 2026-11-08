@@ -59,9 +59,18 @@ def test_the_power_note_refuses_the_fitted_row():
 
 
 def test_the_power_note_says_it_is_the_favourable_case():
-    assert "at the best unfitted rate" in SOURCE, (
-        "the note no longer says the rate it uses is the most favourable "
+    assert "at the best unfitted discrimination" in SOURCE, (
+        "the note no longer says the figure it uses is the most favourable "
         "unfitted one, so a reader cannot tell it is an optimistic bound"
+    )
+    # And it must select by AUC rather than by rate (F350d). Chosen by rate
+    # it picked lysine_reach_exposed_fraction, which the app's own tooltip
+    # calls at or below chance on 369 independently assayed lysines, and
+    # disagreed with the README by a factor of 1.8 on the same claim.
+    arm = (ROOT / "tools" / "matched_arm_stratified.py").read_text()
+    assert 'key=lambda item: item[2]["mean_within_block_auc"]' in arm, (
+        "the power figure selects its statistic by rate again, which picks "
+        "a statistic an independent measurement puts at chance"
     )
 
 
@@ -159,10 +168,10 @@ def test_the_about_page_says_underpowered_rather_than_null():
     # I wrote minutes after writing a test about that exact trap. The
     # remedy is one `' '.join(x.split())` and I keep rediscovering it.
     shown = " ".join(template.render(matched_blocks={"power": {
-        "needed_decisive": 27, "decisive": 17,
+        "needed_decisive": 48, "decisive": 20,
         "positives_modellable": 24, "positives_in_screen": 32}}).split())
-    assert "about 27 decisive blocks" in shown
-    assert "the arm has 17" in shown
+    assert "about 48 decisive blocks" in shown
+    assert "the arm has 20" in shown
     words = len(re.sub(r"<[^>]+>", " ", shown).split())
     assert words <= 40, (words, shown)
     assert shown.count(".") == 1, (
@@ -172,3 +181,47 @@ def test_the_about_page_says_underpowered_rather_than_null():
     # empty warning.
     assert template.render(matched_blocks={}).strip() == ""
     assert template.render(matched_blocks={"power": None}).strip() == ""
+
+
+def test_every_place_that_states_the_power_agrees():
+    """Three documents, one figure (F350d).
+
+    The scorer, the publication hold and the README each state how many
+    decisive blocks the matched arm would need. For an afternoon they
+    disagreed: 27 against 48, because the scorer picked its statistic by
+    rate and landed on `lysine_reach_exposed_fraction` while the README
+    took `convergence_score`. Both were arithmetically right for their own
+    statistic, which is the worst kind of disagreement, because neither
+    looks wrong on its own.
+    """
+    import json
+
+    import pytest
+
+    campaign = sorted(ROOT.glob("campaigns/campaign_*"))
+    if not campaign or not (campaign[-1] / "scores.jsonl").exists():
+        pytest.skip("no scored campaign on this checkout")
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    import matched_arm_stratified as arm_module
+
+    rows = [json.loads(line) for line
+            in (campaign[-1] / "scores.jsonl").read_text().splitlines()
+            if line.strip()]
+    power = arm_module.report(rows).get("power")
+    if not power or not power.get("needed_decisive"):
+        pytest.skip("no power figure on this campaign")
+
+    readme = (ROOT / "README.md").read_text()
+    assert f"{power['needed_decisive']} decisive blocks" in readme, (
+        f"the scorer says {power['needed_decisive']} decisive blocks are "
+        "needed and the README does not say that number"
+    )
+    assert f"arm has {power['decisive']}" in readme, (
+        f"the scorer says the arm has {power['decisive']} decisive blocks "
+        "and the README does not say that number"
+    )
+    assert power["statistic"] == "convergence_score", (
+        "the favourable case is no longer convergence_score, so re-read "
+        "whether the README's figures still describe the same statistic",
+        power)
