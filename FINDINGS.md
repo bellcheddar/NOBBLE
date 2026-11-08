@@ -18674,6 +18674,40 @@ sitting in a return value since. Fourth instance tonight of a careful
 caveat computed and never surfaced, after F337's sampling note, F338's
 parent provenance and F350's power figure.
 
+**And it is most of what that function returns.** Counted, by key, for
+consumers outside the module that produces them:
+
+| key | read outside `peptides.py` |
+|---|---|
+| `positives` | 15 sites |
+| `controls` | 4 sites |
+| `dropped_positives` | **0** |
+| `drug_assignment` | **0** |
+| `pairings` | **0** |
+| `pool_size` | **0** |
+| `negatives_per_positive` | **0** |
+
+So the matched set carries a provenance record of which positive was paired
+with which controls, under which drug, out of how large a pool, and five of
+its seven keys have no reader. That is not a defect to close by building a
+panel for each: it is a record, and a record with no reader today is
+different from a caveat with no reader, because the first is waiting to be
+cited and the second is failing to warn.
+
+Recorded so a successor writing this up knows the pairings and the drug
+assignment are already derived and need not be reconstructed. The one key
+with decision value, `dropped_positives`, is the one whose reasoning is now
+carried above.
+
+**The sweep that did not work.** I first tried to find this class
+mechanically, searching every `"note"`, `"caveat"` and `"reason"` key
+against anything that reads one by name. It reported 87 reads of `note` and
+7 of `reason`, because `.note` and `.reason` match prose and unrelated
+attribute access. A check that answers "87" to "is this read" is the
+clean-looking answer over nothing that this session has spent its time
+removing, so it is not in the suite. The table above was produced by asking
+about seven named keys, which is narrower and true.
+
 **Pre-registering one statistic** rather than testing seven moves the
 threshold from 0.00714 to 0.05 and so the requirement from 48 decisive
 blocks to 25. This is the larger lever and it costs nothing, but it has to

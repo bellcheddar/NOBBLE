@@ -1860,3 +1860,20 @@ bad clocks are. -->
   reasoning where the recommendation is, and a test asserts the note still
   exists and still says it. Fourth caveat tonight computed and never
   surfaced, after F337, F338 and F350.
+- `2026-11-08T04:33Z` Counted the consumers of `sievers_matched_set`'s seven
+  returned keys: `positives` 15 sites, `controls` 4, and
+  `dropped_positives`, `drug_assignment`, `pairings`, `pool_size` and
+  `negatives_per_positive` zero. So the matched set carries a provenance
+  record of which positive was paired with which controls under which drug
+  out of how large a pool, and five of seven keys have no reader. Recorded
+  rather than fixed: a record with no reader today is not the same as a
+  caveat with no reader, because one is waiting to be cited and the other is
+  failing to warn, and a successor writing this up should know the pairings
+  are already derived.
+- `2026-11-08T04:33Z` The mechanical sweep for this class did not work and is
+  not in the suite. Searching every `note`, `caveat` and `reason` key against
+  anything reading one by name reported 87 reads of `note`, because `.note`
+  matches prose and unrelated attribute access. A check answering "87" to
+  "is this read" is the clean-looking answer over nothing this session has
+  been removing, so the table above was produced by asking about seven named
+  keys instead, which is narrower and true.
