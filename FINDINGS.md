@@ -15282,3 +15282,37 @@ raw text and failed because the phrase is split across a line break. A prose
 check that respects the author's line wrapping is asserting the wrapping. It
 normalises whitespace now, which is what every prose assertion should have
 been doing.
+
+### F312b. The figure belongs on the fit, not in a tool
+
+The About page printed "reaching AUC 0.6988 on that split" with nothing
+beside it, which is the sentence F312 exists to qualify. A tool that computes
+the comparison is no use to a reader of the page.
+
+So `cross_validate` moved into `nobble/score/weights.py`, which owns the fit.
+`fit(campaign)` attaches the estimate to the `FitResult`, the scorer writes
+it into `weights.json`, and the panel prints it in the same sentence:
+"reaching AUC 0.6988 in sample and 0.5836 across 5 held-out folds".
+`tools/composite_crossval.py` is now a reporter over the same function, which
+keeps one spelling of the arithmetic: two would let the number a reader sees
+and the number the tool prints diverge.
+
+The estimate is guarded. A refit that throws records
+`not_computed: <reason>` and the fit still ships, because the fit is the
+product and the estimate is commentary on it. A `not_computed` status carries
+no AUC, so the panel prints the in-sample figure alone rather than a zero,
+and an older `weights.json` with no key at all renders the same way. Both
+paths are tested, because a missing estimate that reads as reassuring is the
+shape this project keeps finding.
+
+One sentence changed that was not about the new number. The standalone
+column was introduced as "so a weight can always be read against what the
+component achieves alone", which invited the comparison F312 shows does not
+survive: an in-sample composite sitting above in-sample components. It now
+says the component's figure "carries no optimism because nothing was fitted
+to produce it", which is the fact that makes the comparison fair and the
+conclusion unflattering.
+
+The live page gains the number at the next scoring run. The campaign's
+`weights.json` was written before the field existed, and the panel correctly
+shows the in-sample figure alone until then.

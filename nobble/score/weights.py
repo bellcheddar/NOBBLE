@@ -59,6 +59,14 @@ class FitResult:
     components_used: list = field(default_factory=list)
     caveats: list = field(default_factory=list)
     per_component_auc: dict = field(default_factory=dict)
+    # The out-of-sample estimate, or the reason there is none (F312).
+    #
+    # `objective` is in-sample and the caveat below says so, but a caveat is
+    # not a comparison, and the About page printed the in-sample figure with
+    # nothing beside it. Carried on the fit rather than computed separately,
+    # because an out-of-sample figure is a property of the fit and because
+    # anything that reads one should get the other.
+    cross_validated: dict = field(default_factory=dict)
     # How many labelled rows each component's own AUC rests on. Not derivable
     # from `labelled_pairs`, which counts the fit's rows rather than the
     # rows where a given component has a value.
@@ -164,13 +172,125 @@ def _label(row: dict) -> str | None:
     return None
 
 
+def _folds(labelled: list[tuple[dict, str]], k: int) -> list[list[int]]:
+    """Stratified, deterministic fold assignment.
+
+    Round robin within each label after sorting by pair id, so each fold
+    takes as even a share of the positives as the arithmetic allows. A random
+    split would put a number beside the in-sample one that moves between
+    runs, and the first question anyone asks of a cross-validated figure is
+    whether it is stable.
+    """
+    assignment = [0] * len(labelled)
+    for side in ("positive", "negative"):
+        members = sorted(
+            (index for index, (_row, label) in enumerate(labelled)
+             if label == side),
+            key=lambda index: str(labelled[index][0].get("pair_id") or index))
+        for position, index in enumerate(members):
+            assignment[index] = position % k
+    return [[index for index, fold in enumerate(assignment) if fold == f]
+            for f in range(k)]
+
+
+def cross_validate(rows: list[dict], k: int = 5) -> dict:
+    """Fit without each fold and score only the pairs that fold did not see.
+
+    The number `objective` is not. `objective` is the grid's best AUC on the
+    pairs it searched, so it describes the fit; this estimates what the same
+    procedure does on a pair it has not seen.
+
+    **What the pooled figure is.** Each held-out score comes from a different
+    fold's weighting, so this estimates the procedure rather than any single
+    weighting, which is the right question for a grid over five weights on
+    thirty-one positives. It is not a confidence interval, and it is not an
+    estimate for the shipped weights, which were fitted on everything.
+
+    `per_fold` carries each fold's own held-out AUC so the spread is visible.
+    On the main campaign it runs from 0.0 to 0.84, which is what thirty-one
+    positives split five ways looks like, and a reader who sees only the
+    pooled figure would not know that.
+    """
+    labelled = [(row, _label(row)) for row in rows if _label(row)]
+    if not labelled:
+        return {"status": "not_computed: no labelled pairs"}
+    positives = sum(1 for _row, side in labelled if side == "positive")
+    if positives < 2:
+        return {"status": f"not_computed: {positives} positive(s), so no "
+                          "fold can hold one out and still fit"}
+
+    k = max(2, min(k, positives))
+    held_positive: list[float] = []
+    held_negative: list[float] = []
+    per_fold = []
+    for number, held in enumerate(_folds(labelled, k), start=1):
+        held_set = set(held)
+        train = [row for index, (row, _side) in enumerate(labelled)
+                 if index not in held_set]
+        fitted = fit_rows(train)
+        if fitted.status != "fitted":
+            per_fold.append({"fold": number, "status": fitted.status,
+                             "held_out": len(held)})
+            continue
+        fold_positive, fold_negative = [], []
+        for index in held:
+            row, side = labelled[index]
+            score = apply(row, fitted.weights)
+            if score is None:
+                continue
+            (fold_positive if side == "positive" else fold_negative).append(score)
+        held_positive.extend(fold_positive)
+        held_negative.extend(fold_negative)
+        fold_auc = _auc(fold_positive, fold_negative)
+        per_fold.append({
+            "fold": number, "held_out": len(held),
+            "positives": len(fold_positive), "negatives": len(fold_negative),
+            "auc": round(fold_auc, 4) if fold_auc is not None else None,
+            "components_used": fitted.components_used,
+            "weights": fitted.weights,
+            "its_own_in_sample": fitted.objective,
+        })
+
+    pooled = _auc(held_positive, held_negative)
+    return {
+        "status": "computed" if pooled is not None else
+                  "not_computed: no held-out pair could be scored",
+        "folds": k,
+        "auc": round(pooled, 4) if pooled is not None else None,
+        "held_out_positives": len(held_positive),
+        "held_out_negatives": len(held_negative),
+        "per_fold": per_fold,
+        "reading": ("estimates the procedure rather than the shipped "
+                    "weights: each held-out score comes from a different "
+                    "fold's fit"),
+    }
+
+
 def fit(campaign: Path) -> FitResult:
     """Fit the composite on a campaign's scores."""
     scores_path = campaign / "scores.jsonl"
     if not scores_path.exists():
         return FitResult(status="not_fitted: no scores")
 
-    return fit_rows(paths.read_jsonl(scores_path, tolerate_torn=True))
+    rows = paths.read_jsonl(scores_path, tolerate_torn=True)
+    result = fit_rows(rows)
+    if result.status == "fitted":
+        # Guarded: a refit that throws must not take the fit with it, and a
+        # missing estimate reads as absent rather than as reassuring.
+        try:
+            result.cross_validated = cross_validate(rows)
+        except Exception as problem:                    # noqa: BLE001
+            result.cross_validated = {
+                "status": f"not_computed: {type(problem).__name__}: {problem}"}
+        if result.cross_validated.get("auc") is not None:
+            result.caveats.append(
+                f"out of sample over {result.cross_validated['folds']} "
+                f"held-out fold(s), AUC "
+                f"{result.cross_validated['auc']}: the difference from "
+                f"{result.objective} is the optimism of fitting "
+                f"{len(result.components_used)} weight(s) on "
+                f"{result.positives} positive(s)")
+    return result
 
 
 def fit_rows(rows: list[dict]) -> FitResult:

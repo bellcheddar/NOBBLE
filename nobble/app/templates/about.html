@@ -145,9 +145,11 @@
     <p class="panel__hint">
       Fitted on {{ weight_fit.labelled_pairs }} labelled pairs
       ({{ weight_fit.positives }} positive, {{ weight_fit.negatives }} negative),
-      reaching AUC {{ weight_fit.objective }} on that split. Each weight is shown
-      next to the component's own standalone discrimination, so a weight can
-      always be read against what the component achieves alone.
+      reaching AUC {{ weight_fit.objective }} in sample{% if weight_fit.get('cross_validated', {}).get('auc') %}
+      and {{ weight_fit.cross_validated.auc }} across
+      {{ weight_fit.cross_validated.folds }} held-out folds{% endif %}. Each
+      weight is shown next to the component's own standalone discrimination,
+      which carries no optimism because nothing was fitted to produce it.
     </p>
     <div class="table-wrap" tabindex="0" role="group" aria-label="Scrollable table" style="max-height:none">
       <table class="ntable">

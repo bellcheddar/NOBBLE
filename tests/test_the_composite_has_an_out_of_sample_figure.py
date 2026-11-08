@@ -147,3 +147,108 @@ def test_fit_rows_is_what_the_campaign_fit_uses():
     assert "fit_rows" in called
     tool = (ROOT / "tools" / "composite_crossval.py").read_text()
     assert "W.fit_rows" in tool
+
+
+# --------------------------------------------------------------------------- #
+# On the page, beside the in-sample figure
+# --------------------------------------------------------------------------- #
+
+def _about(tmp_path, weights_json):
+    import json
+
+    from nobble.app import create_app
+
+    (tmp_path / "weights.json").write_text(json.dumps(weights_json))
+    app = create_app(str(tmp_path))
+    app.config["TESTING"] = True
+    body = app.test_client().get("/about")
+    assert body.status_code == 200, body.status_code
+    return body.get_data(as_text=True)
+
+
+FITTED = {
+    "fitted": True, "status": "fitted", "objective": 0.6988,
+    "labelled_pairs": 158, "positives": 31, "negatives": 127,
+    "weights": {"bridge_percentile": 0.4444, "delta_iptm": 0.0},
+    "per_component_auc": {"bridge_percentile": 0.558, "delta_iptm": 0.5196},
+    "components_used": ["bridge_percentile", "delta_iptm"],
+    "caveats": [],
+}
+
+
+def test_the_page_prints_both_figures_when_the_fit_carries_them(tmp_path):
+    """The in-sample number alone is the one most likely to be quoted as
+    performance, which is why it is not alone any more."""
+    page = _about(tmp_path, dict(FITTED, cross_validated={
+        "status": "computed", "auc": 0.5836, "folds": 5,
+        "held_out_positives": 31, "held_out_negatives": 127}))
+    assert "0.6988 in sample" in page
+    assert "0.5836" in page
+    assert "5 held-out folds" in page
+
+
+def test_an_older_fit_prints_the_in_sample_figure_alone(tmp_path):
+    """A bundle scored before the estimate existed has no key, and the panel
+    must not render a dangling "and" or a zero."""
+    page = _about(tmp_path, FITTED)
+    assert "0.6988 in sample" in page
+    assert "held-out folds" not in page
+    assert "and  across" not in page
+
+
+def test_a_refused_estimate_does_not_print_as_a_number(tmp_path):
+    """`not_computed` carries no AUC, and reading a missing estimate as
+    reassuring is the shape the project keeps finding."""
+    page = _about(tmp_path, dict(FITTED, cross_validated={
+        "status": "not_computed: 1 positive(s), so no fold can hold one out "
+                  "and still fit"}))
+    assert "0.6988 in sample" in page
+    assert "held-out folds" not in page
+
+
+def test_the_standalone_column_no_longer_reads_as_a_fair_comparison(tmp_path):
+    """A component's AUC carries no optimism because nothing was fitted to
+    produce it, and the panel says so: without that, an in-sample composite
+    sitting above in-sample components invites exactly the comparison F312
+    shows does not survive."""
+    page = _about(tmp_path, FITTED)
+    assert "carries no optimism" in page
+
+
+def test_the_fit_attaches_the_caveat_in_words():
+    """A number in a dict is not a caveat. The fit's own caveat list is what
+    `tools/status.sh` and the panel's refusal text read."""
+    import pytest
+
+    from nobble.execute.campaign import latest
+    from nobble.score import weights
+
+    campaign = latest("campaign") or latest("benchmark")
+    if campaign is None or not (campaign / "scores.jsonl").exists():
+        pytest.skip("no scored campaign on this checkout")
+    result = weights.fit(campaign)
+    if result.status != "fitted" or not result.cross_validated.get("auc"):
+        pytest.skip(f"no estimate: {result.cross_validated.get('status')}")
+    assert any("out of sample" in caveat for caveat in result.caveats)
+    assert any("optimism" in caveat for caveat in result.caveats)
+
+
+def test_a_cross_validation_failure_does_not_take_the_fit_with_it(monkeypatch):
+    """The fit is the product; the estimate is commentary on it."""
+    import pytest
+
+    from nobble.execute.campaign import latest
+    from nobble.score import weights
+
+    campaign = latest("campaign") or latest("benchmark")
+    if campaign is None or not (campaign / "scores.jsonl").exists():
+        pytest.skip("no scored campaign on this checkout")
+
+    def explode(rows, k=5):
+        raise RuntimeError("deliberate")
+
+    monkeypatch.setattr(weights, "cross_validate", explode)
+    result = weights.fit(campaign)
+    assert result.status == "fitted"
+    assert result.objective is not None
+    assert "RuntimeError" in result.cross_validated["status"]

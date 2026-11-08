@@ -45,25 +45,13 @@ from nobble.execute.campaign import latest                 # noqa: E402
 from nobble.score import weights as W                      # noqa: E402
 
 
-def folds(labelled: list[tuple[dict, str]], k: int) -> list[list[int]]:
-    """Stratified, deterministic fold assignment.
-
-    Round robin within each label after sorting by pair id, so each fold gets
-    as even a share of the 31 positives as the arithmetic allows. A random
-    split would put a number next to the in-sample one that moves between
-    runs, and the first question anyone asks of a cross-validated figure is
-    whether it is stable.
-    """
-    assignment = [0] * len(labelled)
-    for side in ("positive", "negative"):
-        members = sorted(
-            (index for index, (_row, label) in enumerate(labelled)
-             if label == side),
-            key=lambda index: str(labelled[index][0].get("pair_id") or index))
-        for position, index in enumerate(members):
-            assignment[index] = position % k
-    return [[index for index, fold in enumerate(assignment) if fold == f]
-            for f in range(k)]
+# The folds and the estimate live in `nobble/score/weights.py`, which owns
+# the fit, so the scorer writes the figure into `weights.json` and the About
+# page can print it beside the in-sample one. This file reports it at a
+# chosen fold count and shows the per-fold spread, which the panel has no
+# room for. One spelling of the arithmetic, or the figure a reader sees and
+# the figure this prints could differ (F312).
+folds = W._folds
 
 
 def crossval(rows: list[dict], k: int) -> dict:
@@ -75,54 +63,25 @@ def crossval(rows: list[dict], k: int) -> dict:
     if in_sample.status != "fitted":
         return {"status": f"the full fit refused: {in_sample.status}"}
 
-    k = min(k, sum(1 for _, side in labelled if side == "positive"))
-    held_positive: list[float] = []
-    held_negative: list[float] = []
-    per_fold = []
-    for number, held in enumerate(folds(labelled, k), start=1):
-        held_set = set(held)
-        train = [row for index, (row, _) in enumerate(labelled)
-                 if index not in held_set]
-        fitted = W.fit_rows(train)
-        if fitted.status != "fitted":
-            per_fold.append({"fold": number, "status": fitted.status,
-                             "held_out": len(held)})
-            continue
-        fold_positive, fold_negative = [], []
-        for index in held:
-            row, side = labelled[index]
-            score = W.apply(row, fitted.weights)
-            if score is None:
-                continue
-            (fold_positive if side == "positive" else fold_negative).append(score)
-        held_positive.extend(fold_positive)
-        held_negative.extend(fold_negative)
-        per_fold.append({
-            "fold": number,
-            "held_out": len(held),
-            "positives": len(fold_positive),
-            "negatives": len(fold_negative),
-            "auc_on_this_fold": (round(value, 4) if (value := W._auc(
-                fold_positive, fold_negative)) is not None else None),
-            "components_used": fitted.components_used,
-            "weights": fitted.weights,
-            "in_sample_objective": fitted.objective,
-        })
+    estimate = W.cross_validate([row for row, _ in labelled], k)
+    if estimate.get("auc") is None:
+        return {"status": estimate.get("status", "not computed")}
 
-    pooled = W._auc(held_positive, held_negative)
     return {
         "status": "measured",
-        "folds": k,
+        "folds": estimate["folds"],
         "labelled_pairs": len(labelled),
         "in_sample_auc": in_sample.objective,
         "in_sample_weights": in_sample.weights,
-        "out_of_sample_auc": round(pooled, 4) if pooled is not None else None,
-        "held_out_positives": len(held_positive),
-        "held_out_negatives": len(held_negative),
-        "per_fold": per_fold,
-        "optimism": (round(in_sample.objective - pooled, 4)
-                     if pooled is not None and in_sample.objective is not None
-                     else None),
+        "out_of_sample_auc": estimate["auc"],
+        "held_out_positives": estimate["held_out_positives"],
+        "held_out_negatives": estimate["held_out_negatives"],
+        "per_fold": [
+            {**fold, "auc_on_this_fold": fold.get("auc"),
+             "in_sample_objective": fold.get("its_own_in_sample")}
+            for fold in estimate["per_fold"]],
+        "optimism": (round(in_sample.objective - estimate["auc"], 4)
+                     if in_sample.objective is not None else None),
     }
 
 
