@@ -212,6 +212,103 @@ def parent_provenance(parent_id: str, scored_campaign: str | None = None) -> dic
                 parent.get("chosen_because") or "")}
 
 
+def _design_rendered(manifest: dict):
+    """`([(job, yaml text, queue extras)], pocket, dropped)`, writing nothing.
+
+    Extracted so the assembler and `regenerate_design` render through the
+    same code rather than through two copies of it (D-NOB-007). A second
+    copy could agree with itself and be wrong, which is F262, and the
+    ligand branch here is exactly where that happened: F262 was a ligand
+    resolution dropping a SMILES-only glue.
+
+    `pocket` and `dropped` come back because the assembler's summary
+    records both: one pocket serves the whole campaign, since every pair
+    shares the parent's receptor and glue by construction, and a
+    conditioned job with no pocket is dropped and counted rather than run
+    unconstrained under a conditioned job id.
+    """
+    pair_by_id = {pair["pair_id"]: pair for pair in manifest["pairs"]}
+    peptide_by_id: dict[str, P.Peptide] = {}
+    for pair in manifest["pairs"]:
+        if pair["role"] == "parent":
+            peptide_by_id[pair["peptide_id"]] = _peptide_from_row(
+                manifest["peptides"][pair["peptide_id"]])
+            peptide_by_id[pair["peptide_id"]].cofactor = dict(pair["cofactor"])
+        else:
+            peptide_by_id[pair["peptide_id"]] = P.Peptide(
+                peptide_id=pair["peptide_id"], sequence=pair["peptide_sequence"],
+                source="design", label=None, accession=None,
+                gene=pair["peptide_gene"], start_res=None, end_res=None,
+                degron_class="design", e3_hint=pair["e3_gene"],
+                parent_peptide_id=pair.get("parent_peptide_id"),
+                cofactor=dict(pair["cofactor"]),
+            )
+
+    first = manifest["pairs"][0]
+    ccd = (first.get("ligand") or {}).get("ccd")
+    pdb_id = None
+    from nobble.execute.campaign import IMID_POCKET_SOURCE
+    member = next((m for m in P.BENCHMARK_CHAINS if m["ligand"] == ccd), None)
+    if member:
+        pdb_id = member["pdb_id"]
+    elif ccd:
+        pdb_id = IMID_POCKET_SOURCE.get(ccd)
+    pocket = None
+    if pdb_id and ccd:
+        pocket = Y.derive_pocket(C.by_name(first["construct"]), pdb_id, ccd,
+                                 first["e3_gene"])
+
+    rendered = []
+    dropped = 0
+    for job in manifest["jobs"]:
+        pair = pair_by_id[job.pair_id]
+        peptide = peptide_by_id[job.peptide_id]
+        ligand_dict = pair["ligand"]
+        if ligand_dict.get("ccd"):
+            ligand = L.by_ccd(ligand_dict["ccd"],
+                              modality=ligand_dict.get("modality", "glue"))
+        else:
+            ligand = L.by_smiles(ligand_dict["smiles"],
+                                 key=ligand_dict.get("key", "parent"),
+                                 modality=ligand_dict.get("modality", "glue"))
+        if job.conditioning == "conditioned" and pocket is None:
+            dropped += 1
+            continue
+        document = Y.build_yaml(job, peptide, ligand, pocket)
+        rendered.append((job, Y.to_yaml_text(document), {
+            "role": pair["role"],
+            "substitution": pair.get("substitution"),
+            "position": pair.get("position"),
+            "parent_peptide_id": pair.get("parent_peptide_id"),
+            "pocket_residues": pocket.positions if pocket else None,
+        }))
+    return rendered, pocket, dropped
+
+
+def regenerate_design(parent_id: str, generator: str = "alanine_scan",
+                      positions: list[int] | None = None) -> dict[str, str]:
+    """`{job_id: yaml text}` for a design scan, as the current code writes it.
+
+    The design half of the provenance chain (F341). F340 closed Tier B's and
+    left this one named rather than done, on the grounds that a regenerator
+    written without a campaign to verify it against would be a guess. There
+    is a campaign: `design_20261104T094939Z`, 240 jobs, and its
+    `campaign.json` records the parent to regenerate from.
+
+    Writes nothing and creates no campaign directory, for the reason
+    `campaign._regenerate` gives: a scratch assembly that wrote one would
+    become "the latest campaign" and the chain's remaining stages would
+    target it.
+    """
+    manifest = build_manifest(parent_id, generator, positions)
+    if manifest.get("status"):
+        raise RuntimeError(manifest["status"])
+    if manifest["errors"]:
+        raise RuntimeError(f"{manifest['errors']} manifest validation errors")
+    rendered, _pocket, _dropped = _design_rendered(manifest)
+    return {job.job_id: text for job, text, _extras in rendered}
+
+
 def assemble(parent_id: str, generator: str = "alanine_scan",
              positions: list[int] | None = None) -> dict:
     """Emit a runnable design campaign directory."""
@@ -238,67 +335,18 @@ def assemble(parent_id: str, generator: str = "alanine_scan",
 
     from nobble.execute.campaign import fresh_campaign
 
+    rendered, pocket, dropped = _design_rendered(manifest)
     with fresh_campaign("design") as directory:
-        pair_by_id = {pair["pair_id"]: pair for pair in manifest["pairs"]}
-        peptide_by_id: dict[str, P.Peptide] = {}
-        for pair in manifest["pairs"]:
-            if pair["role"] == "parent":
-                peptide_by_id[pair["peptide_id"]] = _peptide_from_row(
-                    manifest["peptides"][pair["peptide_id"]])
-                peptide_by_id[pair["peptide_id"]].cofactor = dict(pair["cofactor"])
-            else:
-                peptide_by_id[pair["peptide_id"]] = P.Peptide(
-                    peptide_id=pair["peptide_id"], sequence=pair["peptide_sequence"],
-                    source="design", label=None, accession=None,
-                    gene=pair["peptide_gene"], start_res=None, end_res=None,
-                    degron_class="design", e3_hint=pair["e3_gene"],
-                    parent_peptide_id=pair.get("parent_peptide_id"),
-                    cofactor=dict(pair["cofactor"]),
-                )
-
         first = manifest["pairs"][0]
-        ccd = (first.get("ligand") or {}).get("ccd")
-        pdb_id = None
-        from nobble.execute.campaign import IMID_POCKET_SOURCE
-        member = next((m for m in P.BENCHMARK_CHAINS
-                       if m["ligand"] == ccd), None)
-        if member:
-            pdb_id = member["pdb_id"]
-        elif ccd:
-            pdb_id = IMID_POCKET_SOURCE.get(ccd)
-        pocket = None
-        if pdb_id and ccd:
-            pocket = Y.derive_pocket(C.by_name(first["construct"]), pdb_id, ccd,
-                                     first["e3_gene"])
-
         queue_path = directory / "queue.jsonl"
         written = 0
-        dropped = 0
         with queue_path.open("w") as queue:
-            for job in manifest["jobs"]:
-                pair = pair_by_id[job.pair_id]
-                peptide = peptide_by_id[job.peptide_id]
-                ligand_dict = pair["ligand"]
-                if ligand_dict.get("ccd"):
-                    ligand = L.by_ccd(ligand_dict["ccd"],
-                                      modality=ligand_dict.get("modality", "glue"))
-                else:
-                    ligand = L.by_smiles(ligand_dict["smiles"],
-                                         key=ligand_dict.get("key", "parent"),
-                                         modality=ligand_dict.get("modality", "glue"))
-                if job.conditioning == "conditioned" and pocket is None:
-                    dropped += 1
-                    continue
-                document = Y.build_yaml(job, peptide, ligand, pocket)
+            for job, text, extras in rendered:
                 yaml_path = directory / "yaml" / f"{job.job_id}.yaml"
-                yaml_path.write_text(Y.to_yaml_text(document))
+                yaml_path.write_text(text)
                 record = job.to_dict()
                 record["yaml"] = str(yaml_path)
-                record["role"] = pair["role"]
-                record["substitution"] = pair.get("substitution")
-                record["position"] = pair.get("position")
-                record["parent_peptide_id"] = pair.get("parent_peptide_id")
-                record["pocket_residues"] = pocket.positions if pocket else None
+                record.update(extras)
                 queue.write(json.dumps(record) + "\n")
                 written += 1
 

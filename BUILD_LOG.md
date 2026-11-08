@@ -1518,3 +1518,25 @@
   longer is; narrowed to the three arms that still are, with the test's
   reasoning kept because it is why a Tier B regenerator was written rather
   than the campaign one widened. 165 passed, 6 skipped after both.
+- `2026-11-08T05:00Z` F341. F340 named the design assembler as the remaining
+  provenance gap and declined it, because "a regenerator written without a
+  campaign to verify it against would be a guess". The reason was wrong on
+  its own terms: `design_20261104T094939Z` is on disk with 240 jobs and its
+  `campaign.json` records the parent to regenerate from. `_design_rendered`
+  extracted the same way, `regenerate_design` added, and **240 regenerated,
+  240 on disk, zero byte differences**. With Tier B's 1,540 and the main
+  campaign's 2,360 that is 4,140 YAMLs verified against the code that emits
+  them, against 2,360 yesterday, with the two arms holding 1,780 jobs and
+  thirty-seven hours of compute no longer reported as questions that do not
+  apply.
+- `2026-11-08T05:00Z` It regenerates from the parent the scan records, not
+  today's ranked choice: the latter is F338's question and
+  `run_design.sh` asks it, and regenerating from a different parent would
+  report every job as a disagreement. An absent parent is `unavailable`
+  rather than `clean`. `benchmark_*` and `corrected_*` stay out of scope
+  deliberately, being complete campaigns the chain does not run again.
+- `2026-11-08T05:00Z` Two of my own tests had to be narrowed, one of them
+  twice within the hour, because they enumerate what is *not* covered.
+  That is the cost of asserting a scope rather than a property, and worth
+  paying: the alternative is a check whose silence about an arm nobody
+  notices, which is the whole of F340.

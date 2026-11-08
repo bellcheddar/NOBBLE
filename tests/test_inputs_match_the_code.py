@@ -55,13 +55,15 @@ def test_a_campaign_from_another_assembler_is_unavailable_not_clean():
     coincide with the main manifest's and compared clean, which is luck and
     not a basis for a check, so both are out of scope by name.
     """
-    # `tier_b_` is no longer among them: it has a regenerator of its own
-    # since F340, and the scan reports it clean rather than out of scope.
+    # Neither `tier_b_` nor `design_` is among them any longer: each has a
+    # regenerator of its own since F340 and F341, and the scan reports both
+    # clean rather than out of scope. The two that remain are complete
+    # campaigns the chain does not run again.
     # The reason this test gives still holds and is why that regenerator
     # was written instead of widening the campaign one: compared against
     # the *campaign* manifest, Tier B reports all 154 of its pairs as work
     # the code would not emit.
-    for prefix in ("design_", "benchmark_", "corrected_"):
+    for prefix in ("benchmark_", "corrected_"):
         found = sorted((ROOT / "campaigns").glob(prefix + "*"))
         if not found:
             continue

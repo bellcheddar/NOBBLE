@@ -393,13 +393,14 @@ def _regenerated_scan(campaign: Path) -> tuple[list[dict], str]:
     # cannot drift, and regenerating the arm on disk reproduced all 1,540
     # YAMLs byte for byte.
     regenerators = {"campaign_": "regenerate_all",
-                    "tier_b_": "regenerate_tier_b"}
+                    "tier_b_": "regenerate_tier_b",
+                    "design_": "regenerate_design"}
     chosen = next((name for prefix, name in regenerators.items()
                    if campaign.name.startswith(prefix)), None)
     if chosen is None:
-        return [], (f"not_applicable: {campaign.name} comes from neither the "
-                    f"campaign assembler nor the Tier B assembler, and this "
-                    f"compares against those")
+        return [], (f"not_applicable: {campaign.name} comes from none of the "
+                    f"three assemblers this compares against "
+                    f"({', '.join(sorted(regenerators))})")
     # Initialised outside the try, because they are read after it: a failure
     # part way through the scan would otherwise raise NameError here, which
     # is a worse report than the one the handler is there to give.
@@ -412,7 +413,29 @@ def _regenerated_scan(campaign: Path) -> tuple[list[dict], str]:
         rows = paths.read_jsonl(queue, tolerate_torn=True)
         # One manifest for the whole campaign. Asking per pair rebuilt it 158
         # times and turned a two-second scan into twenty-three.
-        fresh = getattr(assembler, chosen)()
+        if chosen == "regenerate_design":
+            # The design regenerator needs the parent and the generator,
+            # which are not derivable from the queue: the scan's parent is
+            # chosen by measured Delta-ipTM at assembly time and the
+            # campaign records it. Regenerating against today's ranked
+            # choice instead would answer a different question, which is
+            # F338's and is asked by `tools/run_design.sh`.
+            from nobble.design import assemble as design_assembler
+
+            meta_path = campaign / "campaign.json"
+            if not meta_path.exists():
+                return [], (f"unavailable: no campaign.json in "
+                            f"{campaign.name}, so the parent to regenerate "
+                            "this scan from is unknown")
+            meta = json.loads(meta_path.read_text())
+            parent = meta.get("parent")
+            if not parent:
+                return [], (f"unavailable: {campaign.name} records no "
+                            "parent, so there is nothing to regenerate from")
+            fresh = design_assembler.regenerate_design(
+                parent, meta.get("generator") or "alanine_scan")
+        else:
+            fresh = getattr(assembler, chosen)()
         for row in rows:
             job_id = row.get("job_id")
             path = Path(row.get("yaml") or "")

@@ -138,7 +138,12 @@ def test_a_campaign_from_neither_assembler_is_still_not_applicable():
     """
     from nobble.validate import inputs
 
-    for prefix in ("benchmark", "design", "corrected"):
+    # `design` came out when F341 gave it a regenerator, one commit after
+    # F340 named it as the remaining gap. The two that stay are complete
+    # campaigns whose compute is spent and which the chain does not run
+    # again, so a guard that refuses before the work has no work to get in
+    # front of.
+    for prefix in ("benchmark", "corrected"):
         found = sorted(ROOT.glob(f"campaigns/{prefix}_*"))
         found = [d for d in found if (d / "queue.jsonl").exists()]
         if not found:
@@ -164,3 +169,117 @@ def test_the_regenerator_writes_nothing(tmp_path, monkeypatch):
         "regenerating Tier B created or removed a campaign directory: "
         f"{set(after) ^ set(before)}"
     )
+
+
+# F341. The design assembler, which F340 named and left.
+
+def _design():
+    found = sorted(ROOT.glob("campaigns/design_*"))
+    found = [d for d in found if (d / "campaign.json").exists()]
+    return found[-1] if found else None
+
+
+def test_the_design_assembler_shares_its_renderer_too():
+    source = (ROOT / "nobble" / "design" / "assemble.py").read_text()
+    assert "def _design_rendered(manifest: dict):" in source
+    assert source.count("_design_rendered(manifest)") == 2, (
+        "the design renderer has other than two consumers; it exists so "
+        "the assembler and the provenance check cannot diverge"
+    )
+    # The ligand branch is where F262 happened, so it must not be duplicated
+    # back into the assembler.
+    body = source[source.index("def assemble(parent_id: str"):]
+    body = body[:body.index("\ndef ", 10)] if "\ndef " in body[10:] else body
+    assert "L.by_smiles(" not in body, (
+        "assemble() resolves ligands itself again, which is the branch F262 "
+        "broke and the one most worth having a single copy of"
+    )
+
+
+def test_the_design_regenerator_reproduces_the_scan_on_disk():
+    """240 YAMLs, byte for byte.
+
+    F340 declined to write this regenerator on the grounds that one written
+    without a campaign to verify it against would be a guess. There is a
+    campaign, and its campaign.json records the parent to regenerate from,
+    so the guess was avoidable.
+    """
+    campaign = _design()
+    if campaign is None:
+        pytest.skip("no design campaign on this checkout")
+    from nobble.design import assemble
+
+    meta = json.loads((campaign / "campaign.json").read_text())
+    fresh = assemble.regenerate_design(
+        meta["parent"], meta.get("generator") or "alanine_scan")
+    rows = [json.loads(line) for line
+            in (campaign / "queue.jsonl").read_text().splitlines()
+            if line.strip()]
+    assert rows, "the design queue is empty, so this compared nothing"
+    assert set(fresh) == {row["job_id"] for row in rows}, {
+        "regenerated_only": sorted(set(fresh) - {r["job_id"] for r in rows})[:3],
+        "queue_only": sorted({r["job_id"] for r in rows} - set(fresh))[:3]}
+
+    differing, compared = [], 0
+    for row in rows:
+        path = Path(row["yaml"])
+        if not path.is_file():
+            continue
+        compared += 1
+        if path.read_text() != fresh[row["job_id"]]:
+            differing.append(row["job_id"])
+    assert compared == len(rows), (
+        f"only {compared} of {len(rows)} YAMLs were on disk, so a clean "
+        "answer here means less than it looks"
+    )
+    assert differing == [], differing[:3]
+
+
+def test_the_scan_regenerates_a_design_campaign_from_its_recorded_parent():
+    """Not from today's ranked choice, which is a different question.
+
+    Whether the parent is still the one the ranking would pick is F338's
+    question and `tools/run_design.sh` asks it. This one is whether the
+    YAML is what the code would write *for the parent this scan has*, and
+    regenerating from a different parent would answer neither.
+    """
+    source = (ROOT / "nobble" / "validate" / "inputs.py").read_text()
+    assert '"design_": "regenerate_design"' in source
+    assert 'meta.get("parent")' in source, (
+        "the scan no longer takes the design campaign's own parent, so it "
+        "regenerates something other than the scan in front of it"
+    )
+    # And an absent parent is unavailable, not clean.
+    window = source[source.index('if chosen == "regenerate_design":'):]
+    window = window[:window.index("else:")]
+    assert "unavailable: no campaign.json" in window
+    assert "records no" in window and "parent" in window
+
+
+def test_all_three_assemblers_the_chain_runs_are_covered():
+    """The scope, stated as an assertion.
+
+    `benchmark_*` and `corrected_*` stay out, and that is deliberate
+    rather than unfinished: both are complete campaigns whose compute is
+    spent and neither is a stage the chain runs again, so a guard that
+    refuses before the work has no work to get in front of.
+    """
+    from nobble.validate import inputs
+
+    clean, scoped = {}, 0
+    for prefix in ("campaign_", "design_", "tier_b_"):
+        found = sorted(ROOT.glob(f"campaigns/{prefix}*"))
+        found = [d for d in found if (d / "queue.jsonl").exists()]
+        if not found:
+            continue
+        scoped += 1
+        rows, status = inputs._regenerated_scan(found[-1])
+        clean[prefix] = (len(rows), status)
+        assert not status.startswith("not_applicable"), (prefix, status)
+    assert scoped >= 1, (
+        "none of the three assemblers' campaigns is on this checkout, so "
+        "this examined nothing"
+    )
+    for prefix, (count, status) in clean.items():
+        assert count == 0, (prefix, status)
+        assert status.startswith("clean"), (prefix, status)

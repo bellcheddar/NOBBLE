@@ -17860,3 +17860,63 @@ an assembler of its own in `nobble/design/assemble.py` and 240 jobs behind
 it. Not done here: F338 already added the check that matters for that arm,
 which is whether its parent is the ranked choice, and a second regenerator
 written without a campaign to verify it against would be a guess.
+
+## F341. The design assembler, which F340 named and declined to do
+
+F340 closed Tier B's provenance link and ended by naming the design arm as
+the remaining gap, with a reason for leaving it: "a second regenerator
+written without a campaign to verify it against would be a guess".
+
+The reason was wrong on its own terms. There is a campaign:
+`design_20261104T094939Z`, 240 jobs, and its `campaign.json` records the
+parent to regenerate from. The guess was avoidable by looking.
+
+So `_design_rendered(manifest)` is extracted the same way, returning
+`([(job, yaml text, queue extras)], pocket, dropped)`, with both `assemble`
+and the new `regenerate_design` consuming it. The pocket and the dropped
+count come back because the summary records both: one pocket serves the
+whole scan, since every pair shares the parent's receptor and glue by
+construction (F42), and a conditioned job with no pocket is dropped and
+counted rather than run unconstrained under a conditioned job id.
+
+The branch worth having one copy of is the ligand. F262 was a ligand
+resolution dropping a SMILES-only glue, and this is the assembler whose
+pairs carry `smiles` or `ccd` and pick between `L.by_smiles` and
+`L.by_ccd`. A test asserts `assemble` no longer resolves ligands itself.
+
+**Measured: 240 regenerated, 240 on disk, zero missing, zero extra, zero
+byte differences.** With Tier B's 1,540 and the main campaign's 2,360, that
+is **4,140 YAMLs verified against the code that emits them**, where
+yesterday the number was 2,360 and the two arms with 1,780 jobs and
+thirty-seven hours of compute between them were reported as questions that
+did not apply.
+
+### What it regenerates from, and why that is not F338's question
+
+From the parent the scan records, not from today's ranked choice. Whether
+the parent is still the one the ranking would pick is F338's question and
+`tools/run_design.sh` asks it. This one is whether the YAML is what the code
+would write *for the parent this scan has*. Regenerating from a different
+parent would answer neither, and would report every job as a disagreement.
+
+An absent `campaign.json`, or one recording no parent, is `unavailable`
+rather than `clean`: there is nothing to regenerate from, which is an
+unknown and not a pass.
+
+### The scope, and why two arms stay out
+
+`benchmark_*` and `corrected_*` remain `not_applicable`. That is deliberate
+rather than unfinished. Both are complete campaigns whose compute is spent
+and neither is a stage the chain runs again, so a guard that refuses before
+the work has no work to get in front of. The three that are covered are the
+three the chain still executes.
+
+### Two of my own tests had to be narrowed, one of them twice
+
+`test_a_campaign_from_another_assembler_is_unavailable_not_clean` listed
+four prefixes and now lists two. `test_a_campaign_from_neither_assembler_is_still_not_applicable`,
+which I wrote with F340 an hour earlier, listed three and now lists two.
+Writing a test that enumerates what is *not* covered means editing it every
+time coverage grows, which is the cost of asserting a scope rather than a
+property. Worth paying here: the alternative is a check whose silence about
+an arm nobody notices, which is the whole of F340.
