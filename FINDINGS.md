@@ -16000,3 +16000,40 @@ would be taking on is the run.
 Recorded as a known looseness with its remedy, which is what the project does
 with F132 and with the Tier B enrichment column. The moment to make it is
 between stages, not during one.
+
+### F311b. The first rule was already written down, in a comment I had not read
+
+F311 put three rules in `CLAUDE.md` and presented all three as earned today.
+One of them was not.
+
+`tools/status.sh` carries this, committed at 04:58 on 7 November, nine hours
+before I broke the chain the same way:
+
+> Here rather than in `tools/run_chain.sh` because that script is executing
+> while this is written and bash reads a script incrementally, so editing it
+> mid-run corrupts it. `status.sh` is invoked fresh, including by the chain's
+> own last line. Wiring the chain itself is left for when it is not running.
+
+So the knowledge existed, with the mechanism stated correctly and the
+remedy, and I edited `run_chain.sh` mid-run anyway and recorded the lesson as
+new. I had not read that comment, and nothing made me: it sits in the middle
+of a shell script, attached to the one decision it explains.
+
+**The fix F311 made is still the right one** and this strengthens the case
+for it rather than weakening it. A rule discovered in the comment of the tool
+that happened to need it is a rule that gets rediscovered by paying for it.
+`CLAUDE.md` is read at the start of every session; a comment forty lines into
+`status.sh` is read when you are already editing `status.sh`. The rule moved
+to where it gets read, which is what it needed.
+
+What changes is the attribution, and it changes the lesson. F311 said these
+were three facts "the project had no place to put". The project had a place
+for this one and it was the wrong place. That is a different and more useful
+observation: the failure was not missing knowledge, it was knowledge stored
+where the person who needed it would not be looking.
+
+There is a cheap test of whether this generalises, and I have not run it: how
+many other load-bearing rules live in comments rather than in `CLAUDE.md`.
+Recorded as a question rather than answered, because a sweep of every comment
+in the project for latent rules is the kind of thing I would do badly at
+13:40 on the strength of one example.
