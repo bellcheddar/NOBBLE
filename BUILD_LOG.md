@@ -1540,3 +1540,40 @@
   That is the cost of asserting a scope rather than a property, and worth
   paying: the alternative is a check whose silence about an arm nobody
   notices, which is the whole of F340.
+- `2026-11-08T05:20Z` F342. `convergence_score` was recorded in F318 as the
+  only statistic on the right side of both paired tests with nothing
+  explaining why. It has a mechanism and the evidence was already on disk: it
+  is measured in `ternary_unconstrained`, so no pocket imposes agreement
+  between seeds, and a glue degron is a motif read by the E3 surface, so it
+  has a preferred pose that independent seeds find. Measured: real glue
+  degrons median 0.9516 with 17.6 per cent at the floor, their scrambles
+  median 0.0000 with 82.8 per cent at the floor, over 125 and 29 pairs. A
+  scramble is a permutation, so that difference is neither length nor
+  composition. All five ties in the paired test are parent 0.0 against
+  scramble 0.0, exactly as the mechanism predicts. The single scramble win is
+  `bench02_BRD4_VHL`, a PROTAC, where the mechanism has nothing to say,
+  which is an observation and not a result at n=2 real PROTAC pairs. Not
+  explained: 22 of 125 real glues are floored, including bench01.
+- `2026-11-08T05:20Z` I nearly got F342 wrong by guessing a prefix. The first
+  split labelled scrambles by `pair_id` starting `scramble_`; it is `scr_`,
+  so every scramble counted as a real sequence and the glue row read n=154
+  with 29.9 per cent floored, blending the two populations the comparison is
+  about and hiding the whole effect. Caught because the scramble row came
+  back empty. Fifth guessed name of the session, and the only one whose cost
+  would have been a published number rather than a failed test.
+- `2026-11-08T05:20Z` F343. The tier-2 watchdog reported the running job
+  overdue at "210.1 min against 69.4 min expected" while it worked at 98 per
+  cent of a core. The expectation is the job's own tier-1 time times a
+  refinement factor pooled over successes, and 129 of 149 refinements are
+  under 200 tokens, so the pooled 4.614 is effectively the smallest band's.
+  The measured bands run 4.596, 6.107, 8.076 and then nothing at 800-1600,
+  where bench06 sits; the same band including failures is 10.524. Now
+  declined rather than borrowed, with F270's exclusion untouched and a test
+  asserting it, since letting the failures back in is the tempting repair and
+  the one thing that must not happen. Third appearance of this hazard after
+  F320/F329 and F331/F335, and the first that had shipped.
+- `2026-11-08T05:20Z` And the fix nearly carried the defect: with the
+  expectation declined the report said "1 running, none overdue", identical
+  to a job judged and found fine. Now "1 unjudgeable: ... no completed
+  tier-2 job of its size. Bounded by the hard budget only". 113 watchdog and
+  budget tests pass.

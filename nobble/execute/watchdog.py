@@ -97,6 +97,23 @@ def _last_record_per_job(state_path: Path) -> dict[str, dict]:
     return records
 
 
+def _band_lower_edge(token_count: float, bands: list[float]) -> float:
+    """The lower edge of the token band this job falls in.
+
+    `measured_scaling`'s `by_band` rows key on `min_tokens`, and
+    `_band_of` returns an index, so one of the two has to be converted to
+    the other's language to ask whether a band was measured. Taking the
+    lower edge rather than reimplementing the indexing keeps the bands
+    themselves in `thresholds.toml`, where `token_bands` already is.
+    """
+    low = 0.0
+    for edge in bands:
+        if token_count < edge:
+            return low
+        low = edge
+    return low
+
+
 def _tokens_by_job(queue_path: Path) -> dict[str, int]:
     tokens: dict[str, int] = {}
     if not queue_path.exists():
@@ -275,8 +292,21 @@ def stall_report(campaign: Path, tier: int = 1, now: float | None = None,
         # in is made of bench06's own failures, so an expectation drawn from
         # it would be the failure's own duration and a repeat of it would
         # never read as overdue (F270).
-        refinement_factor = budget_module.measured_scaling(
-            campaign, include_failed=False)["factor"]
+        refinement_observed = budget_module.measured_scaling(
+            campaign, include_failed=False)
+        refinement_factor = refinement_observed["factor"]
+        # Which token bands have a *successful* refinement to measure a
+        # factor from, so the expectation below can decline rather than
+        # borrow one (F343). Measured on this campaign: 0-200 gives 4.596,
+        # 200-400 gives 6.107, 400-800 gives 8.076, and 800-1600 gives
+        # nothing, because the only jobs that size are bench06's failures
+        # and F270 correctly excludes them.
+        refinement_bands = {
+            (float(row["min_tokens"]), float(row["max_tokens"] or 0) or None)
+            for row in (refinement_observed.get("by_band") or [])
+            if row.get("factor") is not None
+        }
+        measured_band_edges = {low for low, _high in refinement_bands}
         # From budget, where the suffix is defined, rather than guessed here.
         # The first version of this looked for it on `runner` behind a
         # hasattr guard, which is always false, so the lookup below would
@@ -324,6 +354,36 @@ def stall_report(campaign: Path, tier: int = 1, now: float | None = None,
             own_tier1 = (tier1_seconds.get(job_id.removesuffix(tier2_suffix))
                          if tier2_suffix else None)
             if refinement_factor and own_tier1:
+                # Only where a job this size has actually succeeded at tier
+                # 2 (F343). The factor is pooled over successful
+                # refinements and 129 of this campaign's 149 are under 200
+                # tokens, so the pooled 4.614 is effectively the smallest
+                # band's. Applied to bench06 at 1,223 tokens it gave an
+                # expectation of 4,162s and an overdue line of 12,485s,
+                # against a legitimate attempt that passed 12,740s and was
+                # reported overdue while working at 98 per cent of a core.
+                #
+                # The measured bands run 4.596, 6.107, 8.076 as jobs grow,
+                # so the fallback is biased low exactly where it is used,
+                # and the same band's factor including failures is 10.524.
+                # Borrowing it is the error this file's own F74 comment
+                # names one path down: "a rate borrowed from a different
+                # size" cannot support a verdict about this size.
+                #
+                # So the expectation is declined rather than invented.
+                # The hard bound above still applies, and F335 measured it
+                # at 4.1 times the real duration, which is what a stall
+                # margin is for.
+                band_low = _band_lower_edge(float(tokens[job_id]), bands)
+                if band_low not in measured_band_edges:
+                    entry["expected_seconds"] = None
+                    entry["rate_basis"] = (
+                        f"unmeasurable: no tier-2 job of this size "
+                        f"({tokens[job_id]} tokens) has completed, so there "
+                        f"is no refinement factor measured at this size and "
+                        f"the pooled {refinement_factor} is drawn from jobs "
+                        f"under 200 tokens. Bounded by the hard budget only")
+                    continue
                 expected = own_tier1 * refinement_factor
                 basis = (f"this job's own tier-1 time {own_tier1:.0f}s times "
                          f"the measured refinement factor {refinement_factor}")
@@ -391,8 +451,27 @@ def main(argv: list[str] | None = None) -> int:
             worst = max(worst, 1)
         if not report["stalled"] and not report["overdue"] \
                 and not report["abandoned"]:
+            # "none overdue" over a job that could not be judged reads the
+            # same as over one that was judged and found fine, which is the
+            # shape this whole file exists to avoid (F343). A job whose
+            # token band holds no completed tier-2 work has no expectation,
+            # and saying so is the difference between a clean answer and a
+            # clean-looking silence.
+            unjudged = [job for job in report["running"]
+                        if job.get("expected_seconds") is None
+                        and str(job.get("rate_basis", "")).startswith(
+                            "unmeasurable")]
+            note = ""
+            if unjudged:
+                note = (f", {len(unjudged)} unjudgeable: "
+                        + "; ".join(
+                            f"{job['job_id']} at "
+                            f"{job['elapsed_seconds'] / 60:.1f} min, no "
+                            f"completed tier-{args.tier} job of its size"
+                            for job in unjudged[:3])
+                        + ". Bounded by the hard budget only")
             print(f"   ok       {campaign.name}: "
-                  f"{len(report['running'])} running, none overdue")
+                  f"{len(report['running'])} running, none overdue{note}")
 
     # Said, rather than left as an empty section.
     #

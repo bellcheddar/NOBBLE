@@ -17920,3 +17920,185 @@ Writing a test that enumerates what is *not* covered means editing it every
 time coverage grows, which is the cost of asserting a scope rather than a
 property. Worth paying here: the alternative is a check whose silence about
 an arm nobody notices, which is the whole of F340.
+
+## F342. The statistic with no theory behind it has one, and it was in the code all along
+
+F318 recorded `convergence_score` as the only statistic on the right side of
+both paired tests and noted that nothing explained why. That stood as the
+weakest point in the result: a number that works for no stated reason is a
+number a reviewer is right to discount.
+
+It is explicable, and the explanation needed no new compute. Everything
+below is measured on the 158 scored pairs already on disk.
+
+### What the number is
+
+`max(0, 1 - mean pairwise peptide RMSD / convergence_scale_a)`, over every
+pair of seeds in **`ternary_unconstrained`**. That last part is the load
+bearing one and was already there: the published figure is taken from the
+arm with no pocket constraint, so nothing is imposing agreement between
+seeds. A conditioned job is given a pocket and would converge because it was
+told where to go.
+
+### The mechanism
+
+A molecular glue degron is a sequence motif read by the E3 surface, so it
+has a preferred pose and independent seeds find it. A scramble keeps the
+composition and the length exactly, being a permutation, and destroys the
+motif: there is no preferred pose to find, so the seeds scatter past the
+scale and the score floors at zero.
+
+Measured, split by modality and by whether the sequence is scrambled:
+
+| modality | sequence | n | median | at the floor |
+|---|---|---|---|---|
+| glue | real | 125 | 0.9516 | 17.6 per cent |
+| glue | scramble | 29 | 0.0000 | 82.8 per cent |
+| protac | real | 2 | 0.0000 | 100 per cent |
+| protac | scramble | 2 | 0.3140 | 50 per cent |
+
+The glue row against its scramble row is the whole of it: 0.9516 against
+0.0000, and 17.6 per cent floored against 82.8. Since a scramble is a
+permutation of its own parent, that difference cannot be length and cannot
+be composition.
+
+### The floor is a property, not a defect
+
+31 per cent of all pairs sit at exactly 0.0, which looked like saturation
+destroying the statistic's resolution. It is where the scrambles are: 82.8
+per cent of them, against 17.6 per cent of real glue degrons. A floored
+score means "the seeds disagreed by more than the scale", which is a
+measurement and not a missing value.
+
+It does cost the paired test some power, and the test already counts that
+correctly. 31 parent/scramble pairs give 25 parent, 1 scramble, **5 tied**,
+p = 0.00000. Every one of those five ties is parent 0.0 against scramble
+0.0, which is exactly what the mechanism predicts: where the parent does not
+converge either, there is nothing for the scramble to lose to. The sign test
+excludes ties rather than splitting them, which is why `trials <= 0` is a
+guard in `nobble/numeric.py` and not an acceptance.
+
+### The one counterexample is the one where the mechanism does not apply
+
+The single pair where the scramble beat its parent is `bench02_BRD4_VHL`:
+parent 0.0, scramble 0.6281. BRD4/VHL is a **PROTAC**, not a glue. A PROTAC
+substrate is recruited by a bivalent ligand rather than by a motif read off
+the E3 surface, so it has no sequence-specific preferred pose and the story
+above predicts nothing for it. Both real PROTAC pairs are floored and the
+other PROTAC, `bench03_BRD4_CRBN`, is among the five ties.
+
+**That is an observation and not a result.** There are two real PROTAC pairs
+in the campaign. Two. No inference about modality is available at that n,
+and the only honest statement is that the exception falls where the
+mechanism has nothing to say, which is weaker than it sounds and better than
+calling it noise.
+
+### What this does not explain
+
+22 of 125 real glue degrons are floored, including `bench01_GSPT1_CRBN`,
+which is a glue and sits at 0.0. So a real motif does not always produce a
+converged pose, and the mechanism is a tendency rather than a rule. Whether
+those 22 share anything (a shorter motif, a shallower groove, a worse MSA)
+is the obvious next question and is not answered here.
+
+### A note on how this was nearly got wrong
+
+The first split I computed labelled the scrambles by a `pair_id` prefix of
+`scramble_`. The prefix is `scr_`, so every scramble was counted as a real
+sequence and the glue row read n=154 with 29.9 per cent floored, which
+blends the two populations the comparison is about and would have hidden the
+entire effect. Caught because the scramble row came back empty, which a
+prefix that matches nothing does, and the constant is one `grep` away in
+`tools/scramble_paired_test.py`.
+
+Fifth guessed name of this session. The others were `M.Member`,
+`peptide_sequence`, `tier_files()["scores"]` and a phrase check against
+`findings.py`. The lesson is not subtle and the cost here would have been a
+published number rather than a failed test.
+
+## F343. The watchdog called a working job overdue, from a yardstick measured on jobs a fifth its size
+
+At 03:13:55Z the tier-2 watchdog reported
+`bench06_RBM39_DCAF15__ternary__conditioned__seed1__tier2` as **overdue:
+210.1 min against 69.4 min expected**. The job was alive at 98 per cent of a
+core and has since worked another half hour.
+
+The arithmetic is exact and the code's own comment already spelled it out:
+902s of tier-1 time times a measured refinement factor of 4.614 is 4,162s,
+and `overdue_multiple` of 3 puts the line at 12,485s, which is 208.1
+minutes. The job passed it while healthy.
+
+### Where 4.614 comes from, and why it does not belong here
+
+It is pooled over **successful** refinements. F270 is right that it must be:
+including bench06's own failures would give the band a factor drawn from
+the failures themselves, so a seventh identical failure would read as
+perfectly healthy.
+
+But 129 of this campaign's 149 refinements are under 200 tokens, so the
+pooled figure is effectively the smallest band's, and the measured bands are
+
+| band | factor from successes |
+|---|---|
+| 0-200 | 4.596 |
+| 200-400 | 6.107 |
+| 400-800 | 8.076 |
+| 800-1600 | none |
+
+bench06 is 1,223 tokens, in the band with nothing in it. The trend says the
+factor rises with size, so the borrowed figure is biased low exactly where
+it was borrowed, and the same band's factor including failures is 10.524:
+more than twice what the expectation used.
+
+`nobble/execute/watchdog.py` already names this error one path down, about
+the rate rather than the factor, and records when it borrows: "a rate
+borrowed from a different size" needs flagging because "a reader comparing
+an overdue verdict against the clock needs to know the yardstick was not
+measured at that size" (F74). The factor path had no such awareness and
+called 4.614 "the measured refinement factor" without qualification.
+
+### The fix is to decline, not to widen
+
+An expectation is now computed only where a job of that size has completed
+a refinement. Where none has, the report says
+`unmeasurable: no tier-2 job of this size (1223 tokens) has completed` and
+no overdue verdict is reached. F270's exclusion is untouched, and a test
+asserts it, because the tempting repair is to let the failures back in and
+that is the one thing that must not happen.
+
+The hard per-job bound still applies. F335 measured it at 4.1 times the real
+duration, which is what a stall margin is for, so declining the finer
+judgement costs a margin that was never doing the work.
+
+### I nearly shipped the same defect inside the fix
+
+With the expectation declined, the report printed
+`ok  campaign_...: 1 running, none overdue`. Identical whether the job was
+judged and found fine or could not be judged at all, which is F321 to F324
+in the tool whose entire purpose is to tell a working campaign from a stuck
+one. It now reads `1 running, none overdue, 1 unjudgeable: ... at 214.6 min,
+no completed tier-2 job of its size. Bounded by the hard budget only`.
+
+### Third appearance of one hazard, and the first that shipped
+
+F320 proposed tightening this same watchdog by the sample fraction; F329
+withdrew it, because F328 had falsified the premise and the tightened bound
+would have fallen below the real duration. F331 proposed pricing the per-job
+budget on the measured factor; F335 withdrew it, having priced the running
+job and found 141 seconds of headroom.
+
+Both of those were proposals I declined before they ran. This one was
+already in the code, reached by the route neither proposal took: not by
+tightening a bound but by borrowing the measurement the bound is built from.
+A bound is only as conservative as the thing it multiplies, and three times
+a figure drawn from jobs a fifth the size is not a margin.
+
+### What it did not cost
+
+The watchdog reports and does not kill: `watchdog_loop` prints on a non-zero
+exit and continues, so the job ran on. The cost was one false alarm in a log,
+and it would have been ten, one per bench06 refinement in this queue. A
+detector that cries wolf on healthy work is one that gets ignored, which is
+the reasoning `tools/clean_sync_conflicts.py` gives for removing rather than
+refusing: "a gate that fires constantly on a known-harmless artefact is a
+gate that gets turned off".
