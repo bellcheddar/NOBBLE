@@ -278,3 +278,67 @@ def test_every_published_path_has_a_recorded_source():
     is refused where the other is restored."""
     assert 'sources[f"structures/{published}"] = origin' in SOURCE
     assert 'sources[f"crystals/{pdb_id}.cif.gz"] = source' in SOURCE
+
+
+# --------------------------------------------------------------------------- #
+# A bundle with nothing in it is a refusal (F324)
+# --------------------------------------------------------------------------- #
+
+def test_the_build_refuses_a_bundle_with_no_scored_pair():
+    """The three refusals above ask whether something is wrong with what was
+    published. None asked whether anything was. An empty campaign wrote
+    empty documents, counted zero structures, passed the licensing check
+    because there was no chemistry to leak, printed the verification line and
+    returned 0."""
+    tree = ast.parse(SOURCE)
+    branches = [node for node in ast.walk(tree)
+                if isinstance(node, ast.If)
+                and isinstance(node.test, ast.Compare)
+                and isinstance(node.test.left, ast.Name)
+                and node.test.left.id == "published_pairs"]
+    assert branches, "no `published_pairs` refusal in the build"
+    returns = [node for node in ast.walk(branches[0])
+               if isinstance(node, ast.Return)]
+    assert any(isinstance(node.value, ast.Constant) and node.value.value == 1
+               for node in returns), "the refusal does not return non-zero"
+
+
+def test_the_refusal_reads_the_bundle_not_the_campaign():
+    """What the bundle holds, not what the build was given, which is the
+    distinction F309's check turned on."""
+    position = SOURCE.index("published_pairs = ")
+    line = SOURCE[position:position + 200]
+    assert 'summary.get("files"' in line
+    assert "scores.jsonl" in line
+
+
+def test_the_refusal_comes_before_the_licensing_verification():
+    """The licensing line passes trivially on an empty bundle, so printing
+    it first would claim the project's one verbatim guarantee over nothing,
+    which is the F218 shape its own comment warns about."""
+    assert SOURCE.index("published_pairs = ") < SOURCE.index(
+        "unattributable_chemistry_in(OUT)")
+
+
+def test_no_minimum_is_invented():
+    """One scored pair is a thin site and it is a site. A floor between one
+    and zero would be a number deciding whether a campaign publishes, and
+    CLAUDE.md puts those in config."""
+    position = SOURCE.index("published_pairs = ")
+    tail = SOURCE[position:position + 1200]
+    assert "published_pairs == 0" in tail
+    for invented in ("< 2", "< 3", "< 5", "< 10"):
+        assert f"published_pairs {invented}" not in tail
+
+
+def test_the_live_bundle_has_pairs_to_publish():
+    """The other half: the change must not refuse a bundle that is fine."""
+    import json
+
+    import pytest
+
+    atlas = ROOT / "deploy" / "atlas" / "ATLAS.json"
+    if not atlas.exists():
+        pytest.skip("no published bundle on this checkout")
+    summary = json.loads(atlas.read_text())
+    assert (summary.get("files") or {}).get("scores.jsonl", 0) > 0, summary

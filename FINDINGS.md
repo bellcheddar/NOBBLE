@@ -16204,3 +16204,54 @@ it. Whether it can build an empty bundle and report success is the same
 question and I have not asked it. Recorded rather than answered, because the
 suite is mid-run on the changes I have already made and adding a fourth
 before the third is verified is how F300 and F303 happened.
+
+## F324. Fourth instance, on the published bundle, and the licensing line passed over nothing
+
+F323 recorded the question and declined to answer it. The suite then turned
+out to have started before F321, so waiting on it bought nothing the targeted
+tests had not already bought, and the reason to defer went away.
+
+`deploy/build_atlas.py` has three refusals, all asking whether something is
+wrong with what was published: an input that disagrees with the code, a file
+the build did not write, a file the bundle references and lacks. **None asked
+whether anything was published.** An empty campaign wrote empty documents,
+counted zero structures, passed the licensing check because there was no
+chemistry to leak, printed
+
+```
+verified: every published SMILES has a redistributable provenance
+```
+
+and returned 0. `refresh.sh` then says "refreshed", and a deploy would rsync
+that over a working site.
+
+The licensing line is the part that stings. Its own comment records F218, the
+day it was printed unconditionally with nothing behind it, and says the fix
+was to put a check behind it. The check is real and it is vacuous on an empty
+bundle: no chemistry cannot be unattributable chemistry. So the project's one
+verbatim guarantee was being claimed over a bundle with nothing in it, by a
+line written to stop exactly that.
+
+A bundle with no scored pair is now a refusal, placed before the licensing
+verification so the vacuous pass is never printed. It reads `files["scores.
+jsonl"]`, the count this build wrote, rather than the campaign it was given,
+which is the distinction F309's check turned on.
+
+**No minimum is invented.** One scored pair is a thin site and it is a site;
+zero is a blank one. A floor between them would be a number deciding whether
+a campaign publishes, and CLAUDE.md puts those in config, so a test asserts
+the comparison stays `== 0`.
+
+### The four together
+
+F321 a stage, F322 three guards, F323 a gate, F324 the artefact. One shape:
+the empty answer and the clean answer were the same shape at the boundary.
+Four fixes, each giving the empty answer a shape of its own.
+
+That is the honest summary and here is the uncomfortable part of it. All four
+were reachable by asking one question of every step that reports success:
+*what does this print when it was given nothing?* I asked it of the design
+scan because F321 fell out of checking something else, and only then
+thought to ask it of the other three. The question is cheap, it is not in
+`CLAUDE.md`, and it found four defects in an afternoon on a project with
+three hundred findings about exactly this class.

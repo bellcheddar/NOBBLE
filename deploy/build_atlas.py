@@ -900,6 +900,34 @@ def main() -> int:
 
     structures = list((OUT / "structures").glob("*.cif"))
     summary["structures"] = len(structures)
+
+    # A bundle with nothing in it is a refusal, not a build (F324).
+    #
+    # The three refusals above all ask whether something is wrong with what
+    # was published. None asks whether anything was. An empty campaign wrote
+    # empty documents, counted zero structures, passed the licensing check
+    # because there was no chemistry to leak, printed the verification line
+    # and returned 0, after which `refresh.sh` says "refreshed" and a deploy
+    # would rsync it over a working site.
+    #
+    # `scores.jsonl` is the one the site cannot do without: every page reads
+    # a scored pair, and `files` already counts the rows this build wrote.
+    # Checked against that count rather than against the campaign, so this
+    # asks what the bundle holds rather than what the build was given, which
+    # is the distinction F309's check turned on.
+    #
+    # Deliberately not a minimum. One scored pair is a thin site and it is
+    # a site; zero is a blank one, and inventing a floor between them would
+    # be inventing the number that decides whether a campaign publishes.
+    published_pairs = int(summary.get("files", {}).get("scores.jsonl") or 0)
+    if published_pairs == 0:
+        print("REFUSING: the bundle holds no scored pair, so every page "
+              "would render empty. Nothing is wrong with what was "
+              "published; nothing was. The licensing check below passes "
+              "trivially on an empty bundle, which is why it is not the "
+              "thing to read.", file=sys.stderr)
+        return 1
+    summary["published_pairs"] = published_pairs
     summary["bytes"] = sum(p.stat().st_size for p in OUT.rglob("*") if p.is_file())
 
     # Written at the end, from what redact() actually did, rather than left
