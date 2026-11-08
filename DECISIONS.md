@@ -2658,3 +2658,51 @@ because the chain would move to the next stage.
 Reversal: the restart is the reversal. Kill the session and rerun
 `tools/run_chain.sh`; nothing is destroyed, because `run_job` clears a job's
 output directory before running it and `completed()` keys on `done`.
+
+## D-NOB-084. Stage the atlas build and swap, and refuse the deploy while a staged bundle exists
+
+F327 recorded that `deploy/build_atlas.py` clears `deploy/atlas` and then
+runs five checks that can only be decided from the bundle they have just
+written, so a refusal returns with the previous bundle gone and the new one
+partial. It also declined to fix it during a run, on the grounds that `OUT`
+is read in dozens of places.
+
+Done now because it needs no compute. The GPU is holding one job and the
+decision already recorded is to add no CPU load until it resolves, so the
+work available is work that has none: the change is one path derivation, one
+extracted function and one call, and the chain does not reach the atlas
+build for about fifty hours. F308's rule is satisfied: the chain holds no
+Python file open, and `build_atlas.py` is not among the scripts it is
+executing.
+
+`PUBLISHED` is the env-overridable path the atlas is served from. `OUT`,
+which the build already writes to everywhere, becomes its `_staging`
+sibling. The build's last line renames one over the other. Same parent, so
+publishing 798 MB is a syscall.
+
+`deploy/deploy.sh` refuses while `deploy/atlas_staging` exists. Not because
+the existing drift check was insufficient: it rebuilds the atlas and
+compares it leaf by leaf, so it refused a partial bundle already. Because of
+what it says. "The published atlas is not what the current code builds" is
+correct advice reached from the wrong cause, after a full rebuild has run,
+and it sends the reader to rebuild rather than to the refusal they should be
+reading.
+
+Alternatives considered. Move the five late refusals before the clear: not
+possible, they inspect the bundle. Rebuild automatically on a refusal: that
+publishes something nobody looked at, which `deploy.sh` already refuses to
+do for the same reason. Keep the staging directory inside the published one:
+then the rename is not a rename. Have the deploy warn rather than refuse:
+the droplet is already serving the bundle in question, so refusing to send
+it again changes nothing on the site, while sending it reports a successful
+deploy of an atlas the build declined to publish.
+
+Reversal: three edits, all in `deploy/build_atlas.py`. Set `OUT` to
+`PUBLISHED`, delete the `publish_staged` call, delete the `main` wrapper's
+message. `publish_staged` is then a no-op by its own first line, which is
+the case its test covers. The `.gitignore` entry and the `deploy.sh` guard
+are inert without a staging directory and can stay.
+
+Cost if wrong: 798 MB of transient disk against 684 GB free, and a staged
+directory left behind after a refusal, which is deliberate and is what the
+refusal message names.

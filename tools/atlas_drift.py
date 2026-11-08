@@ -171,7 +171,13 @@ def drift() -> dict:
             cwd=str(ROOT), capture_output=True, text=True, timeout=1800,
             env={**os.environ, "PYTHONPATH": str(ROOT),
                  "KMP_DUPLICATE_LIB_OK": "TRUE",
-                 "NOBBLE_ATLAS_OUT": workdir},
+                 # A directory inside the temporary one, not the
+                 # temporary one itself. The build stages into a sibling
+                 # of what this names and renames it into place (F327),
+                 # so passing `workdir` would stage 798 MB at
+                 # `<workdir>_staging`: outside the TemporaryDirectory
+                 # that cleans up, and outside the project root.
+                 "NOBBLE_ATLAS_OUT": str(Path(workdir) / "atlas")},
         )
         if completed.returncode != 0:
             # The first line of a refusal, not the last 160 characters of
@@ -187,7 +193,7 @@ def drift() -> dict:
                 headline = headline[:197] + "..."
             return {"status": "the rebuild refused: " + headline,
                     "moved": [], "campaign": campaign.name}
-        here, rebuilt = _leaves(PUBLISHED), _leaves(Path(workdir))
+        here, rebuilt = _leaves(PUBLISHED), _leaves(Path(workdir) / "atlas")
 
     shared = set(here) & set(rebuilt)
     differing = [

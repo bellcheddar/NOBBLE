@@ -54,6 +54,22 @@ if [[ ! -d deploy/atlas ]]; then
   echo "        python deploy/build_atlas.py" >&2
   exit 2
 fi
+# A staged bundle left on disk means the last build refused (F327). The
+# bundle below is therefore the previous one, verified but not current, and
+# the chain runs the build with `|| true` and then deploys, so without this
+# the refusal is a line in a log and the deploy carries on regardless.
+#
+# Refusing here costs nothing: the droplet is already serving this same
+# bundle, so declining to send it again changes nothing on the site, while
+# sending it would report a successful deploy of an atlas that the build
+# declined to publish.
+if [[ -d deploy/atlas_staging ]]; then
+  echo "deploy: REFUSING. deploy/atlas_staging exists, so the last atlas" >&2
+  echo "        build refused and deploy/atlas is the bundle before it." >&2
+  echo "        Read the refusal, then either fix it and rebuild, or remove" >&2
+  echo "        deploy/atlas_staging to deploy the previous bundle knowingly." >&2
+  exit 2
+fi
 
 # Clear the copies that are provably copies, then refuse on anything left.
 #

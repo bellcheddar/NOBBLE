@@ -140,10 +140,20 @@ def test_the_input_refusals_come_before_the_output_directory_is_cleared():
     between.
     """
     tree = ast.parse(BUILDER.read_text())
-    clears = [node for node in ast.walk(tree)
+    # Inside the build, not module-wide. `publish_staged` also calls rmtree,
+    # on the previous published bundle at the end of a successful run, and it
+    # is defined above the build: searching the whole module found that one
+    # and made this test assert that the input refusals precede a clear they
+    # have nothing to do with (F327). The clear this is about is the one that
+    # removes the directory the build is about to write.
+    build = next((node for node in ast.walk(tree)
+                  if isinstance(node, ast.FunctionDef)
+                  and node.name in ("_build", "main")), None)
+    assert build is not None, "the builder has no build function to read"
+    clears = [node for node in ast.walk(build)
               if isinstance(node, ast.Call)
               and "rmtree" in ast.unparse(node.func)]
-    assert clears, "the builder no longer clears its output directory"
+    assert clears, "the build no longer clears its output directory"
     first_clear = min(node.lineno for node in clears)
     branches = _refusing_branches()
     for test in BEFORE_THE_BUILD:

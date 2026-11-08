@@ -138,3 +138,60 @@ def test_the_deploy_still_refuses_after_cleaning():
     tail = script[script.index("clean_sync_conflicts.py"):]
     assert "the bundle holds iCloud sync-conflict copies" in tail
     assert "exit 2" in tail
+
+
+def test_a_root_holding_none_of_the_scanned_trees_is_not_clean(tmp_path):
+    """The defect this file's own subject had for as long as it existed
+    (F332).
+
+    `find` takes a project root and walks `root/deploy`, `root/campaigns`
+    and four more. `deploy/build_atlas.py` passed `OUT.parent`, which is
+    `deploy/`, so it looked for `deploy/deploy`, `deploy/campaigns`,
+    `deploy/nobble`, `deploy/tools`, `deploy/tests` and `deploy/data`,
+    found none of them, and reported a clean tree. Measured against the
+    real bundle: that call returned nothing while the project root returned
+    5,116. The clearing step inside the atlas build had never cleared
+    anything, and its comment said it was doing what `deploy.sh` does.
+
+    The command line was always right, because it passes the default root.
+    So this was invisible from the outside: the tool worked, and one caller
+    was holding it wrong in a way the tool could not report.
+    """
+    import pytest
+
+    empty = tmp_path / "nothing"
+    empty.mkdir()
+    with pytest.raises(NotADirectoryError):
+        cleaner.find(empty)
+
+
+def test_one_named_tree_can_be_asked_about_directly(tmp_path):
+    """What the atlas build wanted, and what it now calls."""
+    bundle = tmp_path / "atlas"
+    (bundle / "structures").mkdir(parents=True)
+    (bundle / "structures" / "job.cif").write_text("x")
+    (bundle / "structures" / "job 2.cif").write_text("x")
+    (bundle / "orphan 3.json").write_text("y")
+
+    removable, unmatched = cleaner.find_under(bundle)
+    assert [path.name for path in removable] == ["job 2.cif"]
+    assert [path.name for path in unmatched] == ["orphan 3.json"], (
+        "a conflict-shaped name with no plain sibling must be reported "
+        "rather than removed: it may be the only copy of a file"
+    )
+
+
+def test_asking_about_a_tree_that_is_not_there_is_not_a_clean_answer(tmp_path):
+    import pytest
+
+    with pytest.raises(NotADirectoryError):
+        cleaner.find_under(tmp_path / "absent")
+
+
+def test_the_atlas_build_names_the_bundle_rather_than_its_parent():
+    build = (ROOT / "deploy" / "build_atlas.py").read_text()
+    assert "clean_sync_conflicts.find_under(OUT)" in build, (
+        "the atlas build is back to passing a directory that `find` reads "
+        "as a project root, so its clearing step clears nothing"
+    )
+    assert "clean_sync_conflicts.find(OUT.parent)" not in build

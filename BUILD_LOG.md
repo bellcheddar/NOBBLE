@@ -1282,3 +1282,52 @@
 - 2026-11-08T22:40:00Z F331: checked what would actually stop the running job rather than what reports on it. The per-job budget is 39,000s or 10.83 hours, from tier2.job_budget multiplying the pair's worst tier-1 duration by tier2.scaling_bound, which is the sample ratio 25 plus the recycle ratio 3.33 times the potentials allowance 1.5, so 42.5 times tier 1, where the measured full-sample run took 10.5 times tier 1: the budget is four times the real duration. budget.scaling_range answers the same question better, preferring measured_scaling and falling back to the ratio only when no campaign has run, so job_budget ignores a measurement the project has. One-sided and small: a budget four times the duration never kills a job on course, which is F100's intent, and the cost is that a genuinely hung job burns 10.8 hours instead of about 4, with the watchdog reporting at 3.5 and acting on nothing by design. Not changed, and not for caution: the hundred queued rows already carry 39,000s so an edit changes nothing for them, it would apply to the next selection, and by then measured_scaling will have a real duration in the 800-to-1600 band so job_budget can prefer the measurement exactly as scaling_range does. Answered what I set out to check: nothing stops this job before 10.83 hours and the stage is not at risk.
 - 2026-11-08T23:00:00Z F331b: named the confound in my own duration reasoning. F325 and F328 compare the running job against 9,492s for the same job at full sampling, and the two were not measured under the same conditions: over its two hours I ran two full suites of 24 and 19 minutes, a re-score with PLIP at about 20 minutes, and a couple of dozen targeted runs, all on this machine. Measured rather than worried about: 24 cores, total CPU in use 179 per cent, Boltz at 94.6 per cent of one core, and nothing I ran touched the GPU since every tool and test today was CPU-only, so a process using about one core of 24 was not being starved. Real in principle and small on the evidence; what I cannot rule out is memory-bandwidth contention, which a core count does not measure and I have no instrument for. Worth writing because F325's 1.95 times and F328's table are in PROGRESS and two findings, and a reader comparing them with a later clean measurement should know the conditions differed. The clean comparison is free: the nine bench06 jobs behind this one will run while nothing else does.
 - 2026-11-08T23:10:00Z Holding off further CPU work deliberately, for a reason rather than for want of ideas. F331b named the confound in my own duration figures: the job's two hours overlapped two full suites, a PLIP re-score and a couple of dozen targeted runs. The machine is now at 139 per cent of 24 cores with Boltz holding most of it, which is the condition under which the rest of this job's duration is a clean measurement, and that duration will price the next tier-2 selection (F331). Continuing to run analyses would re-introduce the confound I have just documented, so the highest-value action is to add no load. Read-only checks only until the job resolves.
+
+- `2026-11-08T02:05Z` F327 written while the GPU holds one job. The atlas
+  build stages into `deploy/atlas_staging` and renames into place only after
+  the last of its nine checks has passed, so a refusal leaves the published
+  bundle as the one that passed those same checks on the run that published
+  it. `publish_staged(staged, published)` extracted so the move is testable
+  on real directories; `deploy/deploy.sh` refuses while a staged bundle
+  exists, before it opens a connection to the droplet; `deploy/atlas_staging`
+  added to `.gitignore` because a second 798 MB copy is what F303 was.
+- `2026-11-08T02:05Z` Found in the same change, by reading it:
+  `tools/atlas_drift.py` set `NOBBLE_ATLAS_OUT` to a `TemporaryDirectory`
+  itself, which would have staged 798 MB at `<tmpdir>_staging`, outside both
+  the directory that cleans up and the project root. Now a named bundle
+  inside it. The two test callers were already correct.
+- `2026-11-08T02:05Z` One correction to F327: it credited `refresh.sh`
+  exiting 1 with stopping the deploy, and `run_chain.sh` discards that exit
+  code one line later. What actually refused was `tools/atlas_drift.py`
+  comparing the bundle against a rebuild. F327's conclusion stood; its
+  mechanism did not. Recorded as F327d.
+- `2026-11-08T02:05Z` Two project tests caught the refactor, both correctly:
+  the rmtree-ordering test was reading the new `publish_staged` clear as the
+  build's own, and the integer-cutoff allowlist held two entries for
+  `trials <= 0` left behind when `sign_test` moved into `nobble/numeric.py`.
+  Both fixed. Three em dashes in FINDINGS.md fixed with them.
+- `2026-11-08T02:05Z` Job 1 of 100 still running at 2h21m, 9 samples, 1,223
+  tokens. Machine at 4.2 of 24 cores with Boltz holding essentially all of
+  it, which is the clean window F331b asked for.
+- `2026-11-08T02:35Z` F332. Counted conflict copies two ways and got 5,103
+  from `find` against 0 from `tools/clean_sync_conflicts.py`. My call was
+  wrong, and `deploy/build_atlas.py` was wrong the same way: `find(root)`
+  walks `root/deploy`, `root/campaigns` and four more, and the build passed
+  `OUT.parent`, so it looked for `deploy/deploy` and five siblings and found
+  none. The build's clearing step has never cleared a file. `find_under()`
+  added for one named tree; `find()` now raises on a root holding none of
+  the six, because `([], [])` over nothing examined is the clean answer's
+  shape. The command line was always correct, which is why nothing noticed.
+- `2026-11-08T02:50Z` Correction to the 02:35Z entry's premise. I fixed
+  `relative_to` on the refusal path saying the run in flight was about to
+  hit it. It was not: `test_the_atlas_build_refuses_rather_than_publishing`
+  skips on a clean campaign, and no test in the suite reaches a refusal
+  against a temporary bundle. The fix is right and was latent, not observed.
+  The other half of the correction is in the project's favour: the three
+  real builds that did spawn came from `test_redaction_count` and
+  `test_design_parent_provenance`, which exercise the staging directory and
+  the rename on the success path end to end, so the verification I listed
+  as absent was partly already there.
+- `2026-11-08T02:50Z` Sweep green: 276 passed, 11 skipped over the atlas,
+  deploy, bundle, cutoff, licensing, redaction, conflict and tool tests.
+  Re-ran the eight files touched after it started: 121 passed, 2 skipped.

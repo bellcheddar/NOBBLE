@@ -34,3 +34,10 @@ package.json
 qc/screenshots/
 qc/qc_report.json
 nobble/app/static/vendor/
+
+# The atlas build stages into deploy/atlas_staging and renames it into
+# place only once every refusal has passed (F327). A refused run leaves it
+# there to be read. It is never published and never committed: the bundle
+# is 2,515 files and 798 MB, and `git add -A` over a second copy of it is
+# the failure F303 recorded.
+deploy/atlas_staging/

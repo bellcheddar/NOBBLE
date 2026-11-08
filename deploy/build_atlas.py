@@ -35,7 +35,25 @@ from nobble.execute.campaign import latest  # noqa: E402
 # check that the test catches it let the build run, and it rebuilt the
 # published atlas from a campaign with 54 of 2360 jobs scored. Recoverable,
 # because the atlas is tracked, but a check should not be able to do that.
-OUT = Path(os.environ.get("NOBBLE_ATLAS_OUT") or ROOT / "deploy" / "atlas")
+PUBLISHED = Path(os.environ.get("NOBBLE_ATLAS_OUT")
+                 or ROOT / "deploy" / "atlas")
+
+# The build writes here and the bundle is moved into place only once every
+# refusal below has passed (F327). Every refusal after the clear used to
+# leave `deploy/atlas` as whatever the build had got to: the previous
+# bundle gone and the new one partial.
+#
+# Not a site outage. `tools/atlas_drift.py` compares the published bundle
+# against a fresh rebuild before the rsync, so a partial bundle failed
+# that and the deploy refused: the live site kept serving what it had.
+# What it cost was every deploy until a build succeeded, and the local
+# bundle that five of the nine checks need in order to say anything.
+# A refusal is the case where the published bundle most needs to be the
+# one that was already verified, which is the opposite of what it got.
+#
+# Same parent, so the publish is a rename within one filesystem rather
+# than a copy: 798 MB staged, moved in a syscall.
+OUT = PUBLISHED.with_name(PUBLISHED.name + "_staging")
 
 # Ligand records whose chemistry came from PROTAC-DB. Keyed by the encoding the
 # resolver recorded, so a CCD-sourced ligand is never touched.
@@ -202,7 +220,42 @@ def _relocate(node):
     return node
 
 
-def main() -> int:
+def _shown(path: Path) -> str:
+    """A project-relative path where there is one, the full path otherwise.
+
+    `NOBBLE_ATLAS_OUT` points at a temporary directory in three callers, so
+    `relative_to(ROOT)` raises there. The message this feeds is printed on
+    the refusal path, which is the one place a traceback would replace the
+    reason for the refusal with a reason about printing it: the first run
+    after this was written was a refusal against a `tmp_path` bundle, and
+    it would have exited 1 with a ValueError instead of the refusal.
+    """
+    try:
+        return str(path.relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
+
+def publish_staged(staged: Path, published: Path) -> None:
+    """Move the staged bundle into the published location.
+
+    Taken as arguments rather than read off the module so that the move
+    itself can be exercised on two real directories, which is the part
+    with semantics: that the previous bundle is gone afterwards, that the
+    staged one is in its place, and that nothing is left staged. The
+    guarantee it exists for, that a refusal never reaches here, is a
+    property of where this is called from and is asserted against the
+    source in `test_a_refused_build_leaves_the_published_bundle.py`.
+    """
+    if staged == published:
+        return
+    if published.exists():
+        shutil.rmtree(published)
+    staged.rename(published)
+    print(f"published: {published}")
+
+
+def _build() -> int:
     # Takes the campaign to publish. It used to hard-code latest("benchmark"),
     # which meant the main campaign could run for 52 hours and never reach the
     # site: refresh.sh accepted a campaign, scored it, then called this with
@@ -344,6 +397,9 @@ def main() -> int:
               "fine.", file=sys.stderr)
         return 1
 
+    # The staging directory, not the published one. A previous run that
+    # refused left its partial bundle here, which is the thing to inspect
+    # and not the thing to build on, so it goes.
     if OUT.exists():
         shutil.rmtree(OUT)
     # What the build means to put in each published directory, so that
@@ -840,7 +896,13 @@ def main() -> int:
         try:
             import clean_sync_conflicts
 
-            removable, _unmatched = clean_sync_conflicts.find(OUT.parent)
+            # The bundle, named directly. This passed `OUT.parent` to
+            # `find`, which treats its argument as a project root and so
+            # looked for `deploy/deploy`, `deploy/campaigns` and four
+            # more: none exist, and it reported a clean tree every time
+            # this ran (F332). `find_under` walks the one tree, which is
+            # also what the `OUT in path.parents` filter below was for.
+            removable, _unmatched = clean_sync_conflicts.find_under(OUT)
             for path in removable:
                 if OUT in path.parents:
                     path.unlink()
@@ -1010,7 +1072,32 @@ def main() -> int:
         return 1
     print(f"\nverified: every published SMILES has a redistributable "
           f"provenance ({_verification_scope})")
+
+    # Published last, and only here. Everything above this line ran against
+    # the staged bundle, so a refusal returned with `PUBLISHED` still
+    # holding the bundle that passed these same checks last time.
+    publish_staged(OUT, PUBLISHED)
     return 0
+
+
+def main() -> int:
+    """`_build()` plus one line saying where a refused bundle went.
+
+    Without it the operator reads a refusal and looks at `deploy/atlas`,
+    which is deliberately untouched and therefore looks fine: the evidence
+    the refusal is about is in the staging directory, and nothing said so.
+    The same shape as the empty-answer rule, one level up: a message that
+    does not distinguish "refused and the old bundle stands" from "refused
+    and nothing was built" leaves the reader to guess which.
+    """
+    code = _build()
+    if code != 0 and OUT.exists() and OUT != PUBLISHED:
+        files = sum(1 for path in OUT.rglob("*") if path.is_file())
+        print(f"\nthe refused bundle is staged at {_shown(OUT)} "
+              f"({files} file(s)) and is what the refusal above is about. "
+              f"{_shown(PUBLISHED)} is untouched and still holds "
+              "the bundle that last passed these checks.", file=sys.stderr)
+    return code
 
 
 if __name__ == "__main__":

@@ -543,16 +543,16 @@ def test_the_scan_finds_something_to_judge():
 # Measured before the allowlist was written. Seven integer comparisons exist
 # across the three directories and six are not cutoffs, which is why the
 # allowlist is by comparison rather than by file: a file may hold both.
+#
+# `trials <= 0` was allowed here twice, once per tool, while `sign_test` was
+# copied into both. It is now one function in `nobble/numeric.py`, which this
+# scan does not cover, so both allowances went stale and this test said so.
+# The reasoning is kept because the guard still exists and is still not a
+# cutoff: with no decisive comparison there is no exact binomial to compute,
+# so it returns None, and a statistic whose comparisons all tied reads as
+# untested rather than as tested and unremarkable. Returning 1.0 instead
+# would report a null result where none was measured.
 INTEGER_ALLOWED = {
-    "tools/matched_arm_stratified.py:trials <= 0":
-        "nothing to test, which returns None rather than a p. Not an "
-        "acceptance: with no decisive comparison there is no exact binomial "
-        "to compute, and returning 1.0 instead would report a null result "
-        "where none was measured",
-    "tools/scramble_paired_test.py:trials <= 0":
-        "the same guard in the same sign test. Both return None so a "
-        "statistic whose comparisons all tied reads as untested rather than "
-        "as tested and unremarkable",
     "tools/bridge_on_crystals.py:len(accessions) > 1":
         "whether a construct is multi-chain, which decides which deposited "
         "chains the crystal comparator reads, not an acceptance applied to "

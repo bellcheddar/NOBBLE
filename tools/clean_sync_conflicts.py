@@ -74,18 +74,53 @@ def plain_sibling(path: Path) -> Path | None:
     return candidate if candidate.exists() else None
 
 
-def find(root: Path | None = None) -> tuple[list[Path], list[Path]]:
-    """(removable, unmatched): conflict copies with and without a sibling."""
-    root = root or ROOT
+def find_under(directory: Path) -> tuple[list[Path], list[Path]]:
+    """(removable, unmatched) for one tree, named directly.
+
+    `find` below takes a project root and derives the trees to walk, which
+    is right for the command line and wrong for a caller that already knows
+    the one directory it means: pointing `find` at `deploy/` made it look
+    for `deploy/deploy`, `deploy/campaigns` and four more, find none of
+    them, and report a clean tree (F332).
+
+    An absent directory raises rather than returning nothing, for the same
+    reason: a caller asking about a tree that is not there has not been
+    told that it is clean.
+    """
+    if not directory.is_dir():
+        raise NotADirectoryError(
+            f"{directory} is not a directory, so there is nothing to call "
+            "clean or otherwise"
+        )
     removable, unmatched = [], []
-    for name in SCANNED:
-        directory = root / name
-        if not directory.is_dir():
+    for path in directory.rglob("*"):
+        if not path.is_file() or not CONFLICT.search(path.name):
             continue
-        for path in directory.rglob("*"):
-            if not path.is_file() or not CONFLICT.search(path.name):
-                continue
-            (removable if plain_sibling(path) else unmatched).append(path)
+        (removable if plain_sibling(path) else unmatched).append(path)
+    return sorted(removable), sorted(unmatched)
+
+
+def find(root: Path | None = None) -> tuple[list[Path], list[Path]]:
+    """(removable, unmatched): conflict copies with and without a sibling.
+
+    `root` is the project root and the trees in SCANNED are walked under
+    it. A root holding none of them raises: the whole point of this tool is
+    to answer whether a tree is clean, and `([], [])` over nothing examined
+    is that answer's shape without its content.
+    """
+    root = root or ROOT
+    present = [root / name for name in SCANNED if (root / name).is_dir()]
+    if not present:
+        raise NotADirectoryError(
+            f"{root} holds none of {SCANNED}, so a clean answer from here "
+            "would mean nothing was examined. Pass the project root, or "
+            "call find_under() with the one directory you mean."
+        )
+    removable, unmatched = [], []
+    for directory in present:
+        found, missing = find_under(directory)
+        removable.extend(found)
+        unmatched.extend(missing)
     return sorted(removable), sorted(unmatched)
 
 

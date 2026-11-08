@@ -16336,8 +16336,8 @@ run in about fifty hours.
 `tools/run_design.sh` already gated on the scorer's exit code before today:
 `if [ "$SCORE_CODE" -ne 0 ]` then refuse and exit 1. With F322's fix a design
 campaign whose jobs all failed now scores nothing, the scorer exits 3, and
-that guard fires with "scoring failed (exit 3), so the lift below would..."
-— one step earlier than F321's check and with a clearer cause.
+that guard fires with "scoring failed (exit 3), so the lift below would...":
+one step earlier than F321's check and with a clearer cause.
 
 So the two catch different things:
 
@@ -16601,8 +16601,8 @@ analyses read a whole campaign again.
 fourth, `test_atlas_drift::test_the_check_passes_while_only_costs_move`,
 skips with "no recomputed values to distinguish from drift", which is its own
 documented precondition and not a failure. None was an independent defect, so
-the attribution was right and the alternative — that something else was also
-broken — is ruled out rather than assumed.
+the attribution was right and the alternative (that something else was also
+broken) is ruled out rather than assumed.
 
 **The generalisation came back negative.** Thirteen test files invoke a
 writing tool as a subprocess, and I checked the ones that write at all:
@@ -16614,8 +16614,8 @@ disciplined about it and I was the exception, which is the opposite of the
 conclusion I would have drawn from my own afternoon.
 
 That negative result is worth as much as a defect would have been. It says
-the project does not have a culture of careless tests that I happened to join
-— it says I introduced one, and the fix is local rather than systemic.
+the project does not have a culture of careless tests that I happened to
+join; it says I introduced one, and the fix is local rather than systemic.
 
 So no project-wide guard is written. `test_no_test_in_this_file_scores_the_
 live_campaign` covers the file where it happened, which is where the next
@@ -16773,6 +16773,91 @@ refusals.
 Three instances found by failure, two by looking. That ratio is the argument
 for naming a pattern the moment it repeats rather than after it has cost
 something three times.
+
+### F327d. The remedy written, and the trap it set caught in the same change
+
+F327 named stage-and-swap and declined to write it, on the grounds that
+`OUT` is read in dozens of places and the day had already produced four of
+my own defects in that file. The GPU is now holding a single job for two
+hours and the one thing worth doing is work that adds no load, which is what
+this is: no compute, one rename, and the chain does not reach the atlas
+build for about fifty hours.
+
+**What it is.** `PUBLISHED` is the env-overridable path the atlas is served
+from. `OUT`, which the whole build already writes to, becomes
+`PUBLISHED.with_name(PUBLISHED.name + "_staging")`. The last line of the
+build is `publish_staged(OUT, PUBLISHED)`, which removes the previous bundle
+and renames the staged one over it. Same parent, so publishing 798 MB is a
+syscall and not a copy. Every refusal now returns with the published bundle
+untouched, and the severity question F327 raised, that a missing crystal
+costs a 404 and losing the bundle costs the site, stops needing an answer.
+
+**One correction to F327.** It said `refresh.sh` exits 1 on a non-zero
+build, "so nothing is deployed". True of `refresh.sh`, which deploys
+nothing. False of the path that runs: `tools/run_chain.sh` calls it as
+`bash tools/refresh.sh "$CAMPAIGN" || true` and then runs the deploy stage
+regardless. The exit code it was relying on is discarded one line later.
+
+That does not make it an outage, and I wrote it down as one before checking.
+`deploy/deploy.sh` runs `tools/atlas_drift.py` before the rsync, which
+rebuilds the atlas and compares it leaf by leaf, and a partial bundle fails
+that comparison. So the deploy refused anyway. F327's own conclusion, that
+the deployment topology is what saved it, was right; the mechanism it named
+was not the one doing the saving. The cost was every deploy until a build
+succeeded, plus the local bundle that five of the nine checks need in order
+to say anything at all.
+
+`deploy.sh` now refuses on a staged bundle directly, before it opens a
+connection to the droplet. Not because the drift check was insufficient but
+because of what it says: "the published atlas is not what the current code
+builds" is correct advice reached from the wrong cause, and it is reached
+only after a full rebuild has run.
+
+**The trap, found by reading rather than by running.** Staging is a sibling
+of what `NOBBLE_ATLAS_OUT` names, so a caller that points it at a container
+directory instead of at a bundle gets the bundle staged beside the
+container. `tools/atlas_drift.py` pointed it at a `TemporaryDirectory`
+itself. That would have written 798 MB to `<tmpdir>_staging`: outside the
+directory that cleans up, and outside the project root, which the build may
+not leave. The two test callers already passed `tmp_path / "atlas"` and were
+already right.
+
+Found before running it, which matters here more than usual, because running
+it is what writes the 798 MB. The drift check is also the one caller that
+rebuilds the whole atlas, so it is the worst possible place for that
+mistake and the only place it was made.
+
+**What I tried first and threw away.** A sweep asserting that every caller
+names a bundle rather than a container. The value is usually a variable
+assigned on an earlier line, so a line-shaped check cannot resolve it: mine
+reported the two correct callers as offenders, alongside its own regex. A
+wrong check for a rare mistake is worse than a named check for the one place
+it happened, so what is in the suite is the named one, and the docstring
+says so rather than implying a sweep.
+
+**Checked.** The move's semantics on real directories, including publishing
+onto a bundle with files the new one does not have, publishing where there
+is nothing to replace, and the case that must not delete what it was asked
+to publish. Then, against the source, that exactly one call publishes and
+that no `return 1` follows it, which is the whole guarantee and is a
+property of call order rather than of anything the move does.
+
+Not checked: an end-to-end refusal of the real builder against a real
+campaign, which needs inputs that pass four earlier refusals and then fail a
+late one. Named in the test file rather than quietly absent.
+
+**Two tests of the project's own caught the refactor, both correctly.**
+`test_the_input_refusals_come_before_the_output_directory_is_cleared`
+searched the module for `rmtree` and took the first by line number, which
+after the refactor is the one in `publish_staged`, defined above the build:
+it was asserting that the input refusals precede a clear they have nothing
+to do with. Now scoped to the build function. And
+`test_the_integer_allowlist_outside_the_package_is_not_stale` failed on two
+allowances for `trials <= 0`, one per tool, left behind when `sign_test`
+moved into `nobble/numeric.py`: the guard is still there and still not a
+cutoff, so the reasoning is kept as a comment and the stale keys are gone.
+Neither was a defect in the change. Both were the suite doing what it is
+for.
 
 ## F328. F325's window is falsified at the top, and the reduction buys much less than I said
 
@@ -17047,3 +17132,81 @@ under unknown load, and neither is a controlled figure.
 
 The clean comparison is available for free: the nine bench06 jobs behind this
 one will run while nothing else does, and `measured_scaling` will pool them.
+
+## F332. The atlas build's conflict clearing has never cleared anything
+
+Found by disagreeing with myself. Looking at the running job's output
+directory I saw conflict copies, counted them two ways, and got 5,103 from
+`find` and 0 from the project's own `tools/clean_sync_conflicts.py`. Two
+detectors of one class of file, disagreeing by five thousand.
+
+My call was the wrong one: `find(root)` takes a **project root** and walks
+`root/deploy`, `root/campaigns`, `root/nobble`, `root/tools`, `root/tests`
+and `root/data`. I passed `campaigns`, so it looked for
+`campaigns/campaigns` and five siblings, found none, and returned
+`([], [])`.
+
+Which is the finding, because `deploy/build_atlas.py` was holding it the
+same way:
+
+```python
+removable, _unmatched = clean_sync_conflicts.find(OUT.parent)
+```
+
+`OUT.parent` is `deploy/`. So the build looked for `deploy/deploy`,
+`deploy/campaigns`, `deploy/nobble`, `deploy/tools`, `deploy/tests` and
+`deploy/data`. Measured, not inferred: that call returns 0 while the project
+root returns 5,116, and the six paths it tries do not exist.
+
+**The clearing step inside the atlas build has never cleared a file.** Its
+comment says it takes "the same two steps `deploy/deploy.sh` takes before
+publishing". `deploy.sh` and `refresh.sh` both call the command line, which
+passes the default root, so both are correct and always have been. The
+defect is in the one caller that named a directory, and the tool had no way
+to tell it.
+
+### Why nothing noticed
+
+`([], [])` is what a clean tree returns. It is also what a tree that was
+never examined returns. That is the project's own rule, F321 to F324, inside
+the tool written to clean up after the thing those findings were about:
+a step that reports success reports the same thing when given nothing.
+
+The step is also conditional on `extra` being non-empty, so on the ordinary
+run where no copies have arrived it does nothing and should do nothing.
+It only runs when there is something to clear, which is exactly when it
+was failing silently, and then the refusal below it fires with the full
+5,103 instead of none. Until this morning that refusal destroyed the
+bundle (F327), so the two defects compounded: a clearing step that cleared
+nothing, followed by a refusal that deleted the atlas rather than
+publishing it.
+
+### The fix, in the tool rather than the caller
+
+Fixing only the caller leaves the next one free to make the same mistake, so
+both ends move.
+
+`find_under(directory)` walks one named tree. That is what the build wanted
+and what it now calls, and it is also what the `if OUT in path.parents`
+filter on the next line was for. An absent directory raises.
+
+`find(root)` now raises when the root holds none of the six trees, because
+a clean answer from there means nothing was examined. The command line is
+unaffected: it passes the default root, which holds all six.
+
+Measured after: `find_under(deploy/atlas)` returns 5,103 removable and 0
+unmatched, `find(deploy/)` raises with the six names it was looking for, and
+`find(ROOT)` returns 5,116 and 0, unchanged.
+
+### Two things this does not say
+
+The 5,103 copies in the bundle are not a defect. They are iCloud
+reconciling a 798 MB rebuild, they all have plain siblings, none is the only
+copy of anything, and `deploy.sh` clears them from the command line before
+publishing. That path works.
+
+And this is not what F304 was about. F304 was concluding a cause without
+searching FINDINGS; the cause of the copies is recorded in F173 and F186 and
+is not in question here. What is new is that one of the three places that
+clears them was a no-op.
+

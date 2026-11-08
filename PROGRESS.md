@@ -1544,17 +1544,29 @@ before `check_registered.py` will call it.
 
 ## Deferred on purpose, with the reason and the moment
 
-Three things are known, costed and not done. They were scattered across
-three findings, which meant a successor had to read FINDINGS to find them.
+Two things are known, costed and not done, and one that was is done. They
+were scattered across findings, which meant a successor had to read FINDINGS
+to find them.
 
-**Between stages: stage the atlas build and swap (F327).** `build_atlas`
-clears `deploy/atlas` at line 348 and five of its ten refusals come after
-that, three of them added today, so a refusal leaves no bundle. Only the
-deployment topology saves it: `refresh.sh` exits on a non-zero build and the
-rsync is separate, so the live site keeps serving. Build into a sibling and
-rename over `OUT` after every check passes. Not done during a run: `OUT` is
-read in dozens of places and the function has ten refusal paths, so it is a
-restructuring of the main path rather than a branch.
+**Done, 2026-11-08: stage the atlas build and swap (F327, F327d).** The
+build writes `deploy/atlas_staging` and renames it over `deploy/atlas` only
+after the last of its nine checks has passed, so a refusal leaves the bundle
+that passed those same checks standing. `deploy/deploy.sh` refuses while a
+staged bundle exists, before it opens a connection to the droplet, and
+`deploy/atlas_staging` is in `.gitignore`.
+
+Written during the hold on CPU work, because it needed none: no compute, one
+rename, and the chain does not reach the atlas build for about fifty hours.
+F327's reason for deferring it was that `OUT` is read in dozens of places,
+which held: the change is one derivation, one extracted function and one
+call. What it cost was the trap it set, found by reading rather than by
+running, which is in F327d along with a correction to F327's account of what
+had been saving the deploy.
+
+Not verified end to end: a refusal of the real builder against a real
+campaign needs inputs that pass four earlier refusals and then fail a late
+one. Named in `tests/test_a_refused_build_leaves_the_published_bundle.py`
+rather than quietly absent, and worth doing when the GPU is free.
 
 **Withdrawn: tightening the watchdog (F320, withdrawn by F329).** F320
 read the bound as loose because it assumed a reduced job finishes in 9/25 of
