@@ -56,6 +56,34 @@ def median_of(values) -> float | None:
     return present[len(present) // 2]
 
 
+def sign_test(wins: int, trials: int) -> float | None:
+    """Two-sided exact binomial p at 0.5, or None with nothing to test.
+
+    Summed from the smaller tail and doubled, which is the standard
+    two-sided convention for a symmetric null, and exact rather than
+    approximated: the project's paired designs are 31 and 24 comparisons,
+    which is not a regime for a normal approximation, and the tails are what
+    the answer turns on.
+
+    `None` for no decisive comparison, not 1.0. A statistic whose every
+    comparison tied was not tested, and reporting a p of 1 would say it was
+    tested and unremarkable (F322's distinction, in arithmetic).
+
+    Here rather than in either tool that uses it. `tools/scramble_paired_
+    test.py` and `tools/matched_arm_stratified.py` each had their own copy,
+    written an hour apart by me, which is F154's one-thing-spelled-twice: two
+    exact binomials that could disagree, both feeding figures the About page
+    prints (F326).
+    """
+    import math
+
+    if trials <= 0:
+        return None
+    smaller = min(wins, trials - wins)
+    tail = sum(math.comb(trials, k) for k in range(smaller + 1))
+    return min(1.0, 2 * tail / 2 ** trials)
+
+
 def mann_whitney_auc(positives, negatives) -> float:
     """ROC area as the Mann-Whitney statistic, with ties at half a win.
 

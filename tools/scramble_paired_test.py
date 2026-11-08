@@ -39,24 +39,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from nobble import paths                                   # noqa: E402
 from nobble.execute.campaign import latest                 # noqa: E402
+from nobble import numeric as _numeric                      # noqa: E402
 from nobble.score import weights as W                      # noqa: E402
 
 SCRAMBLE_PREFIX = "scr_"
 
 
-def sign_test(wins: int, trials: int) -> float | None:
-    """Two-sided exact binomial p at 0.5, or None with nothing to test.
-
-    Summed from the smaller tail and doubled, which is the standard
-    two-sided convention for a symmetric null and exact rather than
-    approximated: 31 comparisons is not a regime for a normal approximation,
-    and the tails are what the answer turns on.
-    """
-    if trials <= 0:
-        return None
-    smaller = min(wins, trials - wins)
-    tail = sum(math.comb(trials, k) for k in range(smaller + 1))
-    return min(1.0, 2 * tail / 2 ** trials)
+# `sign_test` lives in `nobble/numeric.py`, beside the project's other
+# hand-computed statistic. Two copies of one exact binomial is F154's
+# shape, and I wrote them an hour apart (F326).
+sign_test = _numeric.sign_test
 
 
 def pairs_of(rows: dict) -> list[tuple[str, str]]:

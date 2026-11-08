@@ -48,17 +48,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from nobble import paths                                   # noqa: E402
 from nobble.execute.campaign import latest                 # noqa: E402
+from nobble import numeric as _numeric                      # noqa: E402
 from nobble.score import weights as W                      # noqa: E402
 
 LIBRARY = Path("data/manifests/library.jsonl")
 
 
-def sign_test(wins: int, trials: int) -> float | None:
-    if trials <= 0:
-        return None
-    smaller = min(wins, trials - wins)
-    tail = sum(math.comb(trials, k) for k in range(smaller + 1))
-    return min(1.0, 2 * tail / 2 ** trials)
+# `sign_test` lives in `nobble/numeric.py`, beside the project's other
+# hand-computed statistic. Two copies of one exact binomial is F154's
+# shape, and I wrote them an hour apart (F326).
+sign_test = _numeric.sign_test
 
 
 def blocks_of(rows: dict, source: str = "sievers_zf") -> dict[str, list[str]]:

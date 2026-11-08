@@ -16391,3 +16391,63 @@ The measurement to take when it resolves: its `seconds`, against 3,417 for
 the linear model and 9,492 for the full-sample run. If it completes at all,
 F306 is supported and this is the first datum on what reduced sampling
 actually costs.
+
+## F326. I truncated the campaign's scores to one row while verifying an exit code
+
+Two things, and the second is the serious one.
+
+### The duplication
+
+I wrote `sign_test` twice, an hour apart, in
+`tools/scramble_paired_test.py` and `tools/matched_arm_stratified.py`. Two
+exact binomials that could disagree, both feeding figures the About page
+prints, which is F154's one-thing-spelled-twice committed by someone who had
+spent the morning citing F154. It now lives once in `nobble/numeric.py`,
+beside `mann_whitney_auc`, which is the project's other hand-computed
+statistic, and both tools alias it.
+
+### The damage
+
+Moving it, the two tools came back reporting **zero** pairs and zero blocks.
+The cause was not the move. `campaigns/campaign_20261104T004632Z/scores.jsonl`
+held one row instead of 158, written at 20:00.
+
+At 20:00 I ran, to check F322's exit codes:
+
+```
+python -m nobble.score.run --campaign campaigns/campaign_20261104T004632Z \
+    --tier 1 --no-plip --limit 1
+```
+
+`--limit 1` scores one pair **and writes `scores.jsonl`**. I pointed a
+writing command with a truncating flag at the live campaign to read an exit
+code, and lost 157 rows.
+
+What was not lost, checked before anything else: `results.jsonl` is intact at
+2,360 rows, so the scores are derivable; `deploy/atlas/scores.jsonl` has all
+158 from the 18:43 build, though it is redacted and path-rewritten and so not
+a drop-in; `scores.jsonl.bak` has 158 from 6 November, which predates today's
+corrections and is therefore stale. Recovery is a re-score from the results,
+which is running, and the truncated file is kept in the scratchpad as the
+record.
+
+**The findings are unaffected and I checked rather than assumed.** F316 ran
+at about 09:25 and F317 at about 10:25, both against the intact file, and the
+atlas was built at 18:43, also before. Nothing published rests on the
+truncated state.
+
+### What the lesson actually is
+
+Not "be careful". The specific fact is that **`nobble.score.run` writes
+whatever it scores, so every flag that narrows what it scores is a
+truncating flag.** `--limit` reads as a sampling flag and behaves as a
+destructive one. I would have been safe with a copy of the campaign, and
+safer still asking the question of a fixture, which is what the test I wrote
+an hour earlier does: `test_nothing_scored_is_not_a_success` builds an empty
+campaign in `tmp_path`. I had the safe instrument and used the live campaign
+because it was one line shorter.
+
+The remedy worth having is in the tool, not in my habits: `--limit` should
+refuse to write over a scores file holding more pairs than it is about to
+produce, or write to a separate path. That is a change to a module the chain
+imports, so it is recorded here for between stages, with F320.
