@@ -46,6 +46,10 @@ MINIMUM_LABELLED = int(paths.thresholds()["weights"]["minimum_labelled"])
 # Weights are searched on this grid rather than optimised continuously: with a
 # handful of pairs, a continuous optimum is a fiction to three decimal places.
 GRID = (0.0, 0.25, 0.5, 0.75, 1.0)
+# The fewest positives a fold can be cut from: one to hold out and one to fit
+# on. Named rather than written as `< 2` so the cutoff sweep can see it is
+# arithmetic and not a threshold.
+MINIMUM_SPLITTABLE_POSITIVES = 2
 
 
 @dataclass
@@ -193,7 +197,11 @@ def _folds(labelled: list[tuple[dict, str]], k: int) -> list[list[int]]:
             for f in range(k)]
 
 
-def cross_validate(rows: list[dict], k: int = 5) -> dict:
+CROSS_VALIDATION_FOLDS = int(
+    paths.thresholds()["validation"]["composite_cross_validation_folds"])
+
+
+def cross_validate(rows: list[dict], k: int | None = None) -> dict:
     """Fit without each fold and score only the pairs that fold did not see.
 
     The number `objective` is not. `objective` is the grid's best AUC on the
@@ -211,11 +219,18 @@ def cross_validate(rows: list[dict], k: int = 5) -> dict:
     positives split five ways looks like, and a reader who sees only the
     pooled figure would not know that.
     """
+    if k is None:
+        k = CROSS_VALIDATION_FOLDS
     labelled = [(row, _label(row)) for row in rows if _label(row)]
     if not labelled:
         return {"status": "not_computed: no labelled pairs"}
     positives = sum(1 for _row, side in labelled if side == "positive")
-    if positives < 2:
+    # Two, because a fold has to leave one positive out and still have one to
+    # fit on. Arithmetic rather than an acceptance: there is no number of
+    # positives at which cross-validation becomes a judgement call, and
+    # `MINIMUM_LABELLED` in config is the threshold that decides whether the
+    # fit happens at all.
+    if positives < MINIMUM_SPLITTABLE_POSITIVES:
         return {"status": f"not_computed: {positives} positive(s), so no "
                           "fold can hold one out and still fit"}
 

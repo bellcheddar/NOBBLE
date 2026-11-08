@@ -73,6 +73,14 @@ def _cutoff_comparisons() -> dict[str, list[str]]:
 # easiest to forget. Anything not on this list must read from
 # config/thresholds.toml.
 ALLOWED_CONSTANTS = {
+    "MINIMUM_SPLITTABLE_POSITIVES":
+        "two, because a fold has to hold one positive out and still have one "
+        "to fit on. Arithmetic, not an acceptance: there is no number of "
+        "positives at which cross-validation becomes a judgement call, and "
+        "the threshold that decides whether the fit happens at all is "
+        "`MINIMUM_LABELLED`, which does read from config. Written as `< 2` "
+        "first, which the integer sweep caught, and naming it moved it from "
+        "one guard to the other (F312)",
     "SEED": "a fixed random seed for reproducibility, not a cutoff applied to data",
     "LYSINE_MAX_ASA": "the reference accessible surface area of a free lysine "
                       "side chain, a physical constant rather than a choice",
@@ -454,6 +462,17 @@ def test_the_conclusion_quotes_the_configured_margin_not_a_fixed_two(monkeypatch
 # directories are `check_prediction.py`'s four, and they are the one case
 # where a literal is right.
 TOOLS_ALLOWED = {
+    "tools/matched_arm_stratified.py":
+        "0.5 is the null value of a within-block AUC, which is what makes it "
+        "the thing to count blocks either side of. Not tunable: a block "
+        "above a half means the positive outranked more of its own controls "
+        "than not, and there is no other number that says that. The project "
+        "already allows `low > 0.5` in the package for the same reason",
+    "tools/publication_hold.py":
+        "the same 0.5, used once to mark a figure below chance in the "
+        "release print-out. Marking it is the point: `Delta-ipTM in the same "
+        "blocks: 0.4271` without `below chance` beside it reads as a small "
+        "number rather than as the wrong side of the null (F318d)",
     "tools/check_prediction.py":
         "the F13 prediction's own bounds, recorded before either pair ran. A "
         "prediction's thresholds are part of the prediction: moving them into "
@@ -525,6 +544,15 @@ def test_the_scan_finds_something_to_judge():
 # across the three directories and six are not cutoffs, which is why the
 # allowlist is by comparison rather than by file: a file may hold both.
 INTEGER_ALLOWED = {
+    "tools/matched_arm_stratified.py:trials <= 0":
+        "nothing to test, which returns None rather than a p. Not an "
+        "acceptance: with no decisive comparison there is no exact binomial "
+        "to compute, and returning 1.0 instead would report a null result "
+        "where none was measured",
+    "tools/scramble_paired_test.py:trials <= 0":
+        "the same guard in the same sign test. Both return None so a "
+        "statistic whose comparisons all tied reads as untested rather than "
+        "as tested and unremarkable",
     "tools/bridge_on_crystals.py:len(accessions) > 1":
         "whether a construct is multi-chain, which decides which deposited "
         "chains the crystal comparator reads, not an acceptance applied to "

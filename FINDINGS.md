@@ -15896,3 +15896,44 @@ That makes four places today where the same rule was applied: the About page,
 the README twice, and the hold. Each time the question was whether a document
 would read differently with a measurement in it, and each time the answer was
 yes and the measurement was unflattering.
+
+## F319. The cutoff guards caught four things in today's new code, and one was real
+
+The full suite came back 1,774 passed and 5 failed. Three of the failures
+were `tests/test_no_hardcoded_cutoffs.py` on the tools and the module written
+today, and the project's rule is that thresholds come from
+`config/thresholds.toml` and never from a literal in Python.
+
+**One was a real threshold.** `cross_validate(rows, k: int = 5)` put the
+number of folds in a function signature. It is not an acceptance cutoff, and
+it moves a number the About page prints: the same campaign gives 0.5836 at
+five folds, 0.6012 at ten and 0.6096 leaving one out. A parameter that moves
+a published figure belongs beside the cutoffs, which is the rule F184 applied
+to a bare `>= 3`. It is now
+`validation.composite_cross_validation_folds`.
+
+**Three were not, and the guards were still right to ask.**
+`positives < 2` is arithmetic: a fold has to hold one positive out and still
+have one to fit on, and there is no number at which cross-validation becomes
+a judgement call. Comparisons against 0.5 are the null value of an AUC, which
+is what makes it the thing to count blocks either side of, and the package
+already allows `low > 0.5` for the same reason. `trials <= 0` returns None
+rather than a p, so a statistic whose comparisons all tied reads as untested
+rather than as tested and unremarkable. All three are allowlisted with those
+reasons, which is what the guard's own message asks for.
+
+**Naming the constant moved it between guards.** Writing `positives < 2`
+tripped the integer sweep, so I named it
+`MINIMUM_SPLITTABLE_POSITIVES`, which tripped the module-level-constant
+sweep instead, and my first allowlist entry went into `ALLOWED` where a
+staleness test promptly reported it as an allowance for a comparison that
+does not exist. Two guards and a staleness check on each, which between them
+left exactly one correct place to put it. That is the suite working, and
+worth recording because it looked like the suite being obtuse.
+
+The other two failures were the bundle tests, failing while the suite ran
+because iCloud was generating " 3" and " 4" conflict generations at the time
+(F310b, F315). They pass now. A test that fails only while a 330 MB directory
+is being reconciled is the thing F310b converted three other tests away
+from, and these two are the same shape: worth watching rather than acting on
+yet.

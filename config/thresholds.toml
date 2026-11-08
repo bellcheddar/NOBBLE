@@ -211,6 +211,14 @@ indicative_below_labelled = 25
 wide_bounds_below_per_side = 5
 
 [validation]
+# How many folds the composite's out-of-sample estimate uses.
+#
+# Not a threshold and in config anyway, because it changes a number the About
+# page prints: the same campaign gives 0.5836 at five folds, 0.6012 at ten
+# and 0.6096 leaving one out (F312). A parameter that moves a published
+# figure belongs beside the cutoffs rather than in a function signature,
+# which is the rule F184 applied to an integer comparison.
+composite_cross_validation_folds = 5
 # Fewest pairs on each side before the matched-control curve is drawn at all.
 # Spec 5: reporting a curve without the matched negatives is itself the
 # failure, so refusing here is correct behaviour rather than a gap.
