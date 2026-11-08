@@ -132,6 +132,61 @@ def within_block(blocks: dict, read) -> dict:
     }
 
 
+def _power(results: list[dict], threshold: float | None) -> dict | None:
+    """How many decisive blocks this arm would need, against what it has.
+
+    F349 measured it and F350 printed it in the publication hold, which
+    computed it there. Two copies of a sign-test inversion is D-NOB-007's
+    subject and F154's shape, so it lives here with the arm it describes
+    and both the hold and `about.json` read it: the atlas already publishes
+    this whole report.
+
+    Taken from the best **unfitted** rate, because the in-sample composite
+    has the highest by construction and reading it made the hold's first
+    version report that the arm was adequately powered (F350).
+
+    `None` where there is no rate to size against, rather than a figure
+    over nothing: a statistic above a half in half its blocks or fewer says
+    the arm is not underpowered for it, it is simply not there.
+    """
+    if not results or threshold is None:
+        return None
+    rows = []
+    for row in results:
+        decisive = ((row.get("blocks_above_half") or 0)
+                    + (row.get("blocks_below_half") or 0))
+        if not decisive or row.get("blocks_above_half") is None:
+            continue
+        if str(row.get("statistic", "")).startswith("composite"):
+            continue
+        rows.append((row["blocks_above_half"] / decisive, decisive, row))
+    if not rows:
+        return None
+    rate, decisive, best = max(rows, key=lambda item: item[0])
+    if rate <= 0.5:
+        return {"status": "no unfitted statistic is above a half in more "
+                          "than half of its blocks, so there is no rate to "
+                          "size the arm against"}
+    needed = next((n for n in range(decisive, 1000)
+                   if (value := sign_test(round(rate * n), n)) is not None
+                   and value < threshold), None)
+    if needed is None:
+        return None
+    return {
+        "statistic": best["statistic"],
+        "blocks_above_half": best["blocks_above_half"],
+        "decisive": decisive,
+        "needed_decisive": needed,
+        "threshold": threshold,
+        # The hard ceiling, which is why this is a design limit rather than
+        # a budget one: the screen holds 32 degraded zinc fingers and eight
+        # are significant only for CC-122 or CC-220, which have no CCD code
+        # and no curated SMILES, so there is no drug structure to model.
+        "positives_in_screen": 32,
+        "positives_modellable": 24,
+    }
+
+
 def report(rows: list[dict], folds: int = 5) -> dict:
     by_peptide = {row["peptide_id"]: row for row in rows
                   if row.get("peptide_id")}
@@ -158,6 +213,8 @@ def report(rows: list[dict], folds: int = 5) -> dict:
         "blocks": len(blocks),
         "controls_per_block": sorted({len(v) for v in blocks.values()}),
         "statistics_tested": len(results),
+        "power": _power(results, round(0.05 / len(results), 5) if results
+                        else None),
         "bonferroni_threshold": round(0.05 / len(results), 5) if results else None,
         "unfitted_statistics": len(unfitted),
         "results": results,

@@ -1783,3 +1783,19 @@ bad clocks are. -->
   change to the headline label, which is Marc's under D-NOB-076: the null
   was already stated and only its limitation was missing, which is F350's
   shape one level out at the project's public face.
+- `2026-11-08T04:10Z` F350c. Moved the power computation from
+  `publication_hold.py` into `matched_arm_stratified._power`, inside the
+  report the atlas already publishes, so the hold and `about.json` read one
+  figure rather than each inverting a sign test. Second copy of an exact
+  binomial is what put `sign_test` in `nobble/numeric.py` in the first place
+  (F326). The fitted-composite exclusion moved with it, so it cannot be
+  fixed in one consumer and lost in the other. The About page's matched-block
+  panel now carries one 29-word sentence, "Underpowered, not null: about 27
+  decisive blocks are needed to resolve the best rate seen here and the arm
+  has 17, with 24 of the screen's 32 positives modellable", rendered from the
+  published figure and absent from a bundle built before it existed.
+- `2026-11-08T04:10Z` And the wrapped-phrase trap for the third time today.
+  The test for that sentence asserted a substring that a rendered template
+  splits across lines, written minutes after I wrote a test whose docstring
+  explains the same trap. Knowing the rule has not changed the behaviour; a
+  check that fails in a minute has.

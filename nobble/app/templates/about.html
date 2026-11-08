@@ -449,6 +449,23 @@
       {{ matched_blocks.controls_per_block|join(' or ') }} controls, matched
       on length and composition and sharing its drug. Ties at a half; the
       block is the unit.</p>
+    {# One sentence, where a figure would be actively misread without it
+       (F350c). Every interval here contains a half, which reads as no
+       effect; the arm has 17 to 20 decisive blocks and resolving an effect
+       of the size observed needs about 27, so these are bounded by the
+       arm's size. The screen holds 32 degraded zinc fingers and 24 are
+       modellable, so the ceiling is the design's rather than the budget's.
+       Computed in matched_arm_stratified._power and published in
+       about.json, not worked out here. #}
+    {% set power = matched_blocks.get('power') %}
+    {% if power and power.get('needed_decisive') %}
+    <p class="panel__hint" style="color:var(--warn)">
+      Underpowered, not null: about {{ power.needed_decisive }} decisive
+      blocks are needed to resolve the best rate seen here and the arm has
+      {{ power.decisive }}, with {{ power.positives_modellable }} of the
+      screen's {{ power.positives_in_screen }} positives modellable.
+    </p>
+    {% endif %}
     <table class="ntable">
       <thead><tr>
         <th scope="col">Statistic</th>

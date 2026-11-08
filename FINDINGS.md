@@ -18780,3 +18780,49 @@ One line of that sweep is worth keeping for the next reader: the two tools
 that compute a p are named in a test, so deleting the helper from one of
 them fails rather than quietly reverting. A sweep that only forbids the bad
 pattern leaves room for a new tool to compute a p and format it its own way.
+
+### F350c. The power figure is computed once, and the page says underpowered rather than null
+
+F350 put the sign-test inversion in `tools/publication_hold.py`, one
+directory from the arm it describes. That is a second copy of an exact
+binomial, which is D-NOB-007's subject and F154's shape, and this project
+already carries the scar: `sign_test` lives in `nobble/numeric.py` because I
+wrote it twice an hour apart (F326).
+
+It now lives in `matched_arm_stratified._power`, inside the report
+`deploy/build_atlas.py` already publishes. The hold reads the figure and so
+does `about.json`, so the two say the same thing by construction rather than
+by agreement. The exclusion of the fitted composite lives there too, in one
+place, where it cannot be fixed in the hold and lost on the page.
+
+**And the page now carries it.** The matched-block panel showed every
+interval containing a half, which reads as no effect. The project's copy
+rule allows a disclaimer exactly where a figure would be actively misread
+and caps it at one sentence, so:
+
+> Underpowered, not null: about 27 decisive blocks are needed to resolve the
+> best rate seen here and the arm has 17, with 24 of the screen's 32
+> positives modellable.
+
+Twenty-nine words, one sentence, rendered from the published figure rather
+than written into the template, and absent entirely from a bundle built
+before the figure existed.
+
+### The wrapped-phrase trap, three times in one day
+
+The test for that sentence asserted `"about 27 decisive blocks" in shown`
+and failed, because a rendered template wraps and the text arrives as
+`about 27 decisive\\n      blocks`.
+
+That is the third time today. First a `"writes nothing"` check against
+`findings.py`. Then `"wrong population"` against a comment whose line break
+falls between the two words. Now this, **written minutes after I wrote a
+test whose own docstring explains that trap.** The remedy is one
+`" ".join(x.split())` and I keep rediscovering it rather than reaching for
+it.
+
+Worth recording plainly because the pattern is the same as the timestamps:
+knowing the rule has not changed my behaviour, and the only thing that has
+is a check that fails in a minute. Both of these failed loudly, which is the
+cheap kind. The expensive kind this session were the ones that returned a
+plausible number.

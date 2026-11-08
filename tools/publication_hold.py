@@ -328,65 +328,27 @@ def discrimination(campaign: Path | None) -> list[str]:
 
 
 def _power_note(blocks: dict) -> list[str]:
-    """How many blocks the matched arm would need, against what it has.
+    """The arm's own power figure, read rather than recomputed.
 
-    F349: at the observed rate nothing in that table can clear a Bonferroni
-    threshold over seven statistics, because the screen holds 32 degraded
-    zinc fingers and the correction needs about 48 decisive blocks. Printed
-    here because this is the print-out read at the moment publication is
-    decided, and a p of 0.077 beside no power statement reads as a marginal
-    result rather than an unpowered one.
-
-    Computed from the report rather than transcribed, so it follows the arm
-    as blocks are added.
+    This inverted the sign test here when F350 added it, which put a second
+    copy of that arithmetic one directory from the first. It now lives in
+    `matched_arm_stratified._power`, beside the arm it describes and the
+    report the atlas already publishes, so the hold and `about.json` say
+    the same thing by construction rather than by agreement (D-NOB-007).
     """
-    from nobble.numeric import sign_test
-
-    # `blocks_above_half` and `blocks_below_half`, which is what the report
-    # carries. I wrote `blocks_above` and `blocks_decisive` from memory and
-    # the note silently printed nothing: the seventh guessed name of this
-    # session and the second whose failure was silence rather than an
-    # exception, because `.get` on a missing key is None and the row was
-    # filtered out.
-    # Not the in-sample composite, which the matched-arm tool's own output
-    # says to skip: "The composite was fitted on these pairs, so read its
-    # held-out row and not its in-sample one". It has the highest rate by
-    # construction, 18 of 22, so `max` picked it and the note came out as
-    # "needs about 22 decisive blocks and the arm has 22": a power warning
-    # that read as reassurance, from the one row that is optimism (F350).
-    rows = [entry for entry in (blocks.get("results") or [])
-            if entry.get("blocks_above_half") is not None
-            and (entry.get("blocks_above_half", 0)
-                 + entry.get("blocks_below_half", 0))
-            and "in sample" not in str(entry.get("statistic", ""))]
-    if not rows:
+    power = blocks.get("power")
+    if not power:
         return []
-
-    def rate_of(entry):
-        decisive = entry["blocks_above_half"] + entry["blocks_below_half"]
-        return entry["blocks_above_half"] / decisive
-
-    best = max(rows, key=rate_of)
-    decisive = best["blocks_above_half"] + best["blocks_below_half"]
-    rate = rate_of(best)
-    if rate <= 0.5:
-        return [f"    no statistic is above a half in more than half the "
-                f"blocks, so there is no rate to size the arm against"]
-    threshold = float(blocks.get("bonferroni_threshold") or 0.05)
-    needed = next((n for n in range(decisive, 400)
-                   if (p := sign_test(round(rate * n), n)) is not None
-                   and p < threshold), None)
-    if needed is None:
-        return []
+    if power.get("status"):
+        return [f"    power: {power['status']}"]
     return [
-        f"    power: at the best unfitted rate, "
-        f"{best['statistic']}'s {best['blocks_above_half']}/{decisive}, "
-        f"clearing {threshold:g} needs "
-        f"about {needed} decisive blocks and the arm has {decisive}. The "
-        f"screen holds 32 degraded zinc fingers of which 24 are modellable, "
-        f"so this is a limit of the design and not a measurement of the "
-        f"biology (F349)"]
-
+        f"    power: at the best unfitted rate, {power['statistic']}'s "
+        f"{power['blocks_above_half']}/{power['decisive']}, clearing "
+        f"{power['threshold']:g} needs about {power['needed_decisive']} "
+        f"decisive blocks and the arm has {power['decisive']}. The screen "
+        f"holds {power['positives_in_screen']} degraded zinc fingers of "
+        f"which {power['positives_modellable']} are modellable, so this is "
+        f"a limit of the design and not a measurement of the biology (F349)"]
 
 def describe(summary: dict | None, confounded: set[str] | None = None) -> list[str]:
     """The curve as lines, or one line saying there is no curve to read."""
