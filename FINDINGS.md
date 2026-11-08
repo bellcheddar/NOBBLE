@@ -16326,3 +16326,29 @@ This completes the rule's application. I am not going to extend the sweep
 past the chain's own steps, because the question earns its keep on a step
 whose success gates something expensive, and applying it to every function in
 the package would be the lens problem F293 warned about.
+
+### F324d. The two fixes compose, and they are not redundant
+
+A reader could reasonably ask whether F321 and F322 overlap, since both
+concern the design scan producing nothing. Checked on the stage that will
+run in about fifty hours.
+
+`tools/run_design.sh` already gated on the scorer's exit code before today:
+`if [ "$SCORE_CODE" -ne 0 ]` then refuse and exit 1. With F322's fix a design
+campaign whose jobs all failed now scores nothing, the scorer exits 3, and
+that guard fires with "scoring failed (exit 3), so the lift below would..."
+— one step earlier than F321's check and with a clearer cause.
+
+So the two catch different things:
+
+* **F322**: nothing was scored. The inference produced no usable rows, and
+  the remedy is to look at why the jobs failed.
+* **F321**: scoring worked and there is no lift to profile. The parent's own
+  job failed, or the parent has no variants, and the remedy is different.
+
+Before today both printed success. Now each names its own cause, and the
+earlier one fires first, which is the order a diagnosis wants.
+
+Worth stating because the alternative reading is that I fixed the same thing
+twice, and because two guards that both fire on one failure are how a log
+becomes unreadable. These fire on different failures.
