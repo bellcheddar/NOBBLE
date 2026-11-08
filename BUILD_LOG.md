@@ -1411,3 +1411,15 @@
   fixture gave a running row a fixed past `started_at`, which made every
   running job look hours old and turned F334's empty-case test into a
   refutation: a fixture detail deciding a verdict. Now `time.time()`.
+- `2026-11-08T03:55Z` F336. The six bench06 tier-2 failures have a
+  coefficient of variation of 0.61 per cent across five seeds and both
+  conditionings: mean 9,512.1s, sd 57.7. A different seed is a different
+  diffusion trajectory, so a failure depending on the trajectory, or on
+  anything accumulating, would scatter. It does not. The six are one
+  deterministic stopping point hit six times, not six symptoms of a flaky
+  condition, which rules out the stochastic reading I would have reached for
+  first. The current attempt is 418s past the slowest of the six, still at
+  99 per cent of a core, 28,980s of budget left. Since fewer samples means
+  less work before any point after the trunk, the stopping point should have
+  arrived earlier and did not arrive at all. No new prediction registered:
+  F306 already claims this and F268 already denies it.

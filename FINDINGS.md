@@ -17545,3 +17545,74 @@ of the mechanism, not a problem with it.
 not the clock. The empty `predictions/` directory is not evidence either
 way while the process is still running, and PROGRESS's instruction stands:
 read the `detail` field on the state row before guessing at a cause.
+
+## F336. The six failed at the same point, which is why this one running past it matters
+
+Written while the job runs, because the reading is about where it already
+is rather than about how it ends.
+
+The six bench06 tier-2 failures, with their seeds and arms:
+
+| seconds | arm | seed |
+|---|---|---|
+| 9,440.0 | conditioned | 2 |
+| 9,468.0 | conditioned | 4 |
+| 9,492.4 | conditioned | 1 |
+| 9,534.1 | unconstrained | 1 |
+| 9,536.3 | conditioned | 3 |
+| 9,601.8 | conditioned | 5 |
+
+Mean 9,512.1, standard deviation 57.7, coefficient of variation **0.61 per
+cent**. Five different seeds and both conditionings, agreeing to six parts
+in a thousand.
+
+**That rules out a class of cause.** A different seed is a different
+diffusion trajectory. A failure that depended on what the trajectory did, or
+on memory filling, or on anything accumulating, would scatter: some runs
+would hit it sooner and some later, and one of the five seeds would be
+unlucky. Instead every one of them stopped at the same place to within
+half a minute. The six are not six symptoms of a flaky condition. They are
+one deterministic stopping point, hit six times.
+
+Their `detail` is the generic "exit 0 but no confidence JSON written" in all
+six, with no Boltz output behind it, because they ran before F238 made the
+runner keep the stderr tail.
+
+**Where the current attempt is.** 10,020 seconds, which is 418 seconds past
+the slowest of the six, still at 99 per cent of a core, with
+`predictions/` present and holding nothing. 28,980 seconds of budget remain,
+so the watchdog is not a factor.
+
+**Why that is worth writing down before it ends.** The only parameter that
+differs is the sample count: 9 against 25. The trunk is identical, ten
+recycling steps with potentials in both.
+
+So if the stopping point sits after the trunk, in or after the diffusion,
+fewer samples means less work before it and it should have arrived
+**earlier** than 9,440 seconds, not later. It did not arrive at all. The
+readings that survive:
+
+1. **It got past the point and is doing work the six never reached.** This
+   is the first evidence in the whole sequence, F268 through F306, that the
+   sample count changes the outcome rather than only the arithmetic. It is
+   what F306 predicts.
+2. **The point is reached at a fixed wall-clock time rather than at a fixed
+   place in the computation**, which would make it a timeout or a watchdog
+   somewhere below the runner. Weakened by this job being 418 seconds past
+   the latest of the six and still going, but not eliminated: a limit at
+   some other threshold would also look like this until it fires.
+
+Reading 1 is favoured and reading 2 is not excluded, and one run cannot
+separate them. What it does not support is any reading in which the six
+failures were stochastic, which is the one I would have reached for first.
+
+**No new prediction is registered.** F306 already claims this job writes a
+confidence JSON and F268 already claims it does not, and both now score the
+conditioned arm after F333. Adding a third claim pointing the same way as
+F306 would be padding the record rather than testing anything.
+
+**What to read when it settles.** If it fails, the `detail` field carries up
+to three lines of Boltz's stderr, which no previous attempt has. That is the
+evidence F238, F289 and F298 all wanted, and PROGRESS's instruction stands:
+read it before guessing at a cause, because a third guess costs 2.6 hours
+and this one is free.
