@@ -18646,11 +18646,33 @@ it because the positives do not exist.
 ### What the two levers actually buy
 
 **Recovering the eight** needs SMILES for avadomide and iberdomide, curated
-in BINMAN rather than here (D-NOB-007). Both are published compounds, so
-this is ordinary chemistry curation. The compute is cheap: 8 blocks x 5
-pairs x 15 jobs is 600 jobs at the measured 74 seconds, **12.3 hours**,
-taking the plan from 180.6 to 192.9 of the 240-hour cap. It moves one
-pre-registered statistic from p = 0.115 to about 0.052.
+in BINMAN rather than here (D-NOB-007). Measured: BINMAN's glue recall set
+holds 121 entries and none matches either, and the curated glues are six CCD
+codes, 759, LVY, EF6, 85C, RC8 and Y70. So the chemistry is genuinely absent
+rather than present under another name. Both are published compounds, so
+this is ordinary curation, and no SMILES is guessed here: a drug structure
+written from memory is the one input nobody could check.
+
+The compute is cheap: 8 blocks x 5 pairs x 15 jobs is 600 jobs at the
+measured 74 seconds, **12.3 hours**, taking the plan from 180.6 to 192.9 of
+the 240-hour cap. It moves one pre-registered statistic from p = 0.115 to
+about 0.052.
+
+**And the obvious shortcut is wrong**, which the curation already says and
+nothing reads. `sievers_matched_set` returns a `note` alongside
+`dropped_positives`, and neither has a consumer anywhere in `nobble/`,
+`tools/`, `deploy/` or the app. The note:
+
+> Spec 4.18 scopes the prediction to lenalidomide or pomalidomide, so
+> running them under pomalidomide regardless would put a zinc finger the
+> screen calls undegraded by that drug on the positive side of the ROC.
+
+That is the first thing anyone reading this recommendation would propose,
+and it would manufacture eight positives out of eight negatives. The
+explanation was written at the point the eight were dropped and has been
+sitting in a return value since. Fourth instance tonight of a careful
+caveat computed and never surfaced, after F337's sampling note, F338's
+parent provenance and F350's power figure.
 
 **Pre-registering one statistic** rather than testing seven moves the
 threshold from 0.00714 to 0.05 and so the requirement from 48 decisive

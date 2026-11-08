@@ -197,3 +197,38 @@ def test_each_arm_that_is_published_is_also_assembled_somewhere():
             f"{arm} is referenced by the builder or this test and nothing "
             "assembles it"
         )
+
+
+def test_the_dropped_positives_note_is_still_there_to_be_read():
+    """The explanation of F349's ceiling, which has no consumer (F349b).
+
+    `sievers_matched_set` returns `dropped_positives` and a `note` saying
+    why those eight cannot simply be run under pomalidomide: "running them
+    under pomalidomide regardless would put a zinc finger the screen calls
+    undegraded by that drug on the positive side of the ROC". Nothing in
+    `nobble/`, `tools/`, `deploy/` or the app reads either.
+
+    Not surfaced here, because where it belongs is a presentation question
+    and F349 now carries the reasoning where the recommendation is. This
+    asserts the note still exists and still says that, so the one place the
+    reasoning lives cannot be deleted silently: it is the answer to the
+    first objection anyone will raise against recovering the eight, and
+    getting it wrong would manufacture eight positives out of eight
+    negatives.
+    """
+    source = (ROOT / "nobble" / "curate" / "peptides.py").read_text()
+    assert '"dropped_positives": dropped,' in source, (
+        "the curation no longer reports which positives it dropped, so the "
+        "ceiling F349 measured has no record of its cause"
+    )
+    assert "undegraded by that drug on the" in source, (
+        "the note explaining why the dropped eight cannot be run under "
+        "pomalidomide is gone. It is the answer to the obvious shortcut and "
+        "F349 quotes it"
+    )
+    findings = (ROOT / "FINDINGS.md").read_text()
+    assert "would manufacture eight positives out of eight negatives" in \
+        findings, (
+        "F349 no longer carries the reasoning, which leaves it only in a "
+        "return value nothing reads"
+    )

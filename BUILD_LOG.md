@@ -1847,3 +1847,16 @@ bad clocks are. -->
   above it and a reader will draw the conclusion I drew. Third quantity moved
   into the arm after a first version computed it in the consumer, which is
   the rule to apply first next time.
+- `2026-11-08T04:30Z` F349b. Checked whether F349's remedy is blocked on
+  chemistry that already exists: BINMAN's glue recall set holds 121 entries,
+  none matching CC-122 or CC-220, and the curated glues are six CCD codes.
+  Genuinely absent, and no SMILES guessed here, since a drug structure
+  written from memory is the one input nobody could check. Then found that
+  the curation already answers the obvious shortcut and nothing reads it:
+  `sievers_matched_set` returns a `note` saying that running the eight under
+  pomalidomide regardless "would put a zinc finger the screen calls
+  undegraded by that drug on the positive side of the ROC", which would
+  manufacture eight positives out of eight negatives. F349 now carries that
+  reasoning where the recommendation is, and a test asserts the note still
+  exists and still says it. Fourth caveat tonight computed and never
+  surfaced, after F337, F338 and F350.
