@@ -16960,3 +16960,22 @@ One thing the tests pin that matters more than the exclusion: a job that
 genuinely failed at a reduced sample count still scores F306 WRONG. The
 exclusion must not swallow the falsifier, or the prediction becomes
 unfalsifiable by the mechanism meant to make it fair.
+
+### F330c. The other four predictions cannot have this hole
+
+Ran F330's question over the rest of the scorer. Only F268 and F306 count
+job outcomes, and both are fixed. The other four read a different thing
+entirely:
+
+* **F251** mentions `status` once, as its own verdict key, not a job's.
+* **F254** reads `scores_tier2.jsonl`, **F253** Tier B's scores, **F252** the
+  design scan's `scan_profile.json`.
+
+A scored row exists only for a job that produced output, and a profile only
+for a scan that computed lifts, so an abandoned job cannot appear in any of
+them. The hole is structurally impossible there rather than absent by
+accident, which is a better answer than "I checked and it is fine".
+
+So the thread closes: one defect, found by a status line moving by one, in
+both of the two predictions that could have had it, scoring in opposite
+directions, with the other four immune by the shape of what they read.
