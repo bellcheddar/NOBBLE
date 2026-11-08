@@ -231,6 +231,9 @@ echo "-- registered predictions"
 # while this is written and bash reads a script incrementally, so editing it
 # mid-run corrupts it. status.sh is invoked fresh, including by the chain's
 # own last line. Wiring the chain itself is left for when it is not running.
+# That rule is general and now lives in CLAUDE.md's operating rules, because
+# it sat only here and was paid for anyway nine hours later (F308, F311b).
+# Kept here too, pointing there, so the two cannot drift into disagreeing.
 # --brief: the claim and the falsifier do not change once registered, so the
 # status carries only the verdicts and `tools/check_registered.py` on its own
 # gives the detail.

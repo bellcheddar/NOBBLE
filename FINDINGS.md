@@ -16037,3 +16037,30 @@ many other load-bearing rules live in comments rather than in `CLAUDE.md`.
 Recorded as a question rather than answered, because a sweep of every comment
 in the project for latent rules is the kind of thing I would do badly at
 13:40 on the strength of one example.
+
+### F311c. How many other rules hide in comments: one
+
+F311b left the question and said answering it on one example would be done
+badly. Done with a criterion instead, it is answerable.
+
+The criterion: a comment qualifies only if it instructs a future worker
+about work **outside the file it sits in**. "chown runs before pip, because a
+chown after pip never runs when pip fails" is about its own line and is a
+comment doing its job. "Wiring the chain itself is left for when it is not
+running" is an instruction about `run_chain.sh`, in `status.sh`.
+
+Three passes over `tools/`, `deploy/` and `nobble/` with different markers:
+comments mentioning deferral, editing, running, or the chain. **One hit, and
+it is the one F311b already found.** Everything else annotates its own line.
+
+So the phenomenon is real and happened once, which is worth knowing because
+the alternative conclusions were both wrong: that it is a pattern needing a
+project-wide sweep, and that F311b was an isolated curiosity not worth
+checking. It was neither.
+
+The action is correspondingly small. The comment in `status.sh` now points at
+`CLAUDE.md`'s operating rules rather than being the only place the rule
+lives, so a reader of the script learns the rule is general and the two
+cannot drift into disagreeing. Nothing else is moved, because nothing else
+qualifies, and moving comments that correctly explain their own line into a
+rules file would make both worse.
