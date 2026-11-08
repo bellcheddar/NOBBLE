@@ -15756,3 +15756,52 @@ smaller block rather than as an error.
 One slip: the first version of the test asked for `M.Member`. The dataclass
 that becomes a queue row is called `Job`, and a test that guesses a name
 asserts nothing.
+
+## F318. Put the two designs side by side and one statistic is on the right side of both
+
+F316 and F317 are two independent paired designs on the same campaign, and
+nobody will read them together unless the table exists. A statistic that
+beats its own scramble is telling a motif from its shuffle. A statistic that
+outranks a positive's composition-matched, same-drug controls is telling a
+degraded sequence from a natural non-degraded one. The second is the question
+a prediction rests on.
+
+| statistic | against its own scramble | against its matched controls |
+|---|---|---|
+| convergence_score | 25 to 1, p 0.00000 | 0.6510, p 0.11532 |
+| plip_fingerprint_match | 13 to 2, p 0.00739 | 0.5104, p 0.54883 |
+| delta_iptm | 22 to 9, p 0.02945 | **0.4271**, below chance |
+| bridge_percentile | **9 to 14**, wrong way | 0.5568, p 0.33231 |
+| lysine_reach_exposed_fraction | **1 to 8**, wrong way | 0.6322, p 0.04904 |
+| composite, held out | 20 to 11, p 0.14961 | 0.6146, p 0.07681 |
+
+**`convergence_score` is the only one on the right side of both**, and that
+is uncomfortable rather than encouraging. It measures whether five diffusion
+seeds agree with each other. It makes no claim about degradation, the spec
+calls it "working" rather than primary or headline, and a scrambled peptide
+with no preferred binding mode converging less is close to tautological, so
+most of its scramble result is not evidence about degrons. On the arm that
+matters it is 0.6510 at p 0.115, which is not significant.
+
+**The two labelled components are each on the wrong side of one design.**
+`bridge_percentile`, labelled primary and validated against crystals this
+morning, is higher on the scramble in 14 of 23. `delta_iptm`, labelled
+headline, is below chance against matched controls. F284 said the trust
+ranking was unsupported from standalone AUCs; this says it from two paired
+designs the project built on purpose.
+
+**`lysine_reach` is the strange one.** It separates matched natural
+sequences better than anything unfitted (0.6322, the only unfitted p under
+0.05) and loses to its own scramble 1 to 8. A statistic that cannot tell a
+motif from its shuffle and can tell one natural zinc finger from another is
+more likely reading length or composition than degradation, and D-NOB-024
+already reports it as measurement only.
+
+### What this is not
+
+Six statistics on two designs is twelve tests, and the two designs share
+their campaign, their scores and in places their pairs. No correction here
+accounts for that, and nothing in the table survives a correction that did.
+The honest summary is not that one statistic works. It is that the two
+labelled components are each contradicted by one of the project's own paired
+designs, and the one that is not is the one with no theory behind it.
