@@ -129,6 +129,15 @@ bootstrap_rounds = 2000
 # computes the score (F87).
 convergence_scale_a = 10.0
 
+# Decimal places a p-value is reported to, and the point below which it is
+# reported in significant figures instead. `round(p, 5)` is 0.0 for anything
+# smaller, and a p of zero reads as certainty rather than as a bound: the
+# scramble test stored exactly that for its strongest result and the
+# publication hold printed it (F350). Here rather than as a default argument
+# because this project's own sweep once allowed a precision default as a
+# harmless compute trade-off and a real cutoff sat one line below it.
+p_report_places = 5
+
 # Pose recovery: how much of the compared window must carry the same residue
 # in the prediction and in the deposition before the RMSD is believed.
 #

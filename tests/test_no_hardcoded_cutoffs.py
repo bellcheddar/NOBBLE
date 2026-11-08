@@ -32,6 +32,13 @@ ALLOWED = {
     "low > 0.5":
         "0.5 is the definition of chance for an area under a ROC curve, not a "
         "tunable threshold",
+    "value == 0.0":
+        "the one value whose logarithm is undefined, in `rounded_p`, which "
+        "takes significant figures below its configured precision and so has "
+        "to take a base-ten log. Not a threshold: nothing is accepted or "
+        "rejected either side of it, and no p this project computes is "
+        "exactly zero. The precision it is compared against does come from "
+        "config, as `scoring.p_report_places` (F350)",
     "high < 0.5":
         "the same 0.5, on the other side: an interval entirely below chance "
         "is an inverted result rather than an absent one, and F120 added the "

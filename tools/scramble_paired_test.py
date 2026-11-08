@@ -52,6 +52,10 @@ sign_test = _numeric.sign_test
 # And `rounded_p`, for the reason in its own docstring: `round(p, 5)` stored
 # 0.0 for this test's strongest result (F350).
 rounded_p = _numeric.rounded_p
+# The switch point below which a p is shown in significant figures, from
+# the same config value `rounded_p` rounds to, so the stored figure and the
+# printed one cannot disagree (F350).
+_P_PLACES = int(paths.thresholds()["scoring"]["p_report_places"])
 
 
 def pairs_of(rows: dict) -> list[tuple[str, str]]:
@@ -154,7 +158,8 @@ def main(argv=None) -> int:
         # as 0.00000 even after the stored value was fixed (F350). A p
         # printed as zero reads as certainty.
         p = ("-" if row["p_two_sided"] is None
-             else f"{row['p_two_sided']:.5f}" if row["p_two_sided"] >= 1e-5
+             else f"{row['p_two_sided']:.5f}"
+             if row["p_two_sided"] >= 10.0 ** -_P_PLACES
              else f"{row['p_two_sided']:.3g}")
         mark = ""
         if (row["p_two_sided"] is not None

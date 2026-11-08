@@ -56,7 +56,7 @@ def median_of(values) -> float | None:
     return present[len(present) // 2]
 
 
-def rounded_p(value: float | None, places: int = 5) -> float | None:
+def rounded_p(value: float | None, places: int | None = None) -> float | None:
     """A p-value rounded for reporting, without rounding it to zero (F350).
 
     `round(8.0466e-07, 5)` is `0.0`, and a p of zero is not a small p: it
@@ -72,6 +72,10 @@ def rounded_p(value: float | None, places: int = 5) -> float | None:
     """
     if value is None:
         return None
+    if places is None:
+        from nobble import paths
+
+        places = int(paths.thresholds()["scoring"]["p_report_places"])
     value = float(value)
     if value == 0.0:
         return 0.0

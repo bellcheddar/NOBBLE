@@ -392,10 +392,20 @@ def _regenerated_scan(campaign: Path) -> tuple[list[dict], str]:
     # is now shared with `assemble_tier_b` rather than copied, so the two
     # cannot drift, and regenerating the arm on disk reproduced all 1,540
     # YAMLs byte for byte.
-    regenerators = {"campaign_": "regenerate_all",
-                    "tier_b_": "regenerate_tier_b",
-                    "design_": "regenerate_design"}
-    chosen = next((name for prefix, name in regenerators.items()
+    # Named, not dispatched by string. `getattr(assembler, name)()` made
+    # `regenerate_all` look uncalled to
+    # `tests/test_no_public_function_is_orphaned.py`, and that guard is
+    # right: a function reached only through a string cannot be found by
+    # grep, and a rename leaves the lookup failing at runtime instead of at
+    # import. The import is inside the function for the same reason it
+    # always was, to keep the module importable without the assembler.
+    from nobble.execute import campaign as assembler
+    from nobble.design import assemble as design_assembler
+
+    regenerators = {"campaign_": assembler.regenerate_all,
+                    "tier_b_": assembler.regenerate_tier_b,
+                    "design_": design_assembler.regenerate_design}
+    chosen = next((fn for prefix, fn in regenerators.items()
                    if campaign.name.startswith(prefix)), None)
     if chosen is None:
         return [], (f"not_applicable: {campaign.name} comes from none of the "
@@ -408,20 +418,17 @@ def _regenerated_scan(campaign: Path) -> tuple[list[dict], str]:
     compared = 0
     try:
         from nobble import paths
-        from nobble.execute import campaign as assembler
 
         rows = paths.read_jsonl(queue, tolerate_torn=True)
         # One manifest for the whole campaign. Asking per pair rebuilt it 158
         # times and turned a two-second scan into twenty-three.
-        if chosen == "regenerate_design":
+        if chosen is design_assembler.regenerate_design:
             # The design regenerator needs the parent and the generator,
             # which are not derivable from the queue: the scan's parent is
             # chosen by measured Delta-ipTM at assembly time and the
             # campaign records it. Regenerating against today's ranked
             # choice instead would answer a different question, which is
             # F338's and is asked by `tools/run_design.sh`.
-            from nobble.design import assemble as design_assembler
-
             meta_path = campaign / "campaign.json"
             if not meta_path.exists():
                 return [], (f"unavailable: no campaign.json in "
@@ -435,7 +442,7 @@ def _regenerated_scan(campaign: Path) -> tuple[list[dict], str]:
             fresh = design_assembler.regenerate_design(
                 parent, meta.get("generator") or "alanine_scan")
         else:
-            fresh = getattr(assembler, chosen)()
+            fresh = chosen()
         for row in rows:
             job_id = row.get("job_id")
             path = Path(row.get("yaml") or "")

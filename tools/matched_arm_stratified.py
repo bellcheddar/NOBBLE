@@ -59,6 +59,10 @@ LIBRARY = Path("data/manifests/library.jsonl")
 # shape, and I wrote them an hour apart (F326).
 sign_test = _numeric.sign_test
 rounded_p = _numeric.rounded_p
+# The switch point below which a p is shown in significant figures, from
+# the same config value `rounded_p` rounds to, so the stored figure and the
+# printed one cannot disagree (F350).
+_P_PLACES = int(paths.thresholds()["scoring"]["p_report_places"])
 
 
 def blocks_of(rows: dict, source: str = "sievers_zf") -> dict[str, list[str]]:
@@ -343,7 +347,8 @@ def main(argv=None) -> int:
         # `.3g` below 1e-5, so a small p is not printed as 0.00000 from a
         # correct stored value, which is the second half of F350.
         p = ("-" if row["p_two_sided"] is None
-             else f"{row['p_two_sided']:.5f}" if row["p_two_sided"] >= 1e-5
+             else f"{row['p_two_sided']:.5f}"
+             if row["p_two_sided"] >= 10.0 ** -_P_PLACES
              else f"{row['p_two_sided']:.3g}")
         auc = "-" if row["mean_within_block_auc"] is None else \
             f"{row['mean_within_block_auc']:.4f}"

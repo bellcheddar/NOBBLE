@@ -1934,3 +1934,26 @@ bad clocks are. -->
   which nothing had done for the full run: 1,879 jobs left, a measured 102.5
   MB for a bench06 tier-2 output and 0.47 MB median for a small job, so about
   2 GB against 733 GB free and a 50 GB G5 floor. No gate opens on space.
+- `2026-11-08T05:05Z` The clean full suite found six real failures, every one
+  caused by tonight's changes and none of them in a file my targeted runs
+  touched. That is what the full suite is for and I had been treating it as
+  a formality.
+  - `regenerate_all` read as orphaned, because I had replaced a direct call
+    with `getattr(assembler, chosen)()`. The guard is right: a function
+    reached only through a string cannot be found by grep, and a rename
+    fails at runtime instead of at import. The map now holds the functions
+    themselves, and the scan's output is unchanged over all five campaigns.
+  - `rounded_p`'s `places=5` default and the two `>= 1e-5` display switches
+    were hard-coded. Now `scoring.p_report_places`, read once and shared, so
+    the stored figure and the printed one cannot disagree. The project's own
+    allowlist warns against exactly the shortcut I would have taken:
+    `_bootstrap_interval.rounds` was waved through as a compute trade-off
+    and a real cutoff sat one line below it.
+  - `value == 0.0` in `rounded_p` is allowlisted with its reason: the one
+    value whose logarithm is undefined, nothing accepted or rejected either
+    side of it.
+  - `README.polished.md` needed regenerating after I edited `README.md`.
+  - The handoff count read zero open rows against prose saying one, because
+    my F348 row contained the word "answered" in the phrase "until it is
+    answered". Reworded; the heuristic is keyword-based and the row was the
+    thing at fault.
