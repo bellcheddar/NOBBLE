@@ -16352,3 +16352,42 @@ earlier one fires first, which is the order a diagnosis wants.
 Worth stating because the alternative reading is that I fixed the same thing
 twice, and because two guards that both fire on one failure are how a log
 becomes unreadable. These fire on different failures.
+
+## F325. The job is already 1.45 times a linear-in-samples prediction, written down before it lands
+
+The same job at twenty-five samples took 9,492s. A model in which duration
+scales with the sample count predicts 3,417s at nine. It is at 4,950s and
+running, which is **1.45 times that prediction**, so the scaling is
+sub-linear in samples and a fixed cost dominates more than F298 assumed.
+
+Recorded now because it is a prediction until the job resolves and a
+description afterwards, which is F315c's discipline applied to my own
+estimate. What the eventual duration implies, if the per-sample part is
+linear:
+
+| finishes at | implied fixed cost | as a share of the full-sample run |
+|---|---|---|
+| 85 min | 2,630s | 28 per cent |
+| 95 min | 3,567s | 38 per cent |
+| 110 min | 4,973s | 52 per cent |
+
+**Why it matters beyond curiosity.** F298's `tier2_token_sample_budget` is a
+product of tokens and samples, on the reasoning that twenty-five samples at
+1,223 tokens is what fails. If a large fixed cost dominates the *duration*,
+that says nothing directly about memory, which is what the budget is really
+about, but it does say the saving is smaller than the sample ratio suggests:
+nine samples will not cost 36 per cent of twenty-five, it will cost
+something nearer 55 to 70 per cent. The ten bench06 refinements were priced
+in PROGRESS at about ten hours on the ratio; on this they are nearer fifteen.
+
+**And it is a prediction F298 did not make.** F298 said the product is what
+fails and reduced it. It said nothing about what the reduction costs in time,
+and I wrote "nine samples instead of twenty-five" in four documents without
+asking. The budget still stands on its own evidence, which is a total split
+at 454 and 1,223 tokens with no overlap, and that evidence is about whether a
+job completes rather than how long it takes.
+
+The measurement to take when it resolves: its `seconds`, against 3,417 for
+the linear model and 9,492 for the full-sample run. If it completes at all,
+F306 is supported and this is the first datum on what reduced sampling
+actually costs.
