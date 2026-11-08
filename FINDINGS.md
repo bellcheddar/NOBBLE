@@ -15637,3 +15637,22 @@ what F315 predicted if the mechanism was reacting to them, and twenty-five
 minutes is not long enough to call it. Recorded as a reading rather than a
 conclusion, and the next one is worth taking after the chain's final rebuild,
 which is the next event that replaces the bundle wholesale.
+
+### F316c. The README, same obligation
+
+The crystal-control bullet added this morning says the bridge filter finds
+six of six measurable deposited bridges and reproduces the deposited area
+within 5 per cent. The paired test says the same statistic is higher on the
+scramble in 14 of 23 comparisons.
+
+They now sit together in the README, because the pair of them is the point
+rather than either alone: the filter measures a real bridge accurately, and
+burying surface is not recognising a degron. Separating them across
+documents, or into a FINDINGS entry nobody reads, would leave the public
+document carrying the half that flatters the project.
+
+Delta-ipTM's 22 of 31 at p 0.029 goes in the same bullet, named as its first
+positive result and as not surviving a correction for the six statistics
+tried. It would have been easy to lead with: the headline statistic, the
+first time anything has gone its way, and a p under 0.05. Leading with it
+would also have been the fourth thing today I had to withdraw.
