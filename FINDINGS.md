@@ -16451,3 +16451,30 @@ The remedy worth having is in the tool, not in my habits: `--limit` should
 refuse to write over a scores file holding more pairs than it is about to
 produce, or write to a separate path. That is a change to a module the chain
 imports, so it is recorded here for between stages, with F320.
+
+### F326b. The four suite failures, attributed before re-running
+
+The full suite ran from before 20:00 through the truncation window and came
+back 1,815 passed, 47 skipped, 4 failed. All four read `scores.jsonl`:
+
+| test | why one scored pair breaks it |
+|---|---|
+| `test_atlas_drift::test_the_check_passes_while_only_costs_move` | the drift check rebuilds from the campaign and compares with the published 158-pair bundle |
+| `test_design_parent_provenance::test_the_two_selections_differ_so_the_bug_was_visible` | needs at least two candidate parents to rank |
+| `test_design_parent_provenance::test_the_assembled_design_scan_targets_the_current_choice` | with one pair the ranking picks that pair, not `benchmark_888fd2c63e` |
+| `test_the_composite_has_an_out_of_sample_figure::test_a_cross_validation_failure_does_not_take_the_fit_with_it` | the fit refuses below `MINIMUM_LABELLED`, so there is no fitted result to assert on |
+
+**The prediction, written before the re-score finishes: all four pass again
+and none is an independent defect.** If any still fails, it is a real one and
+the truncation was a coincidence of timing. Recorded now so it is a
+prediction, which is the same discipline as F315c and F325 and is worth more
+here than anywhere, because the convenient conclusion is that they are all my
+own mess and nothing else is wrong.
+
+**And one of them is a guard I wrote this morning, firing on a real
+instance.** `test_the_assembled_design_scan_targets_the_current_choice` is
+F313's: it exists because the design scan was assembled on 4 November against
+scores that have since changed, and nothing checked that the queued parent is
+still the one the ranking picks. I wrote it for a hypothetical staleness. It
+detected actual staleness within nine hours, caused by me, which is a better
+argument for the guard than the one I made when adding it.
