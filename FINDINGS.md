@@ -16255,3 +16255,32 @@ scan because F321 fell out of checking something else, and only then
 thought to ask it of the other three. The question is cheap, it is not in
 `CLAUDE.md`, and it found four defects in an afternoon on a project with
 three hundred findings about exactly this class.
+
+### F324b. The question goes in CLAUDE.md, with its four instances
+
+F324 ended by noting that the question which found all four defects is cheap,
+is not in `CLAUDE.md`, and that I only thought to ask it because F321 fell
+out of checking something else. Leaving that observation in FINDINGS would
+have been F311b's mistake with the roles reversed: a rule recorded where the
+person who needs it is not looking.
+
+So it is the fourth operating rule: **of every step that reports success, ask
+what it reports when it was given nothing.**
+
+It is phrased as a check to run rather than a principle to hold, and it
+carries its four instances, because a rule with evidence attached is one a
+reader can calibrate. It also names the counter-example,
+`tools/stale_featurisation.py` counting `blind` apart from `checked`, which is
+what the rule looks like applied before the fact rather than after.
+
+The guard on the rules section now requires all seven findings the four rules
+cite, so a rule whose evidence is deleted fails rather than standing on an
+assertion.
+
+One thing I want to be straight about, because the section is called "earned
+the hard way" and three of the four were earned by me breaking something
+today. The first rule was already written in a comment nine hours before I
+paid for it (F311b). This one was not written anywhere, and the difference
+matters: the first was a retrieval failure and this was an absence. A rules
+file that cannot tell those apart will grow until nobody reads it, which is
+the failure mode that makes the whole section worthless.

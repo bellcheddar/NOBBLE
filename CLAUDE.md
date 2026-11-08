@@ -34,7 +34,21 @@ conda-forge scientific stack: see BoltzMaker's pixi.toml for why.
 
 ## Operating rules earned the hard way
 
-Three things cost hours on 2026-11-07 and none is inferable from the code.
+Four things, none inferable from the code. The first three cost hours on
+2026-11-07; the fourth found four defects in an afternoon.
+
+- **Of every step that reports success, ask what it reports when it was
+  given nothing.** The clean answer and the empty answer have the same shape
+  at a boundary: a zero exit, an empty error list, an absent file. On
+  2026-11-08 that question found a design scan that wrote no profile and
+  exited 0 (F321); three guards reading a scorer exit code that was always 0,
+  two of them with comments citing the findings that motivated them (F322); a
+  preflight reporting `ok` over zero jobs, which gates a 52-hour run (F323);
+  and an atlas build that published an empty bundle and printed the project's
+  one verbatim licensing guarantee over it (F324). The fix each time was to
+  give the empty answer a shape of its own, which is cheaper than remembering
+  the rule. `tools/stale_featurisation.py` counting `blind` apart from
+  `checked` is what this looks like done right.
 
 - **Never edit a script the chain is executing.** Bash reads a script
   incrementally, so an edit shifts the byte offsets under a running copy and

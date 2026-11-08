@@ -1,4 +1,4 @@
-"""CLAUDE.md's operating rules point at things that exist (F311).
+"""CLAUDE.md's operating rules point at things that exist (F311, F324b).
 
 The rules were added after three failures on 2026-11-07. A rule that names a
 script which has been renamed, or a tool which no longer takes the flag it
@@ -79,5 +79,5 @@ def test_the_third_rule_s_numbers_are_not_invented():
 def test_each_rule_names_the_finding_that_earned_it():
     """A rule with no finding behind it is a preference, and this file is
     for the ones that cost time."""
-    for finding in ("F308", "F304", "F303"):
+    for finding in ("F308", "F304", "F303", "F321", "F322", "F323", "F324"):
         assert finding in SECTION, f"{finding} is not cited by any rule"
