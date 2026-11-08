@@ -16064,3 +16064,53 @@ lives, so a reader of the script learns the rule is general and the two
 cannot drift into disagreeing. Nothing else is moved, because nothing else
 qualifies, and moving comments that correctly explain their own line into a
 rules file would make both worse.
+
+## F321. The design scan could spend 4.4 hours and report success with no result
+
+F313 verified the scan's inputs. This is its output, and it had the shape the
+project keeps finding.
+
+`tools/run_design.sh` runs the inference, then computes lifts and writes
+`scan_profile.json`, which is the file F252's registered prediction needs.
+The analysis step is guarded: F195 made the script exit on the lift's code,
+on the reasoning that "the inference is the expensive part and it is recorded
+either way; this says whether the analysis after it ran".
+
+That guard catches a lift that **raises**. A lift that legitimately computes
+nothing was still a silent success: `if report.get('lifts'):` skipped the
+profile, nothing was written, and the script printed `design scan done
+exit=0`. F252 then reads a missing profile as "not yet testable" forever,
+which is exactly what its verdict says today, with nothing distinguishing
+"the scan has not run" from "the scan ran and produced nothing".
+
+Three ways to get there, and the third had no explanation at all.
+`from_scores` returns early with a status for a missing scores file and for
+an unscored parent. Its success path carried no status, so a parent that is
+scored with no design variants returned `lifts: []` and nothing else:
+
+```
+no scores file      -> no scores
+parent not scored   -> parent nonexistent_parent not scored
+scored, no variants -> parent benchmark_888fd2c63e is scored and has no
+                       design variants in this campaign   <- new
+```
+
+The success path now says `computed`, so a caller can act on the status
+rather than infer from the length of a list, and the scan refuses with
+`SystemExit(3)` naming which of the three it is.
+
+**Why this was worth finding now rather than in fifty hours.** The scan is
+240 jobs and 4.4 hours and it runs after tier 2. The failure mode needs only
+one unlucky job: if the parent's own job fails, `from_scores` finds no parent
+row, every lift is skipped, and 239 successful inferences produce no
+analysable result while the log says the scan is done. `run_design.sh` is not
+executing yet, so this was safe to change, which it will not be once the
+chain reaches that stage.
+
+Two slips getting there, both mine and both in the shell. The embedded Python
+sits inside a double-quoted shell string, and my first patch put escaped
+double quotes in a comment, which terminated the string and broke the script;
+the second tried to add `import sys` that was already there. The file was
+restored from git and redone with no quote characters at all. `bash -n`
+caught both before anything ran, which is the only reason they cost minutes
+rather than a stage.

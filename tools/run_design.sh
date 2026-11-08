@@ -73,6 +73,16 @@ campaign = Path('$CAMPAIGN')
 meta = json.loads((campaign / 'campaign.json').read_text())
 report = L.from_scores(campaign / 'scores.jsonl', meta['parent'])
 print(json.dumps({k: v for k, v in report.items() if k != 'lifts'}, indent=2))
+if not report.get('lifts'):
+    # Loud, and non-zero. F195 made a lift that raised exit non-zero; a lift
+    # that legitimately computes nothing still exited 0 and wrote no
+    # profile, so the scan reported success and F252 stayed not-yet-testable
+    # on a missing scan_profile.json with nothing saying why. Three ways to
+    # get here and the status names which: no scores file, the parent not
+    # scored, or the parent scored with no design variants (F321).
+    print('REFUSING: no lift to profile, so no scan_profile.json is written: '
+          + str(report.get('status')), file=sys.stderr)
+    raise SystemExit(3)
 if report.get('lifts'):
     objects = [L.Lift(**item) for item in report['lifts']]
     profile = L.scan_profile(objects, meta['parent_sequence'])

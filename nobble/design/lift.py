@@ -305,7 +305,17 @@ def from_scores(scores_path: Path, parent_peptide_id: str) -> dict:
     variants = [row for row in rows if row.get("parent_peptide_id") == parent_peptide_id
                 and row.get("tier") == "design"]
     lifts = [compute(row, parent) for row in variants]
+    # A status on the success path too, so an empty result always says why.
+    #
+    # The two early returns above carry one and this did not, so a parent
+    # that is scored and has no design variants returned `lifts: []` with no
+    # explanation at all. `tools/run_design.sh` then wrote no
+    # `scan_profile.json` and exited 0, and F252 reads a missing profile as
+    # "not yet testable" forever (F321).
     return {
+        "status": ("computed" if lifts else
+                   f"parent {parent_peptide_id} is scored and has no design "
+                   "variants in this campaign"),
         "parent": parent_peptide_id,
         "parent_sequence": parent.get("peptide_sequence"),
         "lifts": [item.to_dict() for item in lifts],
