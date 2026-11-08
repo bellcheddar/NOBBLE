@@ -15805,3 +15805,36 @@ accounts for that, and nothing in the table survives a correction that did.
 The honest summary is not that one statistic works. It is that the two
 labelled components are each contradicted by one of the project's own paired
 designs, and the one that is not is the one with no theory behind it.
+
+### F318b. The page showed the weaker of two analyses of one dataset
+
+The About page carried spec 5.3's pooled ROC over 24 positives against 96
+negatives and nothing else about that arm. F317 showed the arm was built
+matched and that pooling discards the matching, so the page was showing the
+weaker analysis of a dataset it had the better one for.
+
+The stratified result now sits immediately after the pooled curve, before
+the scramble panel, so the two analyses of one arm are adjacent and the
+reader does not take the first as the answer. A test asserts that ordering,
+because three panels apart is the same as not showing it.
+
+Two things the panel is careful about.
+
+**The composite's in-sample row is qualified in words.** 0.7083 at p 0.00434
+is the only figure in the table that crosses the corrected threshold and it
+was fitted on these pairs, so the panel says to read the held-out row. A
+table printing both without that line would be worse than one omitting the
+analysis.
+
+**The block size is shown as well as the block count.** A within-block AUC
+over four controls takes five values, so the size is what tells a reader how
+coarse each observation is, and 24 blocks of four is not 96 comparisons.
+
+Guarded and tested on the measured, absent and failed paths, like the
+crystal control and the scramble panel before it.
+
+What the page now says about that arm, in order: the pooled curve is a null;
+within matched blocks nothing unfitted is significant and Delta-ipTM is below
+chance; against its own scramble Delta-ipTM wins and the primary signal
+loses. Three analyses, no rescue, and a reader can see all three without
+leaving the page.

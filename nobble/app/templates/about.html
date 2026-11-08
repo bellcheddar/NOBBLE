@@ -418,6 +418,47 @@
   {% endif %}
 </section>
 
+{# The same arm as the ROC above, analysed as the matched design it is.
+   Placed immediately after it, because showing the pooled curve alone shows
+   the weaker of two analyses of one dataset (F317). #}
+<section class="panel">
+  <h2>The same arm, within its matched blocks</h2>
+  {% if matched_blocks and matched_blocks.get('status') == 'measured'
+        and matched_blocks.get('results') %}
+    <p class="panel__hint">Each positive against its own
+      {{ matched_blocks.controls_per_block|join(' or ') }} controls, matched
+      on length and composition and sharing its drug. Ties at a half; the
+      block is the unit.</p>
+    <table class="ntable">
+      <thead><tr>
+        <th scope="col">Statistic</th>
+        <th scope="col">Blocks</th>
+        <th scope="col">Mean within-block AUC</th>
+        <th scope="col">Blocks above a half</th>
+        <th scope="col">p, two sided</th>
+      </tr></thead>
+      <tbody>
+        {% for row in matched_blocks.results %}
+          <tr>
+            <td class="mono">{{ row.statistic }}</td>
+            <td class="mono">{{ row.blocks }}</td>
+            <td class="mono">{% if row.mean_within_block_auc is not none %}{{ row.mean_within_block_auc }}{% else %}not measured{% endif %}</td>
+            <td class="mono">{{ row.blocks_above_half }} / {{ row.blocks_above_half + row.blocks_below_half }}</td>
+            <td class="mono">{% if row.p_two_sided is not none %}{{ row.p_two_sided }}{% if matched_blocks.bonferroni_threshold and row.p_two_sided < matched_blocks.bonferroni_threshold %} *{% endif %}{% else %}no comparison{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="panel__hint">The composite was fitted on these pairs, so read
+      its held-out row. {{ matched_blocks.statistics_tested }} statistics, so
+      the threshold marked * is
+      {{ matched_blocks.bonferroni_threshold }}.</p>
+  {% else %}
+    <p class="panel__hint"><span class="flag flag--pending">not computed</span>
+      {{ (matched_blocks or {}).get('status', 'this bundle was built before the analysis existed') }}</p>
+  {% endif %}
+</section>
+
 {# Paired, where every other test on this page is not. Placed after the
    crystal control because the two answer different questions about the same
    signal: whether the filter measures a bridge correctly, and whether a

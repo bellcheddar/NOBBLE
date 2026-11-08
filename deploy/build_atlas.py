@@ -650,6 +650,26 @@ def main() -> int:
             "status": f"unavailable: {type(problem).__name__}: {problem}",
             "results": []}
 
+    # The matched arm as a matched design (F317).
+    #
+    # The page shows spec 5.3's pooled ROC over 24 positives against 96
+    # negatives. That arm was built matched: each positive with the four
+    # non-degraded zinc fingers closest to it in length and composition,
+    # each control inheriting its positive's drug. Pooling discards the
+    # matching, and the better-powered analysis gives a stronger null, so
+    # showing only the pooled one shows only the weaker result.
+    try:
+        sys.path.insert(0, str(ROOT / "tools"))
+        import matched_arm_stratified
+
+        stratified_rows = paths.read_jsonl(
+            campaign / "scores.jsonl", tolerate_torn=True)
+        matched_blocks = matched_arm_stratified.report(stratified_rows)
+    except Exception as problem:                        # noqa: BLE001
+        matched_blocks = {
+            "status": f"unavailable: {type(problem).__name__}: {problem}",
+            "results": []}
+
     about = {
         "sources": binman_store.available(),
         "unavailable": list(binman_store.UNAVAILABLE),
@@ -658,6 +678,7 @@ def main() -> int:
         "reach_auc": lysine.BINMAN_REACH_AUC,
         "crystal_control": crystal_control,
         "paired_scrambles": paired_scrambles,
+        "matched_blocks": matched_blocks,
     }
     (OUT / "about.json").write_text(json.dumps(about, indent=2, default=str))
     summary["files"]["about.json"] = len(about["sources"])

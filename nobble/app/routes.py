@@ -248,6 +248,8 @@ def about():
         # The paired parent-versus-scramble test (F316). Absent from a
         # bundle built before it existed, and the panel says so.
         paired_scrambles=precomputed.get("paired_scrambles"),
+        # The same matched arm, analysed as the matched design it is (F317).
+        matched_blocks=precomputed.get("matched_blocks"),
         crystal_counts=data.crystal_control_counts(
             precomputed.get("crystal_control")),
         weight_fit=data.weight_fit(),
