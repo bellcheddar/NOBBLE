@@ -1530,3 +1530,32 @@ third guess at the cause costs 2.6 hours and the evidence is now free.
 **Either way, drop nothing from the queue.** The nine remaining bench06 jobs
 are the rest of the measurement, and F268 needs five unconstrained attempts
 before `check_registered.py` will call it.
+
+## Deferred on purpose, with the reason and the moment
+
+Three things are known, costed and not done. They were scattered across
+three findings, which meant a successor had to read FINDINGS to find them.
+
+**Between tier-2 stages, not during one: tighten the watchdog (F320).** The
+tier-2 overdue bound is built from full-sample successes, so a job whose
+sampling F298 reduced is flagged at about three and a half hours when it
+should take one. `runner.sampling_for` already computes the fraction, so the
+expectation can be scaled by it. Not done while the chain runs because a
+mistake in `watchdog.py` stops the stage that fifty hours of queue depends
+on, and the exposure is at most two and a half hours on a stall that has not
+happened.
+
+**In BINMAN, not here: populate `tumour_enriched` (F314b).** It is 0 for all
+650 ligase rows, so Tier B's third membership filter had no data and the
+frozen set of 154 pairs is two filters and a cut. `tiers.py` computes
+`enrichment_usable` from the data, so the filter applies on the next freeze
+with no change here. D-NOB-007 says shared code is widened in BINMAN rather
+than forked, and re-freezing would discard an assembled 1,540-job queue.
+
+**Marc's, on the droplet: `bash deploy/enable_gzip.sh` (F132).** Unchanged.
+
+And two of today's that are decisions rather than tasks: whether to excise
+706 orphan blobs from remote history with a force push, which I did not do
+(F303), and whether the composite earns its place now that it measures 0.58
+to 0.61 out of sample against 0.5889 for its best single component (F312)
+and 0.6146 held out within the matched arm's own blocks (F317).
