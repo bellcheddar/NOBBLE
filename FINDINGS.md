@@ -15475,3 +15475,56 @@ purpose, the 1,540-job queue is assembled against it, and re-freezing would
 discard both and change a scientific selection that no instruction asked me
 to change. The option is recorded; the decision is not mine to take at
 08:40 on a Saturday with 32.8 hours already queued.
+
+## F315. Restore once, then refuse; and my explanation of the copies was wrong
+
+Two things, one a fix and one a withdrawal.
+
+### The fix
+
+F309's missing-referenced-file check runs at the end of the build that wrote
+the files, and on 2026-11-07 a published structure went missing between a
+build and a check minutes later, with four crystals going the same way
+between two builds. A guard that refuses the whole bundle because one file
+was removed in those seconds would stop a publish at the end of fifty hours
+of compute over something a second `shutil.copy` fixes.
+
+So the build now records where each published file came from, copies a
+missing one again from that source, and refuses only on what is still absent
+after that. The restore is counted in the summary, because a silent one
+hides that something is removing published files. What it cannot fix is
+still refused, which is the case the guard exists for: a file the bundle
+promises and the build never had.
+
+Two slips in the tests, both mine and both the same shape. My earlier
+`if absent:` assertion keyed on `refusals[0]`, and adding the restore branch
+above the refusal made it fail on the restore: a test that assumed there
+would only ever be one branch. And F271's shape came up again in review, so
+there is now a test that the restore sits above the refusal rather than
+below the thing that exits.
+
+### The withdrawal
+
+F310b said the copies were iCloud restoring its copy of the version the
+rebuild replaced, "file by file, which converges and stops", and I ruled out
+my own deletions feeding the loop because 586 was larger than the 336 I had
+removed.
+
+There are now **5,073**, against 2,509 real structures, and the names carry
+" 3" and " 4" as well as " 2". Successive generations past the file count is
+not a one-off restore of one version. Either the mechanism generates
+repeatedly on its own, or each cleanup prompts another round with an
+incremented suffix, and the arithmetic I used to rule the second out does not
+rule it out: a re-restore of files I deleted can exceed the count I deleted
+if it runs more than once.
+
+So I am stopping the cleaning except where it is needed, which is
+`deploy/deploy.sh` before a publish, and leaving the directory alone. That is
+also the experiment: if the count stops climbing without my intervention,
+the mechanism was reacting to it.
+
+The two remaining tests that asserted no unreferenced published file now
+exclude conflict-shaped names, for the reason F310b gave and which still
+holds whatever the cause: a copy named `5HXB 2.cif.gz` is not a crystal any
+pair refers to, the invariant that none of them is the only copy of anything
+is asserted elsewhere, and the publish path clears them.

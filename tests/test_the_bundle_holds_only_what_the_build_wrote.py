@@ -160,15 +160,19 @@ def test_the_build_refuses_on_a_referenced_file_it_did_not_publish():
     look for files that should not be there.
     """
     tree = ast.parse(SOURCE)
-    refusals = [node for node in ast.walk(tree)
+    # Across every `if absent:` branch, not the first one. F315 added a
+    # restore branch above the refusal, both testing `absent`, and keying on
+    # `refusals[0]` made this fail on the restore: a test that assumed there
+    # was only ever one branch.
+    branches = [node for node in ast.walk(tree)
                 if isinstance(node, ast.If)
                 and isinstance(node.test, ast.Name)
                 and node.test.id == "absent"]
-    assert refusals, "no `if absent:` branch in the build"
-    returns = [node for node in ast.walk(refusals[0])
+    assert branches, "no `if absent:` branch in the build"
+    returns = [node for branch in branches for node in ast.walk(branch)
                if isinstance(node, ast.Return)]
     assert any(isinstance(node.value, ast.Constant) and node.value.value == 1
-               for node in returns), "the refusal does not return non-zero"
+               for node in returns), "no `if absent:` branch returns non-zero"
 
 
 def test_both_kinds_of_referenced_file_are_checked():
@@ -218,3 +222,59 @@ def test_the_live_bundle_promises_nothing_it_lacks():
     assert not missing, (
         f"{len(missing)} file(s) the bundle references and does not contain, "
         f"each one a 404 on the site: {missing[:3]}")
+
+
+# --------------------------------------------------------------------------- #
+# Restore once, then refuse (F315)
+# --------------------------------------------------------------------------- #
+
+def test_a_missing_referenced_file_is_copied_again_before_refusing():
+    """A file removed in the seconds after it was published is not a build
+    that failed. On 2026-11-07 one published structure went missing between
+    the build that wrote it and a check minutes later, and four crystals went
+    the same way between two builds. Refusing the whole bundle for that would
+    stop a publish at the end of fifty hours over something a second copy
+    fixes.
+    """
+    tree = ast.parse(SOURCE)
+    restores = [node for node in ast.walk(tree)
+                if isinstance(node, ast.Assign)
+                and any(isinstance(target, ast.Name) and target.id == "restored"
+                        for target in node.targets)]
+    assert restores, "the build has no restore step"
+    assert "sources.get(published)" in SOURCE, (
+        "the restore does not look up where the file was copied from, so it "
+        "cannot copy it again"
+    )
+
+
+def test_the_restore_runs_before_the_refusal_and_not_after():
+    """After the refusal it would never run, which is the F271 shape: a step
+    placed below the thing that exits."""
+    assert SOURCE.index("restored = []") < SOURCE.index(
+        "REFUSING: {len(absent)} file(s) the bundle references")
+
+
+def test_what_the_restore_cannot_fix_is_still_refused():
+    """The case the guard exists for: a file the bundle promises and the
+    build never had. A restore that swallowed that would turn the guard into
+    a tidy-up."""
+    position = SOURCE.index("restored = []")
+    tail = SOURCE[position:position + 2600]
+    assert "still.append(entry)" in tail
+    assert "absent = still" in tail
+    assert "return 1" in tail
+
+
+def test_the_restore_is_counted_in_the_summary():
+    """A silent restore hides that something is removing published files,
+    which is the thing worth knowing even once the build succeeds."""
+    assert 'summary["referenced_files_restored"]' in SOURCE
+
+
+def test_every_published_path_has_a_recorded_source():
+    """The restore can only work for paths the build knows the origin of,
+    and both kinds of referenced file have to be in that map or one of them
+    is refused where the other is restored."""
+    assert 'sources[f"structures/{published}"] = origin' in SOURCE
+    assert 'sources[f"crystals/{pdb_id}.cif.gz"] = source' in SOURCE

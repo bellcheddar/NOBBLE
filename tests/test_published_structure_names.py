@@ -72,12 +72,25 @@ def test_every_published_structure_has_a_row_that_names_it():
     droplet; a row pointing at a file that is not there is a 404 in the
     viewer. Both directions, over whatever the current atlas holds.
     """
+    # Conflict-shaped names excluded. They are iCloud's restored copies of
+    # files a rebuild replaced (F173, F310), there are thousands of them
+    # while it reconciles a 330 MB bundle, and none is a file the site
+    # serves under that name. The invariant that matters, that none of them
+    # is the only copy of anything, is asserted by
+    # `tests/test_no_sync_conflict_files.py`, and `deploy/deploy.sh` clears
+    # them before publishing.
+    import sys as _sys
+
+    _sys.path.insert(0, str(ROOT / "tools"))
+    import clean_sync_conflicts as _cleaner
+
     import json
 
     atlas = ROOT / "deploy" / "atlas"
     if not (atlas / "structures").exists():
         return
-    on_disk = {path.name for path in (atlas / "structures").glob("*.cif")}
+    on_disk = {path.name for path in (atlas / "structures").glob("*.cif")
+               if not _cleaner.CONFLICT.search(path.name)}
     named = set()
     for results in sorted(atlas.glob("results*.jsonl")):
         for line in results.read_text().splitlines():

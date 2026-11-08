@@ -222,8 +222,20 @@ def test_the_about_page_credits_what_the_bundle_redistributes():
 
 
 def test_the_credited_ids_are_exactly_the_published_files():
+    # Conflict-shaped names excluded, for the same reason as
+    # `tests/test_published_structure_names.py`: they are iCloud's restored
+    # copies of files a rebuild replaced (F173, F310), there are thousands
+    # of them while a 330 MB bundle reconciles, and `deploy/deploy.sh`
+    # clears them before publishing. "5HXB 2" is not a crystal any pair
+    # refers to and was never meant to be one.
+    import sys as _sys
+
+    _sys.path.insert(0, str(ROOT / "tools"))
+    import clean_sync_conflicts as _cleaner
+
     published = sorted(p.name[: -len(".cif.gz")]
-                       for p in (ATLAS / "crystals").glob("*.cif.gz"))
+                       for p in (ATLAS / "crystals").glob("*.cif.gz")
+                       if not _cleaner.CONFLICT.search(p.name))
     if not published:
         pytest.skip("no crystals published yet")
     assert len(published) == len(set(published)), "duplicate crystal files"

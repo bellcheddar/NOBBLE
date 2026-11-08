@@ -351,6 +351,9 @@ def main() -> int:
     # shipped (F303).
     intended_structures: set[str] = set()
     intended_crystals: set[str] = set()
+    # Published path -> the file it was copied from, for the restore in
+    # `absent` below.
+    sources: dict[str, Path] = {}
     (OUT / "structures").mkdir(parents=True)
 
     reset_redactions()
@@ -456,6 +459,10 @@ def main() -> int:
                 if origin.exists():
                     published = f"{row['job_id']}.cif"
                     intended_structures.add(published)
+                    # Where it came from, so a file that goes missing
+                    # between the copy and the check below can be restored
+                    # rather than refused. See `absent` (F315).
+                    sources[f"structures/{published}"] = origin
                     shutil.copy(origin, OUT / "structures" / published)
                     row["structure"] = f"structures/{published}"
                 else:
@@ -558,6 +565,7 @@ def main() -> int:
             if source.exists():
                 shutil.copy(source, OUT / "crystals" / f"{pdb_id}.cif.gz")
                 intended_crystals.add(f"{pdb_id}.cif.gz")
+                sources[f"crystals/{pdb_id}.cif.gz"] = source
                 published_crystals += 1
             else:
                 print(f"  crystal {pdb_id} is not in the assembly cache, so "
@@ -802,10 +810,44 @@ def main() -> int:
             published = row.get("structure")
             if published and not (OUT / published).exists():
                 absent.append(f"{published}, named by {row.get('job_id')}")
+    # Restored once, then refused on what is still gone (F315).
+    #
+    # On 2026-11-07 a published structure went missing between the build that
+    # wrote it and a check minutes later, and four crystals went the same way
+    # between two builds. Whatever does that, a guard which refuses the whole
+    # bundle because one file was removed in the seconds after it was copied
+    # would stop a publish at the end of fifty hours of compute over
+    # something a second `shutil.copy` fixes.
+    #
+    # So: copy it again from the source this build used, then look again.
+    # Anything still absent is refused, which is the case the guard is for: a
+    # file the bundle promises and the build never had.
+    restored = []
+    if absent:
+        still = []
+        for entry in absent:
+            published = entry.split(",")[0]
+            origin = sources.get(published)
+            if origin is not None and Path(origin).exists():
+                target = OUT / published
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy(origin, target)
+                if target.exists():
+                    restored.append(published)
+                    continue
+            still.append(entry)
+        absent = still
+    if restored:
+        print(f"  restored {len(restored)} referenced file(s) that went "
+              f"missing after being published, first {restored[0]}")
+    summary["referenced_files_restored"] = len(restored)
+
     if absent:
         print(f"REFUSING: {len(absent)} file(s) the bundle references and does "
-              f"not contain, first {absent[:3]}. Every one of those is a 404 "
-              "on the published site.", file=sys.stderr)
+              f"not contain, first {absent[:3]}. A second copy from this "
+              "build's own source did not bring them back, so the build never "
+              "had them. Every one is a 404 on the published site.",
+              file=sys.stderr)
         return 1
     summary["referenced_files_absent"] = 0
 
