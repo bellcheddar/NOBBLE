@@ -16861,3 +16861,32 @@ a schedule figure in PROGRESS.
 What stays true from F320 is the part that was measured rather than inferred:
 the watchdog will not kill the job I am waiting on, which is why I checked it
 in the first place.
+
+### F329b. The mistaken premise reached my prose and none of the code
+
+Having found one assumption behind four wrong statements, the question is
+whether it reached anything executable. Checked every place the two sample
+counts are divided:
+
+* `budget.scaling_range` prefers `measured_scaling(campaign)` and falls back
+  to the ratio only when no campaign has run. So pricing uses measured
+  durations by token band wherever they exist, which is F257's work.
+* `tier2.scaling_bound` uses the ratio explicitly as an upper bound and says
+  so: it applies both the recycle and the sample ratio to the whole tier-1
+  time and adds them, "which double-counts deliberately: the result is a
+  bound rather than an estimate".
+
+**Nowhere is the ratio used as an estimate.** The premise reached the
+PROGRESS figure and three findings, all of them prose, and no executable
+path. F328 makes `scaling_bound` looser than it needs to be and it remains a
+bound, which is the only property it claims.
+
+And the pricing corrects itself. Once the reduced bench06 job resolves,
+`measured_scaling` has a real duration in the 800-to-1600 token band, which
+until now was made entirely of bench06's own failures (F270). The band stops
+being an artefact of a failure mode and becomes a measurement, without
+anyone editing anything.
+
+That is the thread closed. One premise, four wrong prose statements, one
+withdrawn code change that would have made things worse, and a codebase that
+had already declined to rely on the thing I got wrong.
