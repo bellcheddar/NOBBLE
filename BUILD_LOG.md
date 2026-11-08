@@ -1702,3 +1702,30 @@ bad clocks are. -->
   it has them and nothing publishes them, which is the only moment the gap
   costs anything and the moment it would otherwise pass unnoticed. It also
   asserts the gap still exists, so closing it retires the test.
+- `2026-11-08T04:10Z` F349. Measured the power of the Sievers matched arm,
+  which is the test that decides whether a statistic separates a degraded
+  degron from matched non-degraded controls. Nothing clears the Bonferroni
+  threshold of 0.00714 over seven statistics: best is `convergence_score` at
+  0.651 mean within-block AUC, p = 0.115, and `delta_iptm` is at 0.4271,
+  the wrong side of chance. At the observed 70 per cent rate, 48 decisive
+  blocks are needed for 0.00714 and 25 for a single pre-registered statistic
+  at 0.05. The arm has 20 decisive of 24, so it was never powered for the
+  analysis it performs.
+- `2026-11-08T04:10Z` The ceiling is 32 and the reason is chemistry. The
+  screen holds 32 degraded zinc fingers; the library carries 24; the other
+  eight are dropped because their only significant IMiD is CC-122 or CC-220,
+  which have no CCD and no curated SMILES, so there is no drug structure to
+  model. INSM1, PLAL1, ZKSC5, ZN285, ZN292, ZN526, ZN644, ZN860. Recovering
+  them is BINMAN curation (D-NOB-007) plus 600 jobs at the measured 74s =
+  12.3 hours, taking the plan to 192.9 of 240, and moves one pre-registered
+  statistic from p = 0.115 to about 0.052. So 48 decisive blocks against a
+  ceiling of 27 is a factor of 1.8 that no compute closes.
+- `2026-11-08T04:10Z` Which is the measurement re-scoping the headline needs
+  (D-NOB-076). The arm supports a statement about the experiment: no
+  statistic separates a degraded degron from matched controls at a corrected
+  level, and this design cannot. What the project can claim strongly is the
+  necessary condition: `convergence_score` beats a sequence's own permutation
+  at 25 of 26 decisive pairs, p = 8.0e-07, surviving the same correction,
+  with a mechanism (F342) and its confound measured (F344). A headline on the
+  necessary condition, saying plainly that the sufficient one is beyond this
+  design's power and why, is defensible; one on 0.052 is not.

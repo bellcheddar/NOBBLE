@@ -18587,3 +18587,100 @@ floor to mean anything: the question "does this positive bridge where its own
 scramble does not" is answerable per pair. That is a property of the data
 rather than a view about presentation, and it is the fact the open item
 should be decided against.
+
+## F349. The matched arm cannot reach a corrected conclusion, and the ceiling is 32 positives
+
+The Sievers matched arm is the project's most rigorous test: each degraded
+degron against four controls matched on length, composition and drug. It is
+the arm that decides whether a statistic separates a degraded substrate from
+a natural non-degraded one, which the scramble test explicitly does not ask.
+
+Here it is, over 24 blocks, with the Bonferroni threshold for seven
+statistics at 0.00714:
+
+| statistic | blocks | mean AUC | above | p |
+|---|---|---|---|---|
+| composite, in sample | 24 | 0.7083 | 18/22 | 0.0043 |
+| convergence_score | 24 | 0.6510 | 14/20 | 0.1153 |
+| lysine_reach_exposed_fraction | 23 | 0.6322 | 13/17 | 0.0490 |
+| composite, held out | 24 | 0.6146 | 12/16 | 0.0768 |
+| bridge_percentile | 22 | 0.5568 | 11/17 | 0.3323 |
+| plip_fingerprint_match | 24 | 0.5104 | 7/11 | 0.5488 |
+| **delta_iptm** | 24 | **0.4271** | 8/21 | 0.3833 |
+
+Nothing clears 0.00714. The composite's in-sample row does and is fitted on
+these pairs, so it is optimism and the tool says so in its own output.
+`delta_iptm`, the signal the project was built to measure, is on the wrong
+side of chance.
+
+### "Not significant" here is a power limit, not an absence
+
+At the observed rate of 14 above out of 20 decisive blocks, which is 70 per
+cent, the number of decisive blocks needed is:
+
+| threshold | decisive blocks needed | p at that n |
+|---|---|---|
+| 0.00714, Bonferroni over seven statistics | **48** | 0.0055 |
+| 0.05, one pre-registered statistic | **25** | 0.0433 |
+
+The arm has 20 decisive blocks of 24. So it was never powered for the
+analysis it performs, and an effect of exactly the size observed would still
+have come back "not significant".
+
+### The ceiling is 32, and the reason is chemistry rather than compute
+
+The screen holds **32 degraded zinc fingers**. The library carries 24. The
+other eight are dropped before matching, and the reason is good: their only
+significant IMiD is CC-122 or CC-220, neither of which has a CCD code in
+BINMAN's ligand table or a curated SMILES, so there is no drug structure to
+model. Named, since they are the recoverable set: INSM1, PLAL1, ZKSC5,
+ZN285, ZN292, ZN526, ZN644 and ZN860.
+
+So 32 blocks is the design's absolute ceiling, about 27 of them decisive at
+the observed rate, which is p = 0.0522.
+
+**The Bonferroni-corrected conclusion is unreachable.** 48 decisive blocks
+against a ceiling of 27 is a factor of 1.8, and no amount of compute closes
+it because the positives do not exist.
+
+### What the two levers actually buy
+
+**Recovering the eight** needs SMILES for avadomide and iberdomide, curated
+in BINMAN rather than here (D-NOB-007). Both are published compounds, so
+this is ordinary chemistry curation. The compute is cheap: 8 blocks x 5
+pairs x 15 jobs is 600 jobs at the measured 74 seconds, **12.3 hours**,
+taking the plan from 180.6 to 192.9 of the 240-hour cap. It moves one
+pre-registered statistic from p = 0.115 to about 0.052.
+
+**Pre-registering one statistic** rather than testing seven moves the
+threshold from 0.00714 to 0.05 and so the requirement from 48 decisive
+blocks to 25. This is the larger lever and it costs nothing, but it has to
+be done *before* the result is seen to mean anything, and it has not been:
+seven statistics are in the table above because seven were computed.
+
+Together they land at about p = 0.052 on 27 decisive blocks. That is the
+honest ceiling of this design: borderline, on one statistic chosen after the
+fact, which is not a result anybody should build on.
+
+### What this means for the headline
+
+Publication is held (D-NOB-076) until pose recovery passes or the headline
+is re-scoped. This is the measurement that re-scoping needs.
+
+The arm supports: **no statistic in NOBBLE separates a degraded degron from
+matched non-degraded controls at a corrected significance level, and the
+design cannot, because the screen has 32 usable positives against the 48 the
+correction needs.** That is a statement about the experiment rather than
+about the biology, and it is worth more than a borderline p from the one
+statistic that happened to come out best.
+
+What the project *can* claim is the necessary condition, strongly:
+convergence_score separates a real degron from its own permutation at 25 of
+26 decisive pairs, p = 8.0e-07, surviving the same correction, with a
+mechanism in F342 and the confound measured in F344. The scramble test's own
+output says it: beating a scramble is "necessary and nowhere near
+sufficient".
+
+A headline built on the necessary condition, stating plainly that the
+sufficient one is beyond this design's power and why, is defensible. One
+built on 0.052 is not.
