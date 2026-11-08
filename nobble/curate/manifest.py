@@ -105,6 +105,20 @@ class Job:
     affinity_available: bool
     required_modification: dict | None
     flags: list[str] = field(default_factory=list)
+    # The peptide this one is a control for, which is the matching itself.
+    #
+    # `Peptide.parent_peptide_id` is set for every composition-matched
+    # scramble and for every Sievers matched control, and
+    # `metrics.aggregate` already reads `parent_peptide_id` off the job row
+    # into the score row. This record was the only link that did not copy it,
+    # so the queue had no such key, the score rows carried it as None, and
+    # both of the project's paired designs could only be analysed unpaired
+    # (F316, F317). The pairing survived in `data/manifests/library.jsonl`
+    # and the two analyses had to join it back.
+    #
+    # Last in the field order because the fields above it have no defaults
+    # and a dataclass cannot put a defaulted field before them.
+    parent_peptide_id: str | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -199,6 +213,7 @@ def expand_pair(
                         peptide_accession=peptide.accession,
                         peptide_start_res=peptide.start_res,
                         peptide_end_res=peptide.end_res,
+                        parent_peptide_id=peptide.parent_peptide_id,
                         ligand_key=ligand.key if (ligand and complex_type == "ternary") else None,
                         ligand_encoding=(
                             ligand.encoding if (ligand and complex_type == "ternary") else None

@@ -15726,3 +15726,33 @@ values, so a block is a coarse observation, and the sign test over blocks
 discards the magnitudes. The two composite rows share their blocks with every
 other row, so the seven tests are not independent and Bonferroni is
 conservative in a way no correction here quantifies.
+
+### F317b. Two lines, and both paired designs become first-class
+
+The gap was in one place. `Peptide.parent_peptide_id` is set for every
+composition-matched scramble and every Sievers matched control, and
+`metrics.aggregate` already reads `parent_peptide_id` off the job row into
+the score row. `nobble/curate/manifest.py`'s `Job` record was the only link
+that did not copy it, so the queue had no such key, the score rows carried
+it as None, and both paired designs could only be analysed unpaired.
+
+Two lines: a defaulted field on `Job`, and
+`parent_peptide_id=peptide.parent_peptide_id` in the builder. The next
+campaign assembled will carry the matching in-band, and
+`tools/matched_arm_stratified.py`'s manifest join becomes unnecessary. Its
+test says so and skips when the scores start carrying it, which is the
+outcome to want rather than a failure.
+
+Nothing is re-assembled for the current campaign. The pairing is intact in
+`data/manifests/library.jsonl`, both analyses join it, and re-assembling to
+move a field would discard 2,360 scored jobs to tidy up a schema.
+
+Two checks the fix invites, both on the frozen library rather than on the
+code: every scramble and every matched control names a parent, and every
+named parent is itself a peptide in the library. A parent id pointing at
+nothing is a pairing that cannot be joined, and it would present as a
+smaller block rather than as an error.
+
+One slip: the first version of the test asked for `M.Member`. The dataclass
+that becomes a queue row is called `Job`, and a test that guesses a name
+asserts nothing.
