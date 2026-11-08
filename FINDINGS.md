@@ -15656,3 +15656,73 @@ positive result and as not surviving a correction for the six statistics
 tried. It would have been easy to lead with: the headline statistic, the
 first time anything has gone its way, and a p under 0.05. Leading with it
 would also have been the fourth thing today I had to withdraw.
+
+## F317. The matched arm was analysed as a pooled split, and the matching survives in a manifest
+
+`nobble/curate/peptides.py` says what the Sievers arm is for: "the whole
+value of this set is that its negatives came out of the same screen as its
+positives". Every positive is paired with the four non-degraded zinc fingers
+closest to it in length and amino-acid composition, each control inherits its
+positive's IMiD so the comparison is within-drug, and each records
+`parent_peptide_id`.
+
+Spec 5.3's `matched_control_roc` pools them and takes one AUC over 24
+positives against 96 negatives. F280 then put seven statistics to that pooled
+curve. A positive outranking its own four matched controls is a different and
+far better-controlled claim than one outranking the pooled 96, and nothing
+had made it.
+
+**The pairing is recoverable.** `data/manifests/library.jsonl` carries
+`parent_peptide_id` on all 96 matched negatives and on all 31 scrambles. It
+does not reach `scores.jsonl`: the campaign assembler never copies it into
+the queue, so the score rows carry the key with a value of None. A reader of
+the scores alone concludes there is no pairing, which is F285's error exactly,
+absent data read as a measured zero.
+
+Within-block AUC, each positive against its own four controls, ties at a
+half, tested at the block level because four comparisons sharing a positive
+are not four independent facts:
+
+| statistic | blocks | mean within-block AUC | blocks above 0.5 | p |
+|---|---|---|---|---|
+| composite, in sample | 24 | 0.7083 | 18/22 | 0.00434 |
+| convergence_score | 24 | 0.6510 | 14/20 | 0.11532 |
+| lysine_reach_exposed_fraction | 23 | 0.6322 | 13/17 | 0.04904 |
+| **composite, held out** | 24 | **0.6146** | 12/16 | **0.07681** |
+| bridge_percentile | 22 | 0.5568 | 11/17 | 0.33231 |
+| plip_fingerprint_match | 24 | 0.5104 | 7/11 | 0.54883 |
+| delta_iptm | 24 | 0.4271 | 8/21 | 0.38331 |
+
+### The better analysis does not rescue anything
+
+**The composite's 0.7083 is in-sample and must not be quoted.** It was fitted
+on these very pairs (F312), so that row is the same optimism in a different
+slicing, and it is the only figure in the table that crosses a corrected
+threshold. Held out it is 0.6146 at p 0.077, which does not reach 0.05 on 24
+blocks, let alone the 0.0071 that seven statistics demand.
+
+**Delta-ipTM is below chance within-block**, 0.4271. Read beside F316, where
+it beat its own scramble 22 of 31: it can tell a motif from its shuffle and
+it cannot tell a degraded zinc finger from a composition-matched one. Those
+are the two questions, and the second is the one a prediction rests on.
+
+**Nothing survives a correction for seven tests.** `lysine_reach`'s 0.049 is
+the only unfitted p under 0.05, on 17 decisive blocks, and it is the
+component D-NOB-024 reports as not validated and which F316 found pointing
+the wrong way against scrambles. A statistic that separates matched natural
+sequences but not a motif from its own shuffle is more likely to be reading
+something about length or composition than about degradation.
+
+So the stratified analysis gives a **stronger null than the pooled one**,
+because it is the design the project intended and it had more power to find
+something. That is the honest direction and it is not the direction I
+expected when I started: the matching was being discarded, and using it
+properly made the result worse rather than better.
+
+### What it does not establish
+
+24 blocks. The within-block AUC of a block with four controls takes five
+values, so a block is a coarse observation, and the sign test over blocks
+discards the magnitudes. The two composite rows share their blocks with every
+other row, so the seven tests are not independent and Bonferroni is
+conservative in a way no correction here quantifies.
