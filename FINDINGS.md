@@ -15392,3 +15392,53 @@ claimed one.
 One slip, caught immediately and costing nothing: the first version compared
 `campaign.json`'s `parent_sequence` with the ranking's `peptide_sequence`,
 which is spelled `sequence` there, so it compared a sequence with None.
+
+## F314. Tier B's set is the product of two filters and a cut, not three
+
+The same verification applied to Tier B, which is next after the design scan
+and is 1,540 jobs and 32.8 hours. `tools/preflight.py` is clean on it: 154
+pairs, 770 ternary and 770 binary, no ternary job declaring a ligand its YAML
+lacks, no asymmetric cofactor, no errors. And no staleness risk of F313's
+kind, because the selection comes from BINMAN's atlas rather than from this
+campaign's scores, so the corrections did not move it.
+
+What the provenance says, which F134 called auditable and did not read out:
+
+```
+pocket_score_ge_0.85                33 of 564 ligandable unproven
+best_window_plddt_ge_80.0           26
+tumour_enrichment_filter_applied    false
+tumour_enriched_above_median        not_computed: column unpopulated
+tumour_enrichment_status            not_computed: open_targets_enrichment_unpopulated
+```
+
+`config/thresholds.toml` gates Tier B membership on three things and then
+takes the top 15. **One of the three never ran.** The enrichment column has
+one distinct value at a median of 0.0, so the filter was skipped, and the
+frozen set of 154 pairs is the product of two filters and a cut.
+
+This is recorded honestly at the source and that is where it ends. Tier B
+appears in no page, no README section and no atlas document, because it has
+never run, so nothing misleading is being published today. The risk is
+forward and specific: when its results are written up, "selected on
+druggability, fold confidence and tumour enrichment" is the sentence that
+writes itself, and it would name a filter that was skipped.
+
+So the guard is on the one place the fact lives. A funnel without
+`tumour_enrichment_filter_applied` reads as a filter that ran, and the test
+requires the flag, requires a `not_computed:` reason when it is false, and
+requires the unapplied stage's count to read as absent rather than as a
+number. Two further checks of the funnel as a funnel: the stage counts must
+narrow monotonically, and `candidates_after_filters` must equal the last
+stage rather than being a third figure.
+
+Plus the drift check the frozen set invites. It was frozen on 5 November and
+`config/thresholds.toml` is editable, so every cutoff the provenance records
+must still match config. A selection made at one cutoff and described by
+another is F97's shape in a parquet file.
+
+One slip of mine. The first version asked that every key under the config's
+`tier_b` block appear in the provenance, and failed on
+`construct_peptide_residues` and two others, which filter nothing: they set
+how long a peptide window is. A test that cannot tell a filter from a
+construct parameter is not asking about filters.
