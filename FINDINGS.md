@@ -15528,3 +15528,77 @@ exclude conflict-shaped names, for the reason F310b gave and which still
 holds whatever the cause: a copy named `5HXB 2.cif.gz` is not a crystal any
 pair refers to, the invariant that none of them is the only copy of anything
 is asserted elsewhere, and the publish path clears them.
+
+## F316. Paired against its own scramble, Delta-ipTM separates and the bridge does not
+
+Every test in the project is unpaired. `matched_control_roc` ranks degraded
+against matched non-degraded across the Sievers arm; the composite fit pools
+benchmark, Sievers and scramble rows as one labelled set. Both carry
+variation between receptors and glues.
+
+A scramble shares its parent's receptor, its glue, its five seeds and its
+amino-acid composition, and differs only in the order of the peptide. 31 of
+them are scored and every one has its parent scored too. That is a paired
+design that isolates the sequence, and nothing had used it as one.
+
+Two-sided exact sign test on P(parent > scramble) = 0.5, ties excluded from
+the denominator rather than split:
+
+| statistic | parent | scramble | tied | p | direction |
+|---|---|---|---|---|---|
+| convergence_score | 25 | 1 | 5 | 0.00000 | parent |
+| plip_fingerprint_match | 13 | 2 | 14 | 0.00739 | parent |
+| delta_iptm | 22 | 9 | 0 | 0.02945 | parent |
+| composite | 20 | 11 | 0 | 0.14961 | parent |
+| bridge_percentile | 9 | 14 | 0 | 0.40487 | **scramble** |
+| lysine_reach_exposed_fraction | 1 | 8 | 18 | 0.03906 | **scramble** |
+
+Six statistics, so the chance of at least one crossing 0.05 by luck is 0.265
+and the Bonferroni threshold is 0.00833. Two survive it: `convergence_score`
+overwhelmingly, and `plip_fingerprint_match` just.
+
+### The two readings that matter
+
+**Delta-ipTM separates a degron from its own scramble.** 22 of 31, p 0.029.
+It does not survive a correction for six tests and it is the first positive
+result the headline statistic has had: F280 put it to the Sievers labels and
+got an interval containing 0.5, F281's grid gave it weight zero, and F284
+noted it has the lowest standalone AUC of the five. Those are unpaired. This
+is paired, and the direction is right.
+
+That is not a rescue. It says Delta-ipTM can tell a motif from its own
+shuffle, which is the easy question. Whether it separates a degraded sequence
+from a natural non-degraded one is the Sievers arm's question, and there it
+still fails. A statistic can pass the first and fail the second, and the
+second is the one that matters for a prediction.
+
+**Spec 4.1's primary signal points the wrong way.** `bridge_percentile` is
+higher on the scramble in 14 of 23 comparisons. Not significant, and the
+direction is still the wrong one for the signal the project calls primary and
+the one F297 just validated against crystals. The two results are compatible:
+the filter measures a real bridge accurately, and how much surface a glue
+buries against a shuffled peptide is not smaller than against the motif.
+Burying surface is not recognising a degron.
+
+`lysine_reach_exposed_fraction` is worse: 1 win against 8, p 0.039 in the
+wrong direction, on 9 effective comparisons because 18 of 27 tie. D-NOB-024
+already reports it as measurement only and not validated, and this is the
+first measurement pointing against it.
+
+### What this does not establish
+
+A scramble keeps the composition and destroys the motif, so beating it is
+necessary and nowhere near sufficient.
+
+The 31 pairs are not independent: 7 benchmark and 24 Sievers, sharing
+receptors and glues, so the effective sample size is smaller than 31 and no
+correction here accounts for that.
+
+A sign test ignores magnitude. `convergence_score`'s 25 of 26 says the parent
+converges more tightly almost always, and a scrambled peptide with no
+preferred binding mode converging less is partly a statement about being
+orderable rather than about being degraded.
+
+Ties carry two of the six: `plip_fingerprint_match` rests on 15 comparisons
+and `lysine_reach` on 9, which the table shows and a reader skimming p-values
+would miss.
