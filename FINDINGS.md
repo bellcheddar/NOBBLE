@@ -16284,3 +16284,45 @@ paid for it (F311b). This one was not written anywhere, and the difference
 matters: the first was a retrieval failure and this was an absence. A rules
 file that cannot tell those apart will grow until nobody reads it, which is
 the failure mode that makes the whole section worthless.
+
+### F324c. Applying the rule to the rest, and one place that already did it
+
+Having written the rule, the useful thing is to run it rather than admire it.
+Every step in the chain that reports success, asked what it reports when it
+was given nothing:
+
+| step | answer |
+|---|---|
+| `tools/run_design.sh` | wrote no profile, exited 0 (F321, fixed) |
+| `nobble.score.run` | printed a status, exited 0 (F322, fixed) |
+| `tools/preflight.py` | `ok: true` over 0 jobs (F323, fixed) |
+| `deploy/build_atlas.py` | published an empty bundle and verified it (F324, fixed) |
+| `tools/tier2.sh` | **already correct** |
+| `tools/run_queue.sh` | exits on the runner's code; 0 jobs to run when all are done is success, correctly |
+| `tools/clean_sync_conflicts.py` | says "none", which is the answer |
+| `check_registered.py`, `check_prediction.py` | "not yet testable" with the missing file named |
+| validation layers | `not_computed:` with a reason, by design (F85) |
+
+**`tools/tier2.sh` is the one that already did it, and it states the rule in
+its own words:**
+
+> The postcondition, not the status: refine only what this selection queued.
+> ... Not refining, because a refiner with nothing to read logs as though it
+> had refined.
+
+It reads the queue path the selector printed rather than the selector's exit
+code, exits 4 when that line is absent, and exits 0 with an explicit message
+and a pointer to `tier2.json` when the selection deliberately wrote none. The
+empty answer has a shape of its own in all three directions.
+
+So the sweep's result is five of nine steps were already right, four were
+wrong and are fixed, and the one that was most right had written down why. I
+did not read that comment before breaking the same thing four times, which is
+F311b again: the knowledge was in the project and not where I would meet it.
+It is in `CLAUDE.md` now, and `tier2.sh` is cited there as the worked
+example.
+
+This completes the rule's application. I am not going to extend the sweep
+past the chain's own steps, because the question earns its keep on a step
+whose success gates something expensive, and applying it to every function in
+the package would be the lens problem F293 warned about.
