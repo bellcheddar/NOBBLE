@@ -186,6 +186,22 @@ what it says.
   0.7083 in sample, which is the optimism again. The better-powered analysis
   was available, the matching was being discarded, and using it properly made
   the result worse rather than better. `tools/matched_arm_stratified.py`.
+- **That null is a limit of the arm and not a measurement of the biology.**
+  At the best rate any unfitted statistic shows, 14 of 20 decisive blocks for
+  pose convergence, clearing a Bonferroni threshold over seven statistics
+  needs about 48 decisive blocks. The arm has 20. The screen holds 32 degraded
+  zinc fingers and the library carries 24, because the other eight are
+  significant only for CC-122 or CC-220, which have no CCD code and no curated
+  SMILES, so there is no drug structure to model: INSM1, PLAL1, ZKSC5, ZN285,
+  ZN292, ZN526, ZN644, ZN860. Thirty-two blocks is therefore the design's
+  ceiling, about 27 of them decisive, which is p = 0.0522. So an effect of
+  exactly the size observed would still have come back as "not significant",
+  and no amount of compute closes a factor of 1.8 when the positives do not
+  exist. Recovering the eight is chemistry curation in BINMAN plus 12.3
+  measured hours. Pre-registering one statistic rather than computing seven
+  would move the requirement from 48 decisive blocks to 25, and costs nothing,
+  but it has to happen before the result is seen and it did not.
+  `tools/publication_hold.py` prints this beside the figures it qualifies.
 - **Pose recovery fails on this campaign**, which submits each substrate as a
   15-mer: 0 of 65 poses within 3 A, median 17.54 A, and tier-2 refinement
   sharpens the poses without recovering them. A Delta-ipTM that cannot
