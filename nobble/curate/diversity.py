@@ -277,12 +277,16 @@ def projected_hours(pairs: int, total_tokens: int | None = None,
     Two budgets exist and they are not the same thing, which matters because
     only one of them is a Gate. `wall_clock_budget_hours` (48) is the target
     for a single unattended run and is what `affordable_pairs` is sized
-    against. `max_compute_hours` (96) is the Gate G1 threshold. A selection
+    against. `max_compute_hours` (240) is the Gate G1 threshold. A selection
     that overruns the first is a scheduling fact the priority ordering already
     handles; a selection that overruns the second has to stop and ask.
 
-    Evaluating that in code rather than by eye, because the two numbers are
-    close enough to talk yourself across.
+    Evaluating that in code rather than by eye, because the two numbers were
+    48 and 96 when this was written and close enough to talk yourself across.
+    The second was lifted to 240 on 2026-11-05 (D-NOB-073) and this line
+    said 96 for the three days afterwards, which is why
+    `test_a_config_value_quoted_in_a_docstring_is_the_configured_one` reads
+    every figure of this shape against the file rather than trusting it.
 
     `total_tokens` is the token count of the campaign being sized, and should
     be given whenever it is known. Without it the projection multiplies the

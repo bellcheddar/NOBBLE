@@ -17358,3 +17358,80 @@ the thing that was exhausting something.
 four times the measured duration, which is why F329 withdrew F320's
 proposal to tighten it.
 
+## F335. F331 would have killed the job that settles F268 and F306, with three minutes to spare
+
+F331 is on the between-stages list: have `tier2.job_budget` prefer
+`measured_scaling` over `scaling_bound`, because the bound is theoretical
+and the measurement is real. I went to implement it and priced the running
+job under both first.
+
+| basis | seconds allowed | headroom at 9,516s elapsed |
+|---|---|---|
+| `scaling_bound` x worst tier-1 (what runs today) | 39,000 | 29,484 |
+| measured band median x worst tier-1 | 9,657 | **141** |
+| measured band maximum x worst tier-1 | 9,722 | **206** |
+
+The job is at 9,516 seconds. Under F331 it would be killed in two to three
+and a half minutes, having run for two and a half hours, and it is the job
+that settles F268 and F306.
+
+### Why the measurement is the wrong thing to budget with, and the better it is the worse
+
+`measured_scaling` returns a median, banded by token count, and
+`band_factors` for the 800-to-1,600 band gives median 10.524 across a
+measured range of 10.415 to 10.595. That is a span of 1.7 per cent over six
+jobs, which is the same tightness F334 found in their durations and from the
+same records.
+
+A budget is an upper bound and a median is a central estimate, so
+substituting one for the other removes the margin rather than correcting it.
+And the sharper the estimator, the less margin is left: a factor measured
+to 1.7 per cent leaves 1.7 per cent of headroom, so the better the
+measurement gets the more certainly it kills the next job that is one per
+cent slow. Even the band *maximum* leaves 206 seconds, because the maximum
+of six near-identical runs is not an upper bound on the seventh.
+
+`scaling_bound` is 42.5, from a 10/3 recycle ratio and a 25/1 sample ratio.
+It is loose by construction and the 39,000 seconds it implies is 4.1 times
+the measured duration. That is what a stall margin is supposed to look like.
+
+### The third time this shape has come up, and the second withdrawal
+
+F320 proposed tightening the same watchdog by the sample fraction. F329
+withdrew it, because F328 had falsified the premise that a reduced job runs
+in 9/25 of the time, and the tightened bound would have been *below* the
+real duration.
+
+F331 is the same hazard reached from the opposite direction: not from a
+wrong model but from a right measurement used as the wrong kind of number.
+F329 withdrew F320 on a falsified premise; this withdraws F331 on a sound
+premise and an unsound use of it.
+
+So the pattern worth keeping is not "prefer measured over theoretical". It
+is **a budget needs a bound, and a measurement of what happened is not a
+bound on what will happen.** The project already says this in its own
+words, in `measured_scaling`'s docstring: `include_failed` exists because
+pricing a queue and judging whether a running job is healthy want opposite
+answers (F270). F331 asked the pricing estimator to do the judging.
+
+### F331 is withdrawn, and nothing replaces it
+
+Not deferred: there is no version of it worth doing. The budget's job is to
+notice a job that has stopped making progress, and 4.1 times the measured
+duration does that while leaving a healthy job alone. F329 already said the
+current bound is an ordinary stall margin and this is the measurement that
+confirms it.
+
+The one thing worth keeping from F331 is the question it asked, which was
+whether the per-job budget is priced on something real. It is not, and that
+is correct: it is priced on something loose, deliberately.
+
+### What is still true from the work F331 came out of
+
+F257's banding stands and is doing its job: the factors run 4.60, 6.11,
+8.21 and 10.5 as jobs grow, and `band_factors` picks the band. F334's
+finding that a 64 per cent sample cut buys no time means the sample half of
+`scaling_bound` is not predictive, so the bound is loose for a reason that
+is partly wrong. It is still loose, which is all a stall margin needs to be,
+and tightening it on that reasoning is exactly what F329 refused.
+

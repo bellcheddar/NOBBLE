@@ -1557,7 +1557,8 @@ before `check_registered.py` will call it.
 
 ## Deferred on purpose, with the reason and the moment
 
-Two things are known, costed and not done, and one that was is done. They
+One thing is known, costed and not done; one is done; two are withdrawn.
+They
 were scattered across findings, which meant a successor had to read FINDINGS
 to find them.
 
@@ -1580,6 +1581,20 @@ Not verified end to end: a refusal of the real builder against a real
 campaign needs inputs that pass four earlier refusals and then fail a late
 one. Named in `tests/test_a_refused_build_leaves_the_published_bundle.py`
 rather than quietly absent, and worth doing when the GPU is free.
+
+**Withdrawn: pricing the per-job budget on the measurement (F331,
+withdrawn by F335).** The proposal was to have `tier2.job_budget` prefer
+`measured_scaling` over `scaling_bound`. Priced against the job running at
+the time: the measured band median allows 9,657 seconds and the band
+maximum 9,722, and the job was at 9,516 and still going. It would have been
+killed in two to three minutes after two and a half hours, and it is the
+job that settles F268 and F306.
+
+The reason is not that the measurement is wrong. It is that a budget is a
+bound and a median is not one, and the sharper the estimator the less
+margin is left: the band is measured to 1.7 per cent, so it leaves 1.7 per
+cent of headroom. `scaling_bound` is 42.5 and loose by construction, which
+is what a stall margin is for. Nothing replaces it.
 
 **Withdrawn: tightening the watchdog (F320, withdrawn by F329).** F320
 read the bound as loose because it assumed a reduced job finishes in 9/25 of

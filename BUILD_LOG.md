@@ -1362,3 +1362,27 @@
   `seconds`, including `running` ones, which real rows never carry. Caught
   by F334's empty-case test reporting `supported` over a job still in
   flight. Fixture fixed, not the predicate.
+- `2026-11-08T03:35Z` F335. Went to implement F331, which wanted
+  `tier2.job_budget` to prefer `measured_scaling` over `scaling_bound`, and
+  priced the running job under both first. Measured band median allows
+  9,657s and the band maximum 9,722s; the job was at 9,516s and still going.
+  F331 would have killed it in two to three minutes after two and a half
+  hours, and it is the job that settles F268 and F306. Withdrawn, with
+  nothing replacing it: a budget is a bound, a median is not, and the
+  sharper the estimator the less margin is left, since the band is measured
+  to 1.7 per cent. Second withdrawal of a watchdog-tightening proposal after
+  F329 withdrew F320.
+- `2026-11-08T03:35Z` Stage projection, measured rather than multiplied: 100
+  tier-2 jobs remain, 37.8 hours at the per-token-band medians. The ten
+  1,223-token bench06 jobs are 10 per cent of the jobs and 70 per cent of
+  the cost. 94.78 spent plus 37.8 is 132.6 against `max_compute_hours` of
+  240, so G1 stays closed, which matches the 130 h figure D-NOB-083 already
+  recorded. An earlier line of mine said 76 remaining: that mixed
+  `len(queue) - len(done)` with the count of queue ids not yet done, and 24
+  done ids are not queue members. 100 is the figure.
+- `2026-11-08T03:35Z` `nobble/curate/diversity.py` said
+  `max_compute_hours` (96) in the docstring that exists to stop a reader
+  confusing the two budgets. Lifted to 240 on 2026-11-05 by D-NOB-073 and
+  the prose was not part of that change. Fixed, and every figure of that
+  shape in the code is now read against the config by
+  `test_a_config_value_quoted_in_a_docstring_is_the_configured_one`.

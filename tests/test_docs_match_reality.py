@@ -131,3 +131,71 @@ def test_the_route_count_in_the_prose_matches_what_deploy_checks():
         stale = [w for w in words.values()
                  if w != expected and f"{w} routes" in text]
         assert not stale, f"{name} says {stale} routes, deploy.sh checks {expected}"
+
+
+def _config_values() -> dict[str, list[float]]:
+    """Every tuning and threshold key, flattened to its value(s).
+
+    A key can appear in both files or in two sections of one, so the values
+    are a list: a docstring quoting any of them is quoting a real one, and
+    that ambiguity is worth tolerating rather than resolved by guessing
+    which section a sentence meant.
+    """
+    from nobble import paths
+
+    found: dict[str, list[float]] = {}
+    for config in (paths.tuning(), paths.thresholds()):
+        for section in config.values():
+            if not isinstance(section, dict):
+                continue
+            for key, value in section.items():
+                if isinstance(value, bool) or not isinstance(
+                        value, (int, float)):
+                    continue
+                found.setdefault(key, []).append(float(value))
+    return found
+
+
+def test_a_config_value_quoted_in_a_docstring_is_the_configured_one():
+    """96 in the prose, 240 in the file, for three days.
+
+    `nobble/curate/diversity.py` exists partly to explain that two budgets
+    exist and that only one of them is a Gate, and it named the Gate's
+    threshold as 96. It was lifted to 240 on 2026-11-05 (D-NOB-073),
+    deliberately, with the reason recorded in `config/tuning.toml` beside
+    the value and in `tools/hwprobe.py` so the next probe would not put 96
+    back. The docstring was not part of that change, in the one place whose
+    purpose is to stop a reader confusing the two budgets.
+
+    The same shape as what the project already refuses in code: a number
+    written where nothing checks it is a number that will drift. The
+    markdown documents are checked above; this is that check for the
+    figures quoted inside the code.
+
+    Only the parenthetical form is read, a backquoted key followed by a
+    number in brackets, which is how this project writes it. A sentence
+    mentioning a historical value, such as the "Lifted from 96" note in the
+    config itself, does not match and should not.
+    """
+    configured = _config_values()
+    pattern = re.compile(r"`([a-z][a-z0-9_]*)`\s*\((\d+(?:\.\d+)?)\)")
+    offenders, checked = [], 0
+    for folder in ("nobble", "tools", "deploy"):
+        for path in sorted((ROOT / folder).rglob("*.py")):
+            for key, quoted in pattern.findall(path.read_text()):
+                if key not in configured:
+                    continue
+                checked += 1
+                if float(quoted) not in configured[key]:
+                    offenders.append(
+                        f"{path.relative_to(ROOT)}: `{key}` ({quoted}) but "
+                        f"the config says {configured[key]}")
+    assert checked >= 1, (
+        "no docstring quotes a config value in the backquoted-key form, so "
+        "this examined nothing. If the convention has changed, this test "
+        "should change with it rather than keep passing over nothing"
+    )
+    assert offenders == [], (
+        "these quote a config value that the config does not hold:\n"
+        + "\n".join(offenders)
+    )
