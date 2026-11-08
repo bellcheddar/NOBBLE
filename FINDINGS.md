@@ -16821,3 +16821,43 @@ structure, it has done the only thing it was for.
 And the G1 gate is still safe, for the reason F298b gave: `scaling_bound`
 prices at the full sample count, which a reduced job cannot exceed whatever
 the fixed share turns out to be.
+
+## F329. F320's remedy is unnecessary, because F320 rested on the premise F328 falsified
+
+F320 said the tier-2 watchdog had been loosened by F298's reduction: the
+overdue bound comes from full-sample successes, "a job whose sampling F298
+reduces finishes sooner, so its true expectation is lower and the bound is
+correspondingly more generous", and a stalled reduced job would be flagged at
+about three and a half hours when it should take about one. It went on the
+between-stages list.
+
+**"Should take about one" was the linear-in-samples assumption.** F328
+falsified it from the running job: 111 minutes and counting against a linear
+prediction of 57, with the trunk dominating. Recomputed on that:
+
+```
+watchdog bound for bench06   12,485s (3.47 h), 1.32x the full-sample duration
+at 70% of full (111 min)     the bound is 1.88x its true duration
+at 85% of full (134 min)     1.55x
+at 100% of full (158 min)    1.32x
+```
+
+A margin of 1.3 to 1.9 times expected is an ordinary stall-detection margin,
+not a looseness. F320's figure of 3.7 times came from dividing by a duration
+the job has already exceeded by a factor of two.
+
+**So the remedy is withdrawn from the deferred list rather than carried.**
+Scaling the expectation by the sample fraction, which is what F320 proposed,
+would make the bound *tighter than the job's real duration* and could flag a
+healthy reduced job as stalled. The change I deferred for safety would have
+introduced the failure it was meant to prevent.
+
+The honest reading of the pair: F320 was right that the bound's premise had
+changed and wrong about which direction, because it inherited the same
+sample-ratio assumption that produced three wrong cost estimates today. One
+mistaken premise, four consequences, and the only one that cost anything was
+a schedule figure in PROGRESS.
+
+What stays true from F320 is the part that was measured rather than inferred:
+the watchdog will not kill the job I am waiting on, which is why I checked it
+in the first place.

@@ -1556,14 +1556,14 @@ rename over `OUT` after every check passes. Not done during a run: `OUT` is
 read in dozens of places and the function has ten refusal paths, so it is a
 restructuring of the main path rather than a branch.
 
-**Between tier-2 stages, not during one: tighten the watchdog (F320).** The
-tier-2 overdue bound is built from full-sample successes, so a job whose
-sampling F298 reduced is flagged at about three and a half hours when it
-should take one. `runner.sampling_for` already computes the fraction, so the
-expectation can be scaled by it. Not done while the chain runs because a
-mistake in `watchdog.py` stops the stage that fifty hours of queue depends
-on, and the exposure is at most two and a half hours on a stall that has not
-happened.
+**Withdrawn: tightening the watchdog (F320, withdrawn by F329).** F320
+read the bound as loose because it assumed a reduced job finishes in 9/25 of
+the full-sample time. F328 falsified that from the running job, which is at
+111 minutes against a linear prediction of 57, so the bound is 1.3 to 1.9
+times a reduced job's real duration, which is an ordinary stall margin.
+Scaling the expectation by the sample fraction would make the bound tighter
+than the job's real duration and could flag a healthy job as stalled. Not to
+be done.
 
 **In BINMAN, not here: populate `tumour_enriched` (F314b).** It is 0 for all
 650 ligase rows, so Tier B's third membership filter had no data and the
