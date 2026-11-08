@@ -1930,3 +1930,7 @@ bad clocks are. -->
   `deploy/atlas_staging`, that the deploy will refuse because publication is
   held, and the three things that would be real problems. No new finding
   number: it is a handover, not a discovery.
+- `2026-11-08T04:35Z` Priced the remaining queue against the disk gate,
+  which nothing had done for the full run: 1,879 jobs left, a measured 102.5
+  MB for a bench06 tier-2 output and 0.47 MB median for a small job, so about
+  2 GB against 733 GB free and a 50 GB G5 floor. No gate opens on space.

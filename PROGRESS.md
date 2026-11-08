@@ -1786,6 +1786,13 @@ print-out is now the fullest statement of where the science stands: the
 power limit, the best single component, the composite paired against it, and
 a p of 8.05e-07 rather than 0.0.
 
+**Disk is not a risk, priced rather than assumed.** 1,879 jobs remain: 99
+tier-2 of which 9 are the 1,223-token kind, 240 design, 1,540 Tier B. A
+bench06 tier-2 output is 102.5 MB measured and a median small job 0.47 MB,
+so the queue is about 2 GB, against 733 GB free and a G5 floor of 50. The
+MSA cache is 0.11 GB and grows only for the 11 new Tier B receptors. No
+gate opens on space during this run.
+
 **What would be a real problem.** A preflight failure naming a YAML the
 code would not write, which means an input changed under an assembled
 campaign. A tier-2 job completing at the full 25 samples when the budget
