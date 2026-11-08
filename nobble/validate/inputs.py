@@ -384,10 +384,22 @@ def _regenerated_scan(campaign: Path) -> tuple[list[dict], str]:
     # must refuse; "there is no comparison to make" is neither a pass nor a
     # failure. Reported as `unavailable` it refused a legitimate build from
     # the benchmark campaign, which `test_redaction_count` caught at once.
-    if not campaign.name.startswith("campaign_"):
-        return [], (f"not_applicable: {campaign.name} is not the campaign "
-                    "assembler's output, and this compares against that "
-                    "assembler")
+    # Which assembler produced this campaign decides which regenerator can
+    # answer for it. Tier B was `not_applicable` until F340, which left the
+    # one arm whose own comment warns that it "depends on the form and the
+    # library and both can change between runs" as the one arm this skipped:
+    # 1,540 jobs and about 33 hours with this link unverified. The renderer
+    # is now shared with `assemble_tier_b` rather than copied, so the two
+    # cannot drift, and regenerating the arm on disk reproduced all 1,540
+    # YAMLs byte for byte.
+    regenerators = {"campaign_": "regenerate_all",
+                    "tier_b_": "regenerate_tier_b"}
+    chosen = next((name for prefix, name in regenerators.items()
+                   if campaign.name.startswith(prefix)), None)
+    if chosen is None:
+        return [], (f"not_applicable: {campaign.name} comes from neither the "
+                    f"campaign assembler nor the Tier B assembler, and this "
+                    f"compares against those")
     # Initialised outside the try, because they are read after it: a failure
     # part way through the scan would otherwise raise NameError here, which
     # is a worse report than the one the handler is there to give.
@@ -400,7 +412,7 @@ def _regenerated_scan(campaign: Path) -> tuple[list[dict], str]:
         rows = paths.read_jsonl(queue, tolerate_torn=True)
         # One manifest for the whole campaign. Asking per pair rebuilt it 158
         # times and turned a two-second scan into twenty-three.
-        fresh = assembler.regenerate_all()
+        fresh = getattr(assembler, chosen)()
         for row in rows:
             job_id = row.get("job_id")
             path = Path(row.get("yaml") or "")

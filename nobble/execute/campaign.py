@@ -269,6 +269,75 @@ IMID_POCKET_SOURCE = {
 }
 
 
+def _tier_b_rendered(manifest: dict, library: dict):
+    """Yield `(job, yaml text, queue extras)` for every Tier B job.
+
+    Extracted so the assembler and the provenance check render through the
+    same code rather than through two copies of it (D-NOB-007, and F262 is
+    what a divergence between the two costs). `regenerate_tier_b` below is
+    the other consumer.
+
+    Writes nothing and creates no campaign directory, for the reason
+    `_regenerate` gives: a scratch assembly that wrote one would become "the
+    latest campaign" and the chain's remaining stages would target it.
+    """
+    rows = {row["peptide_id"]: row for row in library["peptides"]}
+    pair_by_id = {pair["pair_id"]: pair for pair in manifest["pairs"]}
+    ligand_by_index = L.benchmark_ligands()
+    member_by_pair = {
+        f"bench{item['index']:02d}_{item['gene']}_{item['e3']}": item
+        for item in P.BENCHMARK_CHAINS
+    }
+
+    for job in manifest["jobs"]:
+        pair = pair_by_id.get(job.pair_id)
+        row = rows.get(job.peptide_id)
+        if pair is None or row is None:
+            continue
+        peptide = P.Peptide(**{k: v for k, v in row.items() if k != "length"})
+
+        # From the benchmark pair this one borrowed, so a SMILES-encoded
+        # degrader survives the round trip.
+        member = member_by_pair.get(pair.get("borrowed_from") or "")
+        ligand = ligand_by_index.get(member["index"]) if member else None
+        if ligand is None:
+            ccd = (pair.get("ligand") or {}).get("ccd")
+            ligand = L.by_ccd(ccd, modality="glue") if ccd else None
+
+        # `pocket=None` for every Tier B job: conditioning needs a pocket
+        # from the receptor's own deposited structure and these receptors
+        # have none.
+        document = Y.build_yaml(job, peptide, ligand, None)
+        yield job, Y.to_yaml_text(document), {
+            "pocket_residues": None,
+            "pocket_provenance": None,
+            "role": pair.get("role"),
+            "scramble_of": pair.get("scramble_of"),
+            "borrowed_from": pair.get("borrowed_from"),
+        }
+
+
+def regenerate_tier_b() -> dict[str, str]:
+    """`{job_id: yaml text}` for Tier B, as the current code would write it.
+
+    The Tier B half of `_regenerate` (F340). `inputs._regenerated_scan`
+    compares a campaign's YAML against the code that emits it and applied
+    only to `campaign_*`, so Tier B was the one arm whose own comment warns
+    that it "depends on the form and the library and both can change between
+    runs" and the one arm the check skipped: 1,540 jobs and about 33 hours
+    with that link unverified.
+    """
+    from nobble.curate import library as LM
+    from nobble.curate import manifest as M
+
+    library = LM.load()
+    if library is None:
+        raise RuntimeError("no library manifest: run nobble.curate.library first")
+    manifest = M.build_tier_b_manifest(library=library["peptides"])
+    return {job.job_id: text
+            for job, text, _extras in _tier_b_rendered(manifest, library)}
+
+
 def assemble_tier_b(reuse_latest: bool = True) -> dict:
     """Emit the Tier B arm: eleven unproven ligases against proven pairs.
 
@@ -317,43 +386,16 @@ def assemble_tier_b(reuse_latest: bool = True) -> dict:
         raise RuntimeError(f"Tier B manifest emitted no jobs: {manifest.get('status')}")
 
     with fresh_campaign("tier_b") as directory:
-        rows = {row["peptide_id"]: row for row in library["peptides"]}
-        pair_by_id = {pair["pair_id"]: pair for pair in manifest["pairs"]}
-        ligand_by_index = L.benchmark_ligands()
-        member_by_pair = {
-            f"bench{item['index']:02d}_{item['gene']}_{item['e3']}": item
-            for item in P.BENCHMARK_CHAINS
-        }
-
         queue_path = directory / "queue.jsonl"
         written = 0
         with queue_path.open("w") as queue:
-            for job in manifest["jobs"]:
-                pair = pair_by_id.get(job.pair_id)
-                row = rows.get(job.peptide_id)
-                if pair is None or row is None:
-                    continue
-                peptide = P.Peptide(**{k: v for k, v in row.items() if k != "length"})
-
-                # From the benchmark pair this one borrowed, so a
-                # SMILES-encoded degrader survives the round trip.
-                member = member_by_pair.get(pair.get("borrowed_from") or "")
-                ligand = ligand_by_index.get(member["index"]) if member else None
-                if ligand is None:
-                    ccd = (pair.get("ligand") or {}).get("ccd")
-                    ligand = L.by_ccd(ccd, modality="glue") if ccd else None
-
-                document = Y.build_yaml(job, peptide, ligand, None)
+            for job, text, extras in _tier_b_rendered(manifest, library):
                 yaml_path = directory / "yaml" / f"{job.job_id}.yaml"
-                yaml_path.write_text(Y.to_yaml_text(document))
+                yaml_path.write_text(text)
 
                 record = job.to_dict()
                 record["yaml"] = str(yaml_path)
-                record["pocket_residues"] = None
-                record["pocket_provenance"] = None
-                record["role"] = pair.get("role")
-                record["scramble_of"] = pair.get("scramble_of")
-                record["borrowed_from"] = pair.get("borrowed_from")
+                record.update(extras)
                 queue.write(json.dumps(record) + "\n")
                 written += 1
 

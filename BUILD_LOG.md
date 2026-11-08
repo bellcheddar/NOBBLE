@@ -1482,3 +1482,25 @@
   `_stale_check` appended to `errors`. Preflight reported `ok: true` over a
   stale YAML it had just found. The guard added to catch a pass-over-nothing
   was itself one.
+- `2026-11-08T04:35Z` F340. Followed F339's stated limitation instead of
+  leaving it stated. `_regenerated_scan` compares a campaign's YAML against
+  the code that emits it and applied only to `campaign_*`, so Tier B, whose
+  own chain comment warns that it "depends on the form and the library and
+  both can change between runs", was the one arm excluded from the check for
+  that hazard: 1,540 jobs, 33 hours, the link unverified. Closed by sharing
+  the renderer rather than copying it: `_tier_b_rendered` yields
+  `(job, yaml text, queue extras)` and both `assemble_tier_b` and the new
+  `regenerate_tier_b` consume it (D-NOB-007), because a second copy of that
+  loop could agree with itself and be wrong, which is what F262 was.
+- `2026-11-08T04:35Z` The refactor is proven against real data:
+  `regenerate_tier_b()` reproduced **all 1,540 YAMLs byte for byte**, zero
+  missing, zero extra, zero differences. So Tier B's form has not drifted,
+  measured rather than assumed, and the scan now reports "clean: all 1540
+  YAML(s) match what the code emits" where it previously said the question
+  did not apply. Pulling a loop out of an assembler the chain runs in 37
+  hours is worth doing only with that comparison available, and 1,540 cases
+  of it were already on disk.
+- `2026-11-08T04:35Z` Full suite: 1,903 passed, 34 skipped, one failure, and
+  the failure was the project catching me: `test_every_cited_finding_number_exists`
+  found F340 cited in three files and not yet written in FINDINGS.md.
+  Written; green.

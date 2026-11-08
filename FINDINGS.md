@@ -17791,3 +17791,72 @@ the implementation defeated it, and a `--dry-run` or a read-only tamper
 would have been safer still. The project's rule is that a campaign is
 expensive, and 1,540 jobs of Tier B inputs were one assertion away from a
 mutation nobody asked for.
+
+## F340. Tier B was the one arm excluded from the check for the hazard its own comment names
+
+`inputs._regenerated_scan` compares a campaign's YAML against the code that
+emits it. That is the third of the three links its docstring sets out, and
+the one F262 broke: a ligand resolution dropped a SMILES-only glue, so the
+YAML was wrong from the moment it was written and agreed with its own record
+and its own cache the whole way down.
+
+It applied only to `campaign_*`, by a deliberate decision with a good
+reason. `regenerate_all` reproduces `assemble_campaign`, and comparing
+another builder's output against that manifest "reports every pair it has as
+work the code would not emit: a confident answer to a question nobody
+asked".
+
+The gap that left is specific, and it is in the worst possible place.
+`tools/run_chain.sh` says of Tier B that the arm "depends on the form and
+the library and both can change between runs", and `assemble_tier_b` reuses
+a complete campaign by default, so reuse is the default path. That is 1,540
+jobs and about 33 hours with the one link that would catch a changed form
+unverified. **The arm whose own comment names the hazard was the arm
+excluded from the check for it.**
+
+Found by following F339's limitation rather than leaving it stated. The
+preflight change there printed `not_applicable: tier_b_... is not the
+campaign assembler's output`, I wrote that down as a limitation, and the
+next question was whether it had to be one.
+
+### Closed by sharing the renderer, not by copying it
+
+`_tier_b_rendered(manifest, library)` yields `(job, yaml text, queue
+extras)`, and both `assemble_tier_b` and the new `regenerate_tier_b`
+consume it. One definition, two consumers, which is D-NOB-007 and is the
+whole point here: a second copy of that loop could agree with itself and be
+wrong, and agreeing with itself the whole way down is exactly what F262 was.
+
+The fiddly part is the ligand. A Tier B pair cannot rebuild its ligand from
+its own stored dict, because dBET57 is SMILES-encoded with no CCD, so each
+pair records the benchmark pair it borrowed its glue and degron from and the
+ligand comes from there. That is the line most likely to drift between two
+copies, so a test asserts the assembler no longer resolves ligands itself.
+
+### Measured, and the answer is the one worth having
+
+Regenerating the arm on disk reproduced **all 1,540 YAMLs byte for byte**.
+Zero in the queue and not regenerated, zero regenerated and not in the
+queue, zero byte differences. So Tier B's form has not drifted, and the scan
+now says so in its own words: "clean: all 1540 YAML(s) match what the code
+emits", where it previously said the question did not apply.
+
+That byte comparison is also what makes the refactor trustworthy. Pulling a
+loop out of an assembler the chain will execute in about 37 hours is worth
+doing only with a test that compares the result against what that assembler
+already produced, and this one had 1,540 cases of it sitting on disk.
+
+### What is still not applicable, and correctly so
+
+`benchmark_*`, `design_*` and `corrected_*` still return `not_applicable`,
+and the distinction the original docstring is careful about is preserved:
+"the comparison failed" is an unknown that the publish gate must refuse on,
+while "there is no comparison to make" is neither a pass nor a failure.
+Reported as `unavailable` it once refused a legitimate build from the
+benchmark campaign.
+
+The design campaign is the one of those three worth revisiting, since it has
+an assembler of its own in `nobble/design/assemble.py` and 240 jobs behind
+it. Not done here: F338 already added the check that matters for that arm,
+which is whether its parent is the ranked choice, and a second regenerator
+written without a campaign to verify it against would be a guess.
