@@ -15316,3 +15316,33 @@ conclusion unflattering.
 The live page gains the number at the next scoring run. The campaign's
 `weights.json` was written before the field existed, and the panel correctly
 shows the in-sample figure alone until then.
+
+### F312c. The README said the fitting was a virtue
+
+F284 found that `data.COMPONENTS`'s `trust` field ranked five signals in an
+order the measurements do not support, and fixed the app: each slider now
+shows the component's own AUC beside its fitted weight. It did not touch the
+README, which presents the same ranking in the project's public document, as
+a column headed by "in descending order of trust".
+
+And the scoring section said the weights "are fitted on the benchmark panel
+and the Sievers matched set rather than hand-set", which reads as a virtue.
+F312 measures what the fitting is worth: nothing over the best single
+component, once the optimism is removed.
+
+Both are now in the README, in its own voice and without a number I have not
+measured:
+
+- the status column is editorial, every standalone AUC sits between 0.52 and
+  0.59, and the signal labelled headline is the lowest of the five;
+- the composite reaches 0.6988 in sample and 0.58 to 0.61 held out, against
+  0.5889 for the best single component, which carries no optimism because
+  nothing was fitted to produce it, so the in-sample figure is the whole of
+  the apparent gain.
+
+With the caveat that governs both: thirty-one positives, per-fold values from
+0.0 to 0.84, no interval quoted.
+
+Worth saying plainly, because the alternative was available and tempting:
+"weights fitted rather than hand-set" is the kind of line that survives into
+a paper, and the measurement says it should not.

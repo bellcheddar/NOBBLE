@@ -106,6 +106,22 @@ benchmark panel and the Sievers matched set rather than hand-set.
 Two of those carry honest caveats rather than numbers, and both are documented
 in `DECISIONS.md` with the measurements behind them.
 
+Two further things the table above would otherwise imply.
+
+**The status column is editorial and the measurements do not rank the signals
+that way.** Every component's standalone AUC over the 158 labelled pairs sits
+between 0.52 and 0.59, and the one labelled headline is the lowest of the five.
+The app shows each component's measured AUC beside its fitted weight rather
+than the word.
+
+**Fitting the weights buys nothing measurable.** The composite reaches AUC
+0.6988 on the pairs the grid searched and 0.58 to 0.61 across held-out folds,
+against 0.5889 for the best single component taken alone. A single component
+carries no optimism, because nothing was fitted to produce it, so that is a
+fair comparison and the in-sample figure is the whole of the apparent gain.
+Thirty-one positives, with per-fold values from 0.0 to 0.84, so no interval is
+quoted. `tools/composite_crossval.py`.
+
 ## 📊 Early results
 
 From the benchmark panel, at tier-1 triage settings, written up in `FINDINGS.md`:
