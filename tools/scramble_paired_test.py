@@ -49,6 +49,9 @@ SCRAMBLE_PREFIX = "scr_"
 # hand-computed statistic. Two copies of one exact binomial is F154's
 # shape, and I wrote them an hour apart (F326).
 sign_test = _numeric.sign_test
+# And `rounded_p`, for the reason in its own docstring: `round(p, 5)` stored
+# 0.0 for this test's strongest result (F350).
+rounded_p = _numeric.rounded_p
 
 
 def pairs_of(rows: dict) -> list[tuple[str, str]]:
@@ -89,9 +92,11 @@ def compare(rows: dict, statistic: str) -> dict:
         "tied": ties,
         "one_side_absent": absent,
         "compared": trials,
-        "p_two_sided": (round(value, 5)
-                        if (value := sign_test(wins, trials)) is not None
-                        else None),
+        # `rounded_p`, not `round(..., 5)`: the latter stored 0.0 for
+        # convergence_score's 8.05e-07, and the publication hold printed
+        # "p 0.0", which reads as certainty rather than as a small number
+        # (F350).
+        "p_two_sided": rounded_p(sign_test(wins, trials)),
         "direction": ("parent" if wins > losses else
                       "scramble" if losses > wins else "neither"),
     }
@@ -145,7 +150,12 @@ def main(argv=None) -> int:
     print(f"  {'statistic':32s} {'parent':>7s} {'scram':>6s} {'tied':>5s} "
           f"{'p':>8s}  direction")
     for row in out["results"]:
-        p = "-" if row["p_two_sided"] is None else f"{row['p_two_sided']:.5f}"
+        # `.5g`, not `.5f`: the latter printed this test's strongest result
+        # as 0.00000 even after the stored value was fixed (F350). A p
+        # printed as zero reads as certainty.
+        p = ("-" if row["p_two_sided"] is None
+             else f"{row['p_two_sided']:.5f}" if row["p_two_sided"] >= 1e-5
+             else f"{row['p_two_sided']:.3g}")
         mark = ""
         if (row["p_two_sided"] is not None
                 and row["p_two_sided"] < out["bonferroni_threshold"]):

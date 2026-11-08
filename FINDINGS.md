@@ -18684,3 +18684,76 @@ sufficient".
 A headline built on the necessary condition, stating plainly that the
 sufficient one is beyond this design's power and why, is defensible. One
 built on 0.052 is not.
+
+## F350. The publication hold showed the project at its worst and omitted the power
+
+`tools/publication_hold.py` is the print-out read at the moment publication
+is decided: `deploy/deploy.sh` runs it as its first pre-flight step, and the
+chain runs it again before its deploy stage for the log's benefit. F318d
+made it print the discrimination, which was the right instinct.
+
+It printed two lines from the matched arm: the composite's held-out AUC at
+p 0.077, and Delta-ipTM below chance at 0.4271. Those are the **two weakest
+readings in the table**. It printed nothing above them, and nothing about
+power.
+
+So a reader of the hold saw a weak result where the truth is an unpowered
+one, and had no way to see the strongest thing the project has. Neither
+omission was a misstatement; together they made the print-out an
+unrepresentative sample of its own evidence, in the one place where it
+matters most.
+
+Three lines added, all computed rather than transcribed:
+
+- `convergence_score` in the same blocks, 0.651 at p 0.115, the best single
+  component and still not significant.
+- `convergence_score` against its own scramble, 25 to 1 at p 8.05e-07, with
+  a pointer to its mechanism (F342) and its measured confound (F344).
+- The power statement: at the best unfitted rate, clearing the corrected
+  threshold needs about 27 decisive blocks and the arm has 17.
+
+### The power note reassured instead of warning, for one run
+
+Written as "the highest rate among the statistics", it picked
+`composite, in sample`, which has the highest rate by construction at 18 of
+22 because it is fitted on those very pairs. The note came out as "needs
+about 22 decisive blocks and the arm has 22": a power warning saying the arm
+is adequately powered, computed from the one row the matched-arm tool's own
+output says to skip.
+
+Now excluded by name, and the note says "at the best unfitted rate" so a
+reader knows it is an optimistic bound rather than a typical one.
+
+### A p-value printed as zero is not a small p
+
+`convergence_score` against its scramble is 8.0466e-07. `round(value, 5)` is
+**0.0**, and that is what the scramble test stored and what the hold printed:
+`p 0.0`. Printed as zero it reads as certainty, which is the opposite of
+what a very small p means.
+
+It was visible before today. The scramble tool's own table has shown
+`0.00000` in that column every time it ran, and I read past it in this
+session while quoting the figure as 8.0e-07 from a separate calculation.
+
+`nobble.numeric.rounded_p` now keeps decimal places down to the given
+precision and significant figures below it, so the common case is identical
+and the tail survives: 0.02945 stays 0.02945 and 8.0466e-07 becomes
+8.05e-07. The table's `.5f` had to be fixed too, because correcting the
+stored value left the display printing 0.00000 from a correct number.
+
+### Eight guessed names and signatures, and the one that was free
+
+Writing this cost two wrong calls to `main`: `main([])` raised TypeError
+because it takes no argv, and `main()` then failed with "unrecognized
+arguments: tests/" because it parses `sys.argv` itself, which under pytest
+is pytest's. Both failed loudly and cost a minute each.
+
+That is the eighth guessed name or signature of the session, and the
+comparison with the others is the useful part. `M.Member`,
+`peptide_sequence`, `tier_files()["scores"]`, a wrapped-phrase check,
+`sign_test(wins, losses)`, `scramble_` for `scr_`, `blocks_above` for
+`blocks_above_half`, and these two. The ones that raised cost minutes. The
+ones that returned a plausible value cost more: `sign_test(25, 1)` returned
+p = 0.0 beside a 25-to-1 split and I nearly published it, and `scramble_`
+blended the two populations F342 is about and would have hidden the effect
+entirely. `inspect.signature` and one `grep` are the whole remedy.

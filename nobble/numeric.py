@@ -56,6 +56,34 @@ def median_of(values) -> float | None:
     return present[len(present) // 2]
 
 
+def rounded_p(value: float | None, places: int = 5) -> float | None:
+    """A p-value rounded for reporting, without rounding it to zero (F350).
+
+    `round(8.0466e-07, 5)` is `0.0`, and a p of zero is not a small p: it
+    reads as certainty. The scramble test stored exactly that for
+    `convergence_score` at 25 of 26 decisive pairs, and the publication
+    hold printed "p 0.0" in the one print-out read when publication is
+    decided.
+
+    So: decimal places down to the given precision, and significant figures
+    below it, which keeps the common case identical and stops the tail
+    collapsing. `None` passes through, because a statistic with no
+    comparisons has no p and that is not the same as a small one.
+    """
+    if value is None:
+        return None
+    value = float(value)
+    if value == 0.0:
+        return 0.0
+    if abs(value) >= 10.0 ** -places:
+        return round(value, places)
+    # Three significant figures, so 8.0466e-07 reports as 8.05e-07.
+    from math import floor, log10
+
+    magnitude = floor(log10(abs(value)))
+    return round(value, -magnitude + 2)
+
+
 def sign_test(wins: int, trials: int) -> float | None:
     """Two-sided exact binomial p at 0.5, or None with nothing to test.
 

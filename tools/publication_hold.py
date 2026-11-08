@@ -298,7 +298,94 @@ def discrimination(campaign: Path | None) -> list[str]:
             f"{against['parent_higher']} to {against['scramble_higher']}, "
             f"p {against['p_two_sided']}. Telling a motif from its shuffle "
             "is the easier question and it passes that one")
+
+    # The best single component, and the strongest result the project has
+    # (F349). This printed the composite's held-out row and Delta-ipTM,
+    # which are the two weakest readings in the table, and omitted the one
+    # above them: a reader of the hold saw the project at its worst in one
+    # direction and had no way to see it at its best in the other.
+    best = row_of(blocks, "convergence_score")
+    if best and best.get("mean_within_block_auc") is not None:
+        lines.append(
+            f"    convergence_score in the same blocks: "
+            f"{best['mean_within_block_auc']}, p {best['p_two_sided']}  "
+            f"<- the best single component, and still not significant")
+    best_scramble = row_of(scrambles, "convergence_score")
+    if best_scramble and best_scramble.get("p_two_sided") is not None:
+        lines.append(
+            f"    convergence_score against its own scramble: "
+            f"{best_scramble['parent_higher']} to "
+            f"{best_scramble['scramble_higher']}, "
+            f"p {best_scramble['p_two_sided']}: the strongest thing here, "
+            "with a mechanism (F342) and its confound measured (F344)")
+
+    # And why "not significant" above is a power limit rather than an
+    # absence, because without this the p values read as a weak result
+    # (F349). The arithmetic is the project's own sign test over the
+    # observed rate, not a figure typed in.
+    lines.extend(_power_note(blocks))
     return lines or ["    discrimination: nothing comparable in this campaign"]
+
+
+def _power_note(blocks: dict) -> list[str]:
+    """How many blocks the matched arm would need, against what it has.
+
+    F349: at the observed rate nothing in that table can clear a Bonferroni
+    threshold over seven statistics, because the screen holds 32 degraded
+    zinc fingers and the correction needs about 48 decisive blocks. Printed
+    here because this is the print-out read at the moment publication is
+    decided, and a p of 0.077 beside no power statement reads as a marginal
+    result rather than an unpowered one.
+
+    Computed from the report rather than transcribed, so it follows the arm
+    as blocks are added.
+    """
+    from nobble.numeric import sign_test
+
+    # `blocks_above_half` and `blocks_below_half`, which is what the report
+    # carries. I wrote `blocks_above` and `blocks_decisive` from memory and
+    # the note silently printed nothing: the seventh guessed name of this
+    # session and the second whose failure was silence rather than an
+    # exception, because `.get` on a missing key is None and the row was
+    # filtered out.
+    # Not the in-sample composite, which the matched-arm tool's own output
+    # says to skip: "The composite was fitted on these pairs, so read its
+    # held-out row and not its in-sample one". It has the highest rate by
+    # construction, 18 of 22, so `max` picked it and the note came out as
+    # "needs about 22 decisive blocks and the arm has 22": a power warning
+    # that read as reassurance, from the one row that is optimism (F350).
+    rows = [entry for entry in (blocks.get("results") or [])
+            if entry.get("blocks_above_half") is not None
+            and (entry.get("blocks_above_half", 0)
+                 + entry.get("blocks_below_half", 0))
+            and "in sample" not in str(entry.get("statistic", ""))]
+    if not rows:
+        return []
+
+    def rate_of(entry):
+        decisive = entry["blocks_above_half"] + entry["blocks_below_half"]
+        return entry["blocks_above_half"] / decisive
+
+    best = max(rows, key=rate_of)
+    decisive = best["blocks_above_half"] + best["blocks_below_half"]
+    rate = rate_of(best)
+    if rate <= 0.5:
+        return [f"    no statistic is above a half in more than half the "
+                f"blocks, so there is no rate to size the arm against"]
+    threshold = float(blocks.get("bonferroni_threshold") or 0.05)
+    needed = next((n for n in range(decisive, 400)
+                   if (p := sign_test(round(rate * n), n)) is not None
+                   and p < threshold), None)
+    if needed is None:
+        return []
+    return [
+        f"    power: at the best unfitted rate, "
+        f"{best['statistic']}'s {best['blocks_above_half']}/{decisive}, "
+        f"clearing {threshold:g} needs "
+        f"about {needed} decisive blocks and the arm has {decisive}. The "
+        f"screen holds 32 degraded zinc fingers of which 24 are modellable, "
+        f"so this is a limit of the design and not a measurement of the "
+        f"biology (F349)"]
 
 
 def describe(summary: dict | None, confounded: set[str] | None = None) -> list[str]:

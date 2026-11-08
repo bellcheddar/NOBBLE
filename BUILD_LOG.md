@@ -1729,3 +1729,27 @@ bad clocks are. -->
   with a mechanism (F342) and its confound measured (F344). A headline on the
   necessary condition, saying plainly that the sufficient one is beyond this
   design's power and why, is defensible; one on 0.052 is not.
+- `2026-11-08T04:20Z` F350. Put F349's measurement where the decision is
+  made. `tools/publication_hold.py` runs as `deploy.sh`'s first pre-flight
+  step and printed only the composite's held-out p 0.077 and Delta-ipTM
+  below chance: the two weakest readings in the matched arm, with nothing
+  above them and nothing about power. Added three computed lines:
+  `convergence_score` in the blocks at 0.651, p 0.115; its scramble result
+  at 25 to 1, p 8.05e-07; and the power statement, which says that at the
+  best unfitted rate clearing the corrected threshold needs about 27
+  decisive blocks and the arm has 17.
+- `2026-11-08T04:20Z` The power note reassured instead of warning for one
+  run. Taking the highest rate picked `composite, in sample`, which has the
+  highest by construction because it is fitted on those pairs, so the note
+  read "needs about 22 decisive blocks and the arm has 22": a power warning
+  saying the arm is adequately powered, from the one row the matched-arm
+  tool says to skip. Excluded by name, and the note now says "at the best
+  unfitted rate" so the reader knows it is an optimistic bound.
+- `2026-11-08T04:20Z` And a p-value printed as zero. `convergence_score`
+  against its scramble is 8.0466e-07; `round(value, 5)` is 0.0, which is
+  what the scramble test stored and the hold printed. Printed as zero it
+  reads as certainty. Visible before today: that tool's table has shown
+  0.00000 in that column every run, and I read past it in this session
+  while quoting 8.0e-07 from a separate calculation. `numeric.rounded_p`
+  keeps places down to the precision and significant figures below it, and
+  the table's `.5f` needed fixing too.
