@@ -16890,3 +16890,49 @@ anyone editing anything.
 That is the thread closed. One premise, four wrong prose statements, one
 withdrawn code change that would have made things worse, and a codebase that
 had already declined to rely on the thing I got wrong.
+
+## F330. My own prediction counted a job I killed as evidence about what happens
+
+`tools/status.sh` reported F268 as "2 of 5 unconstrained refinement(s) have
+been attempted". It had been 1 of 5 all day, and the job on the GPU is
+`conditioned__seed1`, so the second unconstrained attempt did not come from
+a run.
+
+It came from me. When the chain restarted it printed "closed out 1 job(s)
+left running by a previous runner", and that job was
+`bench06..._unconstrained__seed2__tier2`, which had been on the GPU when I
+killed the chain under D-NOB-083. The runner records such a close-out as
+`abandoned` with `seconds: None`. F268's scorer collected every non-`running`
+status as an attempt, so a job I killed became evidence about whether bench06
+can be refined.
+
+**What that would have cost.** F268 claims every bench06 refinement fails,
+and its scorer calls the claim supported once five unconstrained jobs have
+been attempted with none succeeding. One of the five being an abandonment
+means the verdict could have read "supported, 5 of 5 failed" on four real
+failures and one kill. The prediction would have been scored in my favour by
+an action of mine.
+
+`abandoned` and `running` are now both outside the count, and the verdict
+carries `abandoned_not_counted` naming what it set aside, because a count
+that quietly shrinks is the same defect in the other direction. The job stays
+in the queue and will run, so the number becomes right by itself.
+
+### Why this one stings
+
+The project states this rule in three places I have cited today.
+`geometry.MEASUREMENT_FAILURES` exists so that a seed whose geometry could
+not run is not counted as a seed that did not bridge. F33 is titled "the
+honest denominator needed saying out loud". F293 measured the class and gave
+the rule: a count needs the total it is out of, and an unmeasurable outcome
+belongs outside it.
+
+I wrote F306 this morning with two careful exclusions, so that a full-sample
+failure and a job with no recorded sample count could not score it. I did
+not apply the same question to F268, which I had written three days earlier,
+and the asymmetry is that F306's exclusions protect against evidence arriving
+*early* while F268 needed protection against evidence that never arrived at
+all.
+
+Found by reading a status line that had changed by one, which is the only
+reason I looked.

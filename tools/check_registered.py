@@ -247,16 +247,38 @@ def f268_refinement_size_limit(campaign: Path) -> dict:
         verdict.update(status="not yet testable",
                        detail="no state_tier2.jsonl: refinement has not run")
         return verdict
+    # An abandoned job is not an attempt (F330).
+    #
+    # The runner writes `abandoned` with no `seconds` when it closes out a
+    # job a previous runner left running, which is what happens to whatever
+    # was on the GPU when a chain is killed. On 2026-11-08 that made F268
+    # report "2 of 5 unconstrained refinement(s) have been attempted" when
+    # one of the two was a job I killed: an outcome that did not happen,
+    # counted as evidence about what happens.
+    #
+    # F268's claim is that every bench06 refinement fails. Counting a kill
+    # among the failures would let it be scored "supported" on four real
+    # failures and one abandonment, which is the denominator rule this
+    # project states in `geometry.MEASUREMENT_FAILURES`, in F33 and in F293:
+    # a count needs the total it is out of, and an unmeasurable outcome
+    # belongs outside it. The job stays in the queue and will run, so the
+    # count becomes right by itself.
+    NOT_AN_OUTCOME = ("running", "abandoned")
+
     attempts: dict[str, list[str]] = {}
+    not_attempted: dict[str, list[str]] = {}
     for row in _rows(state):
         job_id = str(row.get("job_id") or "")
         if not job_id.startswith(F268_PAIR + "__"):
             continue
         status = str(row.get("status"))
-        if status == "running":
+        if status in NOT_AN_OUTCOME:
+            if status != "running":
+                not_attempted.setdefault(job_id, []).append(status)
             continue
         attempts.setdefault(job_id, []).append(status)
 
+    verdict["abandoned_not_counted"] = sorted(not_attempted)
     unconstrained = {job: states for job, states in attempts.items()
                      if "__unconstrained__" in job}
     conditioned = {job: states for job, states in attempts.items()

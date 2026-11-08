@@ -520,3 +520,55 @@ def test_f306_appears_in_the_report():
     called = {node.func.id for node in ast.walk(main)
               if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)}
     assert "f306_reduced_sampling_succeeds" in called
+
+
+def test_an_abandoned_job_is_not_an_attempt(tmp_path):
+    """The runner writes `abandoned` with no seconds when it closes out a
+    job a previous runner left running, which is what happens to whatever
+    was on the GPU when a chain is killed (F330).
+
+    F268's claim is that every bench06 refinement fails. An abandonment is
+    an outcome that did not happen, so counting it among the failures would
+    let the prediction be scored "supported" on four real failures and one
+    kill.
+    """
+    states = {
+        "bench06_RBM39_DCAF15__ternary__unconstrained__seed1__tier2":
+            ["failed: exit 0 but no confidence JSON written"],
+        "bench06_RBM39_DCAF15__ternary__unconstrained__seed2__tier2":
+            ["abandoned"],
+    }
+    verdict = _module().f268_refinement_size_limit(_bench06(tmp_path, states))
+    assert verdict["status"] == "not yet testable", verdict
+    assert verdict["unconstrained_attempted"] == 1, verdict
+    assert verdict["abandoned_not_counted"] == [
+        "bench06_RBM39_DCAF15__ternary__unconstrained__seed2__tier2"], verdict
+
+
+def test_an_abandoned_job_cannot_make_the_prediction_supported(tmp_path):
+    """Four failures and one kill must not read as five of five."""
+    states = {
+        f"bench06_RBM39_DCAF15__ternary__unconstrained__seed{seed}__tier2":
+            ["failed: exit 0 but no confidence JSON written"]
+        for seed in range(1, 5)
+    }
+    states["bench06_RBM39_DCAF15__ternary__unconstrained__seed5__tier2"] = \
+        ["abandoned"]
+    verdict = _module().f268_refinement_size_limit(_bench06(tmp_path, states))
+    assert verdict["status"] == "not yet testable", verdict
+    assert verdict["unconstrained_attempted"] == 4, verdict
+
+
+def test_the_excluded_jobs_are_named_rather_than_silently_dropped():
+    """A count that quietly shrinks is the shape this fix is about, so the
+    verdict carries which jobs it set aside."""
+    import ast
+
+    source = (ROOT / "tools" / "check_registered.py").read_text()
+    tree = ast.parse(source)
+    function = next(node for node in ast.walk(tree)
+                    if isinstance(node, ast.FunctionDef)
+                    and node.name == "f268_refinement_size_limit")
+    body = ast.unparse(function)
+    assert "abandoned_not_counted" in body
+    assert "NOT_AN_OUTCOME" in body
