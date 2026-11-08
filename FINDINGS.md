@@ -16663,3 +16663,51 @@ optimism 0.1152**, identical to F312's published values.
 So all sixteen published figures are confirmed against the restored file.
 The only thing the truncation cost was time: about forty minutes of mine and
 twenty minutes of CPU, and no number anywhere had to be withdrawn.
+
+## F327. The build destroys the bundle before the checks that can refuse it
+
+`deploy/build_atlas.py` clears `deploy/atlas` with `shutil.rmtree(OUT)` at
+line 348. Five refusals sit above that line and five below it:
+
+| | |
+|---|---|
+| **before** the rmtree | no campaign, stale inputs, a YAML the code would not emit, two more |
+| **after** it | PROTAC-DB chemistry present (pre-existing); unexpected files (F303); referenced files absent (F309); no scored pair (F324); unattributable SMILES (pre-existing) |
+
+A refusal above the line leaves the published bundle intact and the site
+standing, which is what the five original ones were arranged for. A refusal
+below it leaves `deploy/atlas` partial, with the previous bundle already
+gone.
+
+**That trade was already in the project and I extended it without noticing.**
+The PROTAC-DB check cannot run before the bundle is written, and shipping
+restricted chemistry is worse than having no bundle, so accepting the
+destruction there is a defensible call someone made. I then added three more
+post-rmtree refusals, for an unexpected file, a missing crystal and an empty
+bundle, and none of those is in the same severity class. A missing crystal
+costs one 404; losing the bundle costs the site.
+
+What saves it in practice, and why this is a defect rather than an incident:
+`tools/refresh.sh` exits 1 on a non-zero build, so nothing is deployed, and
+the live site keeps serving what it already has because deployment is a
+separate rsync. So a refusal after the rmtree costs a rebuild, not the site.
+That is luck in the deployment topology, not design in the build.
+
+### The remedy, and why I am not writing it now
+
+Stage and swap: build into a sibling directory and rename over `OUT` only
+after every check has passed. Then every refusal leaves the previous bundle
+untouched and the severity question disappears.
+
+`OUT` is a module-level constant read in dozens of places and the function
+has ten `return 1` paths, so this is a restructuring of the build's main
+path rather than a branch-confined change. The chain reaches
+`build_atlas` in about fifty hours and it is not running now, so the edit is
+safe in F308's sense and risky in the ordinary sense. Today has produced
+four of my own defects in that file's neighbourhood, two of them from edits I
+was confident about.
+
+So it goes with F320 and the `--limit` remedy on the between-stages list,
+with the staging approach named so the next session does not have to derive
+it. Recording the trade is the part that could not wait: three of the five
+post-rmtree refusals are mine, and nothing said they destroyed the bundle.

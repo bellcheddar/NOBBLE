@@ -1546,6 +1546,15 @@ before `check_registered.py` will call it.
 Three things are known, costed and not done. They were scattered across
 three findings, which meant a successor had to read FINDINGS to find them.
 
+**Between stages: stage the atlas build and swap (F327).** `build_atlas`
+clears `deploy/atlas` at line 348 and five of its ten refusals come after
+that, three of them added today, so a refusal leaves no bundle. Only the
+deployment topology saves it: `refresh.sh` exits on a non-zero build and the
+rsync is separate, so the live site keeps serving. Build into a sibling and
+rename over `OUT` after every check passes. Not done during a run: `OUT` is
+read in dozens of places and the function has ten refusal paths, so it is a
+restructuring of the main path rather than a branch.
+
 **Between tier-2 stages, not during one: tighten the watchdog (F320).** The
 tier-2 overdue bound is built from full-sample successes, so a job whose
 sampling F298 reduced is flagged at about three and a half hours when it
