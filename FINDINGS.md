@@ -15937,3 +15937,35 @@ because iCloud was generating " 3" and " 4" conflict generations at the time
 is being reconciled is the thing F310b converted three other tests away
 from, and these two are the same shape: worth watching rather than acting on
 yet.
+
+### F315c. Second reading: seventy-five minutes flat
+
+The conflict copies have now held at **5,073 for seventy-five minutes**,
+across the whole of the stretch in which I have deleted none. The climb while
+I was cleaning was 336, 586, 991, 1,984, 5,073, each number taken after a
+cleanup.
+
+So the plateau is no longer a short-window observation. A count that climbs
+only in the intervals when files are being removed, and is flat for an hour
+and a quarter when they are not, is the loop F315 suspected: iCloud restores
+what it holds, a deletion makes it hold a deletion to reconcile, and the next
+restore carries the next suffix. That also explains the " 3" and " 4"
+generations, which a single restore of one replaced version does not.
+
+**It does not close the question**, for two reasons worth stating. The whole
+observation is confounded with the chain: tier 2 writes nothing to
+`deploy/atlas`, so the bundle has been untouched by the project for the same
+seventy-five minutes, and a mechanism that only reacts to local writes would
+also be quiet. And nothing here has watched a window where the bundle was
+rewritten and then left alone, which is the discriminating case.
+
+The reading to take is after the chain's final atlas rebuild, which replaces
+the bundle wholesale and is the next event of that kind. The prediction is
+explicit: copies appear over the following minutes, and if nothing deletes
+them the count settles near the file count rather than climbing past it.
+Written down before the event so it is a prediction rather than a
+description.
+
+What this changes in practice: nothing is cleaned on a timer, and
+`deploy/deploy.sh` clears the provable copies immediately before a publish,
+which is the one moment the bundle must be clean.
