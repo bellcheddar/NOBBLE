@@ -41,8 +41,11 @@ late one. Named rather than quietly absent.
 from __future__ import annotations
 
 import ast
+import json
 import sys
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILDER = ROOT / "deploy" / "build_atlas.py"
@@ -316,4 +319,151 @@ def test_the_refusal_message_survives_a_bundle_outside_the_project(tmp_path):
     inside = ROOT / "deploy" / "atlas_staging"
     assert B._shown(inside) == "deploy/atlas_staging", (
         "a path inside the project is no longer shown relative to it"
+    )
+
+
+def _campaign_with_nothing_scored(tmp_path):
+    """The real campaign, with its scores emptied, assembled cheaply.
+
+    The named gap in this file's docstring was an end-to-end refusal, which
+    needs inputs that pass the four refusals before the clear and then fail
+    one after it. Constructing those from nothing means satisfying
+    `inputs.stale_inputs`, the YAML-shape check and the featurisation
+    comparison, which is why
+    `tests/test_stale_inputs.py::test_the_atlas_build_refuses_rather_than_publishing`
+    skips on a clean campaign rather than building a fixture.
+
+    So the real campaign is reused, which passes all four by construction,
+    and the one thing it needs to fail is arranged: `scores.jsonl` emptied,
+    so `published_pairs` is zero and the refusal F324 added fires, after
+    the clear and after everything that writes.
+
+    `outputs` is 3.0 of the campaign's 3.1 GB and the build only reads it,
+    so it is symlinked rather than copied. Everything else is small.
+    """
+    import shutil
+
+    source = sorted(ROOT.glob("campaigns/campaign_*"))
+    if not source:
+        return None
+    source = source[-1]
+    if not (source / "scores.jsonl").exists():
+        return None
+
+    campaign = tmp_path / source.name
+    campaign.mkdir()
+    for entry in sorted(source.iterdir()):
+        if entry.name == "outputs":
+            (campaign / "outputs").symlink_to(entry)
+        elif entry.is_dir():
+            shutil.copytree(entry, campaign / entry.name)
+        else:
+            shutil.copy2(entry, campaign / entry.name)
+    (campaign / "scores.jsonl").write_text("")
+    return campaign
+
+
+def test_a_real_refusal_leaves_the_published_bundle_untouched(tmp_path):
+    """The end-to-end case, which nothing covered (F327d).
+
+    Everything else here is either the move in isolation or a property of
+    the source. This runs the real builder, makes it refuse after the
+    clear, and looks at what is on disk afterwards: the published
+    directory with its contents intact, the staged bundle beside it, and a
+    refusal that names where the staged one went.
+
+    Before the staging change the published directory would hold a
+    half-written bundle at this point and the previous one would be gone.
+    """
+    import os
+    import subprocess
+
+    campaign = _campaign_with_nothing_scored(tmp_path)
+    if campaign is None:
+        pytest.skip("no campaign with scores on this checkout")
+
+    published = tmp_path / "atlas"
+    (published / "structures").mkdir(parents=True)
+    (published / "structures" / "previous.cif").write_text("the old bundle")
+    (published / "ATLAS.json").write_text('{"published_pairs": 158}')
+
+    done = subprocess.run(
+        [str(ROOT.parent / "BINMAN" / ".pixi" / "envs" / "default" / "bin"
+             / "python"), "deploy/build_atlas.py", str(campaign)],
+        cwd=ROOT, capture_output=True, text=True, timeout=900,
+        env={**os.environ, "PYTHONPATH": str(ROOT),
+             "KMP_DUPLICATE_LIB_OK": "TRUE",
+             "NOBBLE_ATLAS_OUT": str(published)},
+    )
+
+    assert done.returncode == 1, (done.returncode, done.stdout[-1500:],
+                                  done.stderr[-1500:])
+    assert "REFUSING" in done.stderr, done.stderr[-1500:]
+    assert "holds no scored pair" in done.stderr, done.stderr[-1500:]
+
+    # The point of the whole change.
+    assert (published / "structures" / "previous.cif").read_text() == (
+        "the old bundle"), (
+        "the refusal destroyed the published bundle, which is F327"
+    )
+    assert json.loads((published / "ATLAS.json").read_text())[
+        "published_pairs"] == 158
+
+    staged = published.with_name("atlas_staging")
+    assert staged.is_dir(), (
+        "the refused bundle is not on disk, so there is nothing to read "
+        f"the refusal against: {sorted(p.name for p in tmp_path.iterdir())}"
+    )
+    assert "atlas_staging" in done.stderr, (
+        "the refusal does not say where the staged bundle went, so the "
+        "operator looks at the published one and finds it fine"
+    )
+
+
+def test_the_same_build_publishes_when_nothing_refuses(tmp_path):
+    """The other half, so the test above is not passing on a broken build.
+
+    A refusal that leaves the published bundle alone is worth nothing if
+    the build refuses whatever it is given. Same campaign, scores intact,
+    and this time the previous bundle must be replaced rather than kept.
+    """
+    import os
+    import shutil
+    import subprocess
+
+    source = sorted(ROOT.glob("campaigns/campaign_*"))
+    if not source or not (source[-1] / "scores.jsonl").exists():
+        pytest.skip("no campaign with scores on this checkout")
+    source = source[-1]
+
+    campaign = tmp_path / source.name
+    campaign.mkdir()
+    for entry in sorted(source.iterdir()):
+        if entry.name == "outputs":
+            (campaign / "outputs").symlink_to(entry)
+        elif entry.is_dir():
+            shutil.copytree(entry, campaign / entry.name)
+        else:
+            shutil.copy2(entry, campaign / entry.name)
+
+    published = tmp_path / "atlas"
+    (published / "structures").mkdir(parents=True)
+    (published / "structures" / "previous.cif").write_text("the old bundle")
+
+    done = subprocess.run(
+        [str(ROOT.parent / "BINMAN" / ".pixi" / "envs" / "default" / "bin"
+             / "python"), "deploy/build_atlas.py", str(campaign)],
+        cwd=ROOT, capture_output=True, text=True, timeout=900,
+        env={**os.environ, "PYTHONPATH": str(ROOT),
+             "KMP_DUPLICATE_LIB_OK": "TRUE",
+             "NOBBLE_ATLAS_OUT": str(published)},
+    )
+    assert done.returncode == 0, (done.stdout[-1500:], done.stderr[-1500:])
+    assert not (published / "structures" / "previous.cif").exists(), (
+        "a file from the previous bundle survived a successful publish, so "
+        "the atlas is two builds mixed together"
+    )
+    assert (published / "ATLAS.json").exists()
+    assert not published.with_name("atlas_staging").exists(), (
+        "the staging directory is still there after a successful publish"
     )

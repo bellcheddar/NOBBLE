@@ -17616,3 +17616,104 @@ to three lines of Boltz's stderr, which no previous attempt has. That is the
 evidence F238, F289 and F298 all wanted, and PROGRESS's instruction stands:
 read it before guessing at a cause, because a third guess costs 2.6 hours
 and this one is free.
+
+## F337. The sampling caveat was computed, tested, and never left stdout
+
+`nobble.score.run._sampling_note` has said since F298 whether every scored
+pair ran at the same number of diffusion samples, and is covered by five
+tests. It was returned in the scoring summary. `tools/refresh.sh` redirects
+that summary into a step log, and `deploy/build_atlas.py` contained no
+reference to it at all.
+
+So the caveat was computed, committed, tested and absent from the published
+bundle. F96's shape with one more step missing: there F93's caveat was
+written and the atlas had not been rebuilt, here the atlas never read it.
+
+It goes live now rather than later. `runner.sampling_for` reduces a job too
+large to refine at the tier's count, so from this run onward tier 2 holds
+both 9 and 25, and until now every scored tier-2 job was at 25.
+
+Fixed along the whole path. The scorer writes `sampling{suffix}.json` beside
+`scores{suffix}.jsonl`, from the same object it reports so the file and the
+summary cannot drift. The builder reads both tiers into `about.json`, and an
+absent file publishes a status saying the sampling is unrecorded **rather
+than uniform**: publishing nothing, or publishing `uniform: true`, would
+both claim uniformity when nobody recorded it. The route passes it and the
+About page renders one 25-word line, in the four states it can be in,
+rendered rather than reasoned about.
+
+### What I did not do, which is the part worth keeping
+
+I was about to put a caveat on the refinement panel. Then I read
+`nobble/sampling.py`, which already solves this and solves it better.
+`COMPARABLE` is four proportions and medians; `WITHHELD` is the minima over
+seeds and their differences; and the docstring reasons it out: a mean, a
+median or a proportion has no such bias, because more samples make it less
+noisy rather than systematically smaller.
+
+The panel is therefore safe at either sample count. A caveat there would
+have implied otherwise and would have breached the project's own rule that
+disclaimers go only where a figure would be actively misread. What is
+published is a statement of what ran, beside the sources and the construct
+budget, not a warning about a number.
+
+A test pins the reasoning rather than the behaviour: if `COMPARABLE` ever
+admits a minimum over seeds, it fails and says to re-read whether the
+restraint is still safe.
+
+## F338. Which parent, and why, were different records and only one was kept
+
+`report.build`'s preview chooses a design-scan parent two ways and says
+which in `chosen_because`: by largest measured Delta-ipTM over the scored
+parents, or, when nothing is scored, by a fallback whose own wording is "a
+scan chosen this way has not been ranked against anything".
+
+Both wrote the same `campaign.json`, because `assemble.assemble` recorded
+`parent` and not the reason. A scan ranked against 158 pairs and one not
+ranked against anything were indistinguishable on disk.
+
+That distinction is the entire reason `tools/run_chain.sh` queues this stage
+last and re-assembles first, in its own words: "reusing a parent chosen from
+the benchmark alone would throw that away". The re-assembly runs with
+`|| true`, so on a failure the chain hands `run_design.sh` whatever design
+campaign was already there, and nothing could tell.
+
+**Measured, and the answer is uncomfortable.**
+`design_20261104T094939Z` was assembled at 09:49 on 4 November, before the
+main campaign scored. Ranking against all 158 pairs now gives the same
+peptide, `benchmark_888fd2c63e`, for a different reason: +0.316 Delta-ipTM
+with five candidates excluded for a flagged seed collapse. The right parent
+by luck rather than by provenance, and the wording that would have said so
+was thrown away.
+
+### Two fixes, and one of them was wrong first
+
+`assemble.assemble` now records `parent_provenance`, derived at assembly
+time. Derived rather than passed in, because the caller is inline Python
+inside `run_chain.sh` and that file cannot be edited while the chain is
+executing it (F308).
+
+`tools/run_design.sh` now checks the parent against what the ranking would
+choose **now**, before the 240 jobs, which is the question that decides
+whether they are worth running: a parent that is still the ranked choice is
+sound however it was picked, and one that is not is 4.4 hours on the wrong
+peptide.
+
+The first version of that check refused the correct parent. `report.build`
+reads whatever `nobble.app.data` is configured to, which is global state,
+and with nothing configured it ranked against a different campaign and
+preferred a different peptide. Found by running it both ways rather than
+only the way that was convenient; had I checked only the parent I expected
+to pass, the check would have entered the chain and blocked the design stage
+for a reason that was entirely mine. The campaign to rank against is now an
+argument, the script names the main campaign rather than the design one,
+which would have made the question circular, and it says so plainly when
+there is no campaign to rank against instead of passing quietly.
+
+### Also corrected
+
+I said earlier in the session that the design stage has no preflight. The
+chain's stage does not call `tools/preflight.py`, and `run_design.sh` does,
+with its own comment explaining that a cofactor asymmetry "completes
+perfectly well and reports the missing ion as an effect of something else".
+The gap was never the preflight. It was that nothing checked the parent.

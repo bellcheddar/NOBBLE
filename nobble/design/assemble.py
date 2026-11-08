@@ -146,6 +146,72 @@ def build_manifest(parent_id: str, generator: str = "alanine_scan",
     }
 
 
+def parent_provenance(parent_id: str, scored_campaign: str | None = None) -> dict:
+    """Why this parent, recorded with the campaign it produced (F338).
+
+    `scored_campaign` is the campaign to rank against, and it matters more
+    than it looks. `report.build` reads whatever `nobble.app.data` is
+    configured to, which is global state: called with nothing configured it
+    ranked against a different campaign and preferred a different peptide,
+    so a check written on top of it refused the correct parent. Found by
+    running it both ways rather than only the way that was convenient.
+
+    Passing None keeps whatever the caller configured, which is what the
+    assembler wants: it records what the ranking said in the process that
+    assembled the campaign, and that process is the chain's own, which
+    configures the main campaign first.
+
+    `report.build`'s preview chooses a parent two ways and says which in
+    `chosen_because`: by largest measured Delta-ipTM over the scored
+    parents, or, when nothing is scored, by a fallback whose own wording is
+    "a scan chosen this way has not been ranked against anything". The two
+    produce an identical `campaign.json`, because the summary records
+    `parent` and not the reason, so nothing downstream can tell a parent
+    ranked against 158 pairs from one that was not ranked at all.
+
+    That distinction is the entire reason `tools/run_chain.sh` queues the
+    scan last and re-assembles it against the full campaign, and on
+    2026-11-08 the campaign on disk was assembled before scoring while the
+    ranked answer happened to agree: the same parent for a different
+    reason, which is luck and not provenance.
+
+    Derived here rather than passed in, because the caller is inline Python
+    inside `run_chain.sh` and that file cannot be edited while the chain is
+    executing it (F308). Imported inside the function: `nobble.design.report`
+    imports the app's data layer, and importing that at module scope would
+    make the assembler depend on it to emit a queue.
+
+    A failure to determine it is recorded as a failure. Returning `{}` would
+    make "nobody asked" and "asked and could not tell" the same record,
+    which is F321 to F324.
+    """
+    try:
+        from nobble.app import data
+        from nobble.design import report
+
+        if scored_campaign:
+            data.configure(str(scored_campaign))
+        preview = (report.build().get("preview") or {})
+        parent = preview.get("parent") or {}
+    except Exception as problem:                        # noqa: BLE001
+        return {"status": f"could not be determined "
+                          f"({type(problem).__name__}: {problem})"}
+    if not parent:
+        return {"status": "report.build() offered no parent, so this "
+                          "campaign's parent was chosen by its caller and "
+                          "the reason is not recorded here"}
+    if str(parent.get("peptide_id")) != str(parent_id):
+        return {"status": f"the ranking now prefers "
+                          f"{parent.get('peptide_id')}, so {parent_id} was "
+                          "not the ranked choice at the time this ran",
+                "ranked_choice": parent.get("peptide_id"),
+                "ranked_because": parent.get("chosen_because")}
+    return {"chosen_because": parent.get("chosen_because"),
+            "ranked_against": str(scored_campaign) if scored_campaign else None,
+            "ranked": "largest measured delta-ipTM" in str(
+                parent.get("chosen_because") or "")}
+
+
 def assemble(parent_id: str, generator: str = "alanine_scan",
              positions: list[int] | None = None) -> dict:
     """Emit a runnable design campaign directory."""
@@ -248,6 +314,8 @@ def assemble(parent_id: str, generator: str = "alanine_scan",
             "conditioned_jobs_dropped_no_pocket": dropped,
             "pocket": pocket.positions if pocket else None,
             "cofactor": first.get("cofactor"),
+            # Why this parent, not only which (F338).
+            "parent_provenance": parent_provenance(parent_id),
             "note": (
                 "The parent is re-run here rather than reused from an earlier "
                 "campaign, so design lift subtracts two numbers measured under "

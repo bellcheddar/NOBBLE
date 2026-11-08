@@ -726,6 +726,26 @@ def _build() -> int:
             "status": f"unavailable: {type(problem).__name__}: {problem}",
             "results": []}
 
+    # Both tiers, named so an absent file reads as "not scored at this
+    # tier" rather than as agreement. `uniform` missing is not `uniform`
+    # true: a bundle whose scorer predates the note must not publish a
+    # claim that the sampling was uniform.
+    sampling_notes: dict[str, object] = {}
+    for tier_label, tier_suffix in (("tier1", ""), ("tier2", "_tier2")):
+        note_path = campaign / f"sampling{tier_suffix}.json"
+        if not note_path.exists():
+            sampling_notes[tier_label] = {
+                "status": f"no sampling{tier_suffix}.json in the campaign, so "
+                          "whether these pairs ran at one sample count is "
+                          "unrecorded rather than uniform"}
+            continue
+        try:
+            sampling_notes[tier_label] = json.loads(note_path.read_text())
+        except (OSError, json.JSONDecodeError) as problem:
+            sampling_notes[tier_label] = {
+                "status": f"sampling{tier_suffix}.json could not be read "
+                          f"({type(problem).__name__})"}
+
     about = {
         "sources": binman_store.available(),
         "unavailable": list(binman_store.UNAVAILABLE),
@@ -735,6 +755,18 @@ def _build() -> int:
         "crystal_control": crystal_control,
         "paired_scrambles": paired_scrambles,
         "matched_blocks": matched_blocks,
+        # Whether every scored pair ran at the same number of diffusion
+        # samples, per tier (F337). Published because a minimum over poses
+        # is not comparable between a best-of-9 and a best-of-25, and from
+        # this run onward tier 2 holds both: `runner.sampling_for` reduces
+        # a job too large to refine at the tier's count (F298).
+        #
+        # The note was computed and tested from the day the reduction was
+        # written and only ever printed, so nothing published it and the
+        # page could not say it. Read from the file the scorer writes
+        # rather than recomputed here, so the caveat on the page is the one
+        # the scoring run actually made.
+        "sampling": sampling_notes,
     }
     (OUT / "about.json").write_text(json.dumps(about, indent=2, default=str))
     summary["files"]["about.json"] = len(about["sources"])

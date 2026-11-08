@@ -1423,3 +1423,31 @@
   less work before any point after the trunk, the stopping point should have
   arrived earlier and did not arrive at all. No new prediction registered:
   F306 already claims this and F268 already denies it.
+- `2026-11-08T04:05Z` F337. The sampling caveat was computed, tested by five
+  tests, returned in the scoring summary, redirected into a step log by
+  `refresh.sh`, and never referenced by `build_atlas.py` at all. Now written
+  to `sampling{suffix}.json`, published into `about.json` for both tiers
+  with an absent file reading as unrecorded rather than uniform, and
+  rendered as one 25-word line on the About page. No caveat added to the
+  refinement panel: `nobble/sampling.py` already withholds every quantity a
+  sample count would bias, so the figures there are safe and a warning would
+  imply otherwise. I nearly wrote one before reading that module.
+- `2026-11-08T04:05Z` F338. `report.build` picks a design parent by ranking
+  or by a fallback that says "has not been ranked against anything", and
+  both wrote the same `campaign.json`, because only the parent was recorded.
+  The chain queues this stage last precisely to get a ranked parent and
+  re-assembles with `|| true`, so a failed re-assembly runs the old scan
+  silently. The campaign on disk was assembled before scoring and the ranked
+  answer happens to agree: right parent, no provenance. Assembler now
+  records the reason; `run_design.sh` checks the parent against today's
+  ranking before spending 240 jobs.
+- `2026-11-08T04:05Z` That check refused the correct parent in its first
+  version. `report.build` ranks against whatever `nobble.app.data` is
+  configured to, which is global state, and unconfigured it preferred a
+  different peptide. Found by running it both ways; testing only the parent
+  I expected to pass would have put it in the chain and blocked the design
+  stage for a reason of my own making. The ranking target is now an
+  argument.
+- `2026-11-08T04:05Z` Corrected myself: I said the design stage has no
+  preflight. The chain's stage does not call `preflight.py`; `run_design.sh`
+  does. The gap was that nothing checked the parent.

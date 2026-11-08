@@ -137,6 +137,26 @@
     experimentally observed bridges, which is what every bridge percentile on
     these pages is measured against.
   </p>
+  {# What sample counts produced the published numbers (F337). A fact, not a
+     caveat: nobble/sampling.py withholds every quantity a sample count would
+     bias, so the refinement panel shows only proportions and medians. Without
+     this line there is no way to tell that two pairs' refinements were drawn
+     from different numbers of poses. #}
+  {% if sampling %}
+  <p class="panel__hint" style="margin-top:0.6rem">
+    Diffusion samples per tier:
+    {%- for tier, note in sampling.items() %}
+      {# "tier 1", not "tier1": every other table on the site shows a
+         label rather than a field name (F203). #}
+      {{ ' ' }}{{ tier|replace('tier', 'tier ') }}
+      {%- if note.status %} not recorded
+      {%- elif note.by_count %} at {{ note.by_count.keys()|join(' and ') }}
+      {%- else %} not scored
+      {%- endif %}{% if not loop.last %};{% else %}.{% endif %}
+    {%- endfor %}
+    Quantities a sample count would bias are withheld rather than shown.
+  </p>
+  {% endif %}
 </section>
 
 <section class="panel">

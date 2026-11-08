@@ -333,6 +333,21 @@ def score_campaign(campaign: Path, with_plip: bool = True, limit: int | None = N
         for entry in scored:
             handle.write(json.dumps(entry, default=str) + "\n")
 
+    # Written to the campaign, not only returned (F337). `_sampling_note`
+    # has existed since F298 and is tested, and the only thing that ever
+    # saw it was whoever read the scorer's stdout: `tools/refresh.sh`
+    # redirects that into a step log and the atlas has never read it. So a
+    # caveat saying two pairs are not comparable was computed, committed,
+    # covered by five tests and absent from the page, which is F96's shape
+    # with one more step missing.
+    #
+    # Beside `scores{suffix}.jsonl` and with the same suffix, because the
+    # note is about those rows: a tier-1 note over tier-2 sampling would be
+    # a statement about a different set of jobs.
+    sampling = _sampling_note(scored)
+    (campaign / f"sampling{suffix}.json").write_text(
+        json.dumps(sampling, indent=2) + "\n")
+
     # Spec 4.8: fit the weights, then apply them. Two passes are needed because
     # the fit reads the scored components, so the composite cannot be written
     # until every component exists. When the fit refuses, nobble_score stays
@@ -387,7 +402,11 @@ def score_campaign(campaign: Path, with_plip: bool = True, limit: int | None = N
         "scores": str(output),
         "components": list(COMPONENTS),
         "weight_fit": fit.to_dict(),
-        "sampling": _sampling_note(scored),
+        # The same object that was written above, not a second call: two
+        # calls could not disagree today, and the file and the summary
+        # disagreeing later is the kind of difference nothing would catch.
+        "sampling": sampling,
+        "sampling_file": str(campaign / f"sampling{suffix}.json"),
     }
 
 

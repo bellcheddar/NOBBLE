@@ -250,6 +250,15 @@ def about():
         paired_scrambles=precomputed.get("paired_scrambles"),
         # The same matched arm, analysed as the matched design it is (F317).
         matched_blocks=precomputed.get("matched_blocks"),
+        # What sample counts produced the published numbers, per tier
+        # (F337). A statement of what ran rather than a caveat on a
+        # figure: `nobble/sampling.py` withholds every quantity a sample
+        # count would bias, so nothing on these pages needs defending. It
+        # is here because the scorer computed it, nothing published it, and
+        # a reader cannot otherwise tell that two pairs' refinements were
+        # drawn from different numbers of poses. Absent from a bundle built
+        # before it existed, and the line then says so.
+        sampling=precomputed.get("sampling"),
         crystal_counts=data.crystal_control_counts(
             precomputed.get("crystal_control")),
         weight_fit=data.weight_fit(),

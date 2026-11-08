@@ -43,6 +43,57 @@ if ! "$SENV/bin/python" tools/preflight.py "$CAMPAIGN"; then
   exit 1
 fi
 
+# Is this campaign's parent the one the ranking would choose now (F338)?
+#
+# `report.build` picks a parent by largest measured Delta-ipTM over the
+# scored parents, or, when nothing is scored, by a fallback whose own
+# wording is "a scan chosen this way has not been ranked against anything".
+# Both write the same `campaign.json`, so a scan assembled before the main
+# campaign scored is indistinguishable from one ranked against all of it.
+# That distinction is why run_chain.sh queues this stage last and
+# re-assembles first, and the re-assembly runs with `|| true`: if it fails,
+# the chain hands this script whatever design campaign was already there.
+#
+# Checked against the data as it stands rather than against how the parent
+# was originally picked, which is the question that matters: a parent that
+# is still the ranked choice is sound however it was chosen, and one that is
+# not is 4.4 hours on the wrong peptide.
+echo "=== is the parent still the ranked choice ==="
+# The *main* campaign, not this design one. `report.build` ranks against
+# whatever `nobble.app.data` is configured to, and that is global state: with
+# nothing configured it ranked against another campaign and preferred another
+# peptide, so this check refused the correct parent until it was told what to
+# rank against.
+SCORED="$(nobble_newest_complete campaign || true)"
+if [[ -z "$SCORED" ]]; then
+  echo "    no complete main campaign to rank against, so the parent cannot" >&2
+  echo "    be checked: running the scan without that check." >&2
+fi
+if ! "$SENV/bin/python" -c "
+import json, sys
+from pathlib import Path
+sys.path.insert(0, '$ROOT')
+from nobble.design import assemble
+meta = json.loads((Path('$CAMPAIGN') / 'campaign.json').read_text())
+parent = meta.get('parent')
+if not parent:
+    print('campaign.json names no parent', file=sys.stderr)
+    raise SystemExit(1)
+found = assemble.parent_provenance(parent, scored_campaign='$SCORED')
+print(json.dumps(found, indent=2))
+if found.get('ranked_choice') and found['ranked_choice'] != parent:
+    print(f\"REFUSING: this scan's parent is {parent} and the ranking now \"
+          f\"prefers {found['ranked_choice']}. Re-assemble against the \"
+          f\"scored campaign rather than scanning this one.\", file=sys.stderr)
+    raise SystemExit(1)
+if found.get('status'):
+    print('    provenance unresolved, which is not the same as sound:',
+          found['status'], file=sys.stderr)
+"; then
+  echo "refusing to spend 240 jobs on a parent that is not the ranked choice" >&2
+  exit 1
+fi
+
 echo "=== running design scan $(date -u +%Y-%m-%dT%H:%M:%SZ) ==="
 caffeinate -dimsu "$BENV/bin/python" -m nobble.execute.runner --campaign "$CAMPAIGN"
 status=$?
