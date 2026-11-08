@@ -19093,3 +19093,31 @@ The row predicted "mmCIF compresses 3.5 times, so a pose download drops from
 ratio on a real structure is 3.43, and 3.46 on `molstar.js`. So the estimate
 was right to two significant figures, which is worth recording because this
 session has mostly been recording the opposite.
+
+### F352b. The orphan blobs are historical, and the tip is clean
+
+The same check applied to the second list, which asks whether to excise 706
+orphan blobs from remote history with a force push (F303).
+
+Measured against the remote:
+
+- `origin/main`'s tip holds **zero** files under `deploy/atlas` containing
+  `/Users/dellboy`.
+- Its tip holds **zero** conflict-copy names.
+- 791 conflict-copy paths were added by some commit reachable from a ref,
+  across 47 commits touching `deploy/atlas`.
+
+So the question is correctly open and its scope is narrower than the row
+reads. Nothing served from the current tip carries either problem: a clone
+of `origin/main` today gets a clean bundle. What remains is 791 paths
+reachable only by walking history, which is what a force push would remove
+and what F303 decided not to do unilaterally.
+
+That distinction matters for the decision. "706 orphan blobs on the remote"
+invites the reading that the published repository is dirty now. It is not.
+The cost of leaving them is a larger clone and a history that records a
+mistake; the cost of removing them is rewriting published history, which is
+why it was left to Marc.
+
+The row is updated to say tip-clean and history-only, with both figures, so
+whoever answers it is answering the actual question.

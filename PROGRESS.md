@@ -1522,11 +1522,21 @@ had no data (F314b). It is BINMAN's column and re-freezing would discard an
 assembled 1,540-job queue, so the option is in FINDINGS and the decision is
 not taken.
 
-**Waiting on Marc.** `bash deploy/enable_gzip.sh` on the droplet (F132). And
-two things from today that are his call: whether to excise 706 orphan blobs
-from remote history with a force push, which I did not do (F303), and
-whether the composite is worth keeping now that it measures 0.58 to 0.61 out
-of sample against 0.5889 for its best single component (F312).
+**Waiting on Marc.** F132 is done, measured against production on
+2026-11-08: `molstar.js` at 3.46 times compression, a `.cif` at 3.43 with
+`content-type: chemical/x-mmcif`, so both halves of that row are satisfied
+and the list had been asking for work already performed (F352). What is left
+is
+two things that are his call. Whether to excise the orphan blobs from
+remote history with a force push, which I did not do (F303): measured on
+2026-11-08, `origin/main`'s tip holds zero files under `deploy/atlas`
+carrying `/Users/dellboy` and zero conflict-copy names, so a clone today is
+clean and what remains is 791 such paths reachable only by walking history
+across 47 commits (F352b). And whether the composite is worth keeping, which
+now has a second reading: paired over the matched arm's own 24 blocks it is
+8 to 8 with 8 tied against `convergence_score`, so it does not beat the best
+component that had nothing fitted to produce it, while carrying 0.1152 of
+optimism (F312, F351).
 
 **The day's headline, for a reader starting here.** Spec 4.1's primary signal
 now has a positive control: the bridge filter finds six of six measurable

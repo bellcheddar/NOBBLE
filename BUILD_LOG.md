@@ -1910,3 +1910,13 @@ bad clocks are. -->
   pages, and that its About page does not yet carry tonight's new lines,
   which is correct: the published bundle predates them and publication is
   held, so no redeploy has happened.
+- `2026-11-08T04:47Z` F352b. Applied F352's check to the second waiting-on
+  list. `origin/main`'s tip holds zero files under `deploy/atlas` carrying
+  `/Users/dellboy` and zero conflict-copy names, so a clone today is clean;
+  791 such paths are reachable only by walking history, across 47 commits.
+  The question F303 left open is correctly open and narrower than the row
+  read: "706 orphan blobs on the remote" invites the reading that the
+  published repository is dirty now, and it is not. The row now says
+  tip-clean and history-only with both figures. The composite row also
+  gained its second reading from F351: 8 to 8 with 8 tied over the matched
+  arm's own blocks, so it does not beat the component with no fit behind it.
