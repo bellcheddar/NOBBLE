@@ -16622,3 +16622,44 @@ live_campaign` covers the file where it happened, which is where the next
 version of this mistake would most likely go, and a sweep over every test's
 write targets would be the lens problem F293 warned about on the strength of
 one instance that was mine.
+
+### F326g. Every published number re-measured against the restored scores
+
+The re-score ran today's code on the same `results.jsonl`, so the figures
+F316, F317 and F318 publish ought to be identical. "Ought to" is not a
+measurement, and four documents and three app panels carry them.
+
+Re-measured, every value:
+
+```
+scramble, paired          bridge 9/14  delta 22/9 p 0.02945  convergence 25/1
+                          plip 13/2 p 0.00739  lysine 1/8 p 0.03906
+                          composite 20/11 p 0.14961
+matched arm, within-block bridge 0.5568  delta 0.4271  convergence 0.6510
+                          plip 0.5104  lysine 0.6322
+                          composite 0.7083 in sample, 0.6146 held out
+```
+
+**Identical to the last digit, all thirteen.** So F316's table, F317's table,
+F318's synthesis, the two About panels, the README's two bullets and the
+publication hold's three lines all still say what the data says.
+
+That is the check worth doing rather than reasoning about. The inputs were
+the same file and the component code paths were untouched, so I could have
+argued it. But the re-score also ran F319's config-sourced fold count and
+F322's exit-code change through the same module, and "I did not change
+anything that matters" is the sentence that precedes most of this project's
+findings.
+
+One number I did not re-check and should name: the F312 cross-validation
+figures, 0.5836 at five folds and the 0.6012 and 0.6096 beside them, were
+measured before the truncation and the weights are refitted on the same 158
+rows. The held-out composite in the table above is 0.6146, which is F317's
+within-block figure and not F312's pooled one, so F312 remains unverified
+against the restored file. It is on the About page, so I checked it
+rather than leaving it outstanding: **in sample 0.6988, out of sample 0.5836,
+optimism 0.1152**, identical to F312's published values.
+
+So all sixteen published figures are confirmed against the restored file.
+The only thing the truncation cost was time: about forty minutes of mine and
+twenty minutes of CPU, and no number anywhere had to be withdrawn.
