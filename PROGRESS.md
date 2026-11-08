@@ -288,7 +288,11 @@ scorer exits non-zero only when one is wrong.
 | F251 | *withdrawn*: tier 2 is ternary-only, so Delta-ipTM has no binary term there and assembling one across tiers is the bias D-NOB-032 forbids | nothing | withdrawn, replaced by F254 |
 | F254 | refinement does not change bridge formation (noise), which needs only the ternary structure | `scores_tier2.jsonl`, written by `tools/tier2.sh` after the runner. The bench06 failures do not stop it: no `set -e`, the runner's code is carried to the end (F195) | not yet testable |
 | F252 | the design scan's most sensitive position falls in {5, 6, 7}, which carry four or more CRBN contacts | the scan's `scan_profile.json`, written by `tools/run_design.sh` after scoring, which it skips only if scoring itself fails (F194) | not yet testable |
-| F253 | no Tier B pair reaches a bridge rate of 0.8 while its own scramble stays at 0.2 or below | Tier B's `scores.jsonl`, scored by `tools/run_chain.sh` stage 4b. `bridge_formation_rate` needs no crystal: all 120 Sievers pairs carry one | not yet testable |
+| F253 | no Tier B pair reaches a bridge rate of 0.8 while its own scramble stays at 0.2 or below | Tier B's `scores.jsonl`, scored by `tools/run_chain.sh` stage 4b. `bridge_formation_rate` needs no crystal: all 120 Sievers pairs carry one. Verified resolvable: 77 `tb_pos_` pairs each with a matching `tb_neg_`, none unmatched (F347b) | not yet testable |
+| F268 | every bench06 refinement fails whatever its conditioning | settled 2026-11-08: a conditioned refinement completed at nine samples | **WRONG** |
+| F306 | bench06 refines once its sample count fits the measured budget, so F268 is wrong | the same job, `status: done` at 13,440s with a confidence JSON | **supported** |
+| F334 | the sample cut does not change the duration: within 3 per cent of 9,512s | 13,440s, outside the band. The band came from six attempts that stop early applied to one that completes, which is the wrong population (F345) | **WRONG** |
+| F346 | every remaining reduced bench06 refinement completes, each within 5 per cent of 13,440s | the nine queued jobs. Registered before they land, so they test rather than confirm | not yet testable, 1 of 10 |
 
 Outstanding: `tools/run_chain.sh` calls `check_prediction.py` for F13's two
 and does not call this one, because the chain was executing when it was
@@ -296,16 +300,22 @@ written and bash reads a script incrementally. The chain's last line runs
 `status.sh`, so the verdicts do appear at the end of a run; calling the
 scorer at each stage is the part still to wire.
 
-**F268, registered 7 November and answerable by this run at no cost.** Claim:
-every bench06_RBM39_DCAF15 refinement fails whatever its conditioning.
-Falsifier: an unconstrained bench06 tier-2 job writes a confidence JSON. All
-five conditioned attempts have failed, each after about two and a half hours
-with an empty predictions directory and Boltz exiting 0; the five unconstrained
-ones are what decide it. The evidence for size over constraint is that all ten
-are 1,223 tokens, the largest refinement ever to succeed here is 454, and
-bench06's own thirty tier-1 jobs at the same size all succeeded. Scored by
-`tools/check_registered.py`, which refuses to call it either way until all five
-have been attempted.
+**F268 is settled and it was wrong.** It claimed every
+bench06_RBM39_DCAF15 refinement fails whatever its conditioning, on the
+evidence that all ten are 1,223 tokens, that the largest refinement ever to
+succeed here was 454, and that bench06's own thirty tier-1 jobs at the same
+size all succeeded. A conditioned refinement completed at nine diffusion
+samples on 2026-11-08: 13,440.12 seconds, `status: done`,
+`confidence_score` 0.578. The job carries both the 1,223-token size and the
+pocket constraint, so neither was the cause and the sample count was, which
+is what F306 claimed (F345).
+
+Its falsifier read "an unconstrained bench06 tier-2 job writes a confidence
+JSON", and the job that settled it was the conditioned one. F333 widened both
+scorers to either conditioning four hours before it resolved, in the
+falsifying direction only for F268 so the claim could become easier to refute
+and never easier to affirm. Without that, this would have reported "not yet
+testable: 1 of 5 unconstrained" over the evidence that refutes it.
 
 ## Waiting on Marc
 

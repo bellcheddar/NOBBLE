@@ -1799,3 +1799,14 @@ bad clocks are. -->
   splits across lines, written minutes after I wrote a test whose docstring
   explains the same trap. Knowing the rule has not changed the behaviour; a
   check that fails in a minute has.
+- `2026-11-08T04:12Z` PROGRESS's registered-predictions table had drifted,
+  which is `test_docs_match_reality.py`'s own subject. It listed four
+  predictions, all pending or withdrawn, while the scorer had F268 and F334
+  refuted and F306 supported, and three were missing from it entirely. The
+  paragraph below it still quoted F268's pre-F333 falsifier, "an
+  unconstrained bench06 tier-2 job writes a confidence JSON", when the job
+  that refuted it was the conditioned one. Table rewritten from the scorer's
+  own output, the F268 passage rewritten to record what happened, and two
+  tests added: every finding the scorer knows must appear in PROGRESS with a
+  settled verdict in the scorer's own word, and F268 must not be described
+  as answerable.

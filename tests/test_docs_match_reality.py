@@ -274,3 +274,83 @@ def test_no_logged_timestamp_is_in_the_future():
         "these logged times have not happened yet, so the ordering they "
         "imply is wrong:\n" + "\n".join(offenders[:10])
     )
+
+
+def test_the_progress_predictions_table_matches_the_scorer():
+    """PROGRESS's verdict column drifted, which is this file's subject.
+
+    The table listed four predictions, all "not yet testable" or
+    "withdrawn", while the scorer had F268 and F334 refuted and F306
+    supported, and three predictions were missing from it altogether. A
+    paragraph below it still quoted F268's pre-F333 falsifier, "an
+    unconstrained bench06 tier-2 job writes a confidence JSON", and the job
+    that refuted it was the conditioned one.
+
+    So the table is checked against `check_registered.py` rather than kept
+    by hand. Every finding the scorer knows about must appear in PROGRESS
+    with the verdict the scorer gives it, in the words the scorer uses.
+    """
+    import importlib.util
+
+    import pytest
+
+    spec = importlib.util.spec_from_file_location(
+        "check_registered", ROOT / "tools" / "check_registered.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    campaign = sorted(ROOT.glob("campaigns/campaign_*"))
+    design = sorted(ROOT.glob("campaigns/design_*"))
+    tier_b = sorted(ROOT.glob("campaigns/tier_b_*"))
+    if not campaign:
+        pytest.skip("no campaign on this checkout")
+
+    verdicts = {}
+    for predicate, target in (
+        (module.f254_refinement_bridging, campaign[-1]),
+        (module.f268_refinement_size_limit, campaign[-1]),
+        (module.f306_reduced_sampling_succeeds, campaign[-1]),
+        (module.f334_sampling_buys_no_time, campaign[-1]),
+        (module.f346_the_rest_of_bench06_refines, campaign[-1]),
+        (module.f252_design_scan_position, design[-1] if design else None),
+        (module.f253_tier_b_bridging, tier_b[-1] if tier_b else None),
+    ):
+        if target is None:
+            continue
+        row = predicate(target)
+        verdicts[row["finding"]] = row["status"]
+
+    assert verdicts, "no verdict was produced, so this examined nothing"
+
+    missing, wrong = [], []
+    for finding, status in sorted(verdicts.items()):
+        if finding not in PROGRESS:
+            missing.append(finding)
+            continue
+        # The settled ones are the ones that drift, because a pending row
+        # reads the same whatever happens. A refuted or supported verdict
+        # must be in the document in the scorer's own word.
+        if status in ("WRONG", "supported") and status not in PROGRESS:
+            wrong.append(f"{finding} is {status} and PROGRESS does not say "
+                         f"{status!r} anywhere")
+    assert missing == [], (
+        f"these registered predictions are absent from PROGRESS: {missing}"
+    )
+    assert wrong == [], "\n".join(wrong)
+
+
+def test_a_settled_prediction_is_not_described_as_pending():
+    """The specific drift: F268 was refuted and PROGRESS called it
+    answerable, quoting a falsifier F333 had already widened."""
+    if "F268" not in PROGRESS:
+        import pytest
+        pytest.skip("F268 is not in PROGRESS")
+    window = PROGRESS[PROGRESS.index("**F268"):][:1200]
+    assert "answerable by this run" not in window, (
+        "PROGRESS still describes F268 as answerable; it was refuted on "
+        "2026-11-08 by a conditioned refinement completing at nine samples"
+    )
+    assert "wrong" in window.lower(), (
+        "the F268 passage does not say it was refuted, which is the one "
+        "thing a reader needs from it"
+    )
