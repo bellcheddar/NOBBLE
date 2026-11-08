@@ -323,8 +323,38 @@ def discrimination(campaign: Path | None) -> list[str]:
     # absence, because without this the p values read as a weak result
     # (F349). The arithmetic is the project's own sign test over the
     # observed rate, not a figure typed in.
+    lines.extend(_paired_note(blocks))
     lines.extend(_power_note(blocks))
     return lines or ["    discrimination: nothing comparable in this campaign"]
+
+
+def _paired_note(blocks: dict) -> list[str]:
+    """The composite against its best unfitted component, paired (F351).
+
+    Whether the composite earns its place is a standing question on Marc's
+    list, and the two means invite the wrong answer: held out it sits 0.036
+    below `convergence_score`, which reads as losing. Over the same blocks
+    paired it is even, so the honest line is that it neither beats nor
+    loses to a component with nothing fitted to produce it.
+
+    Read from the arm's report rather than computed here, for the reason
+    `_power_note` gives.
+    """
+    paired = blocks.get("composite_against_best")
+    if not paired or paired.get("p_two_sided") is None:
+        return []
+    verdict = ("even" if paired["component_higher"] == paired["composite_higher"]
+               else "the component ahead"
+               if paired["component_higher"] > paired["composite_higher"]
+               else "the composite ahead")
+    return [
+        f"    composite against {paired['component']}, paired over the same "
+        f"{paired['blocks_compared']} blocks: "
+        f"{paired['component_higher']} to {paired['composite_higher']} with "
+        f"{paired['tied']} tied, p {paired['p_two_sided']:g}, so {verdict}. "
+        f"The means are {paired['composite_mean_auc']} against "
+        f"{paired['component_mean_auc']}, and that gap is not a difference "
+        f"these blocks support"]
 
 
 def _power_note(blocks: dict) -> list[str]:

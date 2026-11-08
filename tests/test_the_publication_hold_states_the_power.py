@@ -225,3 +225,70 @@ def test_every_place_that_states_the_power_agrees():
         "the favourable case is no longer convergence_score, so re-read "
         "whether the README's figures still describe the same statistic",
         power)
+
+
+def test_the_composite_is_compared_paired_rather_than_by_means():
+    """F351's instrument, not its number.
+
+    Two mean AUCs over the same 24 blocks look like an answer: 0.6146
+    against 0.6510 reads as the composite losing. Paired over those blocks
+    it is 8 to 8 with 8 ties. Comparing the means without pairing them is
+    the error F317 exists to prevent, so the comparison lives in the arm
+    and is reported, not left to whoever reads the table.
+    """
+    arm = (ROOT / "tools" / "matched_arm_stratified.py").read_text()
+    assert "def _composite_against_best(" in arm
+    assert '"composite_against_best": _composite_against_best(' in arm, (
+        "the arm no longer reports the paired comparison, so each consumer "
+        "must compare two means and reach the wrong conclusion"
+    )
+    assert "def _per_block(" in arm, (
+        "the per-block AUCs are no longer kept, and without them the "
+        "matching cannot be used"
+    )
+    assert "_paired_note(blocks)" in SOURCE
+    assert 'blocks.get("composite_against_best")' in SOURCE, (
+        "the hold computes the comparison itself again"
+    )
+
+
+def test_the_paired_comparison_picks_the_best_unfitted_component():
+    """Not the in-sample composite, and not a fitted row against itself."""
+    arm = (ROOT / "tools" / "matched_arm_stratified.py").read_text()
+    window = arm[arm.index("def _composite_against_best("):]
+    window = window[:window.index("\ndef ", 10)]
+    assert 'startswith("composite")' in window, (
+        "the comparison may now pick a composite row as the component, "
+        "which would compare the composite against itself"
+    )
+
+
+def test_the_live_comparison_is_even_and_says_so():
+    import json
+
+    import pytest
+
+    campaign = sorted(ROOT.glob("campaigns/campaign_*"))
+    if not campaign or not (campaign[-1] / "scores.jsonl").exists():
+        pytest.skip("no scored campaign on this checkout")
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    import matched_arm_stratified as arm_module
+
+    rows = [json.loads(line) for line
+            in (campaign[-1] / "scores.jsonl").read_text().splitlines()
+            if line.strip()]
+    paired = arm_module.report(rows).get("composite_against_best")
+    if not paired:
+        pytest.skip("no paired comparison on this campaign")
+
+    assert paired["component"] == "convergence_score", paired
+    assert paired["blocks_compared"] == (
+        paired["component_higher"] + paired["composite_higher"]
+        + paired["tied"]), paired
+    # The figure F351 recorded. If the arm grows this changes, and the
+    # assertion should be re-read rather than relaxed.
+    assert paired["component_higher"] == paired["composite_higher"] == 8, (
+        "the paired split is no longer 8 to 8, so F351's conclusion that "
+        "the composite neither beats nor loses to its best component needs "
+        "re-reading against the new blocks", paired)

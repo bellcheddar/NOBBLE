@@ -18933,3 +18933,35 @@ Both are underpowered (F349), so neither figure is significant on its own
 and the tie is not evidence of equivalence either: 24 blocks cannot
 distinguish 0.615 from 0.651, and p = 1.0 here means the blocks split
 evenly rather than that the two statistics are the same.
+
+### F351b. The paired comparison is in the hold, computed once
+
+F351 measured it; this puts it where the decision is made, which is the same
+move F350 made for the power figure and for the same reason: a finding in a
+file is not read when the gate runs.
+
+`matched_arm_stratified` now reports `composite_against_best`, and
+`_per_block` keeps the per-block AUCs that `within_block` was averaging away.
+Without those the matching cannot be used at all, which is how two means
+came to be compared in the first place.
+
+The hold prints:
+
+> composite against convergence_score, paired over the same 24 blocks: 8 to
+> 8 with 8 tied, p 1, so even. The means are 0.6146 against 0.651, and that
+> gap is not a difference these blocks support
+
+Both the figure and the warning about its own means, because the means are
+in the table directly above it and a reader who sees 0.6146 beside 0.6510
+will draw the conclusion I drew.
+
+Computed in the arm rather than in the hold, as `_power` is, so the hold and
+`about.json` cannot disagree. That is now the third quantity moved there
+after a first version computed it in the consumer, which suggests the rule
+to apply first next time: a number two documents will state belongs beside
+the thing it measures, not beside the thing that prints it.
+
+A test pins the 8-to-8 split specifically, with an instruction to re-read
+F351 rather than relax the assertion if the arm grows. The split is the
+evidence for the conclusion, so a change to it is a change to the
+conclusion.

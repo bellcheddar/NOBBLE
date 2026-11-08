@@ -132,6 +132,78 @@ def within_block(blocks: dict, read) -> dict:
     }
 
 
+def _per_block(blocks: dict, read) -> dict[str, float]:
+    """Each block's own AUC, keyed by its positive.
+
+    `within_block` computes these and returns only their mean and a sign
+    test over them. A comparison between two statistics needs them kept,
+    because both are measured on the same blocks and that is the whole
+    information the matching provides (F317, F351).
+    """
+    out: dict[str, float] = {}
+    for positive, controls in sorted(blocks.items()):
+        value = read(positive)
+        if value is None:
+            continue
+        wins = ties = compared = 0
+        for control in controls:
+            other = read(control)
+            if other is None:
+                continue
+            compared += 1
+            if value > other:
+                wins += 1
+            elif value == other:
+                ties += 1
+        if compared:
+            out[positive] = (wins + 0.5 * ties) / compared
+    return out
+
+
+def _composite_against_best(blocks: dict, readers: dict, results: list[dict]):
+    """The composite against the best unfitted component, block by block.
+
+    Whether the composite earns its place is a standing question, and the
+    means invite the wrong answer: held out it sits 0.036 below
+    `convergence_score`, which reads as losing. Paired over the same blocks
+    it is 8 to 8 with 8 ties, p = 1.0, so the gap is not a difference these
+    blocks support (F351).
+
+    Reported here rather than worked out by each consumer, for the reason
+    `_power` is here: two copies of a sign-test comparison would be the
+    duplication D-NOB-007 forbids, and the hold and `about.json` would then
+    agree only by luck.
+    """
+    unfitted = [row for row in results
+                if not str(row.get("statistic", "")).startswith("composite")
+                and row.get("mean_within_block_auc") is not None]
+    if not unfitted:
+        return None
+    best = max(unfitted, key=lambda row: row["mean_within_block_auc"])
+    name = best["statistic"]
+    if name not in readers or "composite, held out" not in readers:
+        return None
+    mine = _per_block(blocks, readers[name])
+    theirs = _per_block(blocks, readers["composite, held out"])
+    shared = sorted(set(mine) & set(theirs))
+    if not shared:
+        return None
+    component = sum(1 for key in shared if mine[key] > theirs[key])
+    composite = sum(1 for key in shared if mine[key] < theirs[key])
+    return {
+        "component": name,
+        "blocks_compared": len(shared),
+        "component_higher": component,
+        "composite_higher": composite,
+        "tied": len(shared) - component - composite,
+        "p_two_sided": rounded_p(sign_test(component, component + composite)),
+        "component_mean_auc": best["mean_within_block_auc"],
+        "composite_mean_auc": next(
+            (row["mean_within_block_auc"] for row in results
+             if row.get("statistic") == "composite, held out"), None),
+    }
+
+
 def _power(results: list[dict], threshold: float | None) -> dict | None:
     """How many decisive blocks this arm would need, against what it has.
 
@@ -219,7 +291,8 @@ def report(rows: list[dict], folds: int = 5) -> dict:
         return lambda pid: W._features(by_peptide[pid]).get(statistic)
 
     names = list(W.CANDIDATES) + ["composite, in sample", "composite, held out"]
-    results = [{"statistic": name, **within_block(blocks, reader(name))}
+    readers = {name: reader(name) for name in names}
+    results = [{"statistic": name, **within_block(blocks, readers[name])}
                for name in names]
     unfitted = [row for row in results
                 if not row["statistic"].startswith("composite")]
@@ -230,6 +303,8 @@ def report(rows: list[dict], folds: int = 5) -> dict:
         "statistics_tested": len(results),
         "power": _power(results, round(0.05 / len(results), 5) if results
                         else None),
+        "composite_against_best": _composite_against_best(
+            blocks, readers, results),
         "bonferroni_threshold": round(0.05 / len(results), 5) if results else None,
         "unfitted_statistics": len(unfitted),
         "results": results,

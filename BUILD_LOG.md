@@ -1836,3 +1836,14 @@ bad clocks are. -->
   costing a fit, 0.1152 of optimism (F312) and a caveat on every page, and
   that `convergence_score` has a mechanism and a measured confound while the
   weights have neither.
+- `2026-11-08T04:25Z` F351b. Put F351's paired comparison where the decision
+  is made. `matched_arm_stratified` reports `composite_against_best`, and
+  `_per_block` keeps the per-block AUCs `within_block` was averaging away:
+  without them the matching cannot be used, which is how two means came to be
+  compared. The hold prints "composite against convergence_score, paired over
+  the same 24 blocks: 8 to 8 with 8 tied, p 1, so even. The means are 0.6146
+  against 0.651, and that gap is not a difference these blocks support" -
+  including the warning about its own means, because they sit in the table
+  above it and a reader will draw the conclusion I drew. Third quantity moved
+  into the arm after a first version computed it in the consumer, which is
+  the rule to apply first next time.
