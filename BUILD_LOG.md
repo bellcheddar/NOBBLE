@@ -1689,3 +1689,16 @@ bad clocks are. -->
   names in it and refuses any that nothing in the tree writes; it reports
   rather than asserts a non-zero count, because a board with nothing pending
   is the legitimate end state.
+- `2026-11-08T04:00Z` F348. `deploy/build_atlas.py` has no reference to Tier
+  B and neither does `nobble/app/`, so the arm's 1,540 jobs would be scored,
+  read only by `check_registered.py` for F253, and never published: about 33
+  hours of compute with no path to the site, which is
+  `test_atlas_is_read.py`'s own subject one level in. Not fixed, because how
+  Tier B publishes is BUILD_SPEC.md item 3 and DECISIONS.md records it as
+  explicitly Marc's, in terms that apply to me too. But the deferral rested
+  on the constructs being unfilled and they are chosen (D-NOB-072), the arm
+  is assembled and queued as stage 4b, so the decision is ripe. Added a
+  tripwire instead: it passes while Tier B has no scores and fails the moment
+  it has them and nothing publishes them, which is the only moment the gap
+  costs anything and the moment it would otherwise pass unnoticed. It also
+  asserts the gap still exists, so closing it retires the test.

@@ -18507,3 +18507,67 @@ chain finishes, so requiring a non-zero count would turn success into a
 failure. The count is printed instead, which is the same distinction the
 rest of this project draws by refusing a clean answer over nothing: here the
 empty case really is clean, and saying so beats asserting it is not.
+
+## F348. Tier B is 1,540 jobs with no path to the site, and the decision that would fix it is ripe
+
+`deploy/build_atlas.py` contains no reference to Tier B. Neither does
+`nobble/app/`. So when the arm finishes it will be scored, read by
+`check_registered.py` for F253, and go no further: not into the published
+bundle, not onto the site. About **33 hours of compute whose only product is
+a file on the Mac Studio.**
+
+That is `tests/test_atlas_is_read.py`'s own subject one level further in. It
+exists because tier 2 wrote `scores_tier2.jsonl`, the builder published it
+and nothing read it, and its conclusion was that "a file with no reader in
+the app is compute whose only product is a file on a droplet". Tier B does
+not even reach the droplet.
+
+### Why I have not fixed it
+
+How Tier B publishes is open item 3 in BUILD_SPEC.md: a ranked list, or an
+abstention-heavy list where BINMAN-LM Head C declines below a confidence
+floor. DECISIONS.md records the earlier session declining to pick one, in
+terms that apply to me equally: "that would be writing spec content into the
+build when BUILD_SPEC.md is authoritative and the question is explicitly
+Marc's".
+
+Unattended mode says decide and log. A recorded decision reserving a
+question for Marc is the stronger instruction, and building a ranked list
+would answer it for him. Building the publication path in some other form
+would answer it too, more quietly.
+
+### What has changed, and why this is now worth raising
+
+That deferral rested on a condition: "Tier B cannot run until the fifteen
+constructs in `config/tier_b_constructs.toml` are filled in... the two
+questions arrive together, so the presentation decision is best made when
+the constructs are chosen rather than now."
+
+The constructs are chosen (D-NOB-072), the arm is assembled as
+`tier_b_20261105T202811Z`, preflight passes over 1,540 jobs, and it is
+queued as stage 4b. **The condition has been met and the decision is ripe.**
+
+### So a tripwire rather than a feature
+
+`tests/test_tier_b_results_have_somewhere_to_go.py` passes while Tier B has
+no scores and fails the moment it has them and nothing publishes them. That
+is the only moment at which the gap costs anything, and the moment it would
+otherwise pass unnoticed: a successful chain run would end with the atlas
+rebuilt, 33 hours on disk, and nobody told.
+
+It also asserts the gap still exists, so that closing it fails this file and
+sends whoever closed it here to delete the tripwire. A guard describing a gap
+that has gone is the stale allowance F119 is about.
+
+And it checks the arm is genuinely queued and scored by the chain, because a
+tripwire on a stage that never runs is decoration.
+
+### One fact for whoever decides, which is not a presentation choice
+
+D-NOB-073 gave each Tier B positive a composition-matched scramble, 77 and
+77 with none unmatched, measured. So a Tier B result carries its own
+internal negative and does not need a cross-arm comparison or a confidence
+floor to mean anything: the question "does this positive bridge where its own
+scramble does not" is answerable per pair. That is a property of the data
+rather than a view about presentation, and it is the fact the open item
+should be decided against.
